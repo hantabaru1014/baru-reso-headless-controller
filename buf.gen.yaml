@@ -1,0 +1,28 @@
+version: v2
+inputs:
+  - directory: proto
+  # - git_repo: https://github.com/hantabaru1014/baru-reso-headless-container
+  #   branch: main
+  #   subdir: proto
+  #   depth: 5
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/hantabaru1014/baru-reso-headless-controller/pbgen
+plugins:
+  - remote: buf.build/protocolbuffers/go
+    out: pbgen
+    opt: paths=source_relative
+  - remote: buf.build/connectrpc/go
+    out: pbgen
+    opt: paths=source_relative
+  - remote: buf.build/grpc/go
+    out: pbgen
+    opt: paths=source_relative
+  - remote: buf.build/bufbuild/es
+    out: front/src/lib/pbgen
+    opt: target=ts
+  - remote: buf.build/connectrpc/es
+    out: front/src/lib/pbgen
+    opt: target=ts,import_extension=none

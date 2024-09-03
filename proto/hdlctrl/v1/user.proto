@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package hdlctrl.v1;
+
+service UserService {
+  rpc GetTokenByAPIKey(GetTokenByAPIKeyRequest) returns (GetTokenByAPIKeyResponse) {}
+}
+
+message GetTokenByAPIKeyRequest {
+  string api_key = 1;
+}
+
+message GetTokenByAPIKeyResponse {
+  string token = 1;
+}

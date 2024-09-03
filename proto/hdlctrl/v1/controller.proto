@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package hdlctrl.v1;
+
+import "headless/v1/headless.proto";
+
+service ControllerService {
+  rpc ListHeadlessHost(ListHeadlessHostRequest) returns (ListHeadlessHostResponse) {}
+  rpc GetHeadlessHost(GetHeadlessHostRequest) returns (GetHeadlessHostResponse) {}
+  
+  rpc StartWorld(StartWorldRequest) returns (StartWorldResponse);
+  rpc StopSession(StopSessionRequest) returns (StopSessionResponse);
+  rpc InviteUser(InviteUserRequest) returns (InviteUserResponse);
+}
+
+message ListHeadlessHostRequest {
+}
+
+message ListHeadlessHostResponse {
+  repeated HeadlessHost hosts = 1;
+}
+
+message GetHeadlessHostRequest {
+  string id = 1;
+}
+
+message GetHeadlessHostResponse {
+  HeadlessHost host = 1;
+}
+
+message AddHeadlessHostRequest {
+  string name = 1;
+  string address = 2;
+}
+
+message AddHeadlessHostResponse {
+  HeadlessHost host = 1;
+}
+
+message RemoveHeadlessHostRequest {
+  string id = 1;
+}
+
+message RemoveHeadlessHostResponse {
+}
+
+message StartWorldRequest {
+  string host_id = 1;
+  headless.v1.WorldStartupParameters parameters = 2;
+}
+
+message StartWorldResponse {
+  headless.v1.Session opened_session = 1;
+}
+
+message StopSessionRequest {
+  string host_id = 1;
+  string session_id = 2;
+}
+
+message StopSessionResponse {}
+
+message InviteUserRequest {
+  string host_id = 1;
+  string session_id = 2;
+  oneof user {
+    string user_id = 3;
+    string user_name = 4;
+  }
+}
+
+message InviteUserResponse {}
+
+// models
+
+message HeadlessHost {
+  string id = 1;
+  string name = 2;
+  string address = 3;
+}
