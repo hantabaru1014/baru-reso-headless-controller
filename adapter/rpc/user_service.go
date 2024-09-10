@@ -40,7 +40,6 @@ func NewUserService() *UserService {
 	return &UserService{}
 }
 
-func (u *UserService) Handle(mux *http.ServeMux) {
-	path, handler := hdlctrlv1connect.NewUserServiceHandler(u)
-	mux.Handle(path, handler)
+func (u *UserService) NewHandler() (string, http.Handler) {
+	return hdlctrlv1connect.NewUserServiceHandler(u)
 }

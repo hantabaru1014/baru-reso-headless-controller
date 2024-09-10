@@ -30,10 +30,9 @@ func NewControllerService(hhrepo port.HeadlessHostRepository) *ControllerService
 	}
 }
 
-func (c *ControllerService) Handle(mux *http.ServeMux) {
+func (c *ControllerService) NewHandler() (string, http.Handler) {
 	interceptors := connect.WithInterceptors(auth.NewAuthInterceptor())
-	path, handler := hdlctrlv1connect.NewControllerServiceHandler(c, interceptors)
-	mux.Handle(path, handler)
+	return hdlctrlv1connect.NewControllerServiceHandler(c, interceptors)
 }
 
 // GetHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.

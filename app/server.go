@@ -2,8 +2,12 @@ package app
 
 import (
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 
+	"github.com/gorilla/mux"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
+	"github.com/hantabaru1014/baru-reso-headless-controller/front"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )
@@ -23,14 +27,31 @@ func NewServer(
 	}
 }
 
-func (s *Server) ListenAndServe(addr string) error {
-	mux := http.NewServeMux()
+func (s *Server) ListenAndServe(addr string, frontUrl string) error {
+	router := mux.NewRouter()
 
-	s.userService.Handle(mux)
-	s.controllerService.Handle(mux)
+	{
+		p, h := s.userService.NewHandler()
+		router.PathPrefix(p).Handler(h)
+	}
+	{
+		p, h := s.controllerService.NewHandler()
+		router.PathPrefix(p).Handler(h)
+	}
+
+	if len(frontUrl) > 0 {
+		rpURL, err := url.Parse(frontUrl)
+		if err != nil {
+			return err
+		}
+		proxy := httputil.NewSingleHostReverseProxy(rpURL)
+		router.NotFoundHandler = proxy
+	} else {
+		router.NotFoundHandler = http.FileServerFS(front.FrontAssets)
+	}
 
 	return http.ListenAndServe(
 		addr,
-		h2c.NewHandler(mux, &http2.Server{}),
+		h2c.NewHandler(router, &http2.Server{}),
 	)
 }
