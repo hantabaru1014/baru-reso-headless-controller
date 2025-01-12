@@ -4,6 +4,7 @@ package hdlctrl.v1;
 
 service UserService {
   rpc GetTokenByAPIKey(GetTokenByAPIKeyRequest) returns (GetTokenByAPIKeyResponse) {}
+  rpc GetTokenByPassword(GetTokenByPasswordRequest) returns (GetTokenByPasswordResponse) {}
 }
 
 message GetTokenByAPIKeyRequest {
@@ -11,5 +12,14 @@ message GetTokenByAPIKeyRequest {
 }
 
 message GetTokenByAPIKeyResponse {
+  string token = 1;
+}
+
+message GetTokenByPasswordRequest {
+  string id = 1;
+  string password = 2;
+}
+
+message GetTokenByPasswordResponse {
   string token = 1;
 }

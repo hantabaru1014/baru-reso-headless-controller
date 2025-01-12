@@ -36,11 +36,15 @@ const (
 	// UserServiceGetTokenByAPIKeyProcedure is the fully-qualified name of the UserService's
 	// GetTokenByAPIKey RPC.
 	UserServiceGetTokenByAPIKeyProcedure = "/hdlctrl.v1.UserService/GetTokenByAPIKey"
+	// UserServiceGetTokenByPasswordProcedure is the fully-qualified name of the UserService's
+	// GetTokenByPassword RPC.
+	UserServiceGetTokenByPasswordProcedure = "/hdlctrl.v1.UserService/GetTokenByPassword"
 )
 
 // UserServiceClient is a client for the hdlctrl.v1.UserService service.
 type UserServiceClient interface {
 	GetTokenByAPIKey(context.Context, *connect.Request[v1.GetTokenByAPIKeyRequest]) (*connect.Response[v1.GetTokenByAPIKeyResponse], error)
+	GetTokenByPassword(context.Context, *connect.Request[v1.GetTokenByPasswordRequest]) (*connect.Response[v1.GetTokenByPasswordResponse], error)
 }
 
 // NewUserServiceClient constructs a client for the hdlctrl.v1.UserService service. By default, it
@@ -60,12 +64,19 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(userServiceMethods.ByName("GetTokenByAPIKey")),
 			connect.WithClientOptions(opts...),
 		),
+		getTokenByPassword: connect.NewClient[v1.GetTokenByPasswordRequest, v1.GetTokenByPasswordResponse](
+			httpClient,
+			baseURL+UserServiceGetTokenByPasswordProcedure,
+			connect.WithSchema(userServiceMethods.ByName("GetTokenByPassword")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // userServiceClient implements UserServiceClient.
 type userServiceClient struct {
-	getTokenByAPIKey *connect.Client[v1.GetTokenByAPIKeyRequest, v1.GetTokenByAPIKeyResponse]
+	getTokenByAPIKey   *connect.Client[v1.GetTokenByAPIKeyRequest, v1.GetTokenByAPIKeyResponse]
+	getTokenByPassword *connect.Client[v1.GetTokenByPasswordRequest, v1.GetTokenByPasswordResponse]
 }
 
 // GetTokenByAPIKey calls hdlctrl.v1.UserService.GetTokenByAPIKey.
@@ -73,9 +84,15 @@ func (c *userServiceClient) GetTokenByAPIKey(ctx context.Context, req *connect.R
 	return c.getTokenByAPIKey.CallUnary(ctx, req)
 }
 
+// GetTokenByPassword calls hdlctrl.v1.UserService.GetTokenByPassword.
+func (c *userServiceClient) GetTokenByPassword(ctx context.Context, req *connect.Request[v1.GetTokenByPasswordRequest]) (*connect.Response[v1.GetTokenByPasswordResponse], error) {
+	return c.getTokenByPassword.CallUnary(ctx, req)
+}
+
 // UserServiceHandler is an implementation of the hdlctrl.v1.UserService service.
 type UserServiceHandler interface {
 	GetTokenByAPIKey(context.Context, *connect.Request[v1.GetTokenByAPIKeyRequest]) (*connect.Response[v1.GetTokenByAPIKeyResponse], error)
+	GetTokenByPassword(context.Context, *connect.Request[v1.GetTokenByPasswordRequest]) (*connect.Response[v1.GetTokenByPasswordResponse], error)
 }
 
 // NewUserServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -91,10 +108,18 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(userServiceMethods.ByName("GetTokenByAPIKey")),
 		connect.WithHandlerOptions(opts...),
 	)
+	userServiceGetTokenByPasswordHandler := connect.NewUnaryHandler(
+		UserServiceGetTokenByPasswordProcedure,
+		svc.GetTokenByPassword,
+		connect.WithSchema(userServiceMethods.ByName("GetTokenByPassword")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/hdlctrl.v1.UserService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UserServiceGetTokenByAPIKeyProcedure:
 			userServiceGetTokenByAPIKeyHandler.ServeHTTP(w, r)
+		case UserServiceGetTokenByPasswordProcedure:
+			userServiceGetTokenByPasswordHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -106,4 +131,8 @@ type UnimplementedUserServiceHandler struct{}
 
 func (UnimplementedUserServiceHandler) GetTokenByAPIKey(context.Context, *connect.Request[v1.GetTokenByAPIKeyRequest]) (*connect.Response[v1.GetTokenByAPIKeyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.UserService.GetTokenByAPIKey is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) GetTokenByPassword(context.Context, *connect.Request[v1.GetTokenByPasswordRequest]) (*connect.Response[v1.GetTokenByPasswordResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.UserService.GetTokenByPassword is not implemented"))
 }
