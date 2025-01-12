@@ -5,7 +5,7 @@ import (
 	"io/fs"
 )
 
-//go:embed build/*
+//go:embed dist/*
 var embedAssets embed.FS
 
-var FrontAssets, _ = fs.Sub(embedAssets, "build")
+var FrontAssets, _ = fs.Sub(embedAssets, "dist")

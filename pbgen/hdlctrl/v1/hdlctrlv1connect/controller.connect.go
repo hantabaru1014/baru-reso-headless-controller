@@ -50,16 +50,6 @@ const (
 	ControllerServiceInviteUserProcedure = "/hdlctrl.v1.ControllerService/InviteUser"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	controllerServiceServiceDescriptor                = v1.File_hdlctrl_v1_controller_proto.Services().ByName("ControllerService")
-	controllerServiceListHeadlessHostMethodDescriptor = controllerServiceServiceDescriptor.Methods().ByName("ListHeadlessHost")
-	controllerServiceGetHeadlessHostMethodDescriptor  = controllerServiceServiceDescriptor.Methods().ByName("GetHeadlessHost")
-	controllerServiceStartWorldMethodDescriptor       = controllerServiceServiceDescriptor.Methods().ByName("StartWorld")
-	controllerServiceStopSessionMethodDescriptor      = controllerServiceServiceDescriptor.Methods().ByName("StopSession")
-	controllerServiceInviteUserMethodDescriptor       = controllerServiceServiceDescriptor.Methods().ByName("InviteUser")
-)
-
 // ControllerServiceClient is a client for the hdlctrl.v1.ControllerService service.
 type ControllerServiceClient interface {
 	ListHeadlessHost(context.Context, *connect.Request[v1.ListHeadlessHostRequest]) (*connect.Response[v1.ListHeadlessHostResponse], error)
@@ -78,35 +68,36 @@ type ControllerServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ControllerServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	controllerServiceMethods := v1.File_hdlctrl_v1_controller_proto.Services().ByName("ControllerService").Methods()
 	return &controllerServiceClient{
 		listHeadlessHost: connect.NewClient[v1.ListHeadlessHostRequest, v1.ListHeadlessHostResponse](
 			httpClient,
 			baseURL+ControllerServiceListHeadlessHostProcedure,
-			connect.WithSchema(controllerServiceListHeadlessHostMethodDescriptor),
+			connect.WithSchema(controllerServiceMethods.ByName("ListHeadlessHost")),
 			connect.WithClientOptions(opts...),
 		),
 		getHeadlessHost: connect.NewClient[v1.GetHeadlessHostRequest, v1.GetHeadlessHostResponse](
 			httpClient,
 			baseURL+ControllerServiceGetHeadlessHostProcedure,
-			connect.WithSchema(controllerServiceGetHeadlessHostMethodDescriptor),
+			connect.WithSchema(controllerServiceMethods.ByName("GetHeadlessHost")),
 			connect.WithClientOptions(opts...),
 		),
 		startWorld: connect.NewClient[v1.StartWorldRequest, v1.StartWorldResponse](
 			httpClient,
 			baseURL+ControllerServiceStartWorldProcedure,
-			connect.WithSchema(controllerServiceStartWorldMethodDescriptor),
+			connect.WithSchema(controllerServiceMethods.ByName("StartWorld")),
 			connect.WithClientOptions(opts...),
 		),
 		stopSession: connect.NewClient[v1.StopSessionRequest, v1.StopSessionResponse](
 			httpClient,
 			baseURL+ControllerServiceStopSessionProcedure,
-			connect.WithSchema(controllerServiceStopSessionMethodDescriptor),
+			connect.WithSchema(controllerServiceMethods.ByName("StopSession")),
 			connect.WithClientOptions(opts...),
 		),
 		inviteUser: connect.NewClient[v1.InviteUserRequest, v1.InviteUserResponse](
 			httpClient,
 			baseURL+ControllerServiceInviteUserProcedure,
-			connect.WithSchema(controllerServiceInviteUserMethodDescriptor),
+			connect.WithSchema(controllerServiceMethods.ByName("InviteUser")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -161,34 +152,35 @@ type ControllerServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	controllerServiceMethods := v1.File_hdlctrl_v1_controller_proto.Services().ByName("ControllerService").Methods()
 	controllerServiceListHeadlessHostHandler := connect.NewUnaryHandler(
 		ControllerServiceListHeadlessHostProcedure,
 		svc.ListHeadlessHost,
-		connect.WithSchema(controllerServiceListHeadlessHostMethodDescriptor),
+		connect.WithSchema(controllerServiceMethods.ByName("ListHeadlessHost")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceGetHeadlessHostHandler := connect.NewUnaryHandler(
 		ControllerServiceGetHeadlessHostProcedure,
 		svc.GetHeadlessHost,
-		connect.WithSchema(controllerServiceGetHeadlessHostMethodDescriptor),
+		connect.WithSchema(controllerServiceMethods.ByName("GetHeadlessHost")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceStartWorldHandler := connect.NewUnaryHandler(
 		ControllerServiceStartWorldProcedure,
 		svc.StartWorld,
-		connect.WithSchema(controllerServiceStartWorldMethodDescriptor),
+		connect.WithSchema(controllerServiceMethods.ByName("StartWorld")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceStopSessionHandler := connect.NewUnaryHandler(
 		ControllerServiceStopSessionProcedure,
 		svc.StopSession,
-		connect.WithSchema(controllerServiceStopSessionMethodDescriptor),
+		connect.WithSchema(controllerServiceMethods.ByName("StopSession")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceInviteUserHandler := connect.NewUnaryHandler(
 		ControllerServiceInviteUserProcedure,
 		svc.InviteUser,
-		connect.WithSchema(controllerServiceInviteUserMethodDescriptor),
+		connect.WithSchema(controllerServiceMethods.ByName("InviteUser")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/hdlctrl.v1.ControllerService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

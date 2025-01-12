@@ -38,12 +38,6 @@ const (
 	UserServiceGetTokenByAPIKeyProcedure = "/hdlctrl.v1.UserService/GetTokenByAPIKey"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	userServiceServiceDescriptor                = v1.File_hdlctrl_v1_user_proto.Services().ByName("UserService")
-	userServiceGetTokenByAPIKeyMethodDescriptor = userServiceServiceDescriptor.Methods().ByName("GetTokenByAPIKey")
-)
-
 // UserServiceClient is a client for the hdlctrl.v1.UserService service.
 type UserServiceClient interface {
 	GetTokenByAPIKey(context.Context, *connect.Request[v1.GetTokenByAPIKeyRequest]) (*connect.Response[v1.GetTokenByAPIKeyResponse], error)
@@ -58,11 +52,12 @@ type UserServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) UserServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	userServiceMethods := v1.File_hdlctrl_v1_user_proto.Services().ByName("UserService").Methods()
 	return &userServiceClient{
 		getTokenByAPIKey: connect.NewClient[v1.GetTokenByAPIKeyRequest, v1.GetTokenByAPIKeyResponse](
 			httpClient,
 			baseURL+UserServiceGetTokenByAPIKeyProcedure,
-			connect.WithSchema(userServiceGetTokenByAPIKeyMethodDescriptor),
+			connect.WithSchema(userServiceMethods.ByName("GetTokenByAPIKey")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -89,10 +84,11 @@ type UserServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	userServiceMethods := v1.File_hdlctrl_v1_user_proto.Services().ByName("UserService").Methods()
 	userServiceGetTokenByAPIKeyHandler := connect.NewUnaryHandler(
 		UserServiceGetTokenByAPIKeyProcedure,
 		svc.GetTokenByAPIKey,
-		connect.WithSchema(userServiceGetTokenByAPIKeyMethodDescriptor),
+		connect.WithSchema(userServiceMethods.ByName("GetTokenByAPIKey")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/hdlctrl.v1.UserService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

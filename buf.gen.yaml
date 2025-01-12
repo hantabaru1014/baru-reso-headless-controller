@@ -20,9 +20,9 @@ plugins:
   - remote: buf.build/grpc/go
     out: pbgen
     opt: paths=source_relative
-  - remote: buf.build/bufbuild/es:v1.10.0
+  - remote: buf.build/bufbuild/es:v2.2.3
     out: front/src/lib/pbgen
     opt: target=ts
-  - remote: buf.build/connectrpc/es:v1.4.0
+  - remote: buf.build/connectrpc/query-es:v2.0.1
     out: front/src/lib/pbgen
-    opt: target=ts,import_extension=none
+    opt: target=ts

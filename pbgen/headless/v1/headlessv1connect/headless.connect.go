@@ -59,19 +59,6 @@ const (
 	HeadlessControlServiceListUsersInSessionProcedure = "/headless.v1.HeadlessControlService/ListUsersInSession"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	headlessControlServiceServiceDescriptor                       = v1.File_headless_v1_headless_proto.Services().ByName("HeadlessControlService")
-	headlessControlServiceShutdownMethodDescriptor                = headlessControlServiceServiceDescriptor.Methods().ByName("Shutdown")
-	headlessControlServiceListSessionsMethodDescriptor            = headlessControlServiceServiceDescriptor.Methods().ByName("ListSessions")
-	headlessControlServiceStartWorldMethodDescriptor              = headlessControlServiceServiceDescriptor.Methods().ByName("StartWorld")
-	headlessControlServiceStopSessionMethodDescriptor             = headlessControlServiceServiceDescriptor.Methods().ByName("StopSession")
-	headlessControlServiceInviteUserMethodDescriptor              = headlessControlServiceServiceDescriptor.Methods().ByName("InviteUser")
-	headlessControlServiceUpdateUserRoleMethodDescriptor          = headlessControlServiceServiceDescriptor.Methods().ByName("UpdateUserRole")
-	headlessControlServiceUpdateSessionParametersMethodDescriptor = headlessControlServiceServiceDescriptor.Methods().ByName("UpdateSessionParameters")
-	headlessControlServiceListUsersInSessionMethodDescriptor      = headlessControlServiceServiceDescriptor.Methods().ByName("ListUsersInSession")
-)
-
 // HeadlessControlServiceClient is a client for the headless.v1.HeadlessControlService service.
 type HeadlessControlServiceClient interface {
 	Shutdown(context.Context, *connect.Request[v1.ShutdownRequest]) (*connect.Response[v1.ShutdownResponse], error)
@@ -93,53 +80,54 @@ type HeadlessControlServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewHeadlessControlServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) HeadlessControlServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	headlessControlServiceMethods := v1.File_headless_v1_headless_proto.Services().ByName("HeadlessControlService").Methods()
 	return &headlessControlServiceClient{
 		shutdown: connect.NewClient[v1.ShutdownRequest, v1.ShutdownResponse](
 			httpClient,
 			baseURL+HeadlessControlServiceShutdownProcedure,
-			connect.WithSchema(headlessControlServiceShutdownMethodDescriptor),
+			connect.WithSchema(headlessControlServiceMethods.ByName("Shutdown")),
 			connect.WithClientOptions(opts...),
 		),
 		listSessions: connect.NewClient[v1.ListSessionsRequest, v1.ListSessionsResponse](
 			httpClient,
 			baseURL+HeadlessControlServiceListSessionsProcedure,
-			connect.WithSchema(headlessControlServiceListSessionsMethodDescriptor),
+			connect.WithSchema(headlessControlServiceMethods.ByName("ListSessions")),
 			connect.WithClientOptions(opts...),
 		),
 		startWorld: connect.NewClient[v1.StartWorldRequest, v1.StartWorldResponse](
 			httpClient,
 			baseURL+HeadlessControlServiceStartWorldProcedure,
-			connect.WithSchema(headlessControlServiceStartWorldMethodDescriptor),
+			connect.WithSchema(headlessControlServiceMethods.ByName("StartWorld")),
 			connect.WithClientOptions(opts...),
 		),
 		stopSession: connect.NewClient[v1.StopSessionRequest, v1.StopSessionResponse](
 			httpClient,
 			baseURL+HeadlessControlServiceStopSessionProcedure,
-			connect.WithSchema(headlessControlServiceStopSessionMethodDescriptor),
+			connect.WithSchema(headlessControlServiceMethods.ByName("StopSession")),
 			connect.WithClientOptions(opts...),
 		),
 		inviteUser: connect.NewClient[v1.InviteUserRequest, v1.InviteUserResponse](
 			httpClient,
 			baseURL+HeadlessControlServiceInviteUserProcedure,
-			connect.WithSchema(headlessControlServiceInviteUserMethodDescriptor),
+			connect.WithSchema(headlessControlServiceMethods.ByName("InviteUser")),
 			connect.WithClientOptions(opts...),
 		),
 		updateUserRole: connect.NewClient[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse](
 			httpClient,
 			baseURL+HeadlessControlServiceUpdateUserRoleProcedure,
-			connect.WithSchema(headlessControlServiceUpdateUserRoleMethodDescriptor),
+			connect.WithSchema(headlessControlServiceMethods.ByName("UpdateUserRole")),
 			connect.WithClientOptions(opts...),
 		),
 		updateSessionParameters: connect.NewClient[v1.UpdateSessionParametersRequest, v1.UpdateSessionParametersResponse](
 			httpClient,
 			baseURL+HeadlessControlServiceUpdateSessionParametersProcedure,
-			connect.WithSchema(headlessControlServiceUpdateSessionParametersMethodDescriptor),
+			connect.WithSchema(headlessControlServiceMethods.ByName("UpdateSessionParameters")),
 			connect.WithClientOptions(opts...),
 		),
 		listUsersInSession: connect.NewClient[v1.ListUsersInSessionRequest, v1.ListUsersInSessionResponse](
 			httpClient,
 			baseURL+HeadlessControlServiceListUsersInSessionProcedure,
-			connect.WithSchema(headlessControlServiceListUsersInSessionMethodDescriptor),
+			connect.WithSchema(headlessControlServiceMethods.ByName("ListUsersInSession")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -216,52 +204,53 @@ type HeadlessControlServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	headlessControlServiceMethods := v1.File_headless_v1_headless_proto.Services().ByName("HeadlessControlService").Methods()
 	headlessControlServiceShutdownHandler := connect.NewUnaryHandler(
 		HeadlessControlServiceShutdownProcedure,
 		svc.Shutdown,
-		connect.WithSchema(headlessControlServiceShutdownMethodDescriptor),
+		connect.WithSchema(headlessControlServiceMethods.ByName("Shutdown")),
 		connect.WithHandlerOptions(opts...),
 	)
 	headlessControlServiceListSessionsHandler := connect.NewUnaryHandler(
 		HeadlessControlServiceListSessionsProcedure,
 		svc.ListSessions,
-		connect.WithSchema(headlessControlServiceListSessionsMethodDescriptor),
+		connect.WithSchema(headlessControlServiceMethods.ByName("ListSessions")),
 		connect.WithHandlerOptions(opts...),
 	)
 	headlessControlServiceStartWorldHandler := connect.NewUnaryHandler(
 		HeadlessControlServiceStartWorldProcedure,
 		svc.StartWorld,
-		connect.WithSchema(headlessControlServiceStartWorldMethodDescriptor),
+		connect.WithSchema(headlessControlServiceMethods.ByName("StartWorld")),
 		connect.WithHandlerOptions(opts...),
 	)
 	headlessControlServiceStopSessionHandler := connect.NewUnaryHandler(
 		HeadlessControlServiceStopSessionProcedure,
 		svc.StopSession,
-		connect.WithSchema(headlessControlServiceStopSessionMethodDescriptor),
+		connect.WithSchema(headlessControlServiceMethods.ByName("StopSession")),
 		connect.WithHandlerOptions(opts...),
 	)
 	headlessControlServiceInviteUserHandler := connect.NewUnaryHandler(
 		HeadlessControlServiceInviteUserProcedure,
 		svc.InviteUser,
-		connect.WithSchema(headlessControlServiceInviteUserMethodDescriptor),
+		connect.WithSchema(headlessControlServiceMethods.ByName("InviteUser")),
 		connect.WithHandlerOptions(opts...),
 	)
 	headlessControlServiceUpdateUserRoleHandler := connect.NewUnaryHandler(
 		HeadlessControlServiceUpdateUserRoleProcedure,
 		svc.UpdateUserRole,
-		connect.WithSchema(headlessControlServiceUpdateUserRoleMethodDescriptor),
+		connect.WithSchema(headlessControlServiceMethods.ByName("UpdateUserRole")),
 		connect.WithHandlerOptions(opts...),
 	)
 	headlessControlServiceUpdateSessionParametersHandler := connect.NewUnaryHandler(
 		HeadlessControlServiceUpdateSessionParametersProcedure,
 		svc.UpdateSessionParameters,
-		connect.WithSchema(headlessControlServiceUpdateSessionParametersMethodDescriptor),
+		connect.WithSchema(headlessControlServiceMethods.ByName("UpdateSessionParameters")),
 		connect.WithHandlerOptions(opts...),
 	)
 	headlessControlServiceListUsersInSessionHandler := connect.NewUnaryHandler(
 		HeadlessControlServiceListUsersInSessionProcedure,
 		svc.ListUsersInSession,
-		connect.WithSchema(headlessControlServiceListUsersInSessionMethodDescriptor),
+		connect.WithSchema(headlessControlServiceMethods.ByName("ListUsersInSession")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/headless.v1.HeadlessControlService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
