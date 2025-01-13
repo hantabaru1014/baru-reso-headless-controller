@@ -66,6 +66,87 @@ func (c *ControllerService) ListHeadlessHost(ctx context.Context, req *connect.R
 	return res, nil
 }
 
+// ListSessions implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) ListSessions(ctx context.Context, req *connect.Request[hdlctrlv1.ListSessionsRequest]) (*connect.Response[hdlctrlv1.ListSessionsResponse], error) {
+	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	headlessRes, err := conn.ListSessions(ctx, &headlessv1.ListSessionsRequest{})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.ListSessionsResponse{
+		Sessions: headlessRes.Sessions,
+	})
+	return res, nil
+}
+
+// ListUsersInSession implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) ListUsersInSession(ctx context.Context, req *connect.Request[hdlctrlv1.ListUsersInSessionRequest]) (*connect.Response[hdlctrlv1.ListUsersInSessionResponse], error) {
+	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	headlessRes, err := conn.ListUsersInSession(ctx, &headlessv1.ListUsersInSessionRequest{SessionId: req.Msg.SessionId})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.ListUsersInSessionResponse{
+		Users: headlessRes.Users,
+	})
+	return res, nil
+}
+
+// SaveSessionWorld implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) SaveSessionWorld(ctx context.Context, req *connect.Request[hdlctrlv1.SaveSessionWorldRequest]) (*connect.Response[hdlctrlv1.SaveSessionWorldResponse], error) {
+	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	_, err = conn.SaveSessionWorld(ctx, &headlessv1.SaveSessionWorldRequest{SessionId: req.Msg.SessionId})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.SaveSessionWorldResponse{})
+	return res, nil
+}
+
+// UpdateSessionParameters implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) UpdateSessionParameters(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateSessionParametersRequest]) (*connect.Response[hdlctrlv1.UpdateSessionParametersResponse], error) {
+	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	_, err = conn.UpdateSessionParameters(ctx, req.Msg.Parameters)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.UpdateSessionParametersResponse{})
+	return res, nil
+}
+
+// UpdateUserRole implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) UpdateUserRole(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateUserRoleRequest]) (*connect.Response[hdlctrlv1.UpdateUserRoleResponse], error) {
+	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	headlessRes, err := conn.UpdateUserRole(ctx, req.Msg.Parameters)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.UpdateUserRoleResponse{
+		Role: headlessRes.Role,
+	})
+	return res, nil
+}
+
 // StartWorld implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) StartWorld(ctx context.Context, req *connect.Request[hdlctrlv1.StartWorldRequest]) (*connect.Response[hdlctrlv1.StartWorldResponse], error) {
 	conn, err := c.getOrNewConnection(req.Msg.HostId)

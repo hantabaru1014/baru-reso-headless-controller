@@ -15,6 +15,11 @@ export const listHeadlessHost = ControllerService.method.listHeadlessHost;
 export const getHeadlessHost = ControllerService.method.getHeadlessHost;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.ListSessions
+ */
+export const listSessions = ControllerService.method.listSessions;
+
+/**
  * @generated from rpc hdlctrl.v1.ControllerService.StartWorld
  */
 export const startWorld = ControllerService.method.startWorld;
@@ -25,6 +30,26 @@ export const startWorld = ControllerService.method.startWorld;
 export const stopSession = ControllerService.method.stopSession;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.SaveSessionWorld
+ */
+export const saveSessionWorld = ControllerService.method.saveSessionWorld;
+
+/**
  * @generated from rpc hdlctrl.v1.ControllerService.InviteUser
  */
 export const inviteUser = ControllerService.method.inviteUser;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.UpdateUserRole
+ */
+export const updateUserRole = ControllerService.method.updateUserRole;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.UpdateSessionParameters
+ */
+export const updateSessionParameters = ControllerService.method.updateSessionParameters;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.ListUsersInSession
+ */
+export const listUsersInSession = ControllerService.method.listUsersInSession;

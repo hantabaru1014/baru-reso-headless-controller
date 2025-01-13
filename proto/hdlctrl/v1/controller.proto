@@ -8,9 +8,14 @@ service ControllerService {
   rpc ListHeadlessHost(ListHeadlessHostRequest) returns (ListHeadlessHostResponse) {}
   rpc GetHeadlessHost(GetHeadlessHostRequest) returns (GetHeadlessHostResponse) {}
   
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
   rpc StartWorld(StartWorldRequest) returns (StartWorldResponse);
   rpc StopSession(StopSessionRequest) returns (StopSessionResponse);
+  rpc SaveSessionWorld(SaveSessionWorldRequest) returns (SaveSessionWorldResponse);
   rpc InviteUser(InviteUserRequest) returns (InviteUserResponse);
+  rpc UpdateUserRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse);
+  rpc UpdateSessionParameters(UpdateSessionParametersRequest) returns (UpdateSessionParametersResponse);
+  rpc ListUsersInSession(ListUsersInSessionRequest) returns (ListUsersInSessionResponse);
 }
 
 message ListHeadlessHostRequest {
@@ -44,6 +49,14 @@ message RemoveHeadlessHostRequest {
 message RemoveHeadlessHostResponse {
 }
 
+message ListSessionsRequest {
+  string host_id = 1;
+}
+
+message ListSessionsResponse {
+  repeated headless.v1.Session sessions = 1;
+}
+
 message StartWorldRequest {
   string host_id = 1;
   headless.v1.WorldStartupParameters parameters = 2;
@@ -60,6 +73,13 @@ message StopSessionRequest {
 
 message StopSessionResponse {}
 
+message SaveSessionWorldRequest {
+  string host_id = 1;
+  string session_id = 2;
+}
+
+message SaveSessionWorldResponse {}
+
 message InviteUserRequest {
   string host_id = 1;
   string session_id = 2;
@@ -70,6 +90,31 @@ message InviteUserRequest {
 }
 
 message InviteUserResponse {}
+
+message UpdateUserRoleRequest {
+  string host_id = 1;
+  headless.v1.UpdateUserRoleRequest parameters = 2;
+}
+
+message UpdateUserRoleResponse {
+  string role = 1;
+}
+
+message UpdateSessionParametersRequest {
+  string host_id = 1;
+  headless.v1.UpdateSessionParametersRequest parameters = 2;
+}
+
+message UpdateSessionParametersResponse {}
+
+message ListUsersInSessionRequest {
+  string host_id = 1;
+  string session_id = 2;
+}
+
+message ListUsersInSessionResponse {
+  repeated headless.v1.UserInSession users = 1;
+}
 
 // models
 

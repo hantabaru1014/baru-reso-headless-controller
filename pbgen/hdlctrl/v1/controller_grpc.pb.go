@@ -19,11 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ControllerService_ListHeadlessHost_FullMethodName = "/hdlctrl.v1.ControllerService/ListHeadlessHost"
-	ControllerService_GetHeadlessHost_FullMethodName  = "/hdlctrl.v1.ControllerService/GetHeadlessHost"
-	ControllerService_StartWorld_FullMethodName       = "/hdlctrl.v1.ControllerService/StartWorld"
-	ControllerService_StopSession_FullMethodName      = "/hdlctrl.v1.ControllerService/StopSession"
-	ControllerService_InviteUser_FullMethodName       = "/hdlctrl.v1.ControllerService/InviteUser"
+	ControllerService_ListHeadlessHost_FullMethodName        = "/hdlctrl.v1.ControllerService/ListHeadlessHost"
+	ControllerService_GetHeadlessHost_FullMethodName         = "/hdlctrl.v1.ControllerService/GetHeadlessHost"
+	ControllerService_ListSessions_FullMethodName            = "/hdlctrl.v1.ControllerService/ListSessions"
+	ControllerService_StartWorld_FullMethodName              = "/hdlctrl.v1.ControllerService/StartWorld"
+	ControllerService_StopSession_FullMethodName             = "/hdlctrl.v1.ControllerService/StopSession"
+	ControllerService_SaveSessionWorld_FullMethodName        = "/hdlctrl.v1.ControllerService/SaveSessionWorld"
+	ControllerService_InviteUser_FullMethodName              = "/hdlctrl.v1.ControllerService/InviteUser"
+	ControllerService_UpdateUserRole_FullMethodName          = "/hdlctrl.v1.ControllerService/UpdateUserRole"
+	ControllerService_UpdateSessionParameters_FullMethodName = "/hdlctrl.v1.ControllerService/UpdateSessionParameters"
+	ControllerService_ListUsersInSession_FullMethodName      = "/hdlctrl.v1.ControllerService/ListUsersInSession"
 )
 
 // ControllerServiceClient is the client API for ControllerService service.
@@ -32,9 +37,14 @@ const (
 type ControllerServiceClient interface {
 	ListHeadlessHost(ctx context.Context, in *ListHeadlessHostRequest, opts ...grpc.CallOption) (*ListHeadlessHostResponse, error)
 	GetHeadlessHost(ctx context.Context, in *GetHeadlessHostRequest, opts ...grpc.CallOption) (*GetHeadlessHostResponse, error)
+	ListSessions(ctx context.Context, in *ListSessionsRequest, opts ...grpc.CallOption) (*ListSessionsResponse, error)
 	StartWorld(ctx context.Context, in *StartWorldRequest, opts ...grpc.CallOption) (*StartWorldResponse, error)
 	StopSession(ctx context.Context, in *StopSessionRequest, opts ...grpc.CallOption) (*StopSessionResponse, error)
+	SaveSessionWorld(ctx context.Context, in *SaveSessionWorldRequest, opts ...grpc.CallOption) (*SaveSessionWorldResponse, error)
 	InviteUser(ctx context.Context, in *InviteUserRequest, opts ...grpc.CallOption) (*InviteUserResponse, error)
+	UpdateUserRole(ctx context.Context, in *UpdateUserRoleRequest, opts ...grpc.CallOption) (*UpdateUserRoleResponse, error)
+	UpdateSessionParameters(ctx context.Context, in *UpdateSessionParametersRequest, opts ...grpc.CallOption) (*UpdateSessionParametersResponse, error)
+	ListUsersInSession(ctx context.Context, in *ListUsersInSessionRequest, opts ...grpc.CallOption) (*ListUsersInSessionResponse, error)
 }
 
 type controllerServiceClient struct {
@@ -65,6 +75,16 @@ func (c *controllerServiceClient) GetHeadlessHost(ctx context.Context, in *GetHe
 	return out, nil
 }
 
+func (c *controllerServiceClient) ListSessions(ctx context.Context, in *ListSessionsRequest, opts ...grpc.CallOption) (*ListSessionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListSessionsResponse)
+	err := c.cc.Invoke(ctx, ControllerService_ListSessions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *controllerServiceClient) StartWorld(ctx context.Context, in *StartWorldRequest, opts ...grpc.CallOption) (*StartWorldResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(StartWorldResponse)
@@ -85,10 +105,50 @@ func (c *controllerServiceClient) StopSession(ctx context.Context, in *StopSessi
 	return out, nil
 }
 
+func (c *controllerServiceClient) SaveSessionWorld(ctx context.Context, in *SaveSessionWorldRequest, opts ...grpc.CallOption) (*SaveSessionWorldResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SaveSessionWorldResponse)
+	err := c.cc.Invoke(ctx, ControllerService_SaveSessionWorld_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *controllerServiceClient) InviteUser(ctx context.Context, in *InviteUserRequest, opts ...grpc.CallOption) (*InviteUserResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(InviteUserResponse)
 	err := c.cc.Invoke(ctx, ControllerService_InviteUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) UpdateUserRole(ctx context.Context, in *UpdateUserRoleRequest, opts ...grpc.CallOption) (*UpdateUserRoleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateUserRoleResponse)
+	err := c.cc.Invoke(ctx, ControllerService_UpdateUserRole_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) UpdateSessionParameters(ctx context.Context, in *UpdateSessionParametersRequest, opts ...grpc.CallOption) (*UpdateSessionParametersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateSessionParametersResponse)
+	err := c.cc.Invoke(ctx, ControllerService_UpdateSessionParameters_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) ListUsersInSession(ctx context.Context, in *ListUsersInSessionRequest, opts ...grpc.CallOption) (*ListUsersInSessionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListUsersInSessionResponse)
+	err := c.cc.Invoke(ctx, ControllerService_ListUsersInSession_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -101,9 +161,14 @@ func (c *controllerServiceClient) InviteUser(ctx context.Context, in *InviteUser
 type ControllerServiceServer interface {
 	ListHeadlessHost(context.Context, *ListHeadlessHostRequest) (*ListHeadlessHostResponse, error)
 	GetHeadlessHost(context.Context, *GetHeadlessHostRequest) (*GetHeadlessHostResponse, error)
+	ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error)
 	StartWorld(context.Context, *StartWorldRequest) (*StartWorldResponse, error)
 	StopSession(context.Context, *StopSessionRequest) (*StopSessionResponse, error)
+	SaveSessionWorld(context.Context, *SaveSessionWorldRequest) (*SaveSessionWorldResponse, error)
 	InviteUser(context.Context, *InviteUserRequest) (*InviteUserResponse, error)
+	UpdateUserRole(context.Context, *UpdateUserRoleRequest) (*UpdateUserRoleResponse, error)
+	UpdateSessionParameters(context.Context, *UpdateSessionParametersRequest) (*UpdateSessionParametersResponse, error)
+	ListUsersInSession(context.Context, *ListUsersInSessionRequest) (*ListUsersInSessionResponse, error)
 	mustEmbedUnimplementedControllerServiceServer()
 }
 
@@ -120,14 +185,29 @@ func (UnimplementedControllerServiceServer) ListHeadlessHost(context.Context, *L
 func (UnimplementedControllerServiceServer) GetHeadlessHost(context.Context, *GetHeadlessHostRequest) (*GetHeadlessHostResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHeadlessHost not implemented")
 }
+func (UnimplementedControllerServiceServer) ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListSessions not implemented")
+}
 func (UnimplementedControllerServiceServer) StartWorld(context.Context, *StartWorldRequest) (*StartWorldResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StartWorld not implemented")
 }
 func (UnimplementedControllerServiceServer) StopSession(context.Context, *StopSessionRequest) (*StopSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopSession not implemented")
 }
+func (UnimplementedControllerServiceServer) SaveSessionWorld(context.Context, *SaveSessionWorldRequest) (*SaveSessionWorldResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SaveSessionWorld not implemented")
+}
 func (UnimplementedControllerServiceServer) InviteUser(context.Context, *InviteUserRequest) (*InviteUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InviteUser not implemented")
+}
+func (UnimplementedControllerServiceServer) UpdateUserRole(context.Context, *UpdateUserRoleRequest) (*UpdateUserRoleResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateUserRole not implemented")
+}
+func (UnimplementedControllerServiceServer) UpdateSessionParameters(context.Context, *UpdateSessionParametersRequest) (*UpdateSessionParametersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateSessionParameters not implemented")
+}
+func (UnimplementedControllerServiceServer) ListUsersInSession(context.Context, *ListUsersInSessionRequest) (*ListUsersInSessionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListUsersInSession not implemented")
 }
 func (UnimplementedControllerServiceServer) mustEmbedUnimplementedControllerServiceServer() {}
 func (UnimplementedControllerServiceServer) testEmbeddedByValue()                           {}
@@ -186,6 +266,24 @@ func _ControllerService_GetHeadlessHost_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_ListSessions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSessionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).ListSessions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_ListSessions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).ListSessions(ctx, req.(*ListSessionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ControllerService_StartWorld_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(StartWorldRequest)
 	if err := dec(in); err != nil {
@@ -222,6 +320,24 @@ func _ControllerService_StopSession_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_SaveSessionWorld_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveSessionWorldRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).SaveSessionWorld(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_SaveSessionWorld_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).SaveSessionWorld(ctx, req.(*SaveSessionWorldRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ControllerService_InviteUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(InviteUserRequest)
 	if err := dec(in); err != nil {
@@ -236,6 +352,60 @@ func _ControllerService_InviteUser_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).InviteUser(ctx, req.(*InviteUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_UpdateUserRole_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateUserRoleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).UpdateUserRole(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_UpdateUserRole_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).UpdateUserRole(ctx, req.(*UpdateUserRoleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_UpdateSessionParameters_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateSessionParametersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).UpdateSessionParameters(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_UpdateSessionParameters_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).UpdateSessionParameters(ctx, req.(*UpdateSessionParametersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_ListUsersInSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListUsersInSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).ListUsersInSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_ListUsersInSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).ListUsersInSession(ctx, req.(*ListUsersInSessionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -256,6 +426,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ControllerService_GetHeadlessHost_Handler,
 		},
 		{
+			MethodName: "ListSessions",
+			Handler:    _ControllerService_ListSessions_Handler,
+		},
+		{
 			MethodName: "StartWorld",
 			Handler:    _ControllerService_StartWorld_Handler,
 		},
@@ -264,8 +438,24 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ControllerService_StopSession_Handler,
 		},
 		{
+			MethodName: "SaveSessionWorld",
+			Handler:    _ControllerService_SaveSessionWorld_Handler,
+		},
+		{
 			MethodName: "InviteUser",
 			Handler:    _ControllerService_InviteUser_Handler,
+		},
+		{
+			MethodName: "UpdateUserRole",
+			Handler:    _ControllerService_UpdateUserRole_Handler,
+		},
+		{
+			MethodName: "UpdateSessionParameters",
+			Handler:    _ControllerService_UpdateSessionParameters_Handler,
+		},
+		{
+			MethodName: "ListUsersInSession",
+			Handler:    _ControllerService_ListUsersInSession_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
