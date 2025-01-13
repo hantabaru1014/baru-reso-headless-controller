@@ -1,0 +1,3 @@
+[submodule "headless-container"]
+	path = headless-container
+	url = https://github.com/hantabaru1014/baru-reso-headless-container.git
