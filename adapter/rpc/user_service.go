@@ -24,10 +24,10 @@ type UserService struct{}
 func (u *UserService) GetTokenByPassword(ctx context.Context, req *connect.Request[hdlctrlv1.GetTokenByPasswordRequest]) (*connect.Response[hdlctrlv1.GetTokenByPasswordResponse], error) {
 	for _, cred := range userCredentials {
 		parts := strings.Split(cred, ":")
-		if req.Msg.Id == parts[0] && req.Msg.Password == parts[1] {
+		if req.Msg.Id == parts[1] && req.Msg.Password == parts[2] {
 			token, err := auth.GenerateToken(auth.AuthClaims{
-				UserID: req.Msg.Id,
-			}, false)
+				UserID: parts[0],
+			}, true)
 			if err != nil {
 				return nil, err
 			}

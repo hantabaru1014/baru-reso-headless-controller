@@ -21,8 +21,8 @@ plugins:
     out: pbgen
     opt: paths=source_relative
   - remote: buf.build/bufbuild/es:v2.2.3
-    out: front/src/lib/pbgen
+    out: front/pbgen
     opt: target=ts
   - remote: buf.build/connectrpc/query-es:v2.0.1
-    out: front/src/lib/pbgen
+    out: front/pbgen
     opt: target=ts

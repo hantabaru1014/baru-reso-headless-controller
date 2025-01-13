@@ -1,9 +1,11 @@
 import { Outlet, Navigate, useLocation } from "react-router";
-import { DashboardLayout } from "@toolpad/core/DashboardLayout";
+import { DashboardLayout, ThemeSwitcher } from "@toolpad/core/DashboardLayout";
 import { PageContainer } from "@toolpad/core/PageContainer";
 import { Account } from "@toolpad/core/Account";
-
-import { useSession } from "../SessionContext";
+import { useAtom } from "jotai";
+import { sessionAtom } from "../atoms/sessionAtom";
+import HostSelector from "../components/HostSelector";
+import { Stack } from "@mui/material";
 
 function CustomAccount() {
   return (
@@ -15,8 +17,17 @@ function CustomAccount() {
   );
 }
 
+function ToolbarActions() {
+  return (
+    <Stack direction="row" gap="0.75rem" sx={{ alignItems: "center" }}>
+      <HostSelector />
+      <ThemeSwitcher />
+    </Stack>
+  );
+}
+
 export default function Layout() {
-  const { session } = useSession();
+  const [session] = useAtom(sessionAtom);
   const location = useLocation();
 
   if (!session) {
@@ -25,7 +36,9 @@ export default function Layout() {
   }
 
   return (
-    <DashboardLayout slots={{ toolbarAccount: CustomAccount }}>
+    <DashboardLayout
+      slots={{ toolbarAccount: CustomAccount, toolbarActions: ToolbarActions }}
+    >
       <PageContainer>
         <Outlet />
       </PageContainer>
