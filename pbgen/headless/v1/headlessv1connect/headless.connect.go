@@ -33,6 +33,12 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// HeadlessControlServiceGetAboutProcedure is the fully-qualified name of the
+	// HeadlessControlService's GetAbout RPC.
+	HeadlessControlServiceGetAboutProcedure = "/headless.v1.HeadlessControlService/GetAbout"
+	// HeadlessControlServiceGetStatusProcedure is the fully-qualified name of the
+	// HeadlessControlService's GetStatus RPC.
+	HeadlessControlServiceGetStatusProcedure = "/headless.v1.HeadlessControlService/GetStatus"
 	// HeadlessControlServiceShutdownProcedure is the fully-qualified name of the
 	// HeadlessControlService's Shutdown RPC.
 	HeadlessControlServiceShutdownProcedure = "/headless.v1.HeadlessControlService/Shutdown"
@@ -45,6 +51,9 @@ const (
 	// HeadlessControlServiceStopSessionProcedure is the fully-qualified name of the
 	// HeadlessControlService's StopSession RPC.
 	HeadlessControlServiceStopSessionProcedure = "/headless.v1.HeadlessControlService/StopSession"
+	// HeadlessControlServiceSaveSessionWorldProcedure is the fully-qualified name of the
+	// HeadlessControlService's SaveSessionWorld RPC.
+	HeadlessControlServiceSaveSessionWorldProcedure = "/headless.v1.HeadlessControlService/SaveSessionWorld"
 	// HeadlessControlServiceInviteUserProcedure is the fully-qualified name of the
 	// HeadlessControlService's InviteUser RPC.
 	HeadlessControlServiceInviteUserProcedure = "/headless.v1.HeadlessControlService/InviteUser"
@@ -61,10 +70,13 @@ const (
 
 // HeadlessControlServiceClient is a client for the headless.v1.HeadlessControlService service.
 type HeadlessControlServiceClient interface {
+	GetAbout(context.Context, *connect.Request[v1.GetAboutRequest]) (*connect.Response[v1.GetAboutResponse], error)
+	GetStatus(context.Context, *connect.Request[v1.GetStatusRequest]) (*connect.Response[v1.GetStatusResponse], error)
 	Shutdown(context.Context, *connect.Request[v1.ShutdownRequest]) (*connect.Response[v1.ShutdownResponse], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	StartWorld(context.Context, *connect.Request[v1.StartWorldRequest]) (*connect.Response[v1.StartWorldResponse], error)
 	StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error)
+	SaveSessionWorld(context.Context, *connect.Request[v1.SaveSessionWorldRequest]) (*connect.Response[v1.SaveSessionWorldResponse], error)
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	UpdateSessionParameters(context.Context, *connect.Request[v1.UpdateSessionParametersRequest]) (*connect.Response[v1.UpdateSessionParametersResponse], error)
@@ -82,6 +94,18 @@ func NewHeadlessControlServiceClient(httpClient connect.HTTPClient, baseURL stri
 	baseURL = strings.TrimRight(baseURL, "/")
 	headlessControlServiceMethods := v1.File_headless_v1_headless_proto.Services().ByName("HeadlessControlService").Methods()
 	return &headlessControlServiceClient{
+		getAbout: connect.NewClient[v1.GetAboutRequest, v1.GetAboutResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceGetAboutProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("GetAbout")),
+			connect.WithClientOptions(opts...),
+		),
+		getStatus: connect.NewClient[v1.GetStatusRequest, v1.GetStatusResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceGetStatusProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("GetStatus")),
+			connect.WithClientOptions(opts...),
+		),
 		shutdown: connect.NewClient[v1.ShutdownRequest, v1.ShutdownResponse](
 			httpClient,
 			baseURL+HeadlessControlServiceShutdownProcedure,
@@ -104,6 +128,12 @@ func NewHeadlessControlServiceClient(httpClient connect.HTTPClient, baseURL stri
 			httpClient,
 			baseURL+HeadlessControlServiceStopSessionProcedure,
 			connect.WithSchema(headlessControlServiceMethods.ByName("StopSession")),
+			connect.WithClientOptions(opts...),
+		),
+		saveSessionWorld: connect.NewClient[v1.SaveSessionWorldRequest, v1.SaveSessionWorldResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceSaveSessionWorldProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("SaveSessionWorld")),
 			connect.WithClientOptions(opts...),
 		),
 		inviteUser: connect.NewClient[v1.InviteUserRequest, v1.InviteUserResponse](
@@ -135,14 +165,27 @@ func NewHeadlessControlServiceClient(httpClient connect.HTTPClient, baseURL stri
 
 // headlessControlServiceClient implements HeadlessControlServiceClient.
 type headlessControlServiceClient struct {
+	getAbout                *connect.Client[v1.GetAboutRequest, v1.GetAboutResponse]
+	getStatus               *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
 	shutdown                *connect.Client[v1.ShutdownRequest, v1.ShutdownResponse]
 	listSessions            *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
 	startWorld              *connect.Client[v1.StartWorldRequest, v1.StartWorldResponse]
 	stopSession             *connect.Client[v1.StopSessionRequest, v1.StopSessionResponse]
+	saveSessionWorld        *connect.Client[v1.SaveSessionWorldRequest, v1.SaveSessionWorldResponse]
 	inviteUser              *connect.Client[v1.InviteUserRequest, v1.InviteUserResponse]
 	updateUserRole          *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
 	updateSessionParameters *connect.Client[v1.UpdateSessionParametersRequest, v1.UpdateSessionParametersResponse]
 	listUsersInSession      *connect.Client[v1.ListUsersInSessionRequest, v1.ListUsersInSessionResponse]
+}
+
+// GetAbout calls headless.v1.HeadlessControlService.GetAbout.
+func (c *headlessControlServiceClient) GetAbout(ctx context.Context, req *connect.Request[v1.GetAboutRequest]) (*connect.Response[v1.GetAboutResponse], error) {
+	return c.getAbout.CallUnary(ctx, req)
+}
+
+// GetStatus calls headless.v1.HeadlessControlService.GetStatus.
+func (c *headlessControlServiceClient) GetStatus(ctx context.Context, req *connect.Request[v1.GetStatusRequest]) (*connect.Response[v1.GetStatusResponse], error) {
+	return c.getStatus.CallUnary(ctx, req)
 }
 
 // Shutdown calls headless.v1.HeadlessControlService.Shutdown.
@@ -163,6 +206,11 @@ func (c *headlessControlServiceClient) StartWorld(ctx context.Context, req *conn
 // StopSession calls headless.v1.HeadlessControlService.StopSession.
 func (c *headlessControlServiceClient) StopSession(ctx context.Context, req *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error) {
 	return c.stopSession.CallUnary(ctx, req)
+}
+
+// SaveSessionWorld calls headless.v1.HeadlessControlService.SaveSessionWorld.
+func (c *headlessControlServiceClient) SaveSessionWorld(ctx context.Context, req *connect.Request[v1.SaveSessionWorldRequest]) (*connect.Response[v1.SaveSessionWorldResponse], error) {
+	return c.saveSessionWorld.CallUnary(ctx, req)
 }
 
 // InviteUser calls headless.v1.HeadlessControlService.InviteUser.
@@ -188,10 +236,13 @@ func (c *headlessControlServiceClient) ListUsersInSession(ctx context.Context, r
 // HeadlessControlServiceHandler is an implementation of the headless.v1.HeadlessControlService
 // service.
 type HeadlessControlServiceHandler interface {
+	GetAbout(context.Context, *connect.Request[v1.GetAboutRequest]) (*connect.Response[v1.GetAboutResponse], error)
+	GetStatus(context.Context, *connect.Request[v1.GetStatusRequest]) (*connect.Response[v1.GetStatusResponse], error)
 	Shutdown(context.Context, *connect.Request[v1.ShutdownRequest]) (*connect.Response[v1.ShutdownResponse], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	StartWorld(context.Context, *connect.Request[v1.StartWorldRequest]) (*connect.Response[v1.StartWorldResponse], error)
 	StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error)
+	SaveSessionWorld(context.Context, *connect.Request[v1.SaveSessionWorldRequest]) (*connect.Response[v1.SaveSessionWorldResponse], error)
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	UpdateSessionParameters(context.Context, *connect.Request[v1.UpdateSessionParametersRequest]) (*connect.Response[v1.UpdateSessionParametersResponse], error)
@@ -205,6 +256,18 @@ type HeadlessControlServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	headlessControlServiceMethods := v1.File_headless_v1_headless_proto.Services().ByName("HeadlessControlService").Methods()
+	headlessControlServiceGetAboutHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceGetAboutProcedure,
+		svc.GetAbout,
+		connect.WithSchema(headlessControlServiceMethods.ByName("GetAbout")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceGetStatusHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceGetStatusProcedure,
+		svc.GetStatus,
+		connect.WithSchema(headlessControlServiceMethods.ByName("GetStatus")),
+		connect.WithHandlerOptions(opts...),
+	)
 	headlessControlServiceShutdownHandler := connect.NewUnaryHandler(
 		HeadlessControlServiceShutdownProcedure,
 		svc.Shutdown,
@@ -227,6 +290,12 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 		HeadlessControlServiceStopSessionProcedure,
 		svc.StopSession,
 		connect.WithSchema(headlessControlServiceMethods.ByName("StopSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceSaveSessionWorldHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceSaveSessionWorldProcedure,
+		svc.SaveSessionWorld,
+		connect.WithSchema(headlessControlServiceMethods.ByName("SaveSessionWorld")),
 		connect.WithHandlerOptions(opts...),
 	)
 	headlessControlServiceInviteUserHandler := connect.NewUnaryHandler(
@@ -255,6 +324,10 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 	)
 	return "/headless.v1.HeadlessControlService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case HeadlessControlServiceGetAboutProcedure:
+			headlessControlServiceGetAboutHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceGetStatusProcedure:
+			headlessControlServiceGetStatusHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceShutdownProcedure:
 			headlessControlServiceShutdownHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceListSessionsProcedure:
@@ -263,6 +336,8 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 			headlessControlServiceStartWorldHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceStopSessionProcedure:
 			headlessControlServiceStopSessionHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceSaveSessionWorldProcedure:
+			headlessControlServiceSaveSessionWorldHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceInviteUserProcedure:
 			headlessControlServiceInviteUserHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceUpdateUserRoleProcedure:
@@ -280,6 +355,14 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 // UnimplementedHeadlessControlServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedHeadlessControlServiceHandler struct{}
 
+func (UnimplementedHeadlessControlServiceHandler) GetAbout(context.Context, *connect.Request[v1.GetAboutRequest]) (*connect.Response[v1.GetAboutResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.GetAbout is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) GetStatus(context.Context, *connect.Request[v1.GetStatusRequest]) (*connect.Response[v1.GetStatusResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.GetStatus is not implemented"))
+}
+
 func (UnimplementedHeadlessControlServiceHandler) Shutdown(context.Context, *connect.Request[v1.ShutdownRequest]) (*connect.Response[v1.ShutdownResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.Shutdown is not implemented"))
 }
@@ -294,6 +377,10 @@ func (UnimplementedHeadlessControlServiceHandler) StartWorld(context.Context, *c
 
 func (UnimplementedHeadlessControlServiceHandler) StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.StopSession is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) SaveSessionWorld(context.Context, *connect.Request[v1.SaveSessionWorldRequest]) (*connect.Response[v1.SaveSessionWorldResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.SaveSessionWorld is not implemented"))
 }
 
 func (UnimplementedHeadlessControlServiceHandler) InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error) {

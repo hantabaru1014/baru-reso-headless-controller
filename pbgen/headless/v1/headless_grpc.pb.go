@@ -19,10 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	HeadlessControlService_GetAbout_FullMethodName                = "/headless.v1.HeadlessControlService/GetAbout"
+	HeadlessControlService_GetStatus_FullMethodName               = "/headless.v1.HeadlessControlService/GetStatus"
 	HeadlessControlService_Shutdown_FullMethodName                = "/headless.v1.HeadlessControlService/Shutdown"
 	HeadlessControlService_ListSessions_FullMethodName            = "/headless.v1.HeadlessControlService/ListSessions"
 	HeadlessControlService_StartWorld_FullMethodName              = "/headless.v1.HeadlessControlService/StartWorld"
 	HeadlessControlService_StopSession_FullMethodName             = "/headless.v1.HeadlessControlService/StopSession"
+	HeadlessControlService_SaveSessionWorld_FullMethodName        = "/headless.v1.HeadlessControlService/SaveSessionWorld"
 	HeadlessControlService_InviteUser_FullMethodName              = "/headless.v1.HeadlessControlService/InviteUser"
 	HeadlessControlService_UpdateUserRole_FullMethodName          = "/headless.v1.HeadlessControlService/UpdateUserRole"
 	HeadlessControlService_UpdateSessionParameters_FullMethodName = "/headless.v1.HeadlessControlService/UpdateSessionParameters"
@@ -33,10 +36,13 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type HeadlessControlServiceClient interface {
+	GetAbout(ctx context.Context, in *GetAboutRequest, opts ...grpc.CallOption) (*GetAboutResponse, error)
+	GetStatus(ctx context.Context, in *GetStatusRequest, opts ...grpc.CallOption) (*GetStatusResponse, error)
 	Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error)
 	ListSessions(ctx context.Context, in *ListSessionsRequest, opts ...grpc.CallOption) (*ListSessionsResponse, error)
 	StartWorld(ctx context.Context, in *StartWorldRequest, opts ...grpc.CallOption) (*StartWorldResponse, error)
 	StopSession(ctx context.Context, in *StopSessionRequest, opts ...grpc.CallOption) (*StopSessionResponse, error)
+	SaveSessionWorld(ctx context.Context, in *SaveSessionWorldRequest, opts ...grpc.CallOption) (*SaveSessionWorldResponse, error)
 	InviteUser(ctx context.Context, in *InviteUserRequest, opts ...grpc.CallOption) (*InviteUserResponse, error)
 	UpdateUserRole(ctx context.Context, in *UpdateUserRoleRequest, opts ...grpc.CallOption) (*UpdateUserRoleResponse, error)
 	UpdateSessionParameters(ctx context.Context, in *UpdateSessionParametersRequest, opts ...grpc.CallOption) (*UpdateSessionParametersResponse, error)
@@ -49,6 +55,26 @@ type headlessControlServiceClient struct {
 
 func NewHeadlessControlServiceClient(cc grpc.ClientConnInterface) HeadlessControlServiceClient {
 	return &headlessControlServiceClient{cc}
+}
+
+func (c *headlessControlServiceClient) GetAbout(ctx context.Context, in *GetAboutRequest, opts ...grpc.CallOption) (*GetAboutResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAboutResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_GetAbout_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) GetStatus(ctx context.Context, in *GetStatusRequest, opts ...grpc.CallOption) (*GetStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetStatusResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_GetStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *headlessControlServiceClient) Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error) {
@@ -85,6 +111,16 @@ func (c *headlessControlServiceClient) StopSession(ctx context.Context, in *Stop
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(StopSessionResponse)
 	err := c.cc.Invoke(ctx, HeadlessControlService_StopSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) SaveSessionWorld(ctx context.Context, in *SaveSessionWorldRequest, opts ...grpc.CallOption) (*SaveSessionWorldResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SaveSessionWorldResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_SaveSessionWorld_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -135,10 +171,13 @@ func (c *headlessControlServiceClient) ListUsersInSession(ctx context.Context, i
 // All implementations must embed UnimplementedHeadlessControlServiceServer
 // for forward compatibility.
 type HeadlessControlServiceServer interface {
+	GetAbout(context.Context, *GetAboutRequest) (*GetAboutResponse, error)
+	GetStatus(context.Context, *GetStatusRequest) (*GetStatusResponse, error)
 	Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error)
 	ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error)
 	StartWorld(context.Context, *StartWorldRequest) (*StartWorldResponse, error)
 	StopSession(context.Context, *StopSessionRequest) (*StopSessionResponse, error)
+	SaveSessionWorld(context.Context, *SaveSessionWorldRequest) (*SaveSessionWorldResponse, error)
 	InviteUser(context.Context, *InviteUserRequest) (*InviteUserResponse, error)
 	UpdateUserRole(context.Context, *UpdateUserRoleRequest) (*UpdateUserRoleResponse, error)
 	UpdateSessionParameters(context.Context, *UpdateSessionParametersRequest) (*UpdateSessionParametersResponse, error)
@@ -153,6 +192,12 @@ type HeadlessControlServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedHeadlessControlServiceServer struct{}
 
+func (UnimplementedHeadlessControlServiceServer) GetAbout(context.Context, *GetAboutRequest) (*GetAboutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAbout not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) GetStatus(context.Context, *GetStatusRequest) (*GetStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetStatus not implemented")
+}
 func (UnimplementedHeadlessControlServiceServer) Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Shutdown not implemented")
 }
@@ -164,6 +209,9 @@ func (UnimplementedHeadlessControlServiceServer) StartWorld(context.Context, *St
 }
 func (UnimplementedHeadlessControlServiceServer) StopSession(context.Context, *StopSessionRequest) (*StopSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopSession not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) SaveSessionWorld(context.Context, *SaveSessionWorldRequest) (*SaveSessionWorldResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SaveSessionWorld not implemented")
 }
 func (UnimplementedHeadlessControlServiceServer) InviteUser(context.Context, *InviteUserRequest) (*InviteUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InviteUser not implemented")
@@ -197,6 +245,42 @@ func RegisterHeadlessControlServiceServer(s grpc.ServiceRegistrar, srv HeadlessC
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&HeadlessControlService_ServiceDesc, srv)
+}
+
+func _HeadlessControlService_GetAbout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAboutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).GetAbout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_GetAbout_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).GetAbout(ctx, req.(*GetAboutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_GetStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).GetStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_GetStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).GetStatus(ctx, req.(*GetStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _HeadlessControlService_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -267,6 +351,24 @@ func _HeadlessControlService_StopSession_Handler(srv interface{}, ctx context.Co
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(HeadlessControlServiceServer).StopSession(ctx, req.(*StopSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_SaveSessionWorld_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveSessionWorldRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).SaveSessionWorld(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_SaveSessionWorld_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).SaveSessionWorld(ctx, req.(*SaveSessionWorldRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -351,6 +453,14 @@ var HeadlessControlService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*HeadlessControlServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "GetAbout",
+			Handler:    _HeadlessControlService_GetAbout_Handler,
+		},
+		{
+			MethodName: "GetStatus",
+			Handler:    _HeadlessControlService_GetStatus_Handler,
+		},
+		{
 			MethodName: "Shutdown",
 			Handler:    _HeadlessControlService_Shutdown_Handler,
 		},
@@ -365,6 +475,10 @@ var HeadlessControlService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StopSession",
 			Handler:    _HeadlessControlService_StopSession_Handler,
+		},
+		{
+			MethodName: "SaveSessionWorld",
+			Handler:    _HeadlessControlService_SaveSessionWorld_Handler,
 		},
 		{
 			MethodName: "InviteUser",

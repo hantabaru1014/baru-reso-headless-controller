@@ -5,6 +5,16 @@
 import { HeadlessControlService } from "./headless_pb";
 
 /**
+ * @generated from rpc headless.v1.HeadlessControlService.GetAbout
+ */
+export const getAbout = HeadlessControlService.method.getAbout;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.GetStatus
+ */
+export const getStatus = HeadlessControlService.method.getStatus;
+
+/**
  * @generated from rpc headless.v1.HeadlessControlService.Shutdown
  */
 export const shutdown = HeadlessControlService.method.shutdown;
@@ -23,6 +33,11 @@ export const startWorld = HeadlessControlService.method.startWorld;
  * @generated from rpc headless.v1.HeadlessControlService.StopSession
  */
 export const stopSession = HeadlessControlService.method.stopSession;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.SaveSessionWorld
+ */
+export const saveSessionWorld = HeadlessControlService.method.saveSessionWorld;
 
 /**
  * @generated from rpc headless.v1.HeadlessControlService.InviteUser
