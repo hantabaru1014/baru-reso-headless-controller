@@ -4,8 +4,9 @@ import { createBrowserRouter, RouterProvider } from "react-router";
 import App from "./App";
 import Layout from "./layouts/dashboard";
 import DashboardPage from "./pages";
-import OrdersPage from "./pages/orders";
 import SignInPage from "./pages/signin";
+import Sessions from "./pages/sessions";
+import SessionDetail from "./pages/sessions/detail";
 
 const router = createBrowserRouter([
   {
@@ -16,12 +17,21 @@ const router = createBrowserRouter([
         Component: Layout,
         children: [
           {
-            path: "",
+            index: true,
             Component: DashboardPage,
           },
           {
-            path: "orders",
-            Component: OrdersPage,
+            path: "sessions",
+            children: [
+              {
+                index: true,
+                Component: Sessions,
+              },
+              {
+                path: ":id",
+                Component: SessionDetail,
+              },
+            ],
           },
         ],
       },

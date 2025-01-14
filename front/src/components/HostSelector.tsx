@@ -4,12 +4,21 @@ import { selectedHostAtom } from "../atoms/selectedHostAtom";
 import { useQuery } from "@connectrpc/connect-query";
 import { listHeadlessHost } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import Loading from "./Loading";
-import { useId } from "react";
+import { useEffect, useId } from "react";
 
 export default function HostSelector() {
   const [selectedHost, setSelectedHost] = useAtom(selectedHostAtom);
   const { data, status } = useQuery(listHeadlessHost);
   const id = useId();
+
+  useEffect(() => {
+    if (status === "success" && !selectedHost && data?.hosts.length > 0) {
+      setSelectedHost({
+        id: data?.hosts[0].id,
+        name: data?.hosts[0].name,
+      });
+    }
+  }, [status]);
 
   return (
     <Loading loading={status === "pending"}>
