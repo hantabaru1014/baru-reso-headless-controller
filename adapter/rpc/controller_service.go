@@ -83,6 +83,34 @@ func (c *ControllerService) ListSessions(ctx context.Context, req *connect.Reque
 	return res, nil
 }
 
+// GetSessionDetails implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) GetSessionDetails(ctx context.Context, req *connect.Request[hdlctrlv1.GetSessionDetailsRequest]) (*connect.Response[hdlctrlv1.GetSessionDetailsResponse], error) {
+	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	// TODO: containerのほうにも単体取得rpcを追加して置き換える
+	headlessRes, err := conn.ListSessions(ctx, &headlessv1.ListSessionsRequest{})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	var session *headlessv1.Session
+	for _, s := range headlessRes.Sessions {
+		if s.Id == req.Msg.SessionId {
+			session = s
+			break
+		}
+	}
+	if session == nil {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("session not found"))
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.GetSessionDetailsResponse{
+		Session: session,
+	})
+	return res, nil
+}
+
 // ListUsersInSession implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) ListUsersInSession(ctx context.Context, req *connect.Request[hdlctrlv1.ListUsersInSessionRequest]) (*connect.Response[hdlctrlv1.ListUsersInSessionResponse], error) {
 	conn, err := c.getOrNewConnection(req.Msg.HostId)

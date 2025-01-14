@@ -9,6 +9,7 @@ service ControllerService {
   rpc GetHeadlessHost(GetHeadlessHostRequest) returns (GetHeadlessHostResponse) {}
   
   rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+  rpc GetSessionDetails(GetSessionDetailsRequest) returns (GetSessionDetailsResponse);
   rpc StartWorld(StartWorldRequest) returns (StartWorldResponse);
   rpc StopSession(StopSessionRequest) returns (StopSessionResponse);
   rpc SaveSessionWorld(SaveSessionWorldRequest) returns (SaveSessionWorldResponse);
@@ -55,6 +56,15 @@ message ListSessionsRequest {
 
 message ListSessionsResponse {
   repeated headless.v1.Session sessions = 1;
+}
+
+message GetSessionDetailsRequest {
+  string host_id = 1;
+  string session_id = 2;
+}
+
+message GetSessionDetailsResponse {
+  headless.v1.Session session = 1;
 }
 
 message StartWorldRequest {
