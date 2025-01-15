@@ -3,16 +3,21 @@ syntax = "proto3";
 package hdlctrl.v1;
 
 service UserService {
-  rpc GetTokenByAPIKey(GetTokenByAPIKeyRequest) returns (GetTokenByAPIKeyResponse) {}
-  rpc GetTokenByPassword(GetTokenByPasswordRequest) returns (GetTokenByPasswordResponse) {}
+  // 認証なしRPC
+  rpc GetTokenByAPIKey(GetTokenByAPIKeyRequest) returns (TokenSetResponse) {}
+  rpc GetTokenByPassword(GetTokenByPasswordRequest) returns (TokenSetResponse) {}
+
+  // 認証付きRPC
+  rpc RefreshToken(RefreshTokenRequest) returns (TokenSetResponse) {}
+}
+
+message TokenSetResponse {
+  string token = 1;
+  string refresh_token = 2;
 }
 
 message GetTokenByAPIKeyRequest {
   string api_key = 1;
-}
-
-message GetTokenByAPIKeyResponse {
-  string token = 1;
 }
 
 message GetTokenByPasswordRequest {
@@ -20,6 +25,5 @@ message GetTokenByPasswordRequest {
   string password = 2;
 }
 
-message GetTokenByPasswordResponse {
-  string token = 1;
-}
+// 既に持っているトークンをheaderに付与してリクエストする
+message RefreshTokenRequest {}

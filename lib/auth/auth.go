@@ -12,7 +12,6 @@ import (
 
 var (
 	secretKey = os.Getenv("JWT_SECRET")
-	tokenTTL  = 30 * time.Minute
 )
 
 type AuthClaims struct {
@@ -20,16 +19,29 @@ type AuthClaims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(claims AuthClaims, overrideRegistered bool) (string, error) {
-	if overrideRegistered {
-		claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(tokenTTL))
-		claims.IssuedAt = jwt.NewNumericDate(time.Now())
-	}
+func GenerateToken(claims AuthClaims, tokenTTL time.Duration) (string, error) {
+	claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(tokenTTL))
+	claims.IssuedAt = jwt.NewNumericDate(time.Now())
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	ss, err := token.SignedString([]byte(secretKey))
 
 	return ss, err
+}
+
+// GenerateTokensWithDefaultTTL generates a token and a refreshToken with default TTLs.
+// The token will expire in 30 minutes and the refreshToken will expire in 3 days.
+func GenerateTokensWithDefaultTTL(claims AuthClaims) (string, string, error) {
+	token, err := GenerateToken(claims, 30*time.Minute)
+	if err != nil {
+		return "", "", err
+	}
+	refreshToken, err := GenerateToken(claims, 3*24*time.Hour)
+	if err != nil {
+		return "", "", err
+	}
+
+	return token, refreshToken, nil
 }
 
 func ParseToken(tokenString string) (*AuthClaims, error) {
@@ -56,22 +68,35 @@ type AuthClaimsContextKey string
 
 var AuthClaimsKey = AuthClaimsContextKey("claims")
 
+func ValidateToken(ctx context.Context, req connect.AnyRequest) (*AuthClaims, error) {
+	token := req.Header().Get("authorization")
+	if len(token) <= len("Bearer ") {
+		err := connect.NewError(connect.CodeUnauthenticated, errors.New("token required"))
+		err.Meta().Add("WWW-Authenticate", "Bearer realm=\"token_required\"")
+		return nil, err
+	}
+	token = token[len("Bearer "):]
+
+	claims, err := ParseToken(token)
+	if err != nil {
+		connectErr := connect.NewError(connect.CodeUnauthenticated, err)
+		connectErr.Meta().Add("WWW-Authenticate", "Bearer error=\"invalid_token\"")
+		return nil, connectErr
+	}
+
+	return claims, nil
+}
+
+func SetSuccessResponseHeader(res connect.AnyResponse) {
+	res.Header().Set("WWW-Authenticate", "Bearer realm=\"\"")
+}
+
 func NewAuthInterceptor() connect.UnaryInterceptorFunc {
 	i := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			token := req.Header().Get("authorization")
-			if len(token) <= len("Bearer ") {
-				err := connect.NewError(connect.CodeUnauthenticated, errors.New("token required"))
-				err.Meta().Add("WWW-Authenticate", "Bearer realm=\"token_required\"")
-				return nil, err
-			}
-			token = token[len("Bearer "):]
-
-			claims, err := ParseToken(token)
+			claims, err := ValidateToken(ctx, req)
 			if err != nil {
-				connectErr := connect.NewError(connect.CodeUnauthenticated, err)
-				connectErr.Meta().Add("WWW-Authenticate", "Bearer error=\"invalid_token\"")
-				return nil, connectErr
+				return nil, err
 			}
 			ctx = context.WithValue(ctx, AuthClaimsKey, claims)
 
@@ -79,7 +104,7 @@ func NewAuthInterceptor() connect.UnaryInterceptorFunc {
 			if err != nil {
 				return nil, err
 			}
-			res.Header().Set("WWW-Authenticate", "Bearer realm=\"\"")
+			SetSuccessResponseHeader(res)
 			return res, nil
 		})
 	}
