@@ -49,7 +49,9 @@ export default function SessionList() {
               >
                 <TableCell>{session.name}</TableCell>
                 <TableCell>{accessLevels[session.accessLevel]}</TableCell>
-                <TableCell>?/{session.startupParameters?.maxUsers}</TableCell>
+                <TableCell>
+                  {session.usersCount}/{session.maxUsers}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

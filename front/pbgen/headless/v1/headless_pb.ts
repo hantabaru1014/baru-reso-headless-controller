@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file headless/v1/headless.proto.
  */
 export const file_headless_v1_headless: GenFile = /*@__PURE__*/
-  fileDesc("ChpoZWFkbGVzcy92MS9oZWFkbGVzcy5wcm90bxILaGVhZGxlc3MudjEiEQoPR2V0QWJvdXRSZXF1ZXN0IkEKEEdldEFib3V0UmVzcG9uc2USEwoLYXBwX3ZlcnNpb24YASABKAkSGAoQcmVzb25pdGVfdmVyc2lvbhgCIAEoCSISChBHZXRTdGF0dXNSZXF1ZXN0ImEKEUdldFN0YXR1c1Jlc3BvbnNlEgsKA2ZwcxgBIAEoAhIgChh0b3RhbF9lbmdpbmVfdXBkYXRlX3RpbWUYAiABKAISHQoVc3luY2luZ19yZWNvcmRzX2NvdW50GAMgASgFIhEKD1NodXRkb3duUmVxdWVzdCISChBTaHV0ZG93blJlc3BvbnNlIhUKE0xpc3RTZXNzaW9uc1JlcXVlc3QiPgoUTGlzdFNlc3Npb25zUmVzcG9uc2USJgoIc2Vzc2lvbnMYASADKAsyFC5oZWFkbGVzcy52MS5TZXNzaW9uIkwKEVN0YXJ0V29ybGRSZXF1ZXN0EjcKCnBhcmFtZXRlcnMYASABKAsyIy5oZWFkbGVzcy52MS5Xb3JsZFN0YXJ0dXBQYXJhbWV0ZXJzIkIKElN0YXJ0V29ybGRSZXNwb25zZRIsCg5vcGVuZWRfc2Vzc2lvbhgBIAEoCzIULmhlYWRsZXNzLnYxLlNlc3Npb24iKAoSU3RvcFNlc3Npb25SZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkiFQoTU3RvcFNlc3Npb25SZXNwb25zZSItChdTYXZlU2Vzc2lvbldvcmxkUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJIhoKGFNhdmVTZXNzaW9uV29ybGRSZXNwb25zZSJXChFJbnZpdGVVc2VyUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEhEKB3VzZXJfaWQYAiABKAlIABITCgl1c2VyX25hbWUYAyABKAlIAEIGCgR1c2VyIhQKEkludml0ZVVzZXJSZXNwb25zZSJpChVVcGRhdGVVc2VyUm9sZVJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRIRCgd1c2VyX2lkGAIgASgJSAASEwoJdXNlcl9uYW1lGAMgASgJSAASDAoEcm9sZRgEIAEoCUIGCgR1c2VyIiYKFlVwZGF0ZVVzZXJSb2xlUmVzcG9uc2USDAoEcm9sZRgBIAEoCSL2AQoeVXBkYXRlU2Vzc2lvblBhcmFtZXRlcnNSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSGQoMc2Vzc2lvbl9uYW1lGAIgASgJSACIAQESGAoLZGVzY3JpcHRpb24YAyABKAlIAYgBARIWCgltYXhfdXNlcnMYBCABKAVIAogBARIzCgxhY2Nlc3NfbGV2ZWwYBSABKA4yGC5oZWFkbGVzcy52MS5BY2Nlc3NMZXZlbEgDiAEBQg8KDV9zZXNzaW9uX25hbWVCDgoMX2Rlc2NyaXB0aW9uQgwKCl9tYXhfdXNlcnNCDwoNX2FjY2Vzc19sZXZlbCIhCh9VcGRhdGVTZXNzaW9uUGFyYW1ldGVyc1Jlc3BvbnNlIi8KGUxpc3RVc2Vyc0luU2Vzc2lvblJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCSJHChpMaXN0VXNlcnNJblNlc3Npb25SZXNwb25zZRIpCgV1c2VycxgBIAMoCzIaLmhlYWRsZXNzLnYxLlVzZXJJblNlc3Npb24iSwoNVXNlckluU2Vzc2lvbhIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkSEgoKaXNfcHJlc2VudBgEIAEoCCLXAQoHU2Vzc2lvbhIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEi4KDGFjY2Vzc19sZXZlbBgEIAEoDjIYLmhlYWRsZXNzLnYxLkFjY2Vzc0xldmVsEhoKDXRodW1ibmFpbF91cmwYBSABKAlIAIgBARI/ChJzdGFydHVwX3BhcmFtZXRlcnMYBiABKAsyIy5oZWFkbGVzcy52MS5Xb3JsZFN0YXJ0dXBQYXJhbWV0ZXJzQhAKDl90aHVtYm5haWxfdXJsIuMCChZXb3JsZFN0YXJ0dXBQYXJhbWV0ZXJzEhkKDHNlc3Npb25fbmFtZRgBIAEoCUgBiAEBEh4KEWN1c3RvbV9zZXNzaW9uX2lkGAIgASgJSAKIAQESGAoLZGVzY3JpcHRpb24YAyABKAlIA4gBARIWCgltYXhfdXNlcnMYBCABKAVIBIgBARIuCgxhY2Nlc3NfbGV2ZWwYBSABKA4yGC5oZWFkbGVzcy52MS5BY2Nlc3NMZXZlbBIYCg5sb2FkX3dvcmxkX3VybBgGIAEoCUgAEiAKFmxvYWRfd29ybGRfcHJlc2V0X25hbWUYByABKAlIABIdChVhdXRvX2ludml0ZV91c2VybmFtZXMYCCADKAlCDAoKbG9hZF93b3JsZEIPCg1fc2Vzc2lvbl9uYW1lQhQKEl9jdXN0b21fc2Vzc2lvbl9pZEIOCgxfZGVzY3JpcHRpb25CDAoKX21heF91c2VycyrSAQoLQWNjZXNzTGV2ZWwSHAoYQUNDRVNTX0xFVkVMX1VOU1BFQ0lGSUVEEAASGAoUQUNDRVNTX0xFVkVMX1BSSVZBVEUQARIUChBBQ0NFU1NfTEVWRUxfTEFOEAISGQoVQUNDRVNTX0xFVkVMX0NPTlRBQ1RTEAMSHgoaQUNDRVNTX0xFVkVMX0NPTlRBQ1RTX1BMVVMQBBIhCh1BQ0NFU1NfTEVWRUxfUkVHSVNURVJFRF9VU0VSUxAFEhcKE0FDQ0VTU19MRVZFTF9BTllPTkUQBjLUBwoWSGVhZGxlc3NDb250cm9sU2VydmljZRJHCghHZXRBYm91dBIcLmhlYWRsZXNzLnYxLkdldEFib3V0UmVxdWVzdBodLmhlYWRsZXNzLnYxLkdldEFib3V0UmVzcG9uc2USSgoJR2V0U3RhdHVzEh0uaGVhZGxlc3MudjEuR2V0U3RhdHVzUmVxdWVzdBoeLmhlYWRsZXNzLnYxLkdldFN0YXR1c1Jlc3BvbnNlEkcKCFNodXRkb3duEhwuaGVhZGxlc3MudjEuU2h1dGRvd25SZXF1ZXN0Gh0uaGVhZGxlc3MudjEuU2h1dGRvd25SZXNwb25zZRJTCgxMaXN0U2Vzc2lvbnMSIC5oZWFkbGVzcy52MS5MaXN0U2Vzc2lvbnNSZXF1ZXN0GiEuaGVhZGxlc3MudjEuTGlzdFNlc3Npb25zUmVzcG9uc2USTQoKU3RhcnRXb3JsZBIeLmhlYWRsZXNzLnYxLlN0YXJ0V29ybGRSZXF1ZXN0Gh8uaGVhZGxlc3MudjEuU3RhcnRXb3JsZFJlc3BvbnNlElAKC1N0b3BTZXNzaW9uEh8uaGVhZGxlc3MudjEuU3RvcFNlc3Npb25SZXF1ZXN0GiAuaGVhZGxlc3MudjEuU3RvcFNlc3Npb25SZXNwb25zZRJfChBTYXZlU2Vzc2lvbldvcmxkEiQuaGVhZGxlc3MudjEuU2F2ZVNlc3Npb25Xb3JsZFJlcXVlc3QaJS5oZWFkbGVzcy52MS5TYXZlU2Vzc2lvbldvcmxkUmVzcG9uc2USTQoKSW52aXRlVXNlchIeLmhlYWRsZXNzLnYxLkludml0ZVVzZXJSZXF1ZXN0Gh8uaGVhZGxlc3MudjEuSW52aXRlVXNlclJlc3BvbnNlElkKDlVwZGF0ZVVzZXJSb2xlEiIuaGVhZGxlc3MudjEuVXBkYXRlVXNlclJvbGVSZXF1ZXN0GiMuaGVhZGxlc3MudjEuVXBkYXRlVXNlclJvbGVSZXNwb25zZRJ0ChdVcGRhdGVTZXNzaW9uUGFyYW1ldGVycxIrLmhlYWRsZXNzLnYxLlVwZGF0ZVNlc3Npb25QYXJhbWV0ZXJzUmVxdWVzdBosLmhlYWRsZXNzLnYxLlVwZGF0ZVNlc3Npb25QYXJhbWV0ZXJzUmVzcG9uc2USZQoSTGlzdFVzZXJzSW5TZXNzaW9uEiYuaGVhZGxlc3MudjEuTGlzdFVzZXJzSW5TZXNzaW9uUmVxdWVzdBonLmhlYWRsZXNzLnYxLkxpc3RVc2Vyc0luU2Vzc2lvblJlc3BvbnNlQsIBCg9jb20uaGVhZGxlc3MudjFCDUhlYWRsZXNzUHJvdG9QAVpTZ2l0aHViLmNvbS9oYW50YWJhcnUxMDE0L2JhcnUtcmVzby1oZWFkbGVzcy1jb250cm9sbGVyL3BiZ2VuL2hlYWRsZXNzL3YxO2hlYWRsZXNzdjGiAgNIWFiqAgtIZWFkbGVzcy5WMcoCC0hlYWRsZXNzXFYx4gIXSGVhZGxlc3NcVjFcR1BCTWV0YWRhdGHqAgxIZWFkbGVzczo6VjFiBnByb3RvMw");
+  fileDesc("ChpoZWFkbGVzcy92MS9oZWFkbGVzcy5wcm90bxILaGVhZGxlc3MudjEiEQoPR2V0QWJvdXRSZXF1ZXN0IkEKEEdldEFib3V0UmVzcG9uc2USEwoLYXBwX3ZlcnNpb24YASABKAkSGAoQcmVzb25pdGVfdmVyc2lvbhgCIAEoCSISChBHZXRTdGF0dXNSZXF1ZXN0ImEKEUdldFN0YXR1c1Jlc3BvbnNlEgsKA2ZwcxgBIAEoAhIgChh0b3RhbF9lbmdpbmVfdXBkYXRlX3RpbWUYAiABKAISHQoVc3luY2luZ19yZWNvcmRzX2NvdW50GAMgASgFIhEKD1NodXRkb3duUmVxdWVzdCISChBTaHV0ZG93blJlc3BvbnNlIhUKE0xpc3RTZXNzaW9uc1JlcXVlc3QiPgoUTGlzdFNlc3Npb25zUmVzcG9uc2USJgoIc2Vzc2lvbnMYASADKAsyFC5oZWFkbGVzcy52MS5TZXNzaW9uIicKEUdldFNlc3Npb25SZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkiOwoSR2V0U2Vzc2lvblJlc3BvbnNlEiUKB3Nlc3Npb24YASABKAsyFC5oZWFkbGVzcy52MS5TZXNzaW9uIkwKEVN0YXJ0V29ybGRSZXF1ZXN0EjcKCnBhcmFtZXRlcnMYASABKAsyIy5oZWFkbGVzcy52MS5Xb3JsZFN0YXJ0dXBQYXJhbWV0ZXJzIkIKElN0YXJ0V29ybGRSZXNwb25zZRIsCg5vcGVuZWRfc2Vzc2lvbhgBIAEoCzIULmhlYWRsZXNzLnYxLlNlc3Npb24iKAoSU3RvcFNlc3Npb25SZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkiFQoTU3RvcFNlc3Npb25SZXNwb25zZSItChdTYXZlU2Vzc2lvbldvcmxkUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJIhoKGFNhdmVTZXNzaW9uV29ybGRSZXNwb25zZSJXChFJbnZpdGVVc2VyUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEhEKB3VzZXJfaWQYAiABKAlIABITCgl1c2VyX25hbWUYAyABKAlIAEIGCgR1c2VyIhQKEkludml0ZVVzZXJSZXNwb25zZSJpChVVcGRhdGVVc2VyUm9sZVJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRIRCgd1c2VyX2lkGAIgASgJSAASEwoJdXNlcl9uYW1lGAMgASgJSAASDAoEcm9sZRgEIAEoCUIGCgR1c2VyIiYKFlVwZGF0ZVVzZXJSb2xlUmVzcG9uc2USDAoEcm9sZRgBIAEoCSLmAQoeVXBkYXRlU2Vzc2lvblBhcmFtZXRlcnNSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSEQoEbmFtZRgCIAEoCUgAiAEBEhgKC2Rlc2NyaXB0aW9uGAMgASgJSAGIAQESFgoJbWF4X3VzZXJzGAQgASgFSAKIAQESMwoMYWNjZXNzX2xldmVsGAUgASgOMhguaGVhZGxlc3MudjEuQWNjZXNzTGV2ZWxIA4gBAUIHCgVfbmFtZUIOCgxfZGVzY3JpcHRpb25CDAoKX21heF91c2Vyc0IPCg1fYWNjZXNzX2xldmVsIiEKH1VwZGF0ZVNlc3Npb25QYXJhbWV0ZXJzUmVzcG9uc2UiLwoZTGlzdFVzZXJzSW5TZXNzaW9uUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJIkcKGkxpc3RVc2Vyc0luU2Vzc2lvblJlc3BvbnNlEikKBXVzZXJzGAEgAygLMhouaGVhZGxlc3MudjEuVXNlckluU2Vzc2lvbiJLCg1Vc2VySW5TZXNzaW9uEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEcm9sZRgDIAEoCRISCgppc19wcmVzZW50GAQgASgIIv8BCgdTZXNzaW9uEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSLgoMYWNjZXNzX2xldmVsGAQgASgOMhguaGVhZGxlc3MudjEuQWNjZXNzTGV2ZWwSEwoLdXNlcnNfY291bnQYByABKAUSEQoJbWF4X3VzZXJzGAggASgFEhoKDXRodW1ibmFpbF91cmwYBSABKAlIAIgBARI/ChJzdGFydHVwX3BhcmFtZXRlcnMYBiABKAsyIy5oZWFkbGVzcy52MS5Xb3JsZFN0YXJ0dXBQYXJhbWV0ZXJzQhAKDl90aHVtYm5haWxfdXJsItMCChZXb3JsZFN0YXJ0dXBQYXJhbWV0ZXJzEhEKBG5hbWUYASABKAlIAYgBARIeChFjdXN0b21fc2Vzc2lvbl9pZBgCIAEoCUgCiAEBEhgKC2Rlc2NyaXB0aW9uGAMgASgJSAOIAQESFgoJbWF4X3VzZXJzGAQgASgFSASIAQESLgoMYWNjZXNzX2xldmVsGAUgASgOMhguaGVhZGxlc3MudjEuQWNjZXNzTGV2ZWwSGAoObG9hZF93b3JsZF91cmwYBiABKAlIABIgChZsb2FkX3dvcmxkX3ByZXNldF9uYW1lGAcgASgJSAASHQoVYXV0b19pbnZpdGVfdXNlcm5hbWVzGAggAygJQgwKCmxvYWRfd29ybGRCBwoFX25hbWVCFAoSX2N1c3RvbV9zZXNzaW9uX2lkQg4KDF9kZXNjcmlwdGlvbkIMCgpfbWF4X3VzZXJzKtIBCgtBY2Nlc3NMZXZlbBIcChhBQ0NFU1NfTEVWRUxfVU5TUEVDSUZJRUQQABIYChRBQ0NFU1NfTEVWRUxfUFJJVkFURRABEhQKEEFDQ0VTU19MRVZFTF9MQU4QAhIZChVBQ0NFU1NfTEVWRUxfQ09OVEFDVFMQAxIeChpBQ0NFU1NfTEVWRUxfQ09OVEFDVFNfUExVUxAEEiEKHUFDQ0VTU19MRVZFTF9SRUdJU1RFUkVEX1VTRVJTEAUSFwoTQUNDRVNTX0xFVkVMX0FOWU9ORRAGMqMIChZIZWFkbGVzc0NvbnRyb2xTZXJ2aWNlEkcKCEdldEFib3V0EhwuaGVhZGxlc3MudjEuR2V0QWJvdXRSZXF1ZXN0Gh0uaGVhZGxlc3MudjEuR2V0QWJvdXRSZXNwb25zZRJKCglHZXRTdGF0dXMSHS5oZWFkbGVzcy52MS5HZXRTdGF0dXNSZXF1ZXN0Gh4uaGVhZGxlc3MudjEuR2V0U3RhdHVzUmVzcG9uc2USRwoIU2h1dGRvd24SHC5oZWFkbGVzcy52MS5TaHV0ZG93blJlcXVlc3QaHS5oZWFkbGVzcy52MS5TaHV0ZG93blJlc3BvbnNlElMKDExpc3RTZXNzaW9ucxIgLmhlYWRsZXNzLnYxLkxpc3RTZXNzaW9uc1JlcXVlc3QaIS5oZWFkbGVzcy52MS5MaXN0U2Vzc2lvbnNSZXNwb25zZRJNCgpHZXRTZXNzaW9uEh4uaGVhZGxlc3MudjEuR2V0U2Vzc2lvblJlcXVlc3QaHy5oZWFkbGVzcy52MS5HZXRTZXNzaW9uUmVzcG9uc2USTQoKU3RhcnRXb3JsZBIeLmhlYWRsZXNzLnYxLlN0YXJ0V29ybGRSZXF1ZXN0Gh8uaGVhZGxlc3MudjEuU3RhcnRXb3JsZFJlc3BvbnNlElAKC1N0b3BTZXNzaW9uEh8uaGVhZGxlc3MudjEuU3RvcFNlc3Npb25SZXF1ZXN0GiAuaGVhZGxlc3MudjEuU3RvcFNlc3Npb25SZXNwb25zZRJfChBTYXZlU2Vzc2lvbldvcmxkEiQuaGVhZGxlc3MudjEuU2F2ZVNlc3Npb25Xb3JsZFJlcXVlc3QaJS5oZWFkbGVzcy52MS5TYXZlU2Vzc2lvbldvcmxkUmVzcG9uc2USTQoKSW52aXRlVXNlchIeLmhlYWRsZXNzLnYxLkludml0ZVVzZXJSZXF1ZXN0Gh8uaGVhZGxlc3MudjEuSW52aXRlVXNlclJlc3BvbnNlElkKDlVwZGF0ZVVzZXJSb2xlEiIuaGVhZGxlc3MudjEuVXBkYXRlVXNlclJvbGVSZXF1ZXN0GiMuaGVhZGxlc3MudjEuVXBkYXRlVXNlclJvbGVSZXNwb25zZRJ0ChdVcGRhdGVTZXNzaW9uUGFyYW1ldGVycxIrLmhlYWRsZXNzLnYxLlVwZGF0ZVNlc3Npb25QYXJhbWV0ZXJzUmVxdWVzdBosLmhlYWRsZXNzLnYxLlVwZGF0ZVNlc3Npb25QYXJhbWV0ZXJzUmVzcG9uc2USZQoSTGlzdFVzZXJzSW5TZXNzaW9uEiYuaGVhZGxlc3MudjEuTGlzdFVzZXJzSW5TZXNzaW9uUmVxdWVzdBonLmhlYWRsZXNzLnYxLkxpc3RVc2Vyc0luU2Vzc2lvblJlc3BvbnNlQsIBCg9jb20uaGVhZGxlc3MudjFCDUhlYWRsZXNzUHJvdG9QAVpTZ2l0aHViLmNvbS9oYW50YWJhcnUxMDE0L2JhcnUtcmVzby1oZWFkbGVzcy1jb250cm9sbGVyL3BiZ2VuL2hlYWRsZXNzL3YxO2hlYWRsZXNzdjGiAgNIWFiqAgtIZWFkbGVzcy5WMcoCC0hlYWRsZXNzXFYx4gIXSGVhZGxlc3NcVjFcR1BCTWV0YWRhdGHqAgxIZWFkbGVzczo6VjFiBnByb3RvMw");
 
 /**
  * @generated from message headless.v1.GetAboutRequest
@@ -144,6 +144,40 @@ export const ListSessionsResponseSchema: GenMessage<ListSessionsResponse> = /*@_
   messageDesc(file_headless_v1_headless, 7);
 
 /**
+ * @generated from message headless.v1.GetSessionRequest
+ */
+export type GetSessionRequest = Message<"headless.v1.GetSessionRequest"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+};
+
+/**
+ * Describes the message headless.v1.GetSessionRequest.
+ * Use `create(GetSessionRequestSchema)` to create a new message.
+ */
+export const GetSessionRequestSchema: GenMessage<GetSessionRequest> = /*@__PURE__*/
+  messageDesc(file_headless_v1_headless, 8);
+
+/**
+ * @generated from message headless.v1.GetSessionResponse
+ */
+export type GetSessionResponse = Message<"headless.v1.GetSessionResponse"> & {
+  /**
+   * @generated from field: headless.v1.Session session = 1;
+   */
+  session?: Session;
+};
+
+/**
+ * Describes the message headless.v1.GetSessionResponse.
+ * Use `create(GetSessionResponseSchema)` to create a new message.
+ */
+export const GetSessionResponseSchema: GenMessage<GetSessionResponse> = /*@__PURE__*/
+  messageDesc(file_headless_v1_headless, 9);
+
+/**
  * @generated from message headless.v1.StartWorldRequest
  */
 export type StartWorldRequest = Message<"headless.v1.StartWorldRequest"> & {
@@ -158,7 +192,7 @@ export type StartWorldRequest = Message<"headless.v1.StartWorldRequest"> & {
  * Use `create(StartWorldRequestSchema)` to create a new message.
  */
 export const StartWorldRequestSchema: GenMessage<StartWorldRequest> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 8);
+  messageDesc(file_headless_v1_headless, 10);
 
 /**
  * @generated from message headless.v1.StartWorldResponse
@@ -175,7 +209,7 @@ export type StartWorldResponse = Message<"headless.v1.StartWorldResponse"> & {
  * Use `create(StartWorldResponseSchema)` to create a new message.
  */
 export const StartWorldResponseSchema: GenMessage<StartWorldResponse> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 9);
+  messageDesc(file_headless_v1_headless, 11);
 
 /**
  * @generated from message headless.v1.StopSessionRequest
@@ -192,7 +226,7 @@ export type StopSessionRequest = Message<"headless.v1.StopSessionRequest"> & {
  * Use `create(StopSessionRequestSchema)` to create a new message.
  */
 export const StopSessionRequestSchema: GenMessage<StopSessionRequest> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 10);
+  messageDesc(file_headless_v1_headless, 12);
 
 /**
  * @generated from message headless.v1.StopSessionResponse
@@ -205,7 +239,7 @@ export type StopSessionResponse = Message<"headless.v1.StopSessionResponse"> & {
  * Use `create(StopSessionResponseSchema)` to create a new message.
  */
 export const StopSessionResponseSchema: GenMessage<StopSessionResponse> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 11);
+  messageDesc(file_headless_v1_headless, 13);
 
 /**
  * @generated from message headless.v1.SaveSessionWorldRequest
@@ -222,7 +256,7 @@ export type SaveSessionWorldRequest = Message<"headless.v1.SaveSessionWorldReque
  * Use `create(SaveSessionWorldRequestSchema)` to create a new message.
  */
 export const SaveSessionWorldRequestSchema: GenMessage<SaveSessionWorldRequest> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 12);
+  messageDesc(file_headless_v1_headless, 14);
 
 /**
  * @generated from message headless.v1.SaveSessionWorldResponse
@@ -235,7 +269,7 @@ export type SaveSessionWorldResponse = Message<"headless.v1.SaveSessionWorldResp
  * Use `create(SaveSessionWorldResponseSchema)` to create a new message.
  */
 export const SaveSessionWorldResponseSchema: GenMessage<SaveSessionWorldResponse> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 13);
+  messageDesc(file_headless_v1_headless, 15);
 
 /**
  * @generated from message headless.v1.InviteUserRequest
@@ -269,7 +303,7 @@ export type InviteUserRequest = Message<"headless.v1.InviteUserRequest"> & {
  * Use `create(InviteUserRequestSchema)` to create a new message.
  */
 export const InviteUserRequestSchema: GenMessage<InviteUserRequest> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 14);
+  messageDesc(file_headless_v1_headless, 16);
 
 /**
  * @generated from message headless.v1.InviteUserResponse
@@ -282,7 +316,7 @@ export type InviteUserResponse = Message<"headless.v1.InviteUserResponse"> & {
  * Use `create(InviteUserResponseSchema)` to create a new message.
  */
 export const InviteUserResponseSchema: GenMessage<InviteUserResponse> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 15);
+  messageDesc(file_headless_v1_headless, 17);
 
 /**
  * @generated from message headless.v1.UpdateUserRoleRequest
@@ -321,7 +355,7 @@ export type UpdateUserRoleRequest = Message<"headless.v1.UpdateUserRoleRequest">
  * Use `create(UpdateUserRoleRequestSchema)` to create a new message.
  */
 export const UpdateUserRoleRequestSchema: GenMessage<UpdateUserRoleRequest> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 16);
+  messageDesc(file_headless_v1_headless, 18);
 
 /**
  * @generated from message headless.v1.UpdateUserRoleResponse
@@ -340,7 +374,7 @@ export type UpdateUserRoleResponse = Message<"headless.v1.UpdateUserRoleResponse
  * Use `create(UpdateUserRoleResponseSchema)` to create a new message.
  */
 export const UpdateUserRoleResponseSchema: GenMessage<UpdateUserRoleResponse> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 17);
+  messageDesc(file_headless_v1_headless, 19);
 
 /**
  * @generated from message headless.v1.UpdateSessionParametersRequest
@@ -352,9 +386,9 @@ export type UpdateSessionParametersRequest = Message<"headless.v1.UpdateSessionP
   sessionId: string;
 
   /**
-   * @generated from field: optional string session_name = 2;
+   * @generated from field: optional string name = 2;
    */
-  sessionName?: string;
+  name?: string;
 
   /**
    * @generated from field: optional string description = 3;
@@ -377,7 +411,7 @@ export type UpdateSessionParametersRequest = Message<"headless.v1.UpdateSessionP
  * Use `create(UpdateSessionParametersRequestSchema)` to create a new message.
  */
 export const UpdateSessionParametersRequestSchema: GenMessage<UpdateSessionParametersRequest> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 18);
+  messageDesc(file_headless_v1_headless, 20);
 
 /**
  * @generated from message headless.v1.UpdateSessionParametersResponse
@@ -390,7 +424,7 @@ export type UpdateSessionParametersResponse = Message<"headless.v1.UpdateSession
  * Use `create(UpdateSessionParametersResponseSchema)` to create a new message.
  */
 export const UpdateSessionParametersResponseSchema: GenMessage<UpdateSessionParametersResponse> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 19);
+  messageDesc(file_headless_v1_headless, 21);
 
 /**
  * @generated from message headless.v1.ListUsersInSessionRequest
@@ -407,7 +441,7 @@ export type ListUsersInSessionRequest = Message<"headless.v1.ListUsersInSessionR
  * Use `create(ListUsersInSessionRequestSchema)` to create a new message.
  */
 export const ListUsersInSessionRequestSchema: GenMessage<ListUsersInSessionRequest> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 20);
+  messageDesc(file_headless_v1_headless, 22);
 
 /**
  * @generated from message headless.v1.ListUsersInSessionResponse
@@ -424,7 +458,7 @@ export type ListUsersInSessionResponse = Message<"headless.v1.ListUsersInSession
  * Use `create(ListUsersInSessionResponseSchema)` to create a new message.
  */
 export const ListUsersInSessionResponseSchema: GenMessage<ListUsersInSessionResponse> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 21);
+  messageDesc(file_headless_v1_headless, 23);
 
 /**
  * @generated from message headless.v1.UserInSession
@@ -456,7 +490,7 @@ export type UserInSession = Message<"headless.v1.UserInSession"> & {
  * Use `create(UserInSessionSchema)` to create a new message.
  */
 export const UserInSessionSchema: GenMessage<UserInSession> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 22);
+  messageDesc(file_headless_v1_headless, 24);
 
 /**
  * @generated from message headless.v1.Session
@@ -483,6 +517,16 @@ export type Session = Message<"headless.v1.Session"> & {
   accessLevel: AccessLevel;
 
   /**
+   * @generated from field: int32 users_count = 7;
+   */
+  usersCount: number;
+
+  /**
+   * @generated from field: int32 max_users = 8;
+   */
+  maxUsers: number;
+
+  /**
    * @generated from field: optional string thumbnail_url = 5;
    */
   thumbnailUrl?: string;
@@ -498,16 +542,16 @@ export type Session = Message<"headless.v1.Session"> & {
  * Use `create(SessionSchema)` to create a new message.
  */
 export const SessionSchema: GenMessage<Session> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 23);
+  messageDesc(file_headless_v1_headless, 25);
 
 /**
  * @generated from message headless.v1.WorldStartupParameters
  */
 export type WorldStartupParameters = Message<"headless.v1.WorldStartupParameters"> & {
   /**
-   * @generated from field: optional string session_name = 1;
+   * @generated from field: optional string name = 1;
    */
-  sessionName?: string;
+  name?: string;
 
   /**
    * @generated from field: optional string custom_session_id = 2;
@@ -557,7 +601,7 @@ export type WorldStartupParameters = Message<"headless.v1.WorldStartupParameters
  * Use `create(WorldStartupParametersSchema)` to create a new message.
  */
 export const WorldStartupParametersSchema: GenMessage<WorldStartupParameters> = /*@__PURE__*/
-  messageDesc(file_headless_v1_headless, 24);
+  messageDesc(file_headless_v1_headless, 26);
 
 /**
  * @generated from enum headless.v1.AccessLevel
@@ -640,6 +684,14 @@ export const HeadlessControlService: GenService<{
     methodKind: "unary";
     input: typeof ListSessionsRequestSchema;
     output: typeof ListSessionsResponseSchema;
+  },
+  /**
+   * @generated from rpc headless.v1.HeadlessControlService.GetSession
+   */
+  getSession: {
+    methodKind: "unary";
+    input: typeof GetSessionRequestSchema;
+    output: typeof GetSessionResponseSchema;
   },
   /**
    * @generated from rpc headless.v1.HeadlessControlService.StartWorld

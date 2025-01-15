@@ -89,24 +89,15 @@ func (c *ControllerService) GetSessionDetails(ctx context.Context, req *connect.
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
-	// TODO: containerのほうにも単体取得rpcを追加して置き換える
-	headlessRes, err := conn.ListSessions(ctx, &headlessv1.ListSessionsRequest{})
+	headlessRes, err := conn.GetSession(ctx, &headlessv1.GetSessionRequest{
+		SessionId: req.Msg.SessionId,
+	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	var session *headlessv1.Session
-	for _, s := range headlessRes.Sessions {
-		if s.Id == req.Msg.SessionId {
-			session = s
-			break
-		}
-	}
-	if session == nil {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("session not found"))
-	}
 
 	res := connect.NewResponse(&hdlctrlv1.GetSessionDetailsResponse{
-		Session: session,
+		Session: headlessRes.Session,
 	})
 	return res, nil
 }

@@ -25,6 +25,11 @@ export const shutdown = HeadlessControlService.method.shutdown;
 export const listSessions = HeadlessControlService.method.listSessions;
 
 /**
+ * @generated from rpc headless.v1.HeadlessControlService.GetSession
+ */
+export const getSession = HeadlessControlService.method.getSession;
+
+/**
  * @generated from rpc headless.v1.HeadlessControlService.StartWorld
  */
 export const startWorld = HeadlessControlService.method.startWorld;
