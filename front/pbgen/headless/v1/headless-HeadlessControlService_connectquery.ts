@@ -63,3 +63,15 @@ export const updateSessionParameters = HeadlessControlService.method.updateSessi
  * @generated from rpc headless.v1.HeadlessControlService.ListUsersInSession
  */
 export const listUsersInSession = HeadlessControlService.method.listUsersInSession;
+
+/**
+ * Cloud系
+ *
+ * @generated from rpc headless.v1.HeadlessControlService.GetAccountInfo
+ */
+export const getAccountInfo = HeadlessControlService.method.getAccountInfo;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.FetchWorldInfo
+ */
+export const fetchWorldInfo = HeadlessControlService.method.fetchWorldInfo;

@@ -69,6 +69,12 @@ const (
 	// HeadlessControlServiceListUsersInSessionProcedure is the fully-qualified name of the
 	// HeadlessControlService's ListUsersInSession RPC.
 	HeadlessControlServiceListUsersInSessionProcedure = "/headless.v1.HeadlessControlService/ListUsersInSession"
+	// HeadlessControlServiceGetAccountInfoProcedure is the fully-qualified name of the
+	// HeadlessControlService's GetAccountInfo RPC.
+	HeadlessControlServiceGetAccountInfoProcedure = "/headless.v1.HeadlessControlService/GetAccountInfo"
+	// HeadlessControlServiceFetchWorldInfoProcedure is the fully-qualified name of the
+	// HeadlessControlService's FetchWorldInfo RPC.
+	HeadlessControlServiceFetchWorldInfoProcedure = "/headless.v1.HeadlessControlService/FetchWorldInfo"
 )
 
 // HeadlessControlServiceClient is a client for the headless.v1.HeadlessControlService service.
@@ -85,6 +91,9 @@ type HeadlessControlServiceClient interface {
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	UpdateSessionParameters(context.Context, *connect.Request[v1.UpdateSessionParametersRequest]) (*connect.Response[v1.UpdateSessionParametersResponse], error)
 	ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error)
+	// Cloud系
+	GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error)
+	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v1.FetchWorldInfoResponse], error)
 }
 
 // NewHeadlessControlServiceClient constructs a client for the headless.v1.HeadlessControlService
@@ -170,6 +179,18 @@ func NewHeadlessControlServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(headlessControlServiceMethods.ByName("ListUsersInSession")),
 			connect.WithClientOptions(opts...),
 		),
+		getAccountInfo: connect.NewClient[v1.GetAccountInfoRequest, v1.GetAccountInfoResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceGetAccountInfoProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("GetAccountInfo")),
+			connect.WithClientOptions(opts...),
+		),
+		fetchWorldInfo: connect.NewClient[v1.FetchWorldInfoRequest, v1.FetchWorldInfoResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceFetchWorldInfoProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("FetchWorldInfo")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -187,6 +208,8 @@ type headlessControlServiceClient struct {
 	updateUserRole          *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
 	updateSessionParameters *connect.Client[v1.UpdateSessionParametersRequest, v1.UpdateSessionParametersResponse]
 	listUsersInSession      *connect.Client[v1.ListUsersInSessionRequest, v1.ListUsersInSessionResponse]
+	getAccountInfo          *connect.Client[v1.GetAccountInfoRequest, v1.GetAccountInfoResponse]
+	fetchWorldInfo          *connect.Client[v1.FetchWorldInfoRequest, v1.FetchWorldInfoResponse]
 }
 
 // GetAbout calls headless.v1.HeadlessControlService.GetAbout.
@@ -249,6 +272,16 @@ func (c *headlessControlServiceClient) ListUsersInSession(ctx context.Context, r
 	return c.listUsersInSession.CallUnary(ctx, req)
 }
 
+// GetAccountInfo calls headless.v1.HeadlessControlService.GetAccountInfo.
+func (c *headlessControlServiceClient) GetAccountInfo(ctx context.Context, req *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error) {
+	return c.getAccountInfo.CallUnary(ctx, req)
+}
+
+// FetchWorldInfo calls headless.v1.HeadlessControlService.FetchWorldInfo.
+func (c *headlessControlServiceClient) FetchWorldInfo(ctx context.Context, req *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v1.FetchWorldInfoResponse], error) {
+	return c.fetchWorldInfo.CallUnary(ctx, req)
+}
+
 // HeadlessControlServiceHandler is an implementation of the headless.v1.HeadlessControlService
 // service.
 type HeadlessControlServiceHandler interface {
@@ -264,6 +297,9 @@ type HeadlessControlServiceHandler interface {
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	UpdateSessionParameters(context.Context, *connect.Request[v1.UpdateSessionParametersRequest]) (*connect.Response[v1.UpdateSessionParametersResponse], error)
 	ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error)
+	// Cloud系
+	GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error)
+	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v1.FetchWorldInfoResponse], error)
 }
 
 // NewHeadlessControlServiceHandler builds an HTTP handler from the service implementation. It
@@ -345,6 +381,18 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 		connect.WithSchema(headlessControlServiceMethods.ByName("ListUsersInSession")),
 		connect.WithHandlerOptions(opts...),
 	)
+	headlessControlServiceGetAccountInfoHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceGetAccountInfoProcedure,
+		svc.GetAccountInfo,
+		connect.WithSchema(headlessControlServiceMethods.ByName("GetAccountInfo")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceFetchWorldInfoHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceFetchWorldInfoProcedure,
+		svc.FetchWorldInfo,
+		connect.WithSchema(headlessControlServiceMethods.ByName("FetchWorldInfo")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/headless.v1.HeadlessControlService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case HeadlessControlServiceGetAboutProcedure:
@@ -371,6 +419,10 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 			headlessControlServiceUpdateSessionParametersHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceListUsersInSessionProcedure:
 			headlessControlServiceListUsersInSessionHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceGetAccountInfoProcedure:
+			headlessControlServiceGetAccountInfoHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceFetchWorldInfoProcedure:
+			headlessControlServiceFetchWorldInfoHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -426,4 +478,12 @@ func (UnimplementedHeadlessControlServiceHandler) UpdateSessionParameters(contex
 
 func (UnimplementedHeadlessControlServiceHandler) ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.ListUsersInSession is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.GetAccountInfo is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v1.FetchWorldInfoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.FetchWorldInfo is not implemented"))
 }

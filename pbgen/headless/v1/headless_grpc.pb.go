@@ -31,6 +31,8 @@ const (
 	HeadlessControlService_UpdateUserRole_FullMethodName          = "/headless.v1.HeadlessControlService/UpdateUserRole"
 	HeadlessControlService_UpdateSessionParameters_FullMethodName = "/headless.v1.HeadlessControlService/UpdateSessionParameters"
 	HeadlessControlService_ListUsersInSession_FullMethodName      = "/headless.v1.HeadlessControlService/ListUsersInSession"
+	HeadlessControlService_GetAccountInfo_FullMethodName          = "/headless.v1.HeadlessControlService/GetAccountInfo"
+	HeadlessControlService_FetchWorldInfo_FullMethodName          = "/headless.v1.HeadlessControlService/FetchWorldInfo"
 )
 
 // HeadlessControlServiceClient is the client API for HeadlessControlService service.
@@ -49,6 +51,9 @@ type HeadlessControlServiceClient interface {
 	UpdateUserRole(ctx context.Context, in *UpdateUserRoleRequest, opts ...grpc.CallOption) (*UpdateUserRoleResponse, error)
 	UpdateSessionParameters(ctx context.Context, in *UpdateSessionParametersRequest, opts ...grpc.CallOption) (*UpdateSessionParametersResponse, error)
 	ListUsersInSession(ctx context.Context, in *ListUsersInSessionRequest, opts ...grpc.CallOption) (*ListUsersInSessionResponse, error)
+	// Cloud系
+	GetAccountInfo(ctx context.Context, in *GetAccountInfoRequest, opts ...grpc.CallOption) (*GetAccountInfoResponse, error)
+	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*FetchWorldInfoResponse, error)
 }
 
 type headlessControlServiceClient struct {
@@ -179,6 +184,26 @@ func (c *headlessControlServiceClient) ListUsersInSession(ctx context.Context, i
 	return out, nil
 }
 
+func (c *headlessControlServiceClient) GetAccountInfo(ctx context.Context, in *GetAccountInfoRequest, opts ...grpc.CallOption) (*GetAccountInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAccountInfoResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_GetAccountInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*FetchWorldInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FetchWorldInfoResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_FetchWorldInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // HeadlessControlServiceServer is the server API for HeadlessControlService service.
 // All implementations must embed UnimplementedHeadlessControlServiceServer
 // for forward compatibility.
@@ -195,6 +220,9 @@ type HeadlessControlServiceServer interface {
 	UpdateUserRole(context.Context, *UpdateUserRoleRequest) (*UpdateUserRoleResponse, error)
 	UpdateSessionParameters(context.Context, *UpdateSessionParametersRequest) (*UpdateSessionParametersResponse, error)
 	ListUsersInSession(context.Context, *ListUsersInSessionRequest) (*ListUsersInSessionResponse, error)
+	// Cloud系
+	GetAccountInfo(context.Context, *GetAccountInfoRequest) (*GetAccountInfoResponse, error)
+	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*FetchWorldInfoResponse, error)
 	mustEmbedUnimplementedHeadlessControlServiceServer()
 }
 
@@ -240,6 +268,12 @@ func (UnimplementedHeadlessControlServiceServer) UpdateSessionParameters(context
 }
 func (UnimplementedHeadlessControlServiceServer) ListUsersInSession(context.Context, *ListUsersInSessionRequest) (*ListUsersInSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListUsersInSession not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) GetAccountInfo(context.Context, *GetAccountInfoRequest) (*GetAccountInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAccountInfo not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*FetchWorldInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FetchWorldInfo not implemented")
 }
 func (UnimplementedHeadlessControlServiceServer) mustEmbedUnimplementedHeadlessControlServiceServer() {
 }
@@ -479,6 +513,42 @@ func _HeadlessControlService_ListUsersInSession_Handler(srv interface{}, ctx con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _HeadlessControlService_GetAccountInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAccountInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).GetAccountInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_GetAccountInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).GetAccountInfo(ctx, req.(*GetAccountInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_FetchWorldInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FetchWorldInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).FetchWorldInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_FetchWorldInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).FetchWorldInfo(ctx, req.(*FetchWorldInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // HeadlessControlService_ServiceDesc is the grpc.ServiceDesc for HeadlessControlService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -533,6 +603,14 @@ var HeadlessControlService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListUsersInSession",
 			Handler:    _HeadlessControlService_ListUsersInSession_Handler,
+		},
+		{
+			MethodName: "GetAccountInfo",
+			Handler:    _HeadlessControlService_GetAccountInfo_Handler,
+		},
+		{
+			MethodName: "FetchWorldInfo",
+			Handler:    _HeadlessControlService_FetchWorldInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
