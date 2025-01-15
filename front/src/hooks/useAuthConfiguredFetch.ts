@@ -85,12 +85,10 @@ export const useAuth = (baseUrl: string) => {
           setSession((prev) => prev && { ...prev, token });
           setRefreshToken(refreshResponse.refreshToken);
 
-          return fetch(input, {
+          headers.set("authorization", `Bearer ${token}`);
+          return await fetch(input, {
             ...init,
-            headers: {
-              ...init?.headers,
-              authorization: `Bearer ${token}`,
-            },
+            headers,
           });
         } else {
           setSession(null);
