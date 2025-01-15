@@ -8,6 +8,7 @@ import { TransportProvider } from "@connectrpc/connect-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAtom } from "jotai";
 import { sessionAtom } from "./atoms/sessionAtom";
+import { useAuth } from "./hooks/useAuthConfiguredFetch";
 
 const NAVIGATION: Navigation = [
   {
@@ -27,21 +28,16 @@ const BRANDING = {
 const queryClient = new QueryClient();
 
 export default function App() {
-  const [session, setSession] = useAtom(sessionAtom);
+  const [session] = useAtom(sessionAtom);
+
+  const { configuredFetch, signOut } = useAuth("/");
   const finalTransport = React.useMemo(
     () =>
       createConnectTransport({
         baseUrl: "/",
-        interceptors: [
-          (next) => async (request) => {
-            if (session) {
-              request.header.append("authorization", `Bearer ${session.token}`);
-            }
-            return next(request);
-          },
-        ],
+        fetch: configuredFetch,
       }),
-    [session],
+    [configuredFetch],
   );
 
   return (
@@ -51,9 +47,7 @@ export default function App() {
       session={session}
       authentication={{
         signIn: () => {},
-        signOut: () => {
-          setSession(null);
-        },
+        signOut,
       }}
     >
       <TransportProvider transport={finalTransport}>

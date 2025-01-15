@@ -1,17 +1,14 @@
 "use client";
 import { SignInPage } from "@toolpad/core/SignInPage";
 import { Navigate, useNavigate } from "react-router";
-import { useMutation } from "@connectrpc/connect-query";
-import { getTokenByPassword } from "../../pbgen/hdlctrl/v1/user-UserService_connectquery";
-import { useNotifications } from "@toolpad/core/useNotifications";
 import { useAtom } from "jotai";
-import { Session, sessionAtom } from "../atoms/sessionAtom";
+import { sessionAtom } from "../atoms/sessionAtom";
+import { useAuth } from "../hooks/useAuthConfiguredFetch";
 
 export default function SignIn() {
-  const [session, setSession] = useAtom(sessionAtom);
+  const [session] = useAtom(sessionAtom);
   const navigate = useNavigate();
-  const notifications = useNotifications();
-  const { mutate } = useMutation(getTokenByPassword);
+  const { signIn } = useAuth("/");
 
   if (session) {
     return <Navigate to="/" />;
@@ -20,36 +17,20 @@ export default function SignIn() {
   return (
     <SignInPage
       providers={[{ id: "credentials", name: "Credentials" }]}
-      signIn={(provider, formData, callbackUrl) => {
+      signIn={async (provider, formData, callbackUrl) => {
         if (provider.id === "credentials") {
           const email = formData?.get("email") as string;
           const password = formData?.get("password") as string;
 
-          mutate(
-            {
-              id: email,
-              password,
-            },
-            {
-              onSuccess(data, variables) {
-                const userSession: Session = {
-                  token: data.token,
-                  user: {
-                    name: variables.id,
-                    email: variables.id,
-                  },
-                };
-                setSession(userSession);
-                navigate(callbackUrl || "/", { replace: true });
-              },
-              onError(error) {
-                const message =
-                  error instanceof Error ? error.message : "An error occurred";
-                notifications.show(message, { severity: "error" });
-              },
-            },
-          );
+          const response = await signIn(email, password);
+          if (response.ok) {
+            navigate(callbackUrl || "/", { replace: true });
+            return { error: undefined };
+          } else {
+            return { error: response.error };
+          }
         }
+        return { error: "Unknown provider" };
       }}
     />
   );
