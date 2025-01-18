@@ -11,8 +11,12 @@ import { useMutation } from "@connectrpc/connect-query";
 
 export default function SessionControlButtons({
   sessionId,
+  canSave,
+  additionalButtons,
 }: {
   sessionId: string;
+  canSave?: boolean;
+  additionalButtons?: React.ReactNode;
 }) {
   const navigate = useNavigate();
   const [selectedHost] = useAtom(selectedHostAtom);
@@ -68,8 +72,13 @@ export default function SessionControlButtons({
   };
 
   return (
-    <Stack direction="row" spacing={2}>
-      <Button variant="contained" loading={isPendingSave} onClick={handleSave}>
+    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+      <Button
+        variant="contained"
+        loading={isPendingSave}
+        onClick={handleSave}
+        disabled={!canSave}
+      >
         ワールド保存
       </Button>
       <Button
@@ -80,6 +89,7 @@ export default function SessionControlButtons({
       >
         セッション停止
       </Button>
+      {additionalButtons}
     </Stack>
   );
 }
