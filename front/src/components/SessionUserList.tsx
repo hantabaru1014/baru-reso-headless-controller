@@ -9,7 +9,7 @@ import {
   TableHead,
   TableRow,
 } from "@mui/material";
-import { Refresh as RefreshIcon } from "@mui/icons-material";
+import { CheckOutlined, Refresh as RefreshIcon } from "@mui/icons-material";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
   listUsersInSession,
@@ -66,7 +66,7 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
               <TableRow>
                 <TableCell>ユーザー名</TableCell>
                 <TableCell>権限</TableCell>
-                <TableCell>AFK</TableCell>
+                <TableCell>離席中</TableCell>
                 <TableCell>操作</TableCell>
               </TableRow>
             </TableHead>
@@ -81,7 +81,7 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
                       onSave={(v) => handleUpdateRole(user.id, v)}
                     />
                   </TableCell>
-                  <TableCell>{user.isPresent ? "false" : "true"}</TableCell>
+                  <TableCell>{!user.isPresent && <CheckOutlined />}</TableCell>
                   <TableCell>
                     <Button>Kick</Button>
                     <Button>Ban</Button>
