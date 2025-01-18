@@ -9,6 +9,8 @@ export default function SignIn() {
   const [session] = useAtom(sessionAtom);
   const navigate = useNavigate();
   const { signIn } = useAuth("/");
+  const query = new URLSearchParams(location.search);
+  const queryCallbackUrl = query.get("callbackUrl");
 
   if (session) {
     return <Navigate to="/" />;
@@ -24,7 +26,7 @@ export default function SignIn() {
 
           const response = await signIn(email, password);
           if (response.ok) {
-            navigate(callbackUrl || "/", { replace: true });
+            navigate(callbackUrl || queryCallbackUrl || "/", { replace: true });
             return { error: undefined };
           } else {
             return { error: response.error };

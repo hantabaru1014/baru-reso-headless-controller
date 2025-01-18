@@ -7,6 +7,7 @@ import DashboardPage from "./pages";
 import SignInPage from "./pages/signin";
 import Sessions from "./pages/sessions";
 import SessionDetail from "./pages/sessions/detail";
+import SessionNew from "./pages/sessions/new";
 
 const router = createBrowserRouter([
   {
@@ -26,6 +27,10 @@ const router = createBrowserRouter([
               {
                 index: true,
                 Component: Sessions,
+              },
+              {
+                path: "new",
+                Component: SessionNew,
               },
               {
                 path: ":id",

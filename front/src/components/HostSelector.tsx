@@ -1,15 +1,14 @@
-import { FormControl, InputLabel, MenuItem, Select } from "@mui/material";
 import { useAtom } from "jotai";
 import { selectedHostAtom } from "../atoms/selectedHostAtom";
 import { useQuery } from "@connectrpc/connect-query";
 import { listHeadlessHost } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import Loading from "./Loading";
-import { useEffect, useId } from "react";
+import Loading from "./base/Loading";
+import { useEffect } from "react";
+import SelectField from "./base/SelectField";
 
 export default function HostSelector() {
   const [selectedHost, setSelectedHost] = useAtom(selectedHostAtom);
   const { data, status } = useQuery(listHeadlessHost);
-  const id = useId();
 
   useEffect(() => {
     if (status === "success" && !selectedHost && data?.hosts.length > 0) {
@@ -22,25 +21,18 @@ export default function HostSelector() {
 
   return (
     <Loading loading={status === "pending"}>
-      <FormControl>
-        <InputLabel id={id}>Host</InputLabel>
-        <Select labelId={id} value={selectedHost?.id || ""}>
-          {data?.hosts.map((host) => (
-            <MenuItem
-              key={host.id}
-              value={host.id}
-              onClick={() =>
-                setSelectedHost({
-                  id: host.id,
-                  name: host.name,
-                })
-              }
-            >
-              {host.name}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <SelectField
+        label="Host"
+        options={
+          data?.hosts.map((host) => ({
+            id: host.id,
+            label: host.name,
+            value: host,
+          })) ?? []
+        }
+        selectedId={selectedHost?.id || ""}
+        onChange={(option) => setSelectedHost(option.value ?? null)}
+      />
     </Loading>
   );
 }

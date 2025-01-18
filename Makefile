@@ -11,6 +11,11 @@ install.tools:
 	mkdir -p $(BIN_DIR);
 	@GOBIN=$(BIN_DIR) go install github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION);
 
+.PHONY: lint.proto
+lint.proto:
+	$(buf) format -w
+	$(buf) lint
+
 .PHONY: build.proto
 build.proto:
 	$(buf) generate
