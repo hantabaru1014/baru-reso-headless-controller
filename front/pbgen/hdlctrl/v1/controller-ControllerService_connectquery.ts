@@ -15,6 +15,11 @@ export const listHeadlessHost = ControllerService.method.listHeadlessHost;
 export const getHeadlessHost = ControllerService.method.getHeadlessHost;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.FetchWorldInfo
+ */
+export const fetchWorldInfo = ControllerService.method.fetchWorldInfo;
+
+/**
  * @generated from rpc hdlctrl.v1.ControllerService.ListSessions
  */
 export const listSessions = ControllerService.method.listSessions;

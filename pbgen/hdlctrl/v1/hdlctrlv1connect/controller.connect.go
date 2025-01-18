@@ -9,6 +9,7 @@ import (
 	context "context"
 	errors "errors"
 	v1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
+	v11 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	http "net/http"
 	strings "strings"
 )
@@ -39,6 +40,9 @@ const (
 	// ControllerServiceGetHeadlessHostProcedure is the fully-qualified name of the ControllerService's
 	// GetHeadlessHost RPC.
 	ControllerServiceGetHeadlessHostProcedure = "/hdlctrl.v1.ControllerService/GetHeadlessHost"
+	// ControllerServiceFetchWorldInfoProcedure is the fully-qualified name of the ControllerService's
+	// FetchWorldInfo RPC.
+	ControllerServiceFetchWorldInfoProcedure = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
 	// ControllerServiceListSessionsProcedure is the fully-qualified name of the ControllerService's
 	// ListSessions RPC.
 	ControllerServiceListSessionsProcedure = "/hdlctrl.v1.ControllerService/ListSessions"
@@ -72,6 +76,7 @@ const (
 type ControllerServiceClient interface {
 	ListHeadlessHost(context.Context, *connect.Request[v1.ListHeadlessHostRequest]) (*connect.Response[v1.ListHeadlessHostResponse], error)
 	GetHeadlessHost(context.Context, *connect.Request[v1.GetHeadlessHostRequest]) (*connect.Response[v1.GetHeadlessHostResponse], error)
+	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	GetSessionDetails(context.Context, *connect.Request[v1.GetSessionDetailsRequest]) (*connect.Response[v1.GetSessionDetailsResponse], error)
 	StartWorld(context.Context, *connect.Request[v1.StartWorldRequest]) (*connect.Response[v1.StartWorldResponse], error)
@@ -104,6 +109,12 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+ControllerServiceGetHeadlessHostProcedure,
 			connect.WithSchema(controllerServiceMethods.ByName("GetHeadlessHost")),
+			connect.WithClientOptions(opts...),
+		),
+		fetchWorldInfo: connect.NewClient[v1.FetchWorldInfoRequest, v11.FetchWorldInfoResponse](
+			httpClient,
+			baseURL+ControllerServiceFetchWorldInfoProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("FetchWorldInfo")),
 			connect.WithClientOptions(opts...),
 		),
 		listSessions: connect.NewClient[v1.ListSessionsRequest, v1.ListSessionsResponse](
@@ -167,6 +178,7 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 type controllerServiceClient struct {
 	listHeadlessHost        *connect.Client[v1.ListHeadlessHostRequest, v1.ListHeadlessHostResponse]
 	getHeadlessHost         *connect.Client[v1.GetHeadlessHostRequest, v1.GetHeadlessHostResponse]
+	fetchWorldInfo          *connect.Client[v1.FetchWorldInfoRequest, v11.FetchWorldInfoResponse]
 	listSessions            *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
 	getSessionDetails       *connect.Client[v1.GetSessionDetailsRequest, v1.GetSessionDetailsResponse]
 	startWorld              *connect.Client[v1.StartWorldRequest, v1.StartWorldResponse]
@@ -186,6 +198,11 @@ func (c *controllerServiceClient) ListHeadlessHost(ctx context.Context, req *con
 // GetHeadlessHost calls hdlctrl.v1.ControllerService.GetHeadlessHost.
 func (c *controllerServiceClient) GetHeadlessHost(ctx context.Context, req *connect.Request[v1.GetHeadlessHostRequest]) (*connect.Response[v1.GetHeadlessHostResponse], error) {
 	return c.getHeadlessHost.CallUnary(ctx, req)
+}
+
+// FetchWorldInfo calls hdlctrl.v1.ControllerService.FetchWorldInfo.
+func (c *controllerServiceClient) FetchWorldInfo(ctx context.Context, req *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error) {
+	return c.fetchWorldInfo.CallUnary(ctx, req)
 }
 
 // ListSessions calls hdlctrl.v1.ControllerService.ListSessions.
@@ -237,6 +254,7 @@ func (c *controllerServiceClient) ListUsersInSession(ctx context.Context, req *c
 type ControllerServiceHandler interface {
 	ListHeadlessHost(context.Context, *connect.Request[v1.ListHeadlessHostRequest]) (*connect.Response[v1.ListHeadlessHostResponse], error)
 	GetHeadlessHost(context.Context, *connect.Request[v1.GetHeadlessHostRequest]) (*connect.Response[v1.GetHeadlessHostResponse], error)
+	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	GetSessionDetails(context.Context, *connect.Request[v1.GetSessionDetailsRequest]) (*connect.Response[v1.GetSessionDetailsResponse], error)
 	StartWorld(context.Context, *connect.Request[v1.StartWorldRequest]) (*connect.Response[v1.StartWorldResponse], error)
@@ -265,6 +283,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		ControllerServiceGetHeadlessHostProcedure,
 		svc.GetHeadlessHost,
 		connect.WithSchema(controllerServiceMethods.ByName("GetHeadlessHost")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceFetchWorldInfoHandler := connect.NewUnaryHandler(
+		ControllerServiceFetchWorldInfoProcedure,
+		svc.FetchWorldInfo,
+		connect.WithSchema(controllerServiceMethods.ByName("FetchWorldInfo")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceListSessionsHandler := connect.NewUnaryHandler(
@@ -327,6 +351,8 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceListHeadlessHostHandler.ServeHTTP(w, r)
 		case ControllerServiceGetHeadlessHostProcedure:
 			controllerServiceGetHeadlessHostHandler.ServeHTTP(w, r)
+		case ControllerServiceFetchWorldInfoProcedure:
+			controllerServiceFetchWorldInfoHandler.ServeHTTP(w, r)
 		case ControllerServiceListSessionsProcedure:
 			controllerServiceListSessionsHandler.ServeHTTP(w, r)
 		case ControllerServiceGetSessionDetailsProcedure:
@@ -360,6 +386,10 @@ func (UnimplementedControllerServiceHandler) ListHeadlessHost(context.Context, *
 
 func (UnimplementedControllerServiceHandler) GetHeadlessHost(context.Context, *connect.Request[v1.GetHeadlessHostRequest]) (*connect.Response[v1.GetHeadlessHostResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.GetHeadlessHost is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.FetchWorldInfo is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error) {

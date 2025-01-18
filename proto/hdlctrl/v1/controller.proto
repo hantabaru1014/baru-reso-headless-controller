@@ -5,9 +5,11 @@ package hdlctrl.v1;
 import "headless/v1/headless.proto";
 
 service ControllerService {
-  rpc ListHeadlessHost(ListHeadlessHostRequest) returns (ListHeadlessHostResponse) {}
-  rpc GetHeadlessHost(GetHeadlessHostRequest) returns (GetHeadlessHostResponse) {}
-  
+  rpc ListHeadlessHost(ListHeadlessHostRequest) returns (ListHeadlessHostResponse);
+  rpc GetHeadlessHost(GetHeadlessHostRequest) returns (GetHeadlessHostResponse);
+
+  rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
+
   rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
   rpc GetSessionDetails(GetSessionDetailsRequest) returns (GetSessionDetailsResponse);
   rpc StartWorld(StartWorldRequest) returns (StartWorldResponse);
@@ -19,8 +21,12 @@ service ControllerService {
   rpc ListUsersInSession(ListUsersInSessionRequest) returns (ListUsersInSessionResponse);
 }
 
-message ListHeadlessHostRequest {
+message FetchWorldInfoRequest {
+  string host_id = 1;
+  string url = 2;
 }
+
+message ListHeadlessHostRequest {}
 
 message ListHeadlessHostResponse {
   repeated HeadlessHost hosts = 1;
@@ -47,8 +53,7 @@ message RemoveHeadlessHostRequest {
   string id = 1;
 }
 
-message RemoveHeadlessHostResponse {
-}
+message RemoveHeadlessHostResponse {}
 
 message ListSessionsRequest {
   string host_id = 1;
