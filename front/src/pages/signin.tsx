@@ -3,7 +3,7 @@ import { SignInPage } from "@toolpad/core/SignInPage";
 import { Navigate, useNavigate } from "react-router";
 import { useAtom } from "jotai";
 import { sessionAtom } from "../atoms/sessionAtom";
-import { useAuth } from "../hooks/useAuthConfiguredFetch";
+import { useAuth } from "../hooks/useAuth";
 
 export default function SignIn() {
   const [session] = useAtom(sessionAtom);

@@ -8,7 +8,7 @@ import { TransportProvider } from "@connectrpc/connect-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAtom } from "jotai";
 import { sessionAtom } from "./atoms/sessionAtom";
-import { useAuth } from "./hooks/useAuthConfiguredFetch";
+import { useAuth } from "./hooks/useAuth";
 
 const NAVIGATION: Navigation = [
   {
