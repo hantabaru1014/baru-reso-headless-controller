@@ -9,6 +9,7 @@ service ControllerService {
   rpc GetHeadlessHost(GetHeadlessHostRequest) returns (GetHeadlessHostResponse);
 
   rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
+  rpc SearchUserInfo(SearchUserInfoRequest) returns (headless.v1.SearchUserInfoResponse);
 
   rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
   rpc GetSessionDetails(GetSessionDetailsRequest) returns (GetSessionDetailsResponse);
@@ -19,7 +20,28 @@ service ControllerService {
   rpc UpdateUserRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse);
   rpc UpdateSessionParameters(UpdateSessionParametersRequest) returns (UpdateSessionParametersResponse);
   rpc ListUsersInSession(ListUsersInSessionRequest) returns (ListUsersInSessionResponse);
+  rpc KickUser(KickUserRequest) returns (KickUserResponse);
+  rpc BanUser(BanUserRequest) returns (BanUserResponse);
 }
+
+message SearchUserInfoRequest {
+  string host_id = 1;
+  headless.v1.SearchUserInfoRequest parameters = 2;
+}
+
+message KickUserRequest {
+  string host_id = 1;
+  headless.v1.KickUserRequest parameters = 2;
+}
+
+message KickUserResponse {}
+
+message BanUserRequest {
+  string host_id = 1;
+  headless.v1.BanUserRequest parameters = 2;
+}
+
+message BanUserResponse {}
 
 message FetchWorldInfoRequest {
   string host_id = 1;

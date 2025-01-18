@@ -43,6 +43,9 @@ const (
 	// ControllerServiceFetchWorldInfoProcedure is the fully-qualified name of the ControllerService's
 	// FetchWorldInfo RPC.
 	ControllerServiceFetchWorldInfoProcedure = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
+	// ControllerServiceSearchUserInfoProcedure is the fully-qualified name of the ControllerService's
+	// SearchUserInfo RPC.
+	ControllerServiceSearchUserInfoProcedure = "/hdlctrl.v1.ControllerService/SearchUserInfo"
 	// ControllerServiceListSessionsProcedure is the fully-qualified name of the ControllerService's
 	// ListSessions RPC.
 	ControllerServiceListSessionsProcedure = "/hdlctrl.v1.ControllerService/ListSessions"
@@ -70,6 +73,12 @@ const (
 	// ControllerServiceListUsersInSessionProcedure is the fully-qualified name of the
 	// ControllerService's ListUsersInSession RPC.
 	ControllerServiceListUsersInSessionProcedure = "/hdlctrl.v1.ControllerService/ListUsersInSession"
+	// ControllerServiceKickUserProcedure is the fully-qualified name of the ControllerService's
+	// KickUser RPC.
+	ControllerServiceKickUserProcedure = "/hdlctrl.v1.ControllerService/KickUser"
+	// ControllerServiceBanUserProcedure is the fully-qualified name of the ControllerService's BanUser
+	// RPC.
+	ControllerServiceBanUserProcedure = "/hdlctrl.v1.ControllerService/BanUser"
 )
 
 // ControllerServiceClient is a client for the hdlctrl.v1.ControllerService service.
@@ -77,6 +86,7 @@ type ControllerServiceClient interface {
 	ListHeadlessHost(context.Context, *connect.Request[v1.ListHeadlessHostRequest]) (*connect.Response[v1.ListHeadlessHostResponse], error)
 	GetHeadlessHost(context.Context, *connect.Request[v1.GetHeadlessHostRequest]) (*connect.Response[v1.GetHeadlessHostResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
+	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	GetSessionDetails(context.Context, *connect.Request[v1.GetSessionDetailsRequest]) (*connect.Response[v1.GetSessionDetailsResponse], error)
 	StartWorld(context.Context, *connect.Request[v1.StartWorldRequest]) (*connect.Response[v1.StartWorldResponse], error)
@@ -86,6 +96,8 @@ type ControllerServiceClient interface {
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	UpdateSessionParameters(context.Context, *connect.Request[v1.UpdateSessionParametersRequest]) (*connect.Response[v1.UpdateSessionParametersResponse], error)
 	ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error)
+	KickUser(context.Context, *connect.Request[v1.KickUserRequest]) (*connect.Response[v1.KickUserResponse], error)
+	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
 }
 
 // NewControllerServiceClient constructs a client for the hdlctrl.v1.ControllerService service. By
@@ -115,6 +127,12 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+ControllerServiceFetchWorldInfoProcedure,
 			connect.WithSchema(controllerServiceMethods.ByName("FetchWorldInfo")),
+			connect.WithClientOptions(opts...),
+		),
+		searchUserInfo: connect.NewClient[v1.SearchUserInfoRequest, v11.SearchUserInfoResponse](
+			httpClient,
+			baseURL+ControllerServiceSearchUserInfoProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("SearchUserInfo")),
 			connect.WithClientOptions(opts...),
 		),
 		listSessions: connect.NewClient[v1.ListSessionsRequest, v1.ListSessionsResponse](
@@ -171,6 +189,18 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(controllerServiceMethods.ByName("ListUsersInSession")),
 			connect.WithClientOptions(opts...),
 		),
+		kickUser: connect.NewClient[v1.KickUserRequest, v1.KickUserResponse](
+			httpClient,
+			baseURL+ControllerServiceKickUserProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("KickUser")),
+			connect.WithClientOptions(opts...),
+		),
+		banUser: connect.NewClient[v1.BanUserRequest, v1.BanUserResponse](
+			httpClient,
+			baseURL+ControllerServiceBanUserProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("BanUser")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -179,6 +209,7 @@ type controllerServiceClient struct {
 	listHeadlessHost        *connect.Client[v1.ListHeadlessHostRequest, v1.ListHeadlessHostResponse]
 	getHeadlessHost         *connect.Client[v1.GetHeadlessHostRequest, v1.GetHeadlessHostResponse]
 	fetchWorldInfo          *connect.Client[v1.FetchWorldInfoRequest, v11.FetchWorldInfoResponse]
+	searchUserInfo          *connect.Client[v1.SearchUserInfoRequest, v11.SearchUserInfoResponse]
 	listSessions            *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
 	getSessionDetails       *connect.Client[v1.GetSessionDetailsRequest, v1.GetSessionDetailsResponse]
 	startWorld              *connect.Client[v1.StartWorldRequest, v1.StartWorldResponse]
@@ -188,6 +219,8 @@ type controllerServiceClient struct {
 	updateUserRole          *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
 	updateSessionParameters *connect.Client[v1.UpdateSessionParametersRequest, v1.UpdateSessionParametersResponse]
 	listUsersInSession      *connect.Client[v1.ListUsersInSessionRequest, v1.ListUsersInSessionResponse]
+	kickUser                *connect.Client[v1.KickUserRequest, v1.KickUserResponse]
+	banUser                 *connect.Client[v1.BanUserRequest, v1.BanUserResponse]
 }
 
 // ListHeadlessHost calls hdlctrl.v1.ControllerService.ListHeadlessHost.
@@ -203,6 +236,11 @@ func (c *controllerServiceClient) GetHeadlessHost(ctx context.Context, req *conn
 // FetchWorldInfo calls hdlctrl.v1.ControllerService.FetchWorldInfo.
 func (c *controllerServiceClient) FetchWorldInfo(ctx context.Context, req *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error) {
 	return c.fetchWorldInfo.CallUnary(ctx, req)
+}
+
+// SearchUserInfo calls hdlctrl.v1.ControllerService.SearchUserInfo.
+func (c *controllerServiceClient) SearchUserInfo(ctx context.Context, req *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error) {
+	return c.searchUserInfo.CallUnary(ctx, req)
 }
 
 // ListSessions calls hdlctrl.v1.ControllerService.ListSessions.
@@ -250,11 +288,22 @@ func (c *controllerServiceClient) ListUsersInSession(ctx context.Context, req *c
 	return c.listUsersInSession.CallUnary(ctx, req)
 }
 
+// KickUser calls hdlctrl.v1.ControllerService.KickUser.
+func (c *controllerServiceClient) KickUser(ctx context.Context, req *connect.Request[v1.KickUserRequest]) (*connect.Response[v1.KickUserResponse], error) {
+	return c.kickUser.CallUnary(ctx, req)
+}
+
+// BanUser calls hdlctrl.v1.ControllerService.BanUser.
+func (c *controllerServiceClient) BanUser(ctx context.Context, req *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error) {
+	return c.banUser.CallUnary(ctx, req)
+}
+
 // ControllerServiceHandler is an implementation of the hdlctrl.v1.ControllerService service.
 type ControllerServiceHandler interface {
 	ListHeadlessHost(context.Context, *connect.Request[v1.ListHeadlessHostRequest]) (*connect.Response[v1.ListHeadlessHostResponse], error)
 	GetHeadlessHost(context.Context, *connect.Request[v1.GetHeadlessHostRequest]) (*connect.Response[v1.GetHeadlessHostResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
+	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	GetSessionDetails(context.Context, *connect.Request[v1.GetSessionDetailsRequest]) (*connect.Response[v1.GetSessionDetailsResponse], error)
 	StartWorld(context.Context, *connect.Request[v1.StartWorldRequest]) (*connect.Response[v1.StartWorldResponse], error)
@@ -264,6 +313,8 @@ type ControllerServiceHandler interface {
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	UpdateSessionParameters(context.Context, *connect.Request[v1.UpdateSessionParametersRequest]) (*connect.Response[v1.UpdateSessionParametersResponse], error)
 	ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error)
+	KickUser(context.Context, *connect.Request[v1.KickUserRequest]) (*connect.Response[v1.KickUserResponse], error)
+	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
 }
 
 // NewControllerServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -289,6 +340,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		ControllerServiceFetchWorldInfoProcedure,
 		svc.FetchWorldInfo,
 		connect.WithSchema(controllerServiceMethods.ByName("FetchWorldInfo")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceSearchUserInfoHandler := connect.NewUnaryHandler(
+		ControllerServiceSearchUserInfoProcedure,
+		svc.SearchUserInfo,
+		connect.WithSchema(controllerServiceMethods.ByName("SearchUserInfo")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceListSessionsHandler := connect.NewUnaryHandler(
@@ -345,6 +402,18 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		connect.WithSchema(controllerServiceMethods.ByName("ListUsersInSession")),
 		connect.WithHandlerOptions(opts...),
 	)
+	controllerServiceKickUserHandler := connect.NewUnaryHandler(
+		ControllerServiceKickUserProcedure,
+		svc.KickUser,
+		connect.WithSchema(controllerServiceMethods.ByName("KickUser")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceBanUserHandler := connect.NewUnaryHandler(
+		ControllerServiceBanUserProcedure,
+		svc.BanUser,
+		connect.WithSchema(controllerServiceMethods.ByName("BanUser")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/hdlctrl.v1.ControllerService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ControllerServiceListHeadlessHostProcedure:
@@ -353,6 +422,8 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceGetHeadlessHostHandler.ServeHTTP(w, r)
 		case ControllerServiceFetchWorldInfoProcedure:
 			controllerServiceFetchWorldInfoHandler.ServeHTTP(w, r)
+		case ControllerServiceSearchUserInfoProcedure:
+			controllerServiceSearchUserInfoHandler.ServeHTTP(w, r)
 		case ControllerServiceListSessionsProcedure:
 			controllerServiceListSessionsHandler.ServeHTTP(w, r)
 		case ControllerServiceGetSessionDetailsProcedure:
@@ -371,6 +442,10 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceUpdateSessionParametersHandler.ServeHTTP(w, r)
 		case ControllerServiceListUsersInSessionProcedure:
 			controllerServiceListUsersInSessionHandler.ServeHTTP(w, r)
+		case ControllerServiceKickUserProcedure:
+			controllerServiceKickUserHandler.ServeHTTP(w, r)
+		case ControllerServiceBanUserProcedure:
+			controllerServiceBanUserHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -390,6 +465,10 @@ func (UnimplementedControllerServiceHandler) GetHeadlessHost(context.Context, *c
 
 func (UnimplementedControllerServiceHandler) FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.FetchWorldInfo is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.SearchUserInfo is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error) {
@@ -426,4 +505,12 @@ func (UnimplementedControllerServiceHandler) UpdateSessionParameters(context.Con
 
 func (UnimplementedControllerServiceHandler) ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.ListUsersInSession is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) KickUser(context.Context, *connect.Request[v1.KickUserRequest]) (*connect.Response[v1.KickUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.KickUser is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.BanUser is not implemented"))
 }

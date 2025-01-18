@@ -20,6 +20,11 @@ export const getHeadlessHost = ControllerService.method.getHeadlessHost;
 export const fetchWorldInfo = ControllerService.method.fetchWorldInfo;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.SearchUserInfo
+ */
+export const searchUserInfo = ControllerService.method.searchUserInfo;
+
+/**
  * @generated from rpc hdlctrl.v1.ControllerService.ListSessions
  */
 export const listSessions = ControllerService.method.listSessions;
@@ -63,3 +68,13 @@ export const updateSessionParameters = ControllerService.method.updateSessionPar
  * @generated from rpc hdlctrl.v1.ControllerService.ListUsersInSession
  */
 export const listUsersInSession = ControllerService.method.listUsersInSession;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.KickUser
+ */
+export const kickUser = ControllerService.method.kickUser;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.BanUser
+ */
+export const banUser = ControllerService.method.banUser;

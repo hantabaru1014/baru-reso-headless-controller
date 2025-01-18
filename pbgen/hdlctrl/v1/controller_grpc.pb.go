@@ -23,6 +23,7 @@ const (
 	ControllerService_ListHeadlessHost_FullMethodName        = "/hdlctrl.v1.ControllerService/ListHeadlessHost"
 	ControllerService_GetHeadlessHost_FullMethodName         = "/hdlctrl.v1.ControllerService/GetHeadlessHost"
 	ControllerService_FetchWorldInfo_FullMethodName          = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
+	ControllerService_SearchUserInfo_FullMethodName          = "/hdlctrl.v1.ControllerService/SearchUserInfo"
 	ControllerService_ListSessions_FullMethodName            = "/hdlctrl.v1.ControllerService/ListSessions"
 	ControllerService_GetSessionDetails_FullMethodName       = "/hdlctrl.v1.ControllerService/GetSessionDetails"
 	ControllerService_StartWorld_FullMethodName              = "/hdlctrl.v1.ControllerService/StartWorld"
@@ -32,6 +33,8 @@ const (
 	ControllerService_UpdateUserRole_FullMethodName          = "/hdlctrl.v1.ControllerService/UpdateUserRole"
 	ControllerService_UpdateSessionParameters_FullMethodName = "/hdlctrl.v1.ControllerService/UpdateSessionParameters"
 	ControllerService_ListUsersInSession_FullMethodName      = "/hdlctrl.v1.ControllerService/ListUsersInSession"
+	ControllerService_KickUser_FullMethodName                = "/hdlctrl.v1.ControllerService/KickUser"
+	ControllerService_BanUser_FullMethodName                 = "/hdlctrl.v1.ControllerService/BanUser"
 )
 
 // ControllerServiceClient is the client API for ControllerService service.
@@ -41,6 +44,7 @@ type ControllerServiceClient interface {
 	ListHeadlessHost(ctx context.Context, in *ListHeadlessHostRequest, opts ...grpc.CallOption) (*ListHeadlessHostResponse, error)
 	GetHeadlessHost(ctx context.Context, in *GetHeadlessHostRequest, opts ...grpc.CallOption) (*GetHeadlessHostResponse, error)
 	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*v1.FetchWorldInfoResponse, error)
+	SearchUserInfo(ctx context.Context, in *SearchUserInfoRequest, opts ...grpc.CallOption) (*v1.SearchUserInfoResponse, error)
 	ListSessions(ctx context.Context, in *ListSessionsRequest, opts ...grpc.CallOption) (*ListSessionsResponse, error)
 	GetSessionDetails(ctx context.Context, in *GetSessionDetailsRequest, opts ...grpc.CallOption) (*GetSessionDetailsResponse, error)
 	StartWorld(ctx context.Context, in *StartWorldRequest, opts ...grpc.CallOption) (*StartWorldResponse, error)
@@ -50,6 +54,8 @@ type ControllerServiceClient interface {
 	UpdateUserRole(ctx context.Context, in *UpdateUserRoleRequest, opts ...grpc.CallOption) (*UpdateUserRoleResponse, error)
 	UpdateSessionParameters(ctx context.Context, in *UpdateSessionParametersRequest, opts ...grpc.CallOption) (*UpdateSessionParametersResponse, error)
 	ListUsersInSession(ctx context.Context, in *ListUsersInSessionRequest, opts ...grpc.CallOption) (*ListUsersInSessionResponse, error)
+	KickUser(ctx context.Context, in *KickUserRequest, opts ...grpc.CallOption) (*KickUserResponse, error)
+	BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*BanUserResponse, error)
 }
 
 type controllerServiceClient struct {
@@ -84,6 +90,16 @@ func (c *controllerServiceClient) FetchWorldInfo(ctx context.Context, in *FetchW
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(v1.FetchWorldInfoResponse)
 	err := c.cc.Invoke(ctx, ControllerService_FetchWorldInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) SearchUserInfo(ctx context.Context, in *SearchUserInfoRequest, opts ...grpc.CallOption) (*v1.SearchUserInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(v1.SearchUserInfoResponse)
+	err := c.cc.Invoke(ctx, ControllerService_SearchUserInfo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -180,6 +196,26 @@ func (c *controllerServiceClient) ListUsersInSession(ctx context.Context, in *Li
 	return out, nil
 }
 
+func (c *controllerServiceClient) KickUser(ctx context.Context, in *KickUserRequest, opts ...grpc.CallOption) (*KickUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(KickUserResponse)
+	err := c.cc.Invoke(ctx, ControllerService_KickUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*BanUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BanUserResponse)
+	err := c.cc.Invoke(ctx, ControllerService_BanUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ControllerServiceServer is the server API for ControllerService service.
 // All implementations must embed UnimplementedControllerServiceServer
 // for forward compatibility.
@@ -187,6 +223,7 @@ type ControllerServiceServer interface {
 	ListHeadlessHost(context.Context, *ListHeadlessHostRequest) (*ListHeadlessHostResponse, error)
 	GetHeadlessHost(context.Context, *GetHeadlessHostRequest) (*GetHeadlessHostResponse, error)
 	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error)
+	SearchUserInfo(context.Context, *SearchUserInfoRequest) (*v1.SearchUserInfoResponse, error)
 	ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error)
 	GetSessionDetails(context.Context, *GetSessionDetailsRequest) (*GetSessionDetailsResponse, error)
 	StartWorld(context.Context, *StartWorldRequest) (*StartWorldResponse, error)
@@ -196,6 +233,8 @@ type ControllerServiceServer interface {
 	UpdateUserRole(context.Context, *UpdateUserRoleRequest) (*UpdateUserRoleResponse, error)
 	UpdateSessionParameters(context.Context, *UpdateSessionParametersRequest) (*UpdateSessionParametersResponse, error)
 	ListUsersInSession(context.Context, *ListUsersInSessionRequest) (*ListUsersInSessionResponse, error)
+	KickUser(context.Context, *KickUserRequest) (*KickUserResponse, error)
+	BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error)
 	mustEmbedUnimplementedControllerServiceServer()
 }
 
@@ -214,6 +253,9 @@ func (UnimplementedControllerServiceServer) GetHeadlessHost(context.Context, *Ge
 }
 func (UnimplementedControllerServiceServer) FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchWorldInfo not implemented")
+}
+func (UnimplementedControllerServiceServer) SearchUserInfo(context.Context, *SearchUserInfoRequest) (*v1.SearchUserInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SearchUserInfo not implemented")
 }
 func (UnimplementedControllerServiceServer) ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSessions not implemented")
@@ -241,6 +283,12 @@ func (UnimplementedControllerServiceServer) UpdateSessionParameters(context.Cont
 }
 func (UnimplementedControllerServiceServer) ListUsersInSession(context.Context, *ListUsersInSessionRequest) (*ListUsersInSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListUsersInSession not implemented")
+}
+func (UnimplementedControllerServiceServer) KickUser(context.Context, *KickUserRequest) (*KickUserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method KickUser not implemented")
+}
+func (UnimplementedControllerServiceServer) BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BanUser not implemented")
 }
 func (UnimplementedControllerServiceServer) mustEmbedUnimplementedControllerServiceServer() {}
 func (UnimplementedControllerServiceServer) testEmbeddedByValue()                           {}
@@ -313,6 +361,24 @@ func _ControllerService_FetchWorldInfo_Handler(srv interface{}, ctx context.Cont
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).FetchWorldInfo(ctx, req.(*FetchWorldInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_SearchUserInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchUserInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).SearchUserInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_SearchUserInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).SearchUserInfo(ctx, req.(*SearchUserInfoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -479,6 +545,42 @@ func _ControllerService_ListUsersInSession_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_KickUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(KickUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).KickUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_KickUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).KickUser(ctx, req.(*KickUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_BanUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BanUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).BanUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_BanUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).BanUser(ctx, req.(*BanUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ControllerService_ServiceDesc is the grpc.ServiceDesc for ControllerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -497,6 +599,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "FetchWorldInfo",
 			Handler:    _ControllerService_FetchWorldInfo_Handler,
+		},
+		{
+			MethodName: "SearchUserInfo",
+			Handler:    _ControllerService_SearchUserInfo_Handler,
 		},
 		{
 			MethodName: "ListSessions",
@@ -533,6 +639,14 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListUsersInSession",
 			Handler:    _ControllerService_ListUsersInSession_Handler,
+		},
+		{
+			MethodName: "KickUser",
+			Handler:    _ControllerService_KickUser_Handler,
+		},
+		{
+			MethodName: "BanUser",
+			Handler:    _ControllerService_BanUser_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

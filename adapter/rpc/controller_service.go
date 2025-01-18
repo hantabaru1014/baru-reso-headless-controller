@@ -35,6 +35,51 @@ func (c *ControllerService) NewHandler() (string, http.Handler) {
 	return hdlctrlv1connect.NewControllerServiceHandler(c, interceptors)
 }
 
+// BanUser implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) BanUser(ctx context.Context, req *connect.Request[hdlctrlv1.BanUserRequest]) (*connect.Response[hdlctrlv1.BanUserResponse], error) {
+	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	_, err = conn.BanUser(ctx, req.Msg.Parameters)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.BanUserResponse{})
+	return res, nil
+}
+
+// KickUser implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) KickUser(ctx context.Context, req *connect.Request[hdlctrlv1.KickUserRequest]) (*connect.Response[hdlctrlv1.KickUserResponse], error) {
+	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	_, err = conn.KickUser(ctx, req.Msg.Parameters)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.KickUserResponse{})
+	return res, nil
+}
+
+// SearchUserInfo implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) SearchUserInfo(ctx context.Context, req *connect.Request[hdlctrlv1.SearchUserInfoRequest]) (*connect.Response[headlessv1.SearchUserInfoResponse], error) {
+	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	headlessRes, err := conn.SearchUserInfo(ctx, req.Msg.Parameters)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(headlessRes)
+	return res, nil
+}
+
 // FetchWorldInfo implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) FetchWorldInfo(ctx context.Context, req *connect.Request[hdlctrlv1.FetchWorldInfoRequest]) (*connect.Response[headlessv1.FetchWorldInfoResponse], error) {
 	conn, err := c.getOrNewConnection(req.Msg.HostId)
