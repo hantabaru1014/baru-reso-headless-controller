@@ -1,0 +1,5 @@
+services:
+  app:
+    image: ghcr.io/hantabaru1014/baru-reso-headless-controller:latest
+    env_file: .env
+    network_mode: host
