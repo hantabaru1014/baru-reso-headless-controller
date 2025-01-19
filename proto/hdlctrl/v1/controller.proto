@@ -159,4 +159,10 @@ message HeadlessHost {
   string id = 1;
   string name = 2;
   string address = 3;
+  string resonite_version = 4;
+  string account_id = 5;
+  string account_name = 6;
+  float fps = 7;
+  int64 storage_quota_bytes = 8;
+  int64 storage_used_bytes = 9;
 }

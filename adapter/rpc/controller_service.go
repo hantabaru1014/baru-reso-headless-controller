@@ -106,8 +106,16 @@ func (c *ControllerService) GetHeadlessHost(ctx context.Context, req *connect.Re
 	if host == nil {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("host not found"))
 	}
+	conn, err := c.getOrNewConnection(host.ID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	p, err := converter.HeadlessHostEntityToProtoFull(ctx, host, conn)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 	res := connect.NewResponse(&hdlctrlv1.GetHeadlessHostResponse{
-		Host: converter.HeadlessHostEntityToProto(host),
+		Host: p,
 	})
 	return res, nil
 }
@@ -120,7 +128,15 @@ func (c *ControllerService) ListHeadlessHost(ctx context.Context, req *connect.R
 	}
 	protoHosts := make([]*hdlctrlv1.HeadlessHost, 0, len(hosts))
 	for _, host := range hosts {
-		protoHosts = append(protoHosts, converter.HeadlessHostEntityToProto(host))
+		conn, err := c.getOrNewConnection(host.ID)
+		if err != nil {
+			continue
+		}
+		p, err := converter.HeadlessHostEntityToProtoFull(ctx, host, conn)
+		if err != nil {
+			continue
+		}
+		protoHosts = append(protoHosts, p)
 	}
 	res := connect.NewResponse(&hdlctrlv1.ListHeadlessHostResponse{
 		Hosts: protoHosts,

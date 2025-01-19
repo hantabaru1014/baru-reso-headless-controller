@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  InputAdornment,
   List,
   ListItem,
   ListItemAvatar,
@@ -19,7 +20,11 @@ import {
   TableRow,
   TextField,
 } from "@mui/material";
-import { CheckOutlined, Refresh as RefreshIcon } from "@mui/icons-material";
+import {
+  CheckOutlined,
+  Refresh as RefreshIcon,
+  SearchOutlined,
+} from "@mui/icons-material";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
   banUser,
@@ -100,6 +105,15 @@ function UserInviteDialog({
           <TextField
             variant="filled"
             label="ユーザーID/名"
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchOutlined />
+                  </InputAdornment>
+                ),
+              },
+            }}
             value={query}
             onChange={handleQueryChange}
           />
@@ -110,12 +124,12 @@ function UserInviteDialog({
                   key={user.id}
                   secondaryAction={
                     <Button onClick={() => handleInviteUser(user.id)}>
-                      Invite
+                      招待
                     </Button>
                   }
                 >
                   <ListItemAvatar>
-                    <Avatar></Avatar>
+                    <Avatar src={user.iconUrl} />
                   </ListItemAvatar>
                   <ListItemText primary={user.name} />
                 </ListItem>
@@ -155,7 +169,9 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
           role,
         },
       });
-      refetch();
+      setTimeout(() => {
+        refetch();
+      }, 500);
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : `${e}` };
@@ -174,7 +190,9 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
           },
         },
       });
-      refetch();
+      setTimeout(() => {
+        refetch();
+      }, 500);
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : `${e}` };
@@ -193,7 +211,9 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
           },
         },
       });
-      refetch();
+      setTimeout(() => {
+        refetch();
+      }, 500);
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : `${e}` };
@@ -213,7 +233,7 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
           color="primary"
           onClick={handleOpenInviteDialog}
         >
-          Invite
+          ユーザー招待
         </Button>
         <IconButton aria-label="再読み込み" onClick={() => refetch()}>
           <RefreshIcon />

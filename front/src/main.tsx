@@ -8,6 +8,7 @@ import SignInPage from "./pages/signin";
 import Sessions from "./pages/sessions";
 import SessionDetail from "./pages/sessions/detail";
 import SessionNew from "./pages/sessions/new";
+import Hosts from "./pages/hosts";
 
 const router = createBrowserRouter([
   {
@@ -35,6 +36,15 @@ const router = createBrowserRouter([
               {
                 path: ":id",
                 Component: SessionDetail,
+              },
+            ],
+          },
+          {
+            path: "hosts",
+            children: [
+              {
+                index: true,
+                Component: Hosts,
               },
             ],
           },

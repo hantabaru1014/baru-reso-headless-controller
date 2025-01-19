@@ -17,6 +17,10 @@ const NAVIGATION: Navigation = [
     icon: <DashboardIcon />,
   },
   {
+    segment: "hosts",
+    title: "Hosts",
+  },
+  {
     segment: "sessions",
     title: "Sessions",
   },
