@@ -3,7 +3,9 @@ package rpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/converter"
@@ -12,21 +14,18 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var _ hdlctrlv1connect.ControllerServiceHandler = (*ControllerService)(nil)
 
 type ControllerService struct {
-	connections map[string]headlessv1.HeadlessControlServiceClient
-	hhrepo      port.HeadlessHostRepository
+	hhrepo port.HeadlessHostRepository
 }
 
 func NewControllerService(hhrepo port.HeadlessHostRepository) *ControllerService {
 	return &ControllerService{
-		connections: make(map[string]headlessv1.HeadlessControlServiceClient),
-		hhrepo:      hhrepo,
+		hhrepo: hhrepo,
 	}
 }
 
@@ -35,9 +34,40 @@ func (c *ControllerService) NewHandler() (string, http.Handler) {
 	return hdlctrlv1connect.NewControllerServiceHandler(c, interceptors)
 }
 
+// GetHeadlessHostLogs implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) GetHeadlessHostLogs(ctx context.Context, req *connect.Request[hdlctrlv1.GetHeadlessHostLogsRequest]) (*connect.Response[hdlctrlv1.GetHeadlessHostLogsResponse], error) {
+	until := req.Msg.GetUntil()
+	untilStr := ""
+	if until != nil {
+		untilStr = fmt.Sprintf("%d", until.AsTime().Unix())
+	}
+	since := req.Msg.GetSince()
+	sinceStr := ""
+	if since != nil {
+		sinceStr = fmt.Sprintf("%d", since.AsTime().Unix())
+	}
+	logs, err := c.hhrepo.GetLogs(ctx, req.Msg.HostId, req.Msg.GetLimit(), untilStr, sinceStr)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	protoLogs := make([]*hdlctrlv1.GetHeadlessHostLogsResponse_Log, 0, len(logs))
+	for _, log := range logs {
+		protoLogs = append(protoLogs, &hdlctrlv1.GetHeadlessHostLogsResponse_Log{
+			Timestamp: timestamppb.New(time.Unix(log.Timestamp, 0)),
+			IsError:   log.IsError,
+			Body:      log.Body,
+		})
+	}
+	res := connect.NewResponse(&hdlctrlv1.GetHeadlessHostLogsResponse{
+		Logs: protoLogs,
+	})
+	return res, nil
+}
+
 // BanUser implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) BanUser(ctx context.Context, req *connect.Request[hdlctrlv1.BanUserRequest]) (*connect.Response[hdlctrlv1.BanUserResponse], error) {
-	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
@@ -52,7 +82,7 @@ func (c *ControllerService) BanUser(ctx context.Context, req *connect.Request[hd
 
 // KickUser implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) KickUser(ctx context.Context, req *connect.Request[hdlctrlv1.KickUserRequest]) (*connect.Response[hdlctrlv1.KickUserResponse], error) {
-	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
@@ -67,7 +97,7 @@ func (c *ControllerService) KickUser(ctx context.Context, req *connect.Request[h
 
 // SearchUserInfo implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) SearchUserInfo(ctx context.Context, req *connect.Request[hdlctrlv1.SearchUserInfoRequest]) (*connect.Response[headlessv1.SearchUserInfoResponse], error) {
-	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
@@ -82,7 +112,7 @@ func (c *ControllerService) SearchUserInfo(ctx context.Context, req *connect.Req
 
 // FetchWorldInfo implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) FetchWorldInfo(ctx context.Context, req *connect.Request[hdlctrlv1.FetchWorldInfoRequest]) (*connect.Response[headlessv1.FetchWorldInfoResponse], error) {
-	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
@@ -99,44 +129,28 @@ func (c *ControllerService) FetchWorldInfo(ctx context.Context, req *connect.Req
 
 // GetHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) GetHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.GetHeadlessHostRequest]) (*connect.Response[hdlctrlv1.GetHeadlessHostResponse], error) {
-	host, err := c.hhrepo.Find(req.Msg.Id)
+	host, err := c.hhrepo.Find(ctx, req.Msg.Id)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if host == nil {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("host not found"))
 	}
-	conn, err := c.getOrNewConnection(host.ID)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeUnavailable, err)
-	}
-	p, err := converter.HeadlessHostEntityToProtoFull(ctx, host, conn)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
 	res := connect.NewResponse(&hdlctrlv1.GetHeadlessHostResponse{
-		Host: p,
+		Host: converter.HeadlessHostEntityToProto(host),
 	})
 	return res, nil
 }
 
 // ListHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) ListHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.ListHeadlessHostRequest]) (*connect.Response[hdlctrlv1.ListHeadlessHostResponse], error) {
-	hosts, err := c.hhrepo.ListAll()
+	hosts, err := c.hhrepo.ListAll(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	protoHosts := make([]*hdlctrlv1.HeadlessHost, 0, len(hosts))
 	for _, host := range hosts {
-		conn, err := c.getOrNewConnection(host.ID)
-		if err != nil {
-			continue
-		}
-		p, err := converter.HeadlessHostEntityToProtoFull(ctx, host, conn)
-		if err != nil {
-			continue
-		}
-		protoHosts = append(protoHosts, p)
+		protoHosts = append(protoHosts, converter.HeadlessHostEntityToProto(host))
 	}
 	res := connect.NewResponse(&hdlctrlv1.ListHeadlessHostResponse{
 		Hosts: protoHosts,
@@ -146,7 +160,7 @@ func (c *ControllerService) ListHeadlessHost(ctx context.Context, req *connect.R
 
 // ListSessions implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) ListSessions(ctx context.Context, req *connect.Request[hdlctrlv1.ListSessionsRequest]) (*connect.Response[hdlctrlv1.ListSessionsResponse], error) {
-	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
@@ -163,7 +177,7 @@ func (c *ControllerService) ListSessions(ctx context.Context, req *connect.Reque
 
 // GetSessionDetails implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) GetSessionDetails(ctx context.Context, req *connect.Request[hdlctrlv1.GetSessionDetailsRequest]) (*connect.Response[hdlctrlv1.GetSessionDetailsResponse], error) {
-	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
@@ -182,7 +196,7 @@ func (c *ControllerService) GetSessionDetails(ctx context.Context, req *connect.
 
 // ListUsersInSession implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) ListUsersInSession(ctx context.Context, req *connect.Request[hdlctrlv1.ListUsersInSessionRequest]) (*connect.Response[hdlctrlv1.ListUsersInSessionResponse], error) {
-	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
@@ -199,7 +213,7 @@ func (c *ControllerService) ListUsersInSession(ctx context.Context, req *connect
 
 // SaveSessionWorld implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) SaveSessionWorld(ctx context.Context, req *connect.Request[hdlctrlv1.SaveSessionWorldRequest]) (*connect.Response[hdlctrlv1.SaveSessionWorldResponse], error) {
-	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
@@ -214,7 +228,7 @@ func (c *ControllerService) SaveSessionWorld(ctx context.Context, req *connect.R
 
 // UpdateSessionParameters implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) UpdateSessionParameters(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateSessionParametersRequest]) (*connect.Response[hdlctrlv1.UpdateSessionParametersResponse], error) {
-	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
@@ -229,7 +243,7 @@ func (c *ControllerService) UpdateSessionParameters(ctx context.Context, req *co
 
 // UpdateUserRole implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) UpdateUserRole(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateUserRoleRequest]) (*connect.Response[hdlctrlv1.UpdateUserRoleResponse], error) {
-	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
@@ -246,7 +260,7 @@ func (c *ControllerService) UpdateUserRole(ctx context.Context, req *connect.Req
 
 // StartWorld implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) StartWorld(ctx context.Context, req *connect.Request[hdlctrlv1.StartWorldRequest]) (*connect.Response[hdlctrlv1.StartWorldResponse], error) {
-	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
@@ -263,7 +277,7 @@ func (c *ControllerService) StartWorld(ctx context.Context, req *connect.Request
 
 // InviteUser implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) InviteUser(ctx context.Context, req *connect.Request[hdlctrlv1.InviteUserRequest]) (*connect.Response[hdlctrlv1.InviteUserResponse], error) {
-	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
@@ -286,7 +300,7 @@ func (c *ControllerService) InviteUser(ctx context.Context, req *connect.Request
 
 // StopSession implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) StopSession(ctx context.Context, req *connect.Request[hdlctrlv1.StopSessionRequest]) (*connect.Response[hdlctrlv1.StopSessionResponse], error) {
-	conn, err := c.getOrNewConnection(req.Msg.HostId)
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
@@ -297,23 +311,4 @@ func (c *ControllerService) StopSession(ctx context.Context, req *connect.Reques
 
 	res := connect.NewResponse(&hdlctrlv1.StopSessionResponse{})
 	return res, nil
-}
-
-func (c *ControllerService) getOrNewConnection(id string) (headlessv1.HeadlessControlServiceClient, error) {
-	if conn, ok := c.connections[id]; ok {
-		return conn, nil
-	}
-
-	h, err := c.hhrepo.Find(id)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := grpc.NewClient(h.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, err
-	}
-	client := headlessv1.NewHeadlessControlServiceClient(conn)
-	c.connections[id] = client
-
-	return client, nil
 }

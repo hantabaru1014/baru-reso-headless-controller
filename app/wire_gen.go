@@ -8,7 +8,7 @@ package app
 
 import (
 	"github.com/google/wire"
-	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/db"
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
@@ -17,7 +17,7 @@ import (
 
 func InitializeServer() *Server {
 	userService := rpc.NewUserService()
-	headlessHostRepository := db.NewHeadlessHostRepository()
+	headlessHostRepository := adapter.NewHeadlessHostRepository()
 	controllerService := rpc.NewControllerService(headlessHostRepository)
 	server := NewServer(userService, controllerService)
 	return server
@@ -26,6 +26,6 @@ func InitializeServer() *Server {
 // wire.go:
 
 var (
-	repositorySet = wire.NewSet(wire.Bind(new(port.HeadlessHostRepository), new(*db.HeadlessHostRepository)), db.NewHeadlessHostRepository)
+	repositorySet = wire.NewSet(wire.Bind(new(port.HeadlessHostRepository), new(*adapter.HeadlessHostRepository)), adapter.NewHeadlessHostRepository)
 	rpcServiceSet = wire.NewSet(rpc.NewUserService, rpc.NewControllerService)
 )

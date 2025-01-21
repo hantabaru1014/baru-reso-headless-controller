@@ -9,6 +9,7 @@ import Sessions from "./pages/sessions";
 import SessionDetail from "./pages/sessions/detail";
 import SessionNew from "./pages/sessions/new";
 import Hosts from "./pages/hosts";
+import HostDetail from "./pages/hosts/detail";
 
 const router = createBrowserRouter([
   {
@@ -45,6 +46,10 @@ const router = createBrowserRouter([
               {
                 index: true,
                 Component: Hosts,
+              },
+              {
+                path: ":id",
+                Component: HostDetail,
               },
             ],
           },

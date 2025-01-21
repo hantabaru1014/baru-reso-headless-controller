@@ -14,9 +14,11 @@ import {
 } from "@mui/material";
 import prettyBytes from "../libs/prettyBytes";
 import { Refresh } from "@mui/icons-material";
+import { useNavigate } from "react-router";
 
 export default function HostList() {
   const { data, isPending, refetch } = useQuery(listHeadlessHost);
+  const navigate = useNavigate();
 
   return (
     <Grid2 container>
@@ -42,8 +44,13 @@ export default function HostList() {
             </TableHead>
             <TableBody>
               {data?.hosts.map((host) => (
-                <TableRow key={host.id}>
-                  <TableCell>{host.id}</TableCell>
+                <TableRow
+                  key={host.id}
+                  onClick={() => navigate(`/hosts/${host.id}`)}
+                  hover
+                  sx={{ cursor: "pointer" }}
+                >
+                  <TableCell>{host.id.substring(0, 12)}</TableCell>
                   <TableCell>{host.name}</TableCell>
                   <TableCell>{host.resoniteVersion}</TableCell>
                   <TableCell>{host.fps}</TableCell>

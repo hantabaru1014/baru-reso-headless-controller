@@ -5,15 +5,15 @@ package app
 
 import (
 	"github.com/google/wire"
-	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/db"
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
 
 var (
 	repositorySet = wire.NewSet(
-		wire.Bind(new(port.HeadlessHostRepository), new(*db.HeadlessHostRepository)),
-		db.NewHeadlessHostRepository,
+		wire.Bind(new(port.HeadlessHostRepository), new(*adapter.HeadlessHostRepository)),
+		adapter.NewHeadlessHostRepository,
 	)
 	rpcServiceSet = wire.NewSet(
 		rpc.NewUserService,

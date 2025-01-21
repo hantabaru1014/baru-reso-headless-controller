@@ -3,10 +3,12 @@ syntax = "proto3";
 package hdlctrl.v1;
 
 import "headless/v1/headless.proto";
+import "google/protobuf/timestamp.proto";
 
 service ControllerService {
   rpc ListHeadlessHost(ListHeadlessHostRequest) returns (ListHeadlessHostResponse);
   rpc GetHeadlessHost(GetHeadlessHostRequest) returns (GetHeadlessHostResponse);
+  rpc GetHeadlessHostLogs(GetHeadlessHostLogsRequest) returns (GetHeadlessHostLogsResponse);
 
   rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
   rpc SearchUserInfo(SearchUserInfoRequest) returns (headless.v1.SearchUserInfoResponse);
@@ -22,6 +24,28 @@ service ControllerService {
   rpc ListUsersInSession(ListUsersInSessionRequest) returns (ListUsersInSessionResponse);
   rpc KickUser(KickUserRequest) returns (KickUserResponse);
   rpc BanUser(BanUserRequest) returns (BanUserResponse);
+}
+
+message GetHeadlessHostLogsRequest {
+  string host_id = 1;
+  oneof query {
+    // limit が指定されている場合は、最新のログから limit 件取得する
+    int32 limit = 2;
+    // until が指定されている場合は、until 以前のログを全て取得する
+    google.protobuf.Timestamp until = 3;
+    // since が指定されている場合は、since 以降のログを全て取得する
+    google.protobuf.Timestamp since = 4;
+  }
+}
+
+message GetHeadlessHostLogsResponse {
+  message Log {
+    google.protobuf.Timestamp timestamp = 1;
+    bool is_error = 2;
+    string body = 3;
+  }
+  // 時系列に並んだログ
+  repeated Log logs = 1;
 }
 
 message SearchUserInfoRequest {
