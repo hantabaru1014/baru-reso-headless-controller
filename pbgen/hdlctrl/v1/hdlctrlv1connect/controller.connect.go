@@ -43,6 +43,15 @@ const (
 	// ControllerServiceGetHeadlessHostLogsProcedure is the fully-qualified name of the
 	// ControllerService's GetHeadlessHostLogs RPC.
 	ControllerServiceGetHeadlessHostLogsProcedure = "/hdlctrl.v1.ControllerService/GetHeadlessHostLogs"
+	// ControllerServiceShutdownHeadlessHostProcedure is the fully-qualified name of the
+	// ControllerService's ShutdownHeadlessHost RPC.
+	ControllerServiceShutdownHeadlessHostProcedure = "/hdlctrl.v1.ControllerService/ShutdownHeadlessHost"
+	// ControllerServiceUpdateHeadlessHostSettingsProcedure is the fully-qualified name of the
+	// ControllerService's UpdateHeadlessHostSettings RPC.
+	ControllerServiceUpdateHeadlessHostSettingsProcedure = "/hdlctrl.v1.ControllerService/UpdateHeadlessHostSettings"
+	// ControllerServicePullLatestHostImageProcedure is the fully-qualified name of the
+	// ControllerService's PullLatestHostImage RPC.
+	ControllerServicePullLatestHostImageProcedure = "/hdlctrl.v1.ControllerService/PullLatestHostImage"
 	// ControllerServiceFetchWorldInfoProcedure is the fully-qualified name of the ControllerService's
 	// FetchWorldInfo RPC.
 	ControllerServiceFetchWorldInfoProcedure = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
@@ -89,6 +98,9 @@ type ControllerServiceClient interface {
 	ListHeadlessHost(context.Context, *connect.Request[v1.ListHeadlessHostRequest]) (*connect.Response[v1.ListHeadlessHostResponse], error)
 	GetHeadlessHost(context.Context, *connect.Request[v1.GetHeadlessHostRequest]) (*connect.Response[v1.GetHeadlessHostResponse], error)
 	GetHeadlessHostLogs(context.Context, *connect.Request[v1.GetHeadlessHostLogsRequest]) (*connect.Response[v1.GetHeadlessHostLogsResponse], error)
+	ShutdownHeadlessHost(context.Context, *connect.Request[v1.ShutdownHeadlessHostRequest]) (*connect.Response[v1.ShutdownHeadlessHostResponse], error)
+	UpdateHeadlessHostSettings(context.Context, *connect.Request[v1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[v1.UpdateHeadlessHostSettingsResponse], error)
+	PullLatestHostImage(context.Context, *connect.Request[v1.PullLatestHostImageRequest]) (*connect.Response[v1.PullLatestHostImageResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
@@ -131,6 +143,24 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+ControllerServiceGetHeadlessHostLogsProcedure,
 			connect.WithSchema(controllerServiceMethods.ByName("GetHeadlessHostLogs")),
+			connect.WithClientOptions(opts...),
+		),
+		shutdownHeadlessHost: connect.NewClient[v1.ShutdownHeadlessHostRequest, v1.ShutdownHeadlessHostResponse](
+			httpClient,
+			baseURL+ControllerServiceShutdownHeadlessHostProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("ShutdownHeadlessHost")),
+			connect.WithClientOptions(opts...),
+		),
+		updateHeadlessHostSettings: connect.NewClient[v1.UpdateHeadlessHostSettingsRequest, v1.UpdateHeadlessHostSettingsResponse](
+			httpClient,
+			baseURL+ControllerServiceUpdateHeadlessHostSettingsProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("UpdateHeadlessHostSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		pullLatestHostImage: connect.NewClient[v1.PullLatestHostImageRequest, v1.PullLatestHostImageResponse](
+			httpClient,
+			baseURL+ControllerServicePullLatestHostImageProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("PullLatestHostImage")),
 			connect.WithClientOptions(opts...),
 		),
 		fetchWorldInfo: connect.NewClient[v1.FetchWorldInfoRequest, v11.FetchWorldInfoResponse](
@@ -216,22 +246,25 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 
 // controllerServiceClient implements ControllerServiceClient.
 type controllerServiceClient struct {
-	listHeadlessHost        *connect.Client[v1.ListHeadlessHostRequest, v1.ListHeadlessHostResponse]
-	getHeadlessHost         *connect.Client[v1.GetHeadlessHostRequest, v1.GetHeadlessHostResponse]
-	getHeadlessHostLogs     *connect.Client[v1.GetHeadlessHostLogsRequest, v1.GetHeadlessHostLogsResponse]
-	fetchWorldInfo          *connect.Client[v1.FetchWorldInfoRequest, v11.FetchWorldInfoResponse]
-	searchUserInfo          *connect.Client[v1.SearchUserInfoRequest, v11.SearchUserInfoResponse]
-	listSessions            *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
-	getSessionDetails       *connect.Client[v1.GetSessionDetailsRequest, v1.GetSessionDetailsResponse]
-	startWorld              *connect.Client[v1.StartWorldRequest, v1.StartWorldResponse]
-	stopSession             *connect.Client[v1.StopSessionRequest, v1.StopSessionResponse]
-	saveSessionWorld        *connect.Client[v1.SaveSessionWorldRequest, v1.SaveSessionWorldResponse]
-	inviteUser              *connect.Client[v1.InviteUserRequest, v1.InviteUserResponse]
-	updateUserRole          *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
-	updateSessionParameters *connect.Client[v1.UpdateSessionParametersRequest, v1.UpdateSessionParametersResponse]
-	listUsersInSession      *connect.Client[v1.ListUsersInSessionRequest, v1.ListUsersInSessionResponse]
-	kickUser                *connect.Client[v1.KickUserRequest, v1.KickUserResponse]
-	banUser                 *connect.Client[v1.BanUserRequest, v1.BanUserResponse]
+	listHeadlessHost           *connect.Client[v1.ListHeadlessHostRequest, v1.ListHeadlessHostResponse]
+	getHeadlessHost            *connect.Client[v1.GetHeadlessHostRequest, v1.GetHeadlessHostResponse]
+	getHeadlessHostLogs        *connect.Client[v1.GetHeadlessHostLogsRequest, v1.GetHeadlessHostLogsResponse]
+	shutdownHeadlessHost       *connect.Client[v1.ShutdownHeadlessHostRequest, v1.ShutdownHeadlessHostResponse]
+	updateHeadlessHostSettings *connect.Client[v1.UpdateHeadlessHostSettingsRequest, v1.UpdateHeadlessHostSettingsResponse]
+	pullLatestHostImage        *connect.Client[v1.PullLatestHostImageRequest, v1.PullLatestHostImageResponse]
+	fetchWorldInfo             *connect.Client[v1.FetchWorldInfoRequest, v11.FetchWorldInfoResponse]
+	searchUserInfo             *connect.Client[v1.SearchUserInfoRequest, v11.SearchUserInfoResponse]
+	listSessions               *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
+	getSessionDetails          *connect.Client[v1.GetSessionDetailsRequest, v1.GetSessionDetailsResponse]
+	startWorld                 *connect.Client[v1.StartWorldRequest, v1.StartWorldResponse]
+	stopSession                *connect.Client[v1.StopSessionRequest, v1.StopSessionResponse]
+	saveSessionWorld           *connect.Client[v1.SaveSessionWorldRequest, v1.SaveSessionWorldResponse]
+	inviteUser                 *connect.Client[v1.InviteUserRequest, v1.InviteUserResponse]
+	updateUserRole             *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
+	updateSessionParameters    *connect.Client[v1.UpdateSessionParametersRequest, v1.UpdateSessionParametersResponse]
+	listUsersInSession         *connect.Client[v1.ListUsersInSessionRequest, v1.ListUsersInSessionResponse]
+	kickUser                   *connect.Client[v1.KickUserRequest, v1.KickUserResponse]
+	banUser                    *connect.Client[v1.BanUserRequest, v1.BanUserResponse]
 }
 
 // ListHeadlessHost calls hdlctrl.v1.ControllerService.ListHeadlessHost.
@@ -247,6 +280,21 @@ func (c *controllerServiceClient) GetHeadlessHost(ctx context.Context, req *conn
 // GetHeadlessHostLogs calls hdlctrl.v1.ControllerService.GetHeadlessHostLogs.
 func (c *controllerServiceClient) GetHeadlessHostLogs(ctx context.Context, req *connect.Request[v1.GetHeadlessHostLogsRequest]) (*connect.Response[v1.GetHeadlessHostLogsResponse], error) {
 	return c.getHeadlessHostLogs.CallUnary(ctx, req)
+}
+
+// ShutdownHeadlessHost calls hdlctrl.v1.ControllerService.ShutdownHeadlessHost.
+func (c *controllerServiceClient) ShutdownHeadlessHost(ctx context.Context, req *connect.Request[v1.ShutdownHeadlessHostRequest]) (*connect.Response[v1.ShutdownHeadlessHostResponse], error) {
+	return c.shutdownHeadlessHost.CallUnary(ctx, req)
+}
+
+// UpdateHeadlessHostSettings calls hdlctrl.v1.ControllerService.UpdateHeadlessHostSettings.
+func (c *controllerServiceClient) UpdateHeadlessHostSettings(ctx context.Context, req *connect.Request[v1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[v1.UpdateHeadlessHostSettingsResponse], error) {
+	return c.updateHeadlessHostSettings.CallUnary(ctx, req)
+}
+
+// PullLatestHostImage calls hdlctrl.v1.ControllerService.PullLatestHostImage.
+func (c *controllerServiceClient) PullLatestHostImage(ctx context.Context, req *connect.Request[v1.PullLatestHostImageRequest]) (*connect.Response[v1.PullLatestHostImageResponse], error) {
+	return c.pullLatestHostImage.CallUnary(ctx, req)
 }
 
 // FetchWorldInfo calls hdlctrl.v1.ControllerService.FetchWorldInfo.
@@ -319,6 +367,9 @@ type ControllerServiceHandler interface {
 	ListHeadlessHost(context.Context, *connect.Request[v1.ListHeadlessHostRequest]) (*connect.Response[v1.ListHeadlessHostResponse], error)
 	GetHeadlessHost(context.Context, *connect.Request[v1.GetHeadlessHostRequest]) (*connect.Response[v1.GetHeadlessHostResponse], error)
 	GetHeadlessHostLogs(context.Context, *connect.Request[v1.GetHeadlessHostLogsRequest]) (*connect.Response[v1.GetHeadlessHostLogsResponse], error)
+	ShutdownHeadlessHost(context.Context, *connect.Request[v1.ShutdownHeadlessHostRequest]) (*connect.Response[v1.ShutdownHeadlessHostResponse], error)
+	UpdateHeadlessHostSettings(context.Context, *connect.Request[v1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[v1.UpdateHeadlessHostSettingsResponse], error)
+	PullLatestHostImage(context.Context, *connect.Request[v1.PullLatestHostImageRequest]) (*connect.Response[v1.PullLatestHostImageResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
@@ -357,6 +408,24 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		ControllerServiceGetHeadlessHostLogsProcedure,
 		svc.GetHeadlessHostLogs,
 		connect.WithSchema(controllerServiceMethods.ByName("GetHeadlessHostLogs")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceShutdownHeadlessHostHandler := connect.NewUnaryHandler(
+		ControllerServiceShutdownHeadlessHostProcedure,
+		svc.ShutdownHeadlessHost,
+		connect.WithSchema(controllerServiceMethods.ByName("ShutdownHeadlessHost")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceUpdateHeadlessHostSettingsHandler := connect.NewUnaryHandler(
+		ControllerServiceUpdateHeadlessHostSettingsProcedure,
+		svc.UpdateHeadlessHostSettings,
+		connect.WithSchema(controllerServiceMethods.ByName("UpdateHeadlessHostSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServicePullLatestHostImageHandler := connect.NewUnaryHandler(
+		ControllerServicePullLatestHostImageProcedure,
+		svc.PullLatestHostImage,
+		connect.WithSchema(controllerServiceMethods.ByName("PullLatestHostImage")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceFetchWorldInfoHandler := connect.NewUnaryHandler(
@@ -445,6 +514,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceGetHeadlessHostHandler.ServeHTTP(w, r)
 		case ControllerServiceGetHeadlessHostLogsProcedure:
 			controllerServiceGetHeadlessHostLogsHandler.ServeHTTP(w, r)
+		case ControllerServiceShutdownHeadlessHostProcedure:
+			controllerServiceShutdownHeadlessHostHandler.ServeHTTP(w, r)
+		case ControllerServiceUpdateHeadlessHostSettingsProcedure:
+			controllerServiceUpdateHeadlessHostSettingsHandler.ServeHTTP(w, r)
+		case ControllerServicePullLatestHostImageProcedure:
+			controllerServicePullLatestHostImageHandler.ServeHTTP(w, r)
 		case ControllerServiceFetchWorldInfoProcedure:
 			controllerServiceFetchWorldInfoHandler.ServeHTTP(w, r)
 		case ControllerServiceSearchUserInfoProcedure:
@@ -490,6 +565,18 @@ func (UnimplementedControllerServiceHandler) GetHeadlessHost(context.Context, *c
 
 func (UnimplementedControllerServiceHandler) GetHeadlessHostLogs(context.Context, *connect.Request[v1.GetHeadlessHostLogsRequest]) (*connect.Response[v1.GetHeadlessHostLogsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.GetHeadlessHostLogs is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) ShutdownHeadlessHost(context.Context, *connect.Request[v1.ShutdownHeadlessHostRequest]) (*connect.Response[v1.ShutdownHeadlessHostResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.ShutdownHeadlessHost is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) UpdateHeadlessHostSettings(context.Context, *connect.Request[v1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[v1.UpdateHeadlessHostSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.UpdateHeadlessHostSettings is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) PullLatestHostImage(context.Context, *connect.Request[v1.PullLatestHostImageRequest]) (*connect.Response[v1.PullLatestHostImageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.PullLatestHostImage is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error) {

@@ -3,13 +3,17 @@ package adapter
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
@@ -22,17 +26,41 @@ import (
 var (
 	imageName    = os.Getenv("HEADLESS_IMAGE_NAME")
 	portLabelKey = "dev.baru.brhdl.rpc-port"
-	dummyHost    = &entity.HeadlessHost{
-		ID:      "1",
-		Name:    os.Getenv("DUMMY_HOST_NAME"),
-		Address: os.Getenv("DUMMY_HOST_ADDRESS"),
-	}
 )
 
 var _ port.HeadlessHostRepository = (*HeadlessHostRepository)(nil)
 
 type HeadlessHostRepository struct {
 	connections map[string]headlessv1.HeadlessControlServiceClient
+}
+
+// PullLatestContainerImage implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) PullLatestContainerImage(ctx context.Context) (string, error) {
+	cli, err := h.newDockerClient()
+	if err != nil {
+		return "", err
+	}
+	registryAuth := base64.StdEncoding.EncodeToString([]byte(os.Getenv("HEADLESS_REGISTRY_AUTH")))
+	reader, err := cli.ImagePull(ctx, os.Getenv("HEADLESS_IMAGE_NAME"), image.PullOptions{
+		All:          false,
+		RegistryAuth: registryAuth,
+	})
+	if err != nil {
+		return "", err
+	}
+	buf := new(bytes.Buffer)
+	io.Copy(buf, reader)
+
+	return buf.String(), nil
+}
+
+// Rename implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) Rename(ctx context.Context, id string, newName string) error {
+	cli, err := h.newDockerClient()
+	if err != nil {
+		return err
+	}
+	return cli.ContainerRename(ctx, id, newName)
 }
 
 // GetLogs implements port.HeadlessHostRepository.
@@ -136,32 +164,21 @@ func (h *HeadlessHostRepository) GetRpcClient(ctx context.Context, id string) (h
 
 // Find implements repository.HeadlessHostRepository.
 func (h *HeadlessHostRepository) Find(ctx context.Context, id string) (*entity.HeadlessHost, error) {
-	if id == dummyHost.ID {
-		return dummyHost, nil
-	}
 	cli, err := h.newDockerClient()
 	if err != nil {
 		return nil, err
 	}
 	containers, err := cli.ContainerList(ctx, container.ListOptions{
+		All:     true,
 		Filters: filters.NewArgs(filters.Arg("ancestor", imageName), filters.Arg("id", id)),
 	})
 	if err != nil {
 		return nil, err
 	}
 	if len(containers) == 1 {
-		host := &entity.HeadlessHost{
-			ID:      containers[0].ID,
-			Name:    containers[0].Names[0],
-			Address: fmt.Sprintf("localhost:%s", containers[0].Labels[portLabelKey]),
-		}
-		if err := h.fetchHeadlessInfo(ctx, host); err != nil {
-			return nil, err
-		}
-
-		return host, nil
+		return h.containerToEntity(ctx, containers[0])
 	}
-	return dummyHost, nil
+	return nil, fmt.Errorf("host not found")
 }
 
 // ListAll implements repository.HeadlessHostRepository.
@@ -171,25 +188,19 @@ func (h *HeadlessHostRepository) ListAll(ctx context.Context) (entity.HeadlessHo
 		return nil, err
 	}
 	containers, err := cli.ContainerList(ctx, container.ListOptions{
+		All:     true,
 		Filters: filters.NewArgs(filters.Arg("ancestor", imageName)),
 	})
 	if err != nil {
 		return nil, err
 	}
-	result := make(entity.HeadlessHostList, 0, len(containers)+1)
-	// result = append(result, dummyHost)
+	result := make(entity.HeadlessHostList, 0, len(containers))
 	for _, c := range containers {
-		if portValue, ok := c.Labels[portLabelKey]; ok && len(c.Names) > 0 {
-			host := &entity.HeadlessHost{
-				ID:      c.ID,
-				Name:    c.Names[0],
-				Address: fmt.Sprintf("localhost:%s", portValue),
-			}
-			if err := h.fetchHeadlessInfo(ctx, host); err != nil {
-				continue
-			}
-			result = append(result, host)
+		entity, err := h.containerToEntity(ctx, c)
+		if err != nil {
+			continue
 		}
+		result = append(result, entity)
 	}
 	return result, nil
 }
@@ -197,6 +208,45 @@ func (h *HeadlessHostRepository) ListAll(ctx context.Context) (entity.HeadlessHo
 func NewHeadlessHostRepository() *HeadlessHostRepository {
 	return &HeadlessHostRepository{
 		connections: make(map[string]headlessv1.HeadlessControlServiceClient),
+	}
+}
+
+func (h *HeadlessHostRepository) containerToEntity(ctx context.Context, container types.Container) (*entity.HeadlessHost, error) {
+	if portValue, ok := container.Labels[portLabelKey]; ok && len(container.Names) > 0 {
+		name := container.Names[0]
+		if len(name) > 1 && name[0] == '/' {
+			name = name[1:]
+		}
+		host := &entity.HeadlessHost{
+			ID:      container.ID,
+			Name:    name,
+			Address: fmt.Sprintf("localhost:%s", portValue),
+		}
+		host.Status = containerStatusToEntityStatus(container.State, container.Status)
+		if host.Status == entity.HeadlessHostStatus_RUNNING {
+			if err := h.fetchHeadlessInfo(ctx, host); err != nil {
+				return nil, err
+			}
+		}
+		return host, nil
+	}
+	return nil, fmt.Errorf("required label %s not found", portLabelKey)
+}
+
+func containerStatusToEntityStatus(state, status string) entity.HeadlessHostStatus {
+	switch state {
+	case "running":
+		return entity.HeadlessHostStatus_RUNNING
+	case "exited":
+		if strings.Contains(status, "Exited (0)") {
+			return entity.HeadlessHostStatus_EXITED
+		} else {
+			return entity.HeadlessHostStatus_CRASHED
+		}
+	case "dead":
+		return entity.HeadlessHostStatus_CRASHED
+	default:
+		return entity.HeadlessHostStatus_UNKNOWN
 	}
 }
 

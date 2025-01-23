@@ -20,22 +20,25 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ControllerService_ListHeadlessHost_FullMethodName        = "/hdlctrl.v1.ControllerService/ListHeadlessHost"
-	ControllerService_GetHeadlessHost_FullMethodName         = "/hdlctrl.v1.ControllerService/GetHeadlessHost"
-	ControllerService_GetHeadlessHostLogs_FullMethodName     = "/hdlctrl.v1.ControllerService/GetHeadlessHostLogs"
-	ControllerService_FetchWorldInfo_FullMethodName          = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
-	ControllerService_SearchUserInfo_FullMethodName          = "/hdlctrl.v1.ControllerService/SearchUserInfo"
-	ControllerService_ListSessions_FullMethodName            = "/hdlctrl.v1.ControllerService/ListSessions"
-	ControllerService_GetSessionDetails_FullMethodName       = "/hdlctrl.v1.ControllerService/GetSessionDetails"
-	ControllerService_StartWorld_FullMethodName              = "/hdlctrl.v1.ControllerService/StartWorld"
-	ControllerService_StopSession_FullMethodName             = "/hdlctrl.v1.ControllerService/StopSession"
-	ControllerService_SaveSessionWorld_FullMethodName        = "/hdlctrl.v1.ControllerService/SaveSessionWorld"
-	ControllerService_InviteUser_FullMethodName              = "/hdlctrl.v1.ControllerService/InviteUser"
-	ControllerService_UpdateUserRole_FullMethodName          = "/hdlctrl.v1.ControllerService/UpdateUserRole"
-	ControllerService_UpdateSessionParameters_FullMethodName = "/hdlctrl.v1.ControllerService/UpdateSessionParameters"
-	ControllerService_ListUsersInSession_FullMethodName      = "/hdlctrl.v1.ControllerService/ListUsersInSession"
-	ControllerService_KickUser_FullMethodName                = "/hdlctrl.v1.ControllerService/KickUser"
-	ControllerService_BanUser_FullMethodName                 = "/hdlctrl.v1.ControllerService/BanUser"
+	ControllerService_ListHeadlessHost_FullMethodName           = "/hdlctrl.v1.ControllerService/ListHeadlessHost"
+	ControllerService_GetHeadlessHost_FullMethodName            = "/hdlctrl.v1.ControllerService/GetHeadlessHost"
+	ControllerService_GetHeadlessHostLogs_FullMethodName        = "/hdlctrl.v1.ControllerService/GetHeadlessHostLogs"
+	ControllerService_ShutdownHeadlessHost_FullMethodName       = "/hdlctrl.v1.ControllerService/ShutdownHeadlessHost"
+	ControllerService_UpdateHeadlessHostSettings_FullMethodName = "/hdlctrl.v1.ControllerService/UpdateHeadlessHostSettings"
+	ControllerService_PullLatestHostImage_FullMethodName        = "/hdlctrl.v1.ControllerService/PullLatestHostImage"
+	ControllerService_FetchWorldInfo_FullMethodName             = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
+	ControllerService_SearchUserInfo_FullMethodName             = "/hdlctrl.v1.ControllerService/SearchUserInfo"
+	ControllerService_ListSessions_FullMethodName               = "/hdlctrl.v1.ControllerService/ListSessions"
+	ControllerService_GetSessionDetails_FullMethodName          = "/hdlctrl.v1.ControllerService/GetSessionDetails"
+	ControllerService_StartWorld_FullMethodName                 = "/hdlctrl.v1.ControllerService/StartWorld"
+	ControllerService_StopSession_FullMethodName                = "/hdlctrl.v1.ControllerService/StopSession"
+	ControllerService_SaveSessionWorld_FullMethodName           = "/hdlctrl.v1.ControllerService/SaveSessionWorld"
+	ControllerService_InviteUser_FullMethodName                 = "/hdlctrl.v1.ControllerService/InviteUser"
+	ControllerService_UpdateUserRole_FullMethodName             = "/hdlctrl.v1.ControllerService/UpdateUserRole"
+	ControllerService_UpdateSessionParameters_FullMethodName    = "/hdlctrl.v1.ControllerService/UpdateSessionParameters"
+	ControllerService_ListUsersInSession_FullMethodName         = "/hdlctrl.v1.ControllerService/ListUsersInSession"
+	ControllerService_KickUser_FullMethodName                   = "/hdlctrl.v1.ControllerService/KickUser"
+	ControllerService_BanUser_FullMethodName                    = "/hdlctrl.v1.ControllerService/BanUser"
 )
 
 // ControllerServiceClient is the client API for ControllerService service.
@@ -45,6 +48,9 @@ type ControllerServiceClient interface {
 	ListHeadlessHost(ctx context.Context, in *ListHeadlessHostRequest, opts ...grpc.CallOption) (*ListHeadlessHostResponse, error)
 	GetHeadlessHost(ctx context.Context, in *GetHeadlessHostRequest, opts ...grpc.CallOption) (*GetHeadlessHostResponse, error)
 	GetHeadlessHostLogs(ctx context.Context, in *GetHeadlessHostLogsRequest, opts ...grpc.CallOption) (*GetHeadlessHostLogsResponse, error)
+	ShutdownHeadlessHost(ctx context.Context, in *ShutdownHeadlessHostRequest, opts ...grpc.CallOption) (*ShutdownHeadlessHostResponse, error)
+	UpdateHeadlessHostSettings(ctx context.Context, in *UpdateHeadlessHostSettingsRequest, opts ...grpc.CallOption) (*UpdateHeadlessHostSettingsResponse, error)
+	PullLatestHostImage(ctx context.Context, in *PullLatestHostImageRequest, opts ...grpc.CallOption) (*PullLatestHostImageResponse, error)
 	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(ctx context.Context, in *SearchUserInfoRequest, opts ...grpc.CallOption) (*v1.SearchUserInfoResponse, error)
 	ListSessions(ctx context.Context, in *ListSessionsRequest, opts ...grpc.CallOption) (*ListSessionsResponse, error)
@@ -92,6 +98,36 @@ func (c *controllerServiceClient) GetHeadlessHostLogs(ctx context.Context, in *G
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetHeadlessHostLogsResponse)
 	err := c.cc.Invoke(ctx, ControllerService_GetHeadlessHostLogs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) ShutdownHeadlessHost(ctx context.Context, in *ShutdownHeadlessHostRequest, opts ...grpc.CallOption) (*ShutdownHeadlessHostResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ShutdownHeadlessHostResponse)
+	err := c.cc.Invoke(ctx, ControllerService_ShutdownHeadlessHost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) UpdateHeadlessHostSettings(ctx context.Context, in *UpdateHeadlessHostSettingsRequest, opts ...grpc.CallOption) (*UpdateHeadlessHostSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateHeadlessHostSettingsResponse)
+	err := c.cc.Invoke(ctx, ControllerService_UpdateHeadlessHostSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) PullLatestHostImage(ctx context.Context, in *PullLatestHostImageRequest, opts ...grpc.CallOption) (*PullLatestHostImageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PullLatestHostImageResponse)
+	err := c.cc.Invoke(ctx, ControllerService_PullLatestHostImage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -235,6 +271,9 @@ type ControllerServiceServer interface {
 	ListHeadlessHost(context.Context, *ListHeadlessHostRequest) (*ListHeadlessHostResponse, error)
 	GetHeadlessHost(context.Context, *GetHeadlessHostRequest) (*GetHeadlessHostResponse, error)
 	GetHeadlessHostLogs(context.Context, *GetHeadlessHostLogsRequest) (*GetHeadlessHostLogsResponse, error)
+	ShutdownHeadlessHost(context.Context, *ShutdownHeadlessHostRequest) (*ShutdownHeadlessHostResponse, error)
+	UpdateHeadlessHostSettings(context.Context, *UpdateHeadlessHostSettingsRequest) (*UpdateHeadlessHostSettingsResponse, error)
+	PullLatestHostImage(context.Context, *PullLatestHostImageRequest) (*PullLatestHostImageResponse, error)
 	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(context.Context, *SearchUserInfoRequest) (*v1.SearchUserInfoResponse, error)
 	ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error)
@@ -266,6 +305,15 @@ func (UnimplementedControllerServiceServer) GetHeadlessHost(context.Context, *Ge
 }
 func (UnimplementedControllerServiceServer) GetHeadlessHostLogs(context.Context, *GetHeadlessHostLogsRequest) (*GetHeadlessHostLogsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHeadlessHostLogs not implemented")
+}
+func (UnimplementedControllerServiceServer) ShutdownHeadlessHost(context.Context, *ShutdownHeadlessHostRequest) (*ShutdownHeadlessHostResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShutdownHeadlessHost not implemented")
+}
+func (UnimplementedControllerServiceServer) UpdateHeadlessHostSettings(context.Context, *UpdateHeadlessHostSettingsRequest) (*UpdateHeadlessHostSettingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateHeadlessHostSettings not implemented")
+}
+func (UnimplementedControllerServiceServer) PullLatestHostImage(context.Context, *PullLatestHostImageRequest) (*PullLatestHostImageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PullLatestHostImage not implemented")
 }
 func (UnimplementedControllerServiceServer) FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchWorldInfo not implemented")
@@ -377,6 +425,60 @@ func _ControllerService_GetHeadlessHostLogs_Handler(srv interface{}, ctx context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).GetHeadlessHostLogs(ctx, req.(*GetHeadlessHostLogsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_ShutdownHeadlessHost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShutdownHeadlessHostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).ShutdownHeadlessHost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_ShutdownHeadlessHost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).ShutdownHeadlessHost(ctx, req.(*ShutdownHeadlessHostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_UpdateHeadlessHostSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateHeadlessHostSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).UpdateHeadlessHostSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_UpdateHeadlessHostSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).UpdateHeadlessHostSettings(ctx, req.(*UpdateHeadlessHostSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_PullLatestHostImage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PullLatestHostImageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).PullLatestHostImage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_PullLatestHostImage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).PullLatestHostImage(ctx, req.(*PullLatestHostImageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -633,6 +735,18 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetHeadlessHostLogs",
 			Handler:    _ControllerService_GetHeadlessHostLogs_Handler,
+		},
+		{
+			MethodName: "ShutdownHeadlessHost",
+			Handler:    _ControllerService_ShutdownHeadlessHost_Handler,
+		},
+		{
+			MethodName: "UpdateHeadlessHostSettings",
+			Handler:    _ControllerService_UpdateHeadlessHostSettings_Handler,
+		},
+		{
+			MethodName: "PullLatestHostImage",
+			Handler:    _ControllerService_PullLatestHostImage_Handler,
 		},
 		{
 			MethodName: "FetchWorldInfo",

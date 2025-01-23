@@ -15,6 +15,7 @@ import {
 import prettyBytes from "../libs/prettyBytes";
 import { Refresh } from "@mui/icons-material";
 import { useNavigate } from "react-router";
+import { hostStatusToLabel } from "../libs/hostUtils";
 
 export default function HostList() {
   const { data, isPending, refetch } = useQuery(listHeadlessHost);
@@ -36,6 +37,7 @@ export default function HostList() {
               <TableRow>
                 <TableCell>ID</TableCell>
                 <TableCell>名前</TableCell>
+                <TableCell>ステータス</TableCell>
                 <TableCell>Resoniteバージョン</TableCell>
                 <TableCell>fps</TableCell>
                 <TableCell>アカウント名</TableCell>
@@ -52,6 +54,7 @@ export default function HostList() {
                 >
                   <TableCell>{host.id.substring(0, 12)}</TableCell>
                   <TableCell>{host.name}</TableCell>
+                  <TableCell>{hostStatusToLabel(host.status)}</TableCell>
                   <TableCell>{host.resoniteVersion}</TableCell>
                   <TableCell>{host.fps}</TableCell>
                   <TableCell>{host.accountName}</TableCell>

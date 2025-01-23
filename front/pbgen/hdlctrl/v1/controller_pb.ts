@@ -2,8 +2,8 @@
 // @generated from file hdlctrl/v1/controller.proto (package hdlctrl.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import type { BanUserRequest as BanUserRequest$1, FetchWorldInfoResponseSchema, KickUserRequest as KickUserRequest$1, SearchUserInfoRequest as SearchUserInfoRequest$1, SearchUserInfoResponseSchema, Session, UpdateSessionParametersRequest as UpdateSessionParametersRequest$1, UpdateUserRoleRequest as UpdateUserRoleRequest$1, UserInSession, WorldStartupParameters } from "../../headless/v1/headless_pb";
 import { file_headless_v1_headless } from "../../headless/v1/headless_pb";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
@@ -14,7 +14,102 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hdlctrl/v1/controller.proto.
  */
 export const file_hdlctrl_v1_controller: GenFile = /*@__PURE__*/
-  fileDesc("ChtoZGxjdHJsL3YxL2NvbnRyb2xsZXIucHJvdG8SCmhkbGN0cmwudjEioQEKGkdldEhlYWRsZXNzSG9zdExvZ3NSZXF1ZXN0Eg8KB2hvc3RfaWQYASABKAkSDwoFbGltaXQYAiABKAVIABIrCgV1bnRpbBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIABIrCgVzaW5jZRgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAEIHCgVxdWVyeSKuAQobR2V0SGVhZGxlc3NIb3N0TG9nc1Jlc3BvbnNlEjkKBGxvZ3MYASADKAsyKy5oZGxjdHJsLnYxLkdldEhlYWRsZXNzSG9zdExvZ3NSZXNwb25zZS5Mb2caVAoDTG9nEi0KCXRpbWVzdGFtcBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEAoIaXNfZXJyb3IYAiABKAgSDAoEYm9keRgDIAEoCSJgChVTZWFyY2hVc2VySW5mb1JlcXVlc3QSDwoHaG9zdF9pZBgBIAEoCRI2CgpwYXJhbWV0ZXJzGAIgASgLMiIuaGVhZGxlc3MudjEuU2VhcmNoVXNlckluZm9SZXF1ZXN0IlQKD0tpY2tVc2VyUmVxdWVzdBIPCgdob3N0X2lkGAEgASgJEjAKCnBhcmFtZXRlcnMYAiABKAsyHC5oZWFkbGVzcy52MS5LaWNrVXNlclJlcXVlc3QiEgoQS2lja1VzZXJSZXNwb25zZSJSCg5CYW5Vc2VyUmVxdWVzdBIPCgdob3N0X2lkGAEgASgJEi8KCnBhcmFtZXRlcnMYAiABKAsyGy5oZWFkbGVzcy52MS5CYW5Vc2VyUmVxdWVzdCIRCg9CYW5Vc2VyUmVzcG9uc2UiNQoVRmV0Y2hXb3JsZEluZm9SZXF1ZXN0Eg8KB2hvc3RfaWQYASABKAkSCwoDdXJsGAIgASgJIhkKF0xpc3RIZWFkbGVzc0hvc3RSZXF1ZXN0IkMKGExpc3RIZWFkbGVzc0hvc3RSZXNwb25zZRInCgVob3N0cxgBIAMoCzIYLmhkbGN0cmwudjEuSGVhZGxlc3NIb3N0IiQKFkdldEhlYWRsZXNzSG9zdFJlcXVlc3QSCgoCaWQYASABKAkiQQoXR2V0SGVhZGxlc3NIb3N0UmVzcG9uc2USJgoEaG9zdBgBIAEoCzIYLmhkbGN0cmwudjEuSGVhZGxlc3NIb3N0IjcKFkFkZEhlYWRsZXNzSG9zdFJlcXVlc3QSDAoEbmFtZRgBIAEoCRIPCgdhZGRyZXNzGAIgASgJIkEKF0FkZEhlYWRsZXNzSG9zdFJlc3BvbnNlEiYKBGhvc3QYASABKAsyGC5oZGxjdHJsLnYxLkhlYWRsZXNzSG9zdCInChlSZW1vdmVIZWFkbGVzc0hvc3RSZXF1ZXN0EgoKAmlkGAEgASgJIhwKGlJlbW92ZUhlYWRsZXNzSG9zdFJlc3BvbnNlIiYKE0xpc3RTZXNzaW9uc1JlcXVlc3QSDwoHaG9zdF9pZBgBIAEoCSI+ChRMaXN0U2Vzc2lvbnNSZXNwb25zZRImCghzZXNzaW9ucxgBIAMoCzIULmhlYWRsZXNzLnYxLlNlc3Npb24iPwoYR2V0U2Vzc2lvbkRldGFpbHNSZXF1ZXN0Eg8KB2hvc3RfaWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCSJCChlHZXRTZXNzaW9uRGV0YWlsc1Jlc3BvbnNlEiUKB3Nlc3Npb24YASABKAsyFC5oZWFkbGVzcy52MS5TZXNzaW9uIl0KEVN0YXJ0V29ybGRSZXF1ZXN0Eg8KB2hvc3RfaWQYASABKAkSNwoKcGFyYW1ldGVycxgCIAEoCzIjLmhlYWRsZXNzLnYxLldvcmxkU3RhcnR1cFBhcmFtZXRlcnMiQgoSU3RhcnRXb3JsZFJlc3BvbnNlEiwKDm9wZW5lZF9zZXNzaW9uGAEgASgLMhQuaGVhZGxlc3MudjEuU2Vzc2lvbiI5ChJTdG9wU2Vzc2lvblJlcXVlc3QSDwoHaG9zdF9pZBgBIAEoCRISCgpzZXNzaW9uX2lkGAIgASgJIhUKE1N0b3BTZXNzaW9uUmVzcG9uc2UiPgoXU2F2ZVNlc3Npb25Xb3JsZFJlcXVlc3QSDwoHaG9zdF9pZBgBIAEoCRISCgpzZXNzaW9uX2lkGAIgASgJIhoKGFNhdmVTZXNzaW9uV29ybGRSZXNwb25zZSJoChFJbnZpdGVVc2VyUmVxdWVzdBIPCgdob3N0X2lkGAEgASgJEhIKCnNlc3Npb25faWQYAiABKAkSEQoHdXNlcl9pZBgDIAEoCUgAEhMKCXVzZXJfbmFtZRgEIAEoCUgAQgYKBHVzZXIiFAoSSW52aXRlVXNlclJlc3BvbnNlImAKFVVwZGF0ZVVzZXJSb2xlUmVxdWVzdBIPCgdob3N0X2lkGAEgASgJEjYKCnBhcmFtZXRlcnMYAiABKAsyIi5oZWFkbGVzcy52MS5VcGRhdGVVc2VyUm9sZVJlcXVlc3QiJgoWVXBkYXRlVXNlclJvbGVSZXNwb25zZRIMCgRyb2xlGAEgASgJInIKHlVwZGF0ZVNlc3Npb25QYXJhbWV0ZXJzUmVxdWVzdBIPCgdob3N0X2lkGAEgASgJEj8KCnBhcmFtZXRlcnMYAiABKAsyKy5oZWFkbGVzcy52MS5VcGRhdGVTZXNzaW9uUGFyYW1ldGVyc1JlcXVlc3QiIQofVXBkYXRlU2Vzc2lvblBhcmFtZXRlcnNSZXNwb25zZSJAChlMaXN0VXNlcnNJblNlc3Npb25SZXF1ZXN0Eg8KB2hvc3RfaWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCSJHChpMaXN0VXNlcnNJblNlc3Npb25SZXNwb25zZRIpCgV1c2VycxgBIAMoCzIaLmhlYWRsZXNzLnYxLlVzZXJJblNlc3Npb24iwwEKDEhlYWRsZXNzSG9zdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB2FkZHJlc3MYAyABKAkSGAoQcmVzb25pdGVfdmVyc2lvbhgEIAEoCRISCgphY2NvdW50X2lkGAUgASgJEhQKDGFjY291bnRfbmFtZRgGIAEoCRILCgNmcHMYByABKAISGwoTc3RvcmFnZV9xdW90YV9ieXRlcxgIIAEoAxIaChJzdG9yYWdlX3VzZWRfYnl0ZXMYCSABKAMypQsKEUNvbnRyb2xsZXJTZXJ2aWNlEl0KEExpc3RIZWFkbGVzc0hvc3QSIy5oZGxjdHJsLnYxLkxpc3RIZWFkbGVzc0hvc3RSZXF1ZXN0GiQuaGRsY3RybC52MS5MaXN0SGVhZGxlc3NIb3N0UmVzcG9uc2USWgoPR2V0SGVhZGxlc3NIb3N0EiIuaGRsY3RybC52MS5HZXRIZWFkbGVzc0hvc3RSZXF1ZXN0GiMuaGRsY3RybC52MS5HZXRIZWFkbGVzc0hvc3RSZXNwb25zZRJmChNHZXRIZWFkbGVzc0hvc3RMb2dzEiYuaGRsY3RybC52MS5HZXRIZWFkbGVzc0hvc3RMb2dzUmVxdWVzdBonLmhkbGN0cmwudjEuR2V0SGVhZGxlc3NIb3N0TG9nc1Jlc3BvbnNlElgKDkZldGNoV29ybGRJbmZvEiEuaGRsY3RybC52MS5GZXRjaFdvcmxkSW5mb1JlcXVlc3QaIy5oZWFkbGVzcy52MS5GZXRjaFdvcmxkSW5mb1Jlc3BvbnNlElgKDlNlYXJjaFVzZXJJbmZvEiEuaGRsY3RybC52MS5TZWFyY2hVc2VySW5mb1JlcXVlc3QaIy5oZWFkbGVzcy52MS5TZWFyY2hVc2VySW5mb1Jlc3BvbnNlElEKDExpc3RTZXNzaW9ucxIfLmhkbGN0cmwudjEuTGlzdFNlc3Npb25zUmVxdWVzdBogLmhkbGN0cmwudjEuTGlzdFNlc3Npb25zUmVzcG9uc2USYAoRR2V0U2Vzc2lvbkRldGFpbHMSJC5oZGxjdHJsLnYxLkdldFNlc3Npb25EZXRhaWxzUmVxdWVzdBolLmhkbGN0cmwudjEuR2V0U2Vzc2lvbkRldGFpbHNSZXNwb25zZRJLCgpTdGFydFdvcmxkEh0uaGRsY3RybC52MS5TdGFydFdvcmxkUmVxdWVzdBoeLmhkbGN0cmwudjEuU3RhcnRXb3JsZFJlc3BvbnNlEk4KC1N0b3BTZXNzaW9uEh4uaGRsY3RybC52MS5TdG9wU2Vzc2lvblJlcXVlc3QaHy5oZGxjdHJsLnYxLlN0b3BTZXNzaW9uUmVzcG9uc2USXQoQU2F2ZVNlc3Npb25Xb3JsZBIjLmhkbGN0cmwudjEuU2F2ZVNlc3Npb25Xb3JsZFJlcXVlc3QaJC5oZGxjdHJsLnYxLlNhdmVTZXNzaW9uV29ybGRSZXNwb25zZRJLCgpJbnZpdGVVc2VyEh0uaGRsY3RybC52MS5JbnZpdGVVc2VyUmVxdWVzdBoeLmhkbGN0cmwudjEuSW52aXRlVXNlclJlc3BvbnNlElcKDlVwZGF0ZVVzZXJSb2xlEiEuaGRsY3RybC52MS5VcGRhdGVVc2VyUm9sZVJlcXVlc3QaIi5oZGxjdHJsLnYxLlVwZGF0ZVVzZXJSb2xlUmVzcG9uc2UScgoXVXBkYXRlU2Vzc2lvblBhcmFtZXRlcnMSKi5oZGxjdHJsLnYxLlVwZGF0ZVNlc3Npb25QYXJhbWV0ZXJzUmVxdWVzdBorLmhkbGN0cmwudjEuVXBkYXRlU2Vzc2lvblBhcmFtZXRlcnNSZXNwb25zZRJjChJMaXN0VXNlcnNJblNlc3Npb24SJS5oZGxjdHJsLnYxLkxpc3RVc2Vyc0luU2Vzc2lvblJlcXVlc3QaJi5oZGxjdHJsLnYxLkxpc3RVc2Vyc0luU2Vzc2lvblJlc3BvbnNlEkUKCEtpY2tVc2VyEhsuaGRsY3RybC52MS5LaWNrVXNlclJlcXVlc3QaHC5oZGxjdHJsLnYxLktpY2tVc2VyUmVzcG9uc2USQgoHQmFuVXNlchIaLmhkbGN0cmwudjEuQmFuVXNlclJlcXVlc3QaGy5oZGxjdHJsLnYxLkJhblVzZXJSZXNwb25zZUK9AQoOY29tLmhkbGN0cmwudjFCD0NvbnRyb2xsZXJQcm90b1ABWlFnaXRodWIuY29tL2hhbnRhYmFydTEwMTQvYmFydS1yZXNvLWhlYWRsZXNzLWNvbnRyb2xsZXIvcGJnZW4vaGRsY3RybC92MTtoZGxjdHJsdjGiAgNIWFiqAgpIZGxjdHJsLlYxygIKSGRsY3RybFxWMeICFkhkbGN0cmxcVjFcR1BCTWV0YWRhdGHqAgtIZGxjdHJsOjpWMWIGcHJvdG8z", [file_headless_v1_headless, file_google_protobuf_timestamp]);
+  fileDesc("ChtoZGxjdHJsL3YxL2NvbnRyb2xsZXIucHJvdG8SCmhkbGN0cmwudjEiHAoaUHVsbExhdGVzdEhvc3RJbWFnZVJlcXVlc3QiKwobUHVsbExhdGVzdEhvc3RJbWFnZVJlc3BvbnNlEgwKBGxvZ3MYASABKAkiUAohVXBkYXRlSGVhZGxlc3NIb3N0U2V0dGluZ3NSZXF1ZXN0Eg8KB2hvc3RfaWQYASABKAkSEQoEbmFtZRgCIAEoCUgAiAEBQgcKBV9uYW1lIiQKIlVwZGF0ZUhlYWRsZXNzSG9zdFNldHRpbmdzUmVzcG9uc2UiLgobU2h1dGRvd25IZWFkbGVzc0hvc3RSZXF1ZXN0Eg8KB2hvc3RfaWQYASABKAkiHgocU2h1dGRvd25IZWFkbGVzc0hvc3RSZXNwb25zZSKhAQoaR2V0SGVhZGxlc3NIb3N0TG9nc1JlcXVlc3QSDwoHaG9zdF9pZBgBIAEoCRIPCgVsaW1pdBgCIAEoBUgAEisKBXVudGlsGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgAEisKBXNpbmNlGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgAQgcKBXF1ZXJ5Iq4BChtHZXRIZWFkbGVzc0hvc3RMb2dzUmVzcG9uc2USOQoEbG9ncxgBIAMoCzIrLmhkbGN0cmwudjEuR2V0SGVhZGxlc3NIb3N0TG9nc1Jlc3BvbnNlLkxvZxpUCgNMb2cSLQoJdGltZXN0YW1wGAEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIQCghpc19lcnJvchgCIAEoCBIMCgRib2R5GAMgASgJImAKFVNlYXJjaFVzZXJJbmZvUmVxdWVzdBIPCgdob3N0X2lkGAEgASgJEjYKCnBhcmFtZXRlcnMYAiABKAsyIi5oZWFkbGVzcy52MS5TZWFyY2hVc2VySW5mb1JlcXVlc3QiVAoPS2lja1VzZXJSZXF1ZXN0Eg8KB2hvc3RfaWQYASABKAkSMAoKcGFyYW1ldGVycxgCIAEoCzIcLmhlYWRsZXNzLnYxLktpY2tVc2VyUmVxdWVzdCISChBLaWNrVXNlclJlc3BvbnNlIlIKDkJhblVzZXJSZXF1ZXN0Eg8KB2hvc3RfaWQYASABKAkSLwoKcGFyYW1ldGVycxgCIAEoCzIbLmhlYWRsZXNzLnYxLkJhblVzZXJSZXF1ZXN0IhEKD0JhblVzZXJSZXNwb25zZSI1ChVGZXRjaFdvcmxkSW5mb1JlcXVlc3QSDwoHaG9zdF9pZBgBIAEoCRILCgN1cmwYAiABKAkiGQoXTGlzdEhlYWRsZXNzSG9zdFJlcXVlc3QiQwoYTGlzdEhlYWRsZXNzSG9zdFJlc3BvbnNlEicKBWhvc3RzGAEgAygLMhguaGRsY3RybC52MS5IZWFkbGVzc0hvc3QiKQoWR2V0SGVhZGxlc3NIb3N0UmVxdWVzdBIPCgdob3N0X2lkGAEgASgJIkEKF0dldEhlYWRsZXNzSG9zdFJlc3BvbnNlEiYKBGhvc3QYASABKAsyGC5oZGxjdHJsLnYxLkhlYWRsZXNzSG9zdCI3ChZBZGRIZWFkbGVzc0hvc3RSZXF1ZXN0EgwKBG5hbWUYASABKAkSDwoHYWRkcmVzcxgCIAEoCSJBChdBZGRIZWFkbGVzc0hvc3RSZXNwb25zZRImCgRob3N0GAEgASgLMhguaGRsY3RybC52MS5IZWFkbGVzc0hvc3QiJgoTTGlzdFNlc3Npb25zUmVxdWVzdBIPCgdob3N0X2lkGAEgASgJIj4KFExpc3RTZXNzaW9uc1Jlc3BvbnNlEiYKCHNlc3Npb25zGAEgAygLMhQuaGVhZGxlc3MudjEuU2Vzc2lvbiI/ChhHZXRTZXNzaW9uRGV0YWlsc1JlcXVlc3QSDwoHaG9zdF9pZBgBIAEoCRISCgpzZXNzaW9uX2lkGAIgASgJIkIKGUdldFNlc3Npb25EZXRhaWxzUmVzcG9uc2USJQoHc2Vzc2lvbhgBIAEoCzIULmhlYWRsZXNzLnYxLlNlc3Npb24iXQoRU3RhcnRXb3JsZFJlcXVlc3QSDwoHaG9zdF9pZBgBIAEoCRI3CgpwYXJhbWV0ZXJzGAIgASgLMiMuaGVhZGxlc3MudjEuV29ybGRTdGFydHVwUGFyYW1ldGVycyJCChJTdGFydFdvcmxkUmVzcG9uc2USLAoOb3BlbmVkX3Nlc3Npb24YASABKAsyFC5oZWFkbGVzcy52MS5TZXNzaW9uIjkKElN0b3BTZXNzaW9uUmVxdWVzdBIPCgdob3N0X2lkGAEgASgJEhIKCnNlc3Npb25faWQYAiABKAkiFQoTU3RvcFNlc3Npb25SZXNwb25zZSI+ChdTYXZlU2Vzc2lvbldvcmxkUmVxdWVzdBIPCgdob3N0X2lkGAEgASgJEhIKCnNlc3Npb25faWQYAiABKAkiGgoYU2F2ZVNlc3Npb25Xb3JsZFJlc3BvbnNlImgKEUludml0ZVVzZXJSZXF1ZXN0Eg8KB2hvc3RfaWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCRIRCgd1c2VyX2lkGAMgASgJSAASEwoJdXNlcl9uYW1lGAQgASgJSABCBgoEdXNlciIUChJJbnZpdGVVc2VyUmVzcG9uc2UiYAoVVXBkYXRlVXNlclJvbGVSZXF1ZXN0Eg8KB2hvc3RfaWQYASABKAkSNgoKcGFyYW1ldGVycxgCIAEoCzIiLmhlYWRsZXNzLnYxLlVwZGF0ZVVzZXJSb2xlUmVxdWVzdCImChZVcGRhdGVVc2VyUm9sZVJlc3BvbnNlEgwKBHJvbGUYASABKAkicgoeVXBkYXRlU2Vzc2lvblBhcmFtZXRlcnNSZXF1ZXN0Eg8KB2hvc3RfaWQYASABKAkSPwoKcGFyYW1ldGVycxgCIAEoCzIrLmhlYWRsZXNzLnYxLlVwZGF0ZVNlc3Npb25QYXJhbWV0ZXJzUmVxdWVzdCIhCh9VcGRhdGVTZXNzaW9uUGFyYW1ldGVyc1Jlc3BvbnNlIkAKGUxpc3RVc2Vyc0luU2Vzc2lvblJlcXVlc3QSDwoHaG9zdF9pZBgBIAEoCRISCgpzZXNzaW9uX2lkGAIgASgJIkcKGkxpc3RVc2Vyc0luU2Vzc2lvblJlc3BvbnNlEikKBXVzZXJzGAEgAygLMhouaGVhZGxlc3MudjEuVXNlckluU2Vzc2lvbiLzAQoMSGVhZGxlc3NIb3N0EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSDwoHYWRkcmVzcxgDIAEoCRIYChByZXNvbml0ZV92ZXJzaW9uGAQgASgJEhIKCmFjY291bnRfaWQYBSABKAkSFAoMYWNjb3VudF9uYW1lGAYgASgJEgsKA2ZwcxgHIAEoAhIbChNzdG9yYWdlX3F1b3RhX2J5dGVzGAggASgDEhoKEnN0b3JhZ2VfdXNlZF9ieXRlcxgJIAEoAxIuCgZzdGF0dXMYCiABKA4yHi5oZGxjdHJsLnYxLkhlYWRsZXNzSG9zdFN0YXR1cyrhAQoSSGVhZGxlc3NIb3N0U3RhdHVzEiAKHEhFQURMRVNTX0hPU1RfU1RBVFVTX1VOS05PV04QABIhCh1IRUFETEVTU19IT1NUX1NUQVRVU19TVEFSVElORxABEiAKHEhFQURMRVNTX0hPU1RfU1RBVFVTX1JVTk5JTkcQAhIhCh1IRUFETEVTU19IT1NUX1NUQVRVU19TVE9QUElORxADEh8KG0hFQURMRVNTX0hPU1RfU1RBVFVTX0VYSVRFRBAEEiAKHEhFQURMRVNTX0hPU1RfU1RBVFVTX0NSQVNIRUQQBTL1DQoRQ29udHJvbGxlclNlcnZpY2USXQoQTGlzdEhlYWRsZXNzSG9zdBIjLmhkbGN0cmwudjEuTGlzdEhlYWRsZXNzSG9zdFJlcXVlc3QaJC5oZGxjdHJsLnYxLkxpc3RIZWFkbGVzc0hvc3RSZXNwb25zZRJaCg9HZXRIZWFkbGVzc0hvc3QSIi5oZGxjdHJsLnYxLkdldEhlYWRsZXNzSG9zdFJlcXVlc3QaIy5oZGxjdHJsLnYxLkdldEhlYWRsZXNzSG9zdFJlc3BvbnNlEmYKE0dldEhlYWRsZXNzSG9zdExvZ3MSJi5oZGxjdHJsLnYxLkdldEhlYWRsZXNzSG9zdExvZ3NSZXF1ZXN0GicuaGRsY3RybC52MS5HZXRIZWFkbGVzc0hvc3RMb2dzUmVzcG9uc2USaQoUU2h1dGRvd25IZWFkbGVzc0hvc3QSJy5oZGxjdHJsLnYxLlNodXRkb3duSGVhZGxlc3NIb3N0UmVxdWVzdBooLmhkbGN0cmwudjEuU2h1dGRvd25IZWFkbGVzc0hvc3RSZXNwb25zZRJ7ChpVcGRhdGVIZWFkbGVzc0hvc3RTZXR0aW5ncxItLmhkbGN0cmwudjEuVXBkYXRlSGVhZGxlc3NIb3N0U2V0dGluZ3NSZXF1ZXN0Gi4uaGRsY3RybC52MS5VcGRhdGVIZWFkbGVzc0hvc3RTZXR0aW5nc1Jlc3BvbnNlEmYKE1B1bGxMYXRlc3RIb3N0SW1hZ2USJi5oZGxjdHJsLnYxLlB1bGxMYXRlc3RIb3N0SW1hZ2VSZXF1ZXN0GicuaGRsY3RybC52MS5QdWxsTGF0ZXN0SG9zdEltYWdlUmVzcG9uc2USWAoORmV0Y2hXb3JsZEluZm8SIS5oZGxjdHJsLnYxLkZldGNoV29ybGRJbmZvUmVxdWVzdBojLmhlYWRsZXNzLnYxLkZldGNoV29ybGRJbmZvUmVzcG9uc2USWAoOU2VhcmNoVXNlckluZm8SIS5oZGxjdHJsLnYxLlNlYXJjaFVzZXJJbmZvUmVxdWVzdBojLmhlYWRsZXNzLnYxLlNlYXJjaFVzZXJJbmZvUmVzcG9uc2USUQoMTGlzdFNlc3Npb25zEh8uaGRsY3RybC52MS5MaXN0U2Vzc2lvbnNSZXF1ZXN0GiAuaGRsY3RybC52MS5MaXN0U2Vzc2lvbnNSZXNwb25zZRJgChFHZXRTZXNzaW9uRGV0YWlscxIkLmhkbGN0cmwudjEuR2V0U2Vzc2lvbkRldGFpbHNSZXF1ZXN0GiUuaGRsY3RybC52MS5HZXRTZXNzaW9uRGV0YWlsc1Jlc3BvbnNlEksKClN0YXJ0V29ybGQSHS5oZGxjdHJsLnYxLlN0YXJ0V29ybGRSZXF1ZXN0Gh4uaGRsY3RybC52MS5TdGFydFdvcmxkUmVzcG9uc2USTgoLU3RvcFNlc3Npb24SHi5oZGxjdHJsLnYxLlN0b3BTZXNzaW9uUmVxdWVzdBofLmhkbGN0cmwudjEuU3RvcFNlc3Npb25SZXNwb25zZRJdChBTYXZlU2Vzc2lvbldvcmxkEiMuaGRsY3RybC52MS5TYXZlU2Vzc2lvbldvcmxkUmVxdWVzdBokLmhkbGN0cmwudjEuU2F2ZVNlc3Npb25Xb3JsZFJlc3BvbnNlEksKCkludml0ZVVzZXISHS5oZGxjdHJsLnYxLkludml0ZVVzZXJSZXF1ZXN0Gh4uaGRsY3RybC52MS5JbnZpdGVVc2VyUmVzcG9uc2USVwoOVXBkYXRlVXNlclJvbGUSIS5oZGxjdHJsLnYxLlVwZGF0ZVVzZXJSb2xlUmVxdWVzdBoiLmhkbGN0cmwudjEuVXBkYXRlVXNlclJvbGVSZXNwb25zZRJyChdVcGRhdGVTZXNzaW9uUGFyYW1ldGVycxIqLmhkbGN0cmwudjEuVXBkYXRlU2Vzc2lvblBhcmFtZXRlcnNSZXF1ZXN0GisuaGRsY3RybC52MS5VcGRhdGVTZXNzaW9uUGFyYW1ldGVyc1Jlc3BvbnNlEmMKEkxpc3RVc2Vyc0luU2Vzc2lvbhIlLmhkbGN0cmwudjEuTGlzdFVzZXJzSW5TZXNzaW9uUmVxdWVzdBomLmhkbGN0cmwudjEuTGlzdFVzZXJzSW5TZXNzaW9uUmVzcG9uc2USRQoIS2lja1VzZXISGy5oZGxjdHJsLnYxLktpY2tVc2VyUmVxdWVzdBocLmhkbGN0cmwudjEuS2lja1VzZXJSZXNwb25zZRJCCgdCYW5Vc2VyEhouaGRsY3RybC52MS5CYW5Vc2VyUmVxdWVzdBobLmhkbGN0cmwudjEuQmFuVXNlclJlc3BvbnNlQr0BCg5jb20uaGRsY3RybC52MUIPQ29udHJvbGxlclByb3RvUAFaUWdpdGh1Yi5jb20vaGFudGFiYXJ1MTAxNC9iYXJ1LXJlc28taGVhZGxlc3MtY29udHJvbGxlci9wYmdlbi9oZGxjdHJsL3YxO2hkbGN0cmx2MaICA0hYWKoCCkhkbGN0cmwuVjHKAgpIZGxjdHJsXFYx4gIWSGRsY3RybFxWMVxHUEJNZXRhZGF0YeoCC0hkbGN0cmw6OlYxYgZwcm90bzM", [file_headless_v1_headless, file_google_protobuf_timestamp]);
+
+/**
+ * @generated from message hdlctrl.v1.PullLatestHostImageRequest
+ */
+export type PullLatestHostImageRequest = Message<"hdlctrl.v1.PullLatestHostImageRequest"> & {
+};
+
+/**
+ * Describes the message hdlctrl.v1.PullLatestHostImageRequest.
+ * Use `create(PullLatestHostImageRequestSchema)` to create a new message.
+ */
+export const PullLatestHostImageRequestSchema: GenMessage<PullLatestHostImageRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_controller, 0);
+
+/**
+ * @generated from message hdlctrl.v1.PullLatestHostImageResponse
+ */
+export type PullLatestHostImageResponse = Message<"hdlctrl.v1.PullLatestHostImageResponse"> & {
+  /**
+   * @generated from field: string logs = 1;
+   */
+  logs: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.PullLatestHostImageResponse.
+ * Use `create(PullLatestHostImageResponseSchema)` to create a new message.
+ */
+export const PullLatestHostImageResponseSchema: GenMessage<PullLatestHostImageResponse> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_controller, 1);
+
+/**
+ * @generated from message hdlctrl.v1.UpdateHeadlessHostSettingsRequest
+ */
+export type UpdateHeadlessHostSettingsRequest = Message<"hdlctrl.v1.UpdateHeadlessHostSettingsRequest"> & {
+  /**
+   * @generated from field: string host_id = 1;
+   */
+  hostId: string;
+
+  /**
+   * @generated from field: optional string name = 2;
+   */
+  name?: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.UpdateHeadlessHostSettingsRequest.
+ * Use `create(UpdateHeadlessHostSettingsRequestSchema)` to create a new message.
+ */
+export const UpdateHeadlessHostSettingsRequestSchema: GenMessage<UpdateHeadlessHostSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_controller, 2);
+
+/**
+ * @generated from message hdlctrl.v1.UpdateHeadlessHostSettingsResponse
+ */
+export type UpdateHeadlessHostSettingsResponse = Message<"hdlctrl.v1.UpdateHeadlessHostSettingsResponse"> & {
+};
+
+/**
+ * Describes the message hdlctrl.v1.UpdateHeadlessHostSettingsResponse.
+ * Use `create(UpdateHeadlessHostSettingsResponseSchema)` to create a new message.
+ */
+export const UpdateHeadlessHostSettingsResponseSchema: GenMessage<UpdateHeadlessHostSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_controller, 3);
+
+/**
+ * @generated from message hdlctrl.v1.ShutdownHeadlessHostRequest
+ */
+export type ShutdownHeadlessHostRequest = Message<"hdlctrl.v1.ShutdownHeadlessHostRequest"> & {
+  /**
+   * @generated from field: string host_id = 1;
+   */
+  hostId: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.ShutdownHeadlessHostRequest.
+ * Use `create(ShutdownHeadlessHostRequestSchema)` to create a new message.
+ */
+export const ShutdownHeadlessHostRequestSchema: GenMessage<ShutdownHeadlessHostRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_controller, 4);
+
+/**
+ * @generated from message hdlctrl.v1.ShutdownHeadlessHostResponse
+ */
+export type ShutdownHeadlessHostResponse = Message<"hdlctrl.v1.ShutdownHeadlessHostResponse"> & {
+};
+
+/**
+ * Describes the message hdlctrl.v1.ShutdownHeadlessHostResponse.
+ * Use `create(ShutdownHeadlessHostResponseSchema)` to create a new message.
+ */
+export const ShutdownHeadlessHostResponseSchema: GenMessage<ShutdownHeadlessHostResponse> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_controller, 5);
 
 /**
  * @generated from message hdlctrl.v1.GetHeadlessHostLogsRequest
@@ -60,7 +155,7 @@ export type GetHeadlessHostLogsRequest = Message<"hdlctrl.v1.GetHeadlessHostLogs
  * Use `create(GetHeadlessHostLogsRequestSchema)` to create a new message.
  */
 export const GetHeadlessHostLogsRequestSchema: GenMessage<GetHeadlessHostLogsRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 0);
+  messageDesc(file_hdlctrl_v1_controller, 6);
 
 /**
  * @generated from message hdlctrl.v1.GetHeadlessHostLogsResponse
@@ -79,7 +174,7 @@ export type GetHeadlessHostLogsResponse = Message<"hdlctrl.v1.GetHeadlessHostLog
  * Use `create(GetHeadlessHostLogsResponseSchema)` to create a new message.
  */
 export const GetHeadlessHostLogsResponseSchema: GenMessage<GetHeadlessHostLogsResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 1);
+  messageDesc(file_hdlctrl_v1_controller, 7);
 
 /**
  * @generated from message hdlctrl.v1.GetHeadlessHostLogsResponse.Log
@@ -106,7 +201,7 @@ export type GetHeadlessHostLogsResponse_Log = Message<"hdlctrl.v1.GetHeadlessHos
  * Use `create(GetHeadlessHostLogsResponse_LogSchema)` to create a new message.
  */
 export const GetHeadlessHostLogsResponse_LogSchema: GenMessage<GetHeadlessHostLogsResponse_Log> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 1, 0);
+  messageDesc(file_hdlctrl_v1_controller, 7, 0);
 
 /**
  * @generated from message hdlctrl.v1.SearchUserInfoRequest
@@ -128,7 +223,7 @@ export type SearchUserInfoRequest = Message<"hdlctrl.v1.SearchUserInfoRequest"> 
  * Use `create(SearchUserInfoRequestSchema)` to create a new message.
  */
 export const SearchUserInfoRequestSchema: GenMessage<SearchUserInfoRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 2);
+  messageDesc(file_hdlctrl_v1_controller, 8);
 
 /**
  * @generated from message hdlctrl.v1.KickUserRequest
@@ -150,7 +245,7 @@ export type KickUserRequest = Message<"hdlctrl.v1.KickUserRequest"> & {
  * Use `create(KickUserRequestSchema)` to create a new message.
  */
 export const KickUserRequestSchema: GenMessage<KickUserRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 3);
+  messageDesc(file_hdlctrl_v1_controller, 9);
 
 /**
  * @generated from message hdlctrl.v1.KickUserResponse
@@ -163,7 +258,7 @@ export type KickUserResponse = Message<"hdlctrl.v1.KickUserResponse"> & {
  * Use `create(KickUserResponseSchema)` to create a new message.
  */
 export const KickUserResponseSchema: GenMessage<KickUserResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 4);
+  messageDesc(file_hdlctrl_v1_controller, 10);
 
 /**
  * @generated from message hdlctrl.v1.BanUserRequest
@@ -185,7 +280,7 @@ export type BanUserRequest = Message<"hdlctrl.v1.BanUserRequest"> & {
  * Use `create(BanUserRequestSchema)` to create a new message.
  */
 export const BanUserRequestSchema: GenMessage<BanUserRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 5);
+  messageDesc(file_hdlctrl_v1_controller, 11);
 
 /**
  * @generated from message hdlctrl.v1.BanUserResponse
@@ -198,7 +293,7 @@ export type BanUserResponse = Message<"hdlctrl.v1.BanUserResponse"> & {
  * Use `create(BanUserResponseSchema)` to create a new message.
  */
 export const BanUserResponseSchema: GenMessage<BanUserResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 6);
+  messageDesc(file_hdlctrl_v1_controller, 12);
 
 /**
  * @generated from message hdlctrl.v1.FetchWorldInfoRequest
@@ -220,7 +315,7 @@ export type FetchWorldInfoRequest = Message<"hdlctrl.v1.FetchWorldInfoRequest"> 
  * Use `create(FetchWorldInfoRequestSchema)` to create a new message.
  */
 export const FetchWorldInfoRequestSchema: GenMessage<FetchWorldInfoRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 7);
+  messageDesc(file_hdlctrl_v1_controller, 13);
 
 /**
  * @generated from message hdlctrl.v1.ListHeadlessHostRequest
@@ -233,7 +328,7 @@ export type ListHeadlessHostRequest = Message<"hdlctrl.v1.ListHeadlessHostReques
  * Use `create(ListHeadlessHostRequestSchema)` to create a new message.
  */
 export const ListHeadlessHostRequestSchema: GenMessage<ListHeadlessHostRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 8);
+  messageDesc(file_hdlctrl_v1_controller, 14);
 
 /**
  * @generated from message hdlctrl.v1.ListHeadlessHostResponse
@@ -250,16 +345,16 @@ export type ListHeadlessHostResponse = Message<"hdlctrl.v1.ListHeadlessHostRespo
  * Use `create(ListHeadlessHostResponseSchema)` to create a new message.
  */
 export const ListHeadlessHostResponseSchema: GenMessage<ListHeadlessHostResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 9);
+  messageDesc(file_hdlctrl_v1_controller, 15);
 
 /**
  * @generated from message hdlctrl.v1.GetHeadlessHostRequest
  */
 export type GetHeadlessHostRequest = Message<"hdlctrl.v1.GetHeadlessHostRequest"> & {
   /**
-   * @generated from field: string id = 1;
+   * @generated from field: string host_id = 1;
    */
-  id: string;
+  hostId: string;
 };
 
 /**
@@ -267,7 +362,7 @@ export type GetHeadlessHostRequest = Message<"hdlctrl.v1.GetHeadlessHostRequest"
  * Use `create(GetHeadlessHostRequestSchema)` to create a new message.
  */
 export const GetHeadlessHostRequestSchema: GenMessage<GetHeadlessHostRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 10);
+  messageDesc(file_hdlctrl_v1_controller, 16);
 
 /**
  * @generated from message hdlctrl.v1.GetHeadlessHostResponse
@@ -284,7 +379,7 @@ export type GetHeadlessHostResponse = Message<"hdlctrl.v1.GetHeadlessHostRespons
  * Use `create(GetHeadlessHostResponseSchema)` to create a new message.
  */
 export const GetHeadlessHostResponseSchema: GenMessage<GetHeadlessHostResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 11);
+  messageDesc(file_hdlctrl_v1_controller, 17);
 
 /**
  * @generated from message hdlctrl.v1.AddHeadlessHostRequest
@@ -306,7 +401,7 @@ export type AddHeadlessHostRequest = Message<"hdlctrl.v1.AddHeadlessHostRequest"
  * Use `create(AddHeadlessHostRequestSchema)` to create a new message.
  */
 export const AddHeadlessHostRequestSchema: GenMessage<AddHeadlessHostRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 12);
+  messageDesc(file_hdlctrl_v1_controller, 18);
 
 /**
  * @generated from message hdlctrl.v1.AddHeadlessHostResponse
@@ -323,37 +418,7 @@ export type AddHeadlessHostResponse = Message<"hdlctrl.v1.AddHeadlessHostRespons
  * Use `create(AddHeadlessHostResponseSchema)` to create a new message.
  */
 export const AddHeadlessHostResponseSchema: GenMessage<AddHeadlessHostResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 13);
-
-/**
- * @generated from message hdlctrl.v1.RemoveHeadlessHostRequest
- */
-export type RemoveHeadlessHostRequest = Message<"hdlctrl.v1.RemoveHeadlessHostRequest"> & {
-  /**
-   * @generated from field: string id = 1;
-   */
-  id: string;
-};
-
-/**
- * Describes the message hdlctrl.v1.RemoveHeadlessHostRequest.
- * Use `create(RemoveHeadlessHostRequestSchema)` to create a new message.
- */
-export const RemoveHeadlessHostRequestSchema: GenMessage<RemoveHeadlessHostRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 14);
-
-/**
- * @generated from message hdlctrl.v1.RemoveHeadlessHostResponse
- */
-export type RemoveHeadlessHostResponse = Message<"hdlctrl.v1.RemoveHeadlessHostResponse"> & {
-};
-
-/**
- * Describes the message hdlctrl.v1.RemoveHeadlessHostResponse.
- * Use `create(RemoveHeadlessHostResponseSchema)` to create a new message.
- */
-export const RemoveHeadlessHostResponseSchema: GenMessage<RemoveHeadlessHostResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 15);
+  messageDesc(file_hdlctrl_v1_controller, 19);
 
 /**
  * @generated from message hdlctrl.v1.ListSessionsRequest
@@ -370,7 +435,7 @@ export type ListSessionsRequest = Message<"hdlctrl.v1.ListSessionsRequest"> & {
  * Use `create(ListSessionsRequestSchema)` to create a new message.
  */
 export const ListSessionsRequestSchema: GenMessage<ListSessionsRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 16);
+  messageDesc(file_hdlctrl_v1_controller, 20);
 
 /**
  * @generated from message hdlctrl.v1.ListSessionsResponse
@@ -387,7 +452,7 @@ export type ListSessionsResponse = Message<"hdlctrl.v1.ListSessionsResponse"> & 
  * Use `create(ListSessionsResponseSchema)` to create a new message.
  */
 export const ListSessionsResponseSchema: GenMessage<ListSessionsResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 17);
+  messageDesc(file_hdlctrl_v1_controller, 21);
 
 /**
  * @generated from message hdlctrl.v1.GetSessionDetailsRequest
@@ -409,7 +474,7 @@ export type GetSessionDetailsRequest = Message<"hdlctrl.v1.GetSessionDetailsRequ
  * Use `create(GetSessionDetailsRequestSchema)` to create a new message.
  */
 export const GetSessionDetailsRequestSchema: GenMessage<GetSessionDetailsRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 18);
+  messageDesc(file_hdlctrl_v1_controller, 22);
 
 /**
  * @generated from message hdlctrl.v1.GetSessionDetailsResponse
@@ -426,7 +491,7 @@ export type GetSessionDetailsResponse = Message<"hdlctrl.v1.GetSessionDetailsRes
  * Use `create(GetSessionDetailsResponseSchema)` to create a new message.
  */
 export const GetSessionDetailsResponseSchema: GenMessage<GetSessionDetailsResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 19);
+  messageDesc(file_hdlctrl_v1_controller, 23);
 
 /**
  * @generated from message hdlctrl.v1.StartWorldRequest
@@ -448,7 +513,7 @@ export type StartWorldRequest = Message<"hdlctrl.v1.StartWorldRequest"> & {
  * Use `create(StartWorldRequestSchema)` to create a new message.
  */
 export const StartWorldRequestSchema: GenMessage<StartWorldRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 20);
+  messageDesc(file_hdlctrl_v1_controller, 24);
 
 /**
  * @generated from message hdlctrl.v1.StartWorldResponse
@@ -465,7 +530,7 @@ export type StartWorldResponse = Message<"hdlctrl.v1.StartWorldResponse"> & {
  * Use `create(StartWorldResponseSchema)` to create a new message.
  */
 export const StartWorldResponseSchema: GenMessage<StartWorldResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 21);
+  messageDesc(file_hdlctrl_v1_controller, 25);
 
 /**
  * @generated from message hdlctrl.v1.StopSessionRequest
@@ -487,7 +552,7 @@ export type StopSessionRequest = Message<"hdlctrl.v1.StopSessionRequest"> & {
  * Use `create(StopSessionRequestSchema)` to create a new message.
  */
 export const StopSessionRequestSchema: GenMessage<StopSessionRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 22);
+  messageDesc(file_hdlctrl_v1_controller, 26);
 
 /**
  * @generated from message hdlctrl.v1.StopSessionResponse
@@ -500,7 +565,7 @@ export type StopSessionResponse = Message<"hdlctrl.v1.StopSessionResponse"> & {
  * Use `create(StopSessionResponseSchema)` to create a new message.
  */
 export const StopSessionResponseSchema: GenMessage<StopSessionResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 23);
+  messageDesc(file_hdlctrl_v1_controller, 27);
 
 /**
  * @generated from message hdlctrl.v1.SaveSessionWorldRequest
@@ -522,7 +587,7 @@ export type SaveSessionWorldRequest = Message<"hdlctrl.v1.SaveSessionWorldReques
  * Use `create(SaveSessionWorldRequestSchema)` to create a new message.
  */
 export const SaveSessionWorldRequestSchema: GenMessage<SaveSessionWorldRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 24);
+  messageDesc(file_hdlctrl_v1_controller, 28);
 
 /**
  * @generated from message hdlctrl.v1.SaveSessionWorldResponse
@@ -535,7 +600,7 @@ export type SaveSessionWorldResponse = Message<"hdlctrl.v1.SaveSessionWorldRespo
  * Use `create(SaveSessionWorldResponseSchema)` to create a new message.
  */
 export const SaveSessionWorldResponseSchema: GenMessage<SaveSessionWorldResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 25);
+  messageDesc(file_hdlctrl_v1_controller, 29);
 
 /**
  * @generated from message hdlctrl.v1.InviteUserRequest
@@ -574,7 +639,7 @@ export type InviteUserRequest = Message<"hdlctrl.v1.InviteUserRequest"> & {
  * Use `create(InviteUserRequestSchema)` to create a new message.
  */
 export const InviteUserRequestSchema: GenMessage<InviteUserRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 26);
+  messageDesc(file_hdlctrl_v1_controller, 30);
 
 /**
  * @generated from message hdlctrl.v1.InviteUserResponse
@@ -587,7 +652,7 @@ export type InviteUserResponse = Message<"hdlctrl.v1.InviteUserResponse"> & {
  * Use `create(InviteUserResponseSchema)` to create a new message.
  */
 export const InviteUserResponseSchema: GenMessage<InviteUserResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 27);
+  messageDesc(file_hdlctrl_v1_controller, 31);
 
 /**
  * @generated from message hdlctrl.v1.UpdateUserRoleRequest
@@ -609,7 +674,7 @@ export type UpdateUserRoleRequest = Message<"hdlctrl.v1.UpdateUserRoleRequest"> 
  * Use `create(UpdateUserRoleRequestSchema)` to create a new message.
  */
 export const UpdateUserRoleRequestSchema: GenMessage<UpdateUserRoleRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 28);
+  messageDesc(file_hdlctrl_v1_controller, 32);
 
 /**
  * @generated from message hdlctrl.v1.UpdateUserRoleResponse
@@ -626,7 +691,7 @@ export type UpdateUserRoleResponse = Message<"hdlctrl.v1.UpdateUserRoleResponse"
  * Use `create(UpdateUserRoleResponseSchema)` to create a new message.
  */
 export const UpdateUserRoleResponseSchema: GenMessage<UpdateUserRoleResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 29);
+  messageDesc(file_hdlctrl_v1_controller, 33);
 
 /**
  * @generated from message hdlctrl.v1.UpdateSessionParametersRequest
@@ -648,7 +713,7 @@ export type UpdateSessionParametersRequest = Message<"hdlctrl.v1.UpdateSessionPa
  * Use `create(UpdateSessionParametersRequestSchema)` to create a new message.
  */
 export const UpdateSessionParametersRequestSchema: GenMessage<UpdateSessionParametersRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 30);
+  messageDesc(file_hdlctrl_v1_controller, 34);
 
 /**
  * @generated from message hdlctrl.v1.UpdateSessionParametersResponse
@@ -661,7 +726,7 @@ export type UpdateSessionParametersResponse = Message<"hdlctrl.v1.UpdateSessionP
  * Use `create(UpdateSessionParametersResponseSchema)` to create a new message.
  */
 export const UpdateSessionParametersResponseSchema: GenMessage<UpdateSessionParametersResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 31);
+  messageDesc(file_hdlctrl_v1_controller, 35);
 
 /**
  * @generated from message hdlctrl.v1.ListUsersInSessionRequest
@@ -683,7 +748,7 @@ export type ListUsersInSessionRequest = Message<"hdlctrl.v1.ListUsersInSessionRe
  * Use `create(ListUsersInSessionRequestSchema)` to create a new message.
  */
 export const ListUsersInSessionRequestSchema: GenMessage<ListUsersInSessionRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 32);
+  messageDesc(file_hdlctrl_v1_controller, 36);
 
 /**
  * @generated from message hdlctrl.v1.ListUsersInSessionResponse
@@ -700,7 +765,7 @@ export type ListUsersInSessionResponse = Message<"hdlctrl.v1.ListUsersInSessionR
  * Use `create(ListUsersInSessionResponseSchema)` to create a new message.
  */
 export const ListUsersInSessionResponseSchema: GenMessage<ListUsersInSessionResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 33);
+  messageDesc(file_hdlctrl_v1_controller, 37);
 
 /**
  * @generated from message hdlctrl.v1.HeadlessHost
@@ -750,6 +815,11 @@ export type HeadlessHost = Message<"hdlctrl.v1.HeadlessHost"> & {
    * @generated from field: int64 storage_used_bytes = 9;
    */
   storageUsedBytes: bigint;
+
+  /**
+   * @generated from field: hdlctrl.v1.HeadlessHostStatus status = 10;
+   */
+  status: HeadlessHostStatus;
 };
 
 /**
@@ -757,7 +827,48 @@ export type HeadlessHost = Message<"hdlctrl.v1.HeadlessHost"> & {
  * Use `create(HeadlessHostSchema)` to create a new message.
  */
 export const HeadlessHostSchema: GenMessage<HeadlessHost> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_controller, 34);
+  messageDesc(file_hdlctrl_v1_controller, 38);
+
+/**
+ * @generated from enum hdlctrl.v1.HeadlessHostStatus
+ */
+export enum HeadlessHostStatus {
+  /**
+   * @generated from enum value: HEADLESS_HOST_STATUS_UNKNOWN = 0;
+   */
+  UNKNOWN = 0,
+
+  /**
+   * @generated from enum value: HEADLESS_HOST_STATUS_STARTING = 1;
+   */
+  STARTING = 1,
+
+  /**
+   * @generated from enum value: HEADLESS_HOST_STATUS_RUNNING = 2;
+   */
+  RUNNING = 2,
+
+  /**
+   * @generated from enum value: HEADLESS_HOST_STATUS_STOPPING = 3;
+   */
+  STOPPING = 3,
+
+  /**
+   * @generated from enum value: HEADLESS_HOST_STATUS_EXITED = 4;
+   */
+  EXITED = 4,
+
+  /**
+   * @generated from enum value: HEADLESS_HOST_STATUS_CRASHED = 5;
+   */
+  CRASHED = 5,
+}
+
+/**
+ * Describes the enum hdlctrl.v1.HeadlessHostStatus.
+ */
+export const HeadlessHostStatusSchema: GenEnum<HeadlessHostStatus> = /*@__PURE__*/
+  enumDesc(file_hdlctrl_v1_controller, 0);
 
 /**
  * @generated from service hdlctrl.v1.ControllerService
@@ -786,6 +897,30 @@ export const ControllerService: GenService<{
     methodKind: "unary";
     input: typeof GetHeadlessHostLogsRequestSchema;
     output: typeof GetHeadlessHostLogsResponseSchema;
+  },
+  /**
+   * @generated from rpc hdlctrl.v1.ControllerService.ShutdownHeadlessHost
+   */
+  shutdownHeadlessHost: {
+    methodKind: "unary";
+    input: typeof ShutdownHeadlessHostRequestSchema;
+    output: typeof ShutdownHeadlessHostResponseSchema;
+  },
+  /**
+   * @generated from rpc hdlctrl.v1.ControllerService.UpdateHeadlessHostSettings
+   */
+  updateHeadlessHostSettings: {
+    methodKind: "unary";
+    input: typeof UpdateHeadlessHostSettingsRequestSchema;
+    output: typeof UpdateHeadlessHostSettingsResponseSchema;
+  },
+  /**
+   * @generated from rpc hdlctrl.v1.ControllerService.PullLatestHostImage
+   */
+  pullLatestHostImage: {
+    methodKind: "unary";
+    input: typeof PullLatestHostImageRequestSchema;
+    output: typeof PullLatestHostImageResponseSchema;
   },
   /**
    * @generated from rpc hdlctrl.v1.ControllerService.FetchWorldInfo

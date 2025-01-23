@@ -20,6 +20,21 @@ export const getHeadlessHost = ControllerService.method.getHeadlessHost;
 export const getHeadlessHostLogs = ControllerService.method.getHeadlessHostLogs;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.ShutdownHeadlessHost
+ */
+export const shutdownHeadlessHost = ControllerService.method.shutdownHeadlessHost;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.UpdateHeadlessHostSettings
+ */
+export const updateHeadlessHostSettings = ControllerService.method.updateHeadlessHostSettings;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.PullLatestHostImage
+ */
+export const pullLatestHostImage = ControllerService.method.pullLatestHostImage;
+
+/**
  * @generated from rpc hdlctrl.v1.ControllerService.FetchWorldInfo
  */
 export const fetchWorldInfo = ControllerService.method.fetchWorldInfo;

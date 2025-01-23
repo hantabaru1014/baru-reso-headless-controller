@@ -6,6 +6,7 @@ import SelectField, { type SelectFieldOption } from "./SelectField";
 export default function EditableSelectField<V>(
   props: Omit<ComponentProps<typeof SelectField<V>>, "onChange"> & {
     onSave: (value: V) => Promise<{ ok: boolean; error?: string }>;
+    isLoading?: boolean;
   },
 ) {
   const [isEditing, setIsEditing] = useState(false);
@@ -44,6 +45,7 @@ export default function EditableSelectField<V>(
       onSave={handleSave}
       onCancel={handleCancel}
       readonly={props.readOnly}
+      isLoading={props.isLoading}
     >
       {isEditing ? (
         <SelectField

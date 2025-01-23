@@ -9,6 +9,9 @@ service ControllerService {
   rpc ListHeadlessHost(ListHeadlessHostRequest) returns (ListHeadlessHostResponse);
   rpc GetHeadlessHost(GetHeadlessHostRequest) returns (GetHeadlessHostResponse);
   rpc GetHeadlessHostLogs(GetHeadlessHostLogsRequest) returns (GetHeadlessHostLogsResponse);
+  rpc ShutdownHeadlessHost(ShutdownHeadlessHostRequest) returns (ShutdownHeadlessHostResponse);
+  rpc UpdateHeadlessHostSettings(UpdateHeadlessHostSettingsRequest) returns (UpdateHeadlessHostSettingsResponse);
+  rpc PullLatestHostImage(PullLatestHostImageRequest) returns (PullLatestHostImageResponse);
 
   rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
   rpc SearchUserInfo(SearchUserInfoRequest) returns (headless.v1.SearchUserInfoResponse);
@@ -25,6 +28,25 @@ service ControllerService {
   rpc KickUser(KickUserRequest) returns (KickUserResponse);
   rpc BanUser(BanUserRequest) returns (BanUserResponse);
 }
+
+message PullLatestHostImageRequest {}
+
+message PullLatestHostImageResponse {
+  string logs = 1;
+}
+
+message UpdateHeadlessHostSettingsRequest {
+  string host_id = 1;
+  optional string name = 2;
+}
+
+message UpdateHeadlessHostSettingsResponse {}
+
+message ShutdownHeadlessHostRequest {
+  string host_id = 1;
+}
+
+message ShutdownHeadlessHostResponse {}
 
 message GetHeadlessHostLogsRequest {
   string host_id = 1;
@@ -79,7 +101,7 @@ message ListHeadlessHostResponse {
 }
 
 message GetHeadlessHostRequest {
-  string id = 1;
+  string host_id = 1;
 }
 
 message GetHeadlessHostResponse {
@@ -94,12 +116,6 @@ message AddHeadlessHostRequest {
 message AddHeadlessHostResponse {
   HeadlessHost host = 1;
 }
-
-message RemoveHeadlessHostRequest {
-  string id = 1;
-}
-
-message RemoveHeadlessHostResponse {}
 
 message ListSessionsRequest {
   string host_id = 1;
@@ -179,6 +195,15 @@ message ListUsersInSessionResponse {
 
 // models
 
+enum HeadlessHostStatus {
+  HEADLESS_HOST_STATUS_UNKNOWN = 0;
+  HEADLESS_HOST_STATUS_STARTING = 1;
+  HEADLESS_HOST_STATUS_RUNNING = 2;
+  HEADLESS_HOST_STATUS_STOPPING = 3;
+  HEADLESS_HOST_STATUS_EXITED = 4;
+  HEADLESS_HOST_STATUS_CRASHED = 5;
+}
+
 message HeadlessHost {
   string id = 1;
   string name = 2;
@@ -189,4 +214,5 @@ message HeadlessHost {
   float fps = 7;
   int64 storage_quota_bytes = 8;
   int64 storage_used_bytes = 9;
+  HeadlessHostStatus status = 10;
 }

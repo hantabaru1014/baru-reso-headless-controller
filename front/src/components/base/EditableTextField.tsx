@@ -5,6 +5,7 @@ import { ComponentProps, useState } from "react";
 export default function EditableTextField(
   props: ComponentProps<typeof TextField> & {
     readonly?: boolean;
+    isLoading?: boolean;
     onSave: (value: string) => Promise<{ ok: boolean; error?: string }>;
   },
 ) {
@@ -40,6 +41,7 @@ export default function EditableTextField(
       onSave={handleSave}
       onCancel={handleCancel}
       readonly={props.readonly}
+      isLoading={props.isLoading}
     >
       <TextField
         {...props}

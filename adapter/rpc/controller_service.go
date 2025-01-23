@@ -34,6 +34,32 @@ func (c *ControllerService) NewHandler() (string, http.Handler) {
 	return hdlctrlv1connect.NewControllerServiceHandler(c, interceptors)
 }
 
+// PullLatestHostImage implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) PullLatestHostImage(ctx context.Context, req *connect.Request[hdlctrlv1.PullLatestHostImageRequest]) (*connect.Response[hdlctrlv1.PullLatestHostImageResponse], error) {
+	logs, err := c.hhrepo.PullLatestContainerImage(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.PullLatestHostImageResponse{
+		Logs: logs,
+	})
+	return res, nil
+}
+
+// UpdateHeadlessHostSettings implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) UpdateHeadlessHostSettings(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[hdlctrlv1.UpdateHeadlessHostSettingsResponse], error) {
+	if req.Msg.Name != nil {
+		err := c.hhrepo.Rename(ctx, req.Msg.HostId, req.Msg.GetName())
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.UpdateHeadlessHostSettingsResponse{})
+	return res, nil
+}
+
 // GetHeadlessHostLogs implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) GetHeadlessHostLogs(ctx context.Context, req *connect.Request[hdlctrlv1.GetHeadlessHostLogsRequest]) (*connect.Response[hdlctrlv1.GetHeadlessHostLogsResponse], error) {
 	until := req.Msg.GetUntil()
@@ -62,6 +88,21 @@ func (c *ControllerService) GetHeadlessHostLogs(ctx context.Context, req *connec
 	res := connect.NewResponse(&hdlctrlv1.GetHeadlessHostLogsResponse{
 		Logs: protoLogs,
 	})
+	return res, nil
+}
+
+// ShutdownHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) ShutdownHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.ShutdownHeadlessHostRequest]) (*connect.Response[hdlctrlv1.ShutdownHeadlessHostResponse], error) {
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	_, err = conn.Shutdown(ctx, &headlessv1.ShutdownRequest{})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.ShutdownHeadlessHostResponse{})
 	return res, nil
 }
 
@@ -129,7 +170,7 @@ func (c *ControllerService) FetchWorldInfo(ctx context.Context, req *connect.Req
 
 // GetHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) GetHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.GetHeadlessHostRequest]) (*connect.Response[hdlctrlv1.GetHeadlessHostResponse], error) {
-	host, err := c.hhrepo.Find(ctx, req.Msg.Id)
+	host, err := c.hhrepo.Find(ctx, req.Msg.HostId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
