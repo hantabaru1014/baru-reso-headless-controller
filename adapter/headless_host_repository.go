@@ -24,14 +24,49 @@ import (
 )
 
 var (
-	imageName    = os.Getenv("HEADLESS_IMAGE_NAME")
-	portLabelKey = "dev.baru.brhdl.rpc-port"
+	imageName            = os.Getenv("HEADLESS_IMAGE_NAME")
+	portLabelKey         = "dev.baru.brhdl.rpc-port"
+	containerStopTimeout = 2 * 60
 )
 
 var _ port.HeadlessHostRepository = (*HeadlessHostRepository)(nil)
 
 type HeadlessHostRepository struct {
 	connections map[string]headlessv1.HeadlessControlServiceClient
+}
+
+// Restart implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) Restart(ctx context.Context, host *entity.HeadlessHost) (string, error) {
+	cli, err := h.newDockerClient()
+	if err != nil {
+		return "", fmt.Errorf("failed to create docker client: %w", err)
+	}
+	inspectResult, err := cli.ContainerInspect(ctx, host.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to inspect container: %w", err)
+	}
+	if host.Status == entity.HeadlessHostStatus_RUNNING {
+		err = cli.ContainerStop(ctx, inspectResult.ID, container.StopOptions{
+			Timeout: &containerStopTimeout,
+		})
+		if err != nil {
+			return "", fmt.Errorf("failed to stop container: %w", err)
+		}
+	}
+	err = cli.ContainerRemove(ctx, inspectResult.ID, container.RemoveOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to remove container: %w", err)
+	}
+	resp, err := cli.ContainerCreate(ctx, inspectResult.Config, inspectResult.HostConfig, nil, nil, host.Name)
+	if err != nil {
+		return "", fmt.Errorf("failed to create container: %w", err)
+	}
+	err = cli.ContainerStart(ctx, resp.ID, container.StartOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to start container: %w", err)
+	}
+
+	return resp.ID, nil
 }
 
 // PullLatestContainerImage implements port.HeadlessHostRepository.

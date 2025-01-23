@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
   getHeadlessHost,
+  restartHeadlessHost,
   shutdownHeadlessHost,
   updateHeadlessHostSettings,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
@@ -10,11 +11,14 @@ import ReadOnlyField from "./base/ReadOnlyField";
 import prettyBytes from "../libs/prettyBytes";
 import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { hostStatusToLabel } from "../libs/hostUtils";
+import { useNavigate } from "react-router";
 
 export default function HostDetailPanel({ hostId }: { hostId: string }) {
+  const navigate = useNavigate();
   const { data, isPending, refetch } = useQuery(getHeadlessHost, { hostId });
   const { mutateAsync: shutdownHost } = useMutation(shutdownHeadlessHost);
   const { mutateAsync: updateHost } = useMutation(updateHeadlessHostSettings);
+  const { mutateAsync: restartHost } = useMutation(restartHeadlessHost);
 
   return (
     <Grid2 container spacing={2}>
@@ -49,12 +53,31 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
               color="warning"
               onClick={async () => {
                 await shutdownHost({ hostId });
+                setTimeout(() => {
+                  refetch();
+                }, 1000);
               }}
               disabled={
                 isPending || data?.host?.status !== HeadlessHostStatus.RUNNING
               }
             >
               シャットダウン
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={async () => {
+                setTimeout(() => {
+                  refetch();
+                }, 1000);
+                const result = await restartHost({ hostId, withUpdate: true });
+                if (result.newHostId) {
+                  navigate(`/hosts/${result.newHostId}`);
+                }
+              }}
+              disabled={isPending}
+            >
+              再起動
             </Button>
           </Stack>
         </Stack>

@@ -12,6 +12,7 @@ service ControllerService {
   rpc ShutdownHeadlessHost(ShutdownHeadlessHostRequest) returns (ShutdownHeadlessHostResponse);
   rpc UpdateHeadlessHostSettings(UpdateHeadlessHostSettingsRequest) returns (UpdateHeadlessHostSettingsResponse);
   rpc PullLatestHostImage(PullLatestHostImageRequest) returns (PullLatestHostImageResponse);
+  rpc RestartHeadlessHost(RestartHeadlessHostRequest) returns (RestartHeadlessHostResponse);
 
   rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
   rpc SearchUserInfo(SearchUserInfoRequest) returns (headless.v1.SearchUserInfoResponse);
@@ -27,6 +28,15 @@ service ControllerService {
   rpc ListUsersInSession(ListUsersInSessionRequest) returns (ListUsersInSessionResponse);
   rpc KickUser(KickUserRequest) returns (KickUserResponse);
   rpc BanUser(BanUserRequest) returns (BanUserResponse);
+}
+
+message RestartHeadlessHostRequest {
+  string host_id = 1;
+  bool with_update = 2;
+}
+
+message RestartHeadlessHostResponse {
+  optional string new_host_id = 1;
 }
 
 message PullLatestHostImageRequest {}

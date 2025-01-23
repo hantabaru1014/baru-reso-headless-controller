@@ -22,4 +22,5 @@ type HeadlessHostRepository interface {
 	GetLogs(ctx context.Context, id string, limit int32, until, since string) (LogLineList, error)
 	Rename(ctx context.Context, id, newName string) error
 	PullLatestContainerImage(ctx context.Context) (string, error)
+	Restart(ctx context.Context, host *entity.HeadlessHost) (string, error)
 }

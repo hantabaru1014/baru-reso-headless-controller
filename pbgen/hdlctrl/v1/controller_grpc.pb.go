@@ -26,6 +26,7 @@ const (
 	ControllerService_ShutdownHeadlessHost_FullMethodName       = "/hdlctrl.v1.ControllerService/ShutdownHeadlessHost"
 	ControllerService_UpdateHeadlessHostSettings_FullMethodName = "/hdlctrl.v1.ControllerService/UpdateHeadlessHostSettings"
 	ControllerService_PullLatestHostImage_FullMethodName        = "/hdlctrl.v1.ControllerService/PullLatestHostImage"
+	ControllerService_RestartHeadlessHost_FullMethodName        = "/hdlctrl.v1.ControllerService/RestartHeadlessHost"
 	ControllerService_FetchWorldInfo_FullMethodName             = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
 	ControllerService_SearchUserInfo_FullMethodName             = "/hdlctrl.v1.ControllerService/SearchUserInfo"
 	ControllerService_ListSessions_FullMethodName               = "/hdlctrl.v1.ControllerService/ListSessions"
@@ -51,6 +52,7 @@ type ControllerServiceClient interface {
 	ShutdownHeadlessHost(ctx context.Context, in *ShutdownHeadlessHostRequest, opts ...grpc.CallOption) (*ShutdownHeadlessHostResponse, error)
 	UpdateHeadlessHostSettings(ctx context.Context, in *UpdateHeadlessHostSettingsRequest, opts ...grpc.CallOption) (*UpdateHeadlessHostSettingsResponse, error)
 	PullLatestHostImage(ctx context.Context, in *PullLatestHostImageRequest, opts ...grpc.CallOption) (*PullLatestHostImageResponse, error)
+	RestartHeadlessHost(ctx context.Context, in *RestartHeadlessHostRequest, opts ...grpc.CallOption) (*RestartHeadlessHostResponse, error)
 	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(ctx context.Context, in *SearchUserInfoRequest, opts ...grpc.CallOption) (*v1.SearchUserInfoResponse, error)
 	ListSessions(ctx context.Context, in *ListSessionsRequest, opts ...grpc.CallOption) (*ListSessionsResponse, error)
@@ -128,6 +130,16 @@ func (c *controllerServiceClient) PullLatestHostImage(ctx context.Context, in *P
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PullLatestHostImageResponse)
 	err := c.cc.Invoke(ctx, ControllerService_PullLatestHostImage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) RestartHeadlessHost(ctx context.Context, in *RestartHeadlessHostRequest, opts ...grpc.CallOption) (*RestartHeadlessHostResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RestartHeadlessHostResponse)
+	err := c.cc.Invoke(ctx, ControllerService_RestartHeadlessHost_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -274,6 +286,7 @@ type ControllerServiceServer interface {
 	ShutdownHeadlessHost(context.Context, *ShutdownHeadlessHostRequest) (*ShutdownHeadlessHostResponse, error)
 	UpdateHeadlessHostSettings(context.Context, *UpdateHeadlessHostSettingsRequest) (*UpdateHeadlessHostSettingsResponse, error)
 	PullLatestHostImage(context.Context, *PullLatestHostImageRequest) (*PullLatestHostImageResponse, error)
+	RestartHeadlessHost(context.Context, *RestartHeadlessHostRequest) (*RestartHeadlessHostResponse, error)
 	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(context.Context, *SearchUserInfoRequest) (*v1.SearchUserInfoResponse, error)
 	ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error)
@@ -314,6 +327,9 @@ func (UnimplementedControllerServiceServer) UpdateHeadlessHostSettings(context.C
 }
 func (UnimplementedControllerServiceServer) PullLatestHostImage(context.Context, *PullLatestHostImageRequest) (*PullLatestHostImageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PullLatestHostImage not implemented")
+}
+func (UnimplementedControllerServiceServer) RestartHeadlessHost(context.Context, *RestartHeadlessHostRequest) (*RestartHeadlessHostResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RestartHeadlessHost not implemented")
 }
 func (UnimplementedControllerServiceServer) FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchWorldInfo not implemented")
@@ -479,6 +495,24 @@ func _ControllerService_PullLatestHostImage_Handler(srv interface{}, ctx context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).PullLatestHostImage(ctx, req.(*PullLatestHostImageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_RestartHeadlessHost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RestartHeadlessHostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).RestartHeadlessHost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_RestartHeadlessHost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).RestartHeadlessHost(ctx, req.(*RestartHeadlessHostRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -747,6 +781,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PullLatestHostImage",
 			Handler:    _ControllerService_PullLatestHostImage_Handler,
+		},
+		{
+			MethodName: "RestartHeadlessHost",
+			Handler:    _ControllerService_RestartHeadlessHost_Handler,
 		},
 		{
 			MethodName: "FetchWorldInfo",

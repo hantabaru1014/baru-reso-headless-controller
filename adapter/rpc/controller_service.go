@@ -34,6 +34,30 @@ func (c *ControllerService) NewHandler() (string, http.Handler) {
 	return hdlctrlv1connect.NewControllerServiceHandler(c, interceptors)
 }
 
+// RestartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) RestartHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.RestartHeadlessHostRequest]) (*connect.Response[hdlctrlv1.RestartHeadlessHostResponse], error) {
+	host, err := c.hhrepo.Find(ctx, req.Msg.HostId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if req.Msg.WithUpdate {
+		_, err := c.hhrepo.PullLatestContainerImage(ctx)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+	// TODO: うまい具合に非同期化する
+	newId, err := c.hhrepo.Restart(ctx, host)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.RestartHeadlessHostResponse{
+		NewHostId: &newId,
+	})
+	return res, nil
+}
+
 // PullLatestHostImage implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) PullLatestHostImage(ctx context.Context, req *connect.Request[hdlctrlv1.PullLatestHostImageRequest]) (*connect.Response[hdlctrlv1.PullLatestHostImageResponse], error) {
 	logs, err := c.hhrepo.PullLatestContainerImage(ctx)

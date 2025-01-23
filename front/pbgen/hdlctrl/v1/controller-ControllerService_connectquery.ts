@@ -35,6 +35,11 @@ export const updateHeadlessHostSettings = ControllerService.method.updateHeadles
 export const pullLatestHostImage = ControllerService.method.pullLatestHostImage;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.RestartHeadlessHost
+ */
+export const restartHeadlessHost = ControllerService.method.restartHeadlessHost;
+
+/**
  * @generated from rpc hdlctrl.v1.ControllerService.FetchWorldInfo
  */
 export const fetchWorldInfo = ControllerService.method.fetchWorldInfo;
