@@ -2,9 +2,10 @@ import { useAtom } from "jotai";
 import { selectedHostAtom } from "../atoms/selectedHostAtom";
 import { useQuery } from "@connectrpc/connect-query";
 import { listHeadlessHost } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import Loading from "./base/Loading";
 import { useEffect } from "react";
 import SelectField from "./base/SelectField";
+import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
+import { Skeleton } from "@mui/material";
 
 export default function HostSelector() {
   const [selectedHost, setSelectedHost] = useAtom(selectedHostAtom);
@@ -16,23 +17,29 @@ export default function HostSelector() {
         id: data?.hosts[0].id,
         name: data?.hosts[0].name,
       });
+    } else if (status === "error") {
+      setSelectedHost(null);
     }
-  }, [status]);
+  }, [status, data]);
 
-  return (
-    <Loading loading={status === "pending"}>
+  if (status === "success") {
+    return (
       <SelectField
         label="Host"
         options={
-          data?.hosts.map((host) => ({
-            id: host.id,
-            label: host.name,
-            value: host,
-          })) ?? []
+          data?.hosts
+            .filter((host) => host.status === HeadlessHostStatus.RUNNING)
+            .map((host) => ({
+              id: host.id,
+              label: `${host.name} (${host.id.slice(0, 6)})`,
+              value: host,
+            })) ?? []
         }
         selectedId={selectedHost?.id || ""}
         onChange={(option) => setSelectedHost(option.value ?? null)}
       />
-    </Loading>
-  );
+    );
+  } else {
+    return <Skeleton variant="rectangular" />;
+  }
 }

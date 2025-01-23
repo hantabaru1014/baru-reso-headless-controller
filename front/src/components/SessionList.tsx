@@ -1,6 +1,7 @@
 import {
   Button,
   IconButton,
+  Skeleton,
   Stack,
   Table,
   TableBody,
@@ -14,7 +15,6 @@ import { useQuery } from "@connectrpc/connect-query";
 import { listSessions } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { useAtom } from "jotai";
 import { selectedHostAtom } from "../atoms/selectedHostAtom";
-import Loading from "./base/Loading";
 import { useNavigate } from "react-router";
 import { AccessLevels } from "../constants";
 
@@ -39,37 +39,72 @@ export default function SessionList() {
           <RefreshIcon />
         </IconButton>
       </Stack>
-      <Loading loading={status === "pending"}>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>セッション名</TableCell>
-                <TableCell>アクセスレベル</TableCell>
-                <TableCell>ユーザー数</TableCell>
+      <TableContainer>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>セッション名</TableCell>
+              <TableCell>アクセスレベル</TableCell>
+              <TableCell>ユーザー数</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {data?.sessions.map((session) => (
+              <TableRow
+                key={session.id}
+                onClick={() => navigate(`/sessions/${session.id}`)}
+                hover
+                sx={{ cursor: "pointer" }}
+              >
+                <TableCell>{session.name}</TableCell>
+                <TableCell>
+                  {AccessLevels[session.accessLevel - 1].label}
+                </TableCell>
+                <TableCell>
+                  {session.usersCount}/{session.maxUsers}
+                </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {data?.sessions.map((session) => (
-                <TableRow
-                  key={session.id}
-                  onClick={() => navigate(`/sessions/${session.id}`)}
-                  hover
-                  sx={{ cursor: "pointer" }}
-                >
-                  <TableCell>{session.name}</TableCell>
+            ))}
+            {status === "pending" && (
+              <>
+                <TableRow>
                   <TableCell>
-                    {AccessLevels[session.accessLevel - 1].label}
+                    <Skeleton variant="rectangular" />
                   </TableCell>
                   <TableCell>
-                    {session.usersCount}/{session.maxUsers}
+                    <Skeleton variant="rectangular" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton variant="rectangular" />
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Loading>
+                <TableRow>
+                  <TableCell>
+                    <Skeleton variant="rectangular" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton variant="rectangular" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton variant="rectangular" />
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    <Skeleton variant="rectangular" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton variant="rectangular" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton variant="rectangular" />
+                  </TableCell>
+                </TableRow>
+              </>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Stack>
   );
 }
