@@ -84,6 +84,21 @@ const (
 	// HeadlessControlServiceSearchUserInfoProcedure is the fully-qualified name of the
 	// HeadlessControlService's SearchUserInfo RPC.
 	HeadlessControlServiceSearchUserInfoProcedure = "/headless.v1.HeadlessControlService/SearchUserInfo"
+	// HeadlessControlServiceGetFriendRequestsProcedure is the fully-qualified name of the
+	// HeadlessControlService's GetFriendRequests RPC.
+	HeadlessControlServiceGetFriendRequestsProcedure = "/headless.v1.HeadlessControlService/GetFriendRequests"
+	// HeadlessControlServiceAcceptFriendRequestsProcedure is the fully-qualified name of the
+	// HeadlessControlService's AcceptFriendRequests RPC.
+	HeadlessControlServiceAcceptFriendRequestsProcedure = "/headless.v1.HeadlessControlService/AcceptFriendRequests"
+	// HeadlessControlServiceListContactsProcedure is the fully-qualified name of the
+	// HeadlessControlService's ListContacts RPC.
+	HeadlessControlServiceListContactsProcedure = "/headless.v1.HeadlessControlService/ListContacts"
+	// HeadlessControlServiceGetContactMessagesProcedure is the fully-qualified name of the
+	// HeadlessControlService's GetContactMessages RPC.
+	HeadlessControlServiceGetContactMessagesProcedure = "/headless.v1.HeadlessControlService/GetContactMessages"
+	// HeadlessControlServiceSendContactMessageProcedure is the fully-qualified name of the
+	// HeadlessControlService's SendContactMessage RPC.
+	HeadlessControlServiceSendContactMessageProcedure = "/headless.v1.HeadlessControlService/SendContactMessage"
 )
 
 // HeadlessControlServiceClient is a client for the headless.v1.HeadlessControlService service.
@@ -106,6 +121,11 @@ type HeadlessControlServiceClient interface {
 	GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v1.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v1.SearchUserInfoResponse], error)
+	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v1.GetFriendRequestsResponse], error)
+	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
+	ListContacts(context.Context, *connect.Request[v1.ListContactsRequest]) (*connect.Response[v1.ListContactsResponse], error)
+	GetContactMessages(context.Context, *connect.Request[v1.GetContactMessagesRequest]) (*connect.Response[v1.GetContactMessagesResponse], error)
+	SendContactMessage(context.Context, *connect.Request[v1.SendContactMessageRequest]) (*connect.Response[v1.SendContactMessageResponse], error)
 }
 
 // NewHeadlessControlServiceClient constructs a client for the headless.v1.HeadlessControlService
@@ -221,6 +241,36 @@ func NewHeadlessControlServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(headlessControlServiceMethods.ByName("SearchUserInfo")),
 			connect.WithClientOptions(opts...),
 		),
+		getFriendRequests: connect.NewClient[v1.GetFriendRequestsRequest, v1.GetFriendRequestsResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceGetFriendRequestsProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("GetFriendRequests")),
+			connect.WithClientOptions(opts...),
+		),
+		acceptFriendRequests: connect.NewClient[v1.AcceptFriendRequestsRequest, v1.AcceptFriendRequestsResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceAcceptFriendRequestsProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("AcceptFriendRequests")),
+			connect.WithClientOptions(opts...),
+		),
+		listContacts: connect.NewClient[v1.ListContactsRequest, v1.ListContactsResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceListContactsProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("ListContacts")),
+			connect.WithClientOptions(opts...),
+		),
+		getContactMessages: connect.NewClient[v1.GetContactMessagesRequest, v1.GetContactMessagesResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceGetContactMessagesProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("GetContactMessages")),
+			connect.WithClientOptions(opts...),
+		),
+		sendContactMessage: connect.NewClient[v1.SendContactMessageRequest, v1.SendContactMessageResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceSendContactMessageProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("SendContactMessage")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -243,6 +293,11 @@ type headlessControlServiceClient struct {
 	getAccountInfo          *connect.Client[v1.GetAccountInfoRequest, v1.GetAccountInfoResponse]
 	fetchWorldInfo          *connect.Client[v1.FetchWorldInfoRequest, v1.FetchWorldInfoResponse]
 	searchUserInfo          *connect.Client[v1.SearchUserInfoRequest, v1.SearchUserInfoResponse]
+	getFriendRequests       *connect.Client[v1.GetFriendRequestsRequest, v1.GetFriendRequestsResponse]
+	acceptFriendRequests    *connect.Client[v1.AcceptFriendRequestsRequest, v1.AcceptFriendRequestsResponse]
+	listContacts            *connect.Client[v1.ListContactsRequest, v1.ListContactsResponse]
+	getContactMessages      *connect.Client[v1.GetContactMessagesRequest, v1.GetContactMessagesResponse]
+	sendContactMessage      *connect.Client[v1.SendContactMessageRequest, v1.SendContactMessageResponse]
 }
 
 // GetAbout calls headless.v1.HeadlessControlService.GetAbout.
@@ -330,6 +385,31 @@ func (c *headlessControlServiceClient) SearchUserInfo(ctx context.Context, req *
 	return c.searchUserInfo.CallUnary(ctx, req)
 }
 
+// GetFriendRequests calls headless.v1.HeadlessControlService.GetFriendRequests.
+func (c *headlessControlServiceClient) GetFriendRequests(ctx context.Context, req *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v1.GetFriendRequestsResponse], error) {
+	return c.getFriendRequests.CallUnary(ctx, req)
+}
+
+// AcceptFriendRequests calls headless.v1.HeadlessControlService.AcceptFriendRequests.
+func (c *headlessControlServiceClient) AcceptFriendRequests(ctx context.Context, req *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error) {
+	return c.acceptFriendRequests.CallUnary(ctx, req)
+}
+
+// ListContacts calls headless.v1.HeadlessControlService.ListContacts.
+func (c *headlessControlServiceClient) ListContacts(ctx context.Context, req *connect.Request[v1.ListContactsRequest]) (*connect.Response[v1.ListContactsResponse], error) {
+	return c.listContacts.CallUnary(ctx, req)
+}
+
+// GetContactMessages calls headless.v1.HeadlessControlService.GetContactMessages.
+func (c *headlessControlServiceClient) GetContactMessages(ctx context.Context, req *connect.Request[v1.GetContactMessagesRequest]) (*connect.Response[v1.GetContactMessagesResponse], error) {
+	return c.getContactMessages.CallUnary(ctx, req)
+}
+
+// SendContactMessage calls headless.v1.HeadlessControlService.SendContactMessage.
+func (c *headlessControlServiceClient) SendContactMessage(ctx context.Context, req *connect.Request[v1.SendContactMessageRequest]) (*connect.Response[v1.SendContactMessageResponse], error) {
+	return c.sendContactMessage.CallUnary(ctx, req)
+}
+
 // HeadlessControlServiceHandler is an implementation of the headless.v1.HeadlessControlService
 // service.
 type HeadlessControlServiceHandler interface {
@@ -351,6 +431,11 @@ type HeadlessControlServiceHandler interface {
 	GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v1.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v1.SearchUserInfoResponse], error)
+	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v1.GetFriendRequestsResponse], error)
+	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
+	ListContacts(context.Context, *connect.Request[v1.ListContactsRequest]) (*connect.Response[v1.ListContactsResponse], error)
+	GetContactMessages(context.Context, *connect.Request[v1.GetContactMessagesRequest]) (*connect.Response[v1.GetContactMessagesResponse], error)
+	SendContactMessage(context.Context, *connect.Request[v1.SendContactMessageRequest]) (*connect.Response[v1.SendContactMessageResponse], error)
 }
 
 // NewHeadlessControlServiceHandler builds an HTTP handler from the service implementation. It
@@ -462,6 +547,36 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 		connect.WithSchema(headlessControlServiceMethods.ByName("SearchUserInfo")),
 		connect.WithHandlerOptions(opts...),
 	)
+	headlessControlServiceGetFriendRequestsHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceGetFriendRequestsProcedure,
+		svc.GetFriendRequests,
+		connect.WithSchema(headlessControlServiceMethods.ByName("GetFriendRequests")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceAcceptFriendRequestsHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceAcceptFriendRequestsProcedure,
+		svc.AcceptFriendRequests,
+		connect.WithSchema(headlessControlServiceMethods.ByName("AcceptFriendRequests")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceListContactsHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceListContactsProcedure,
+		svc.ListContacts,
+		connect.WithSchema(headlessControlServiceMethods.ByName("ListContacts")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceGetContactMessagesHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceGetContactMessagesProcedure,
+		svc.GetContactMessages,
+		connect.WithSchema(headlessControlServiceMethods.ByName("GetContactMessages")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceSendContactMessageHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceSendContactMessageProcedure,
+		svc.SendContactMessage,
+		connect.WithSchema(headlessControlServiceMethods.ByName("SendContactMessage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/headless.v1.HeadlessControlService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case HeadlessControlServiceGetAboutProcedure:
@@ -498,6 +613,16 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 			headlessControlServiceFetchWorldInfoHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceSearchUserInfoProcedure:
 			headlessControlServiceSearchUserInfoHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceGetFriendRequestsProcedure:
+			headlessControlServiceGetFriendRequestsHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceAcceptFriendRequestsProcedure:
+			headlessControlServiceAcceptFriendRequestsHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceListContactsProcedure:
+			headlessControlServiceListContactsHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceGetContactMessagesProcedure:
+			headlessControlServiceGetContactMessagesHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceSendContactMessageProcedure:
+			headlessControlServiceSendContactMessageHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -573,4 +698,24 @@ func (UnimplementedHeadlessControlServiceHandler) FetchWorldInfo(context.Context
 
 func (UnimplementedHeadlessControlServiceHandler) SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v1.SearchUserInfoResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.SearchUserInfo is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v1.GetFriendRequestsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.GetFriendRequests is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.AcceptFriendRequests is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) ListContacts(context.Context, *connect.Request[v1.ListContactsRequest]) (*connect.Response[v1.ListContactsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.ListContacts is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) GetContactMessages(context.Context, *connect.Request[v1.GetContactMessagesRequest]) (*connect.Response[v1.GetContactMessagesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.GetContactMessages is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) SendContactMessage(context.Context, *connect.Request[v1.SendContactMessageRequest]) (*connect.Response[v1.SendContactMessageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.SendContactMessage is not implemented"))
 }

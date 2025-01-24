@@ -90,3 +90,28 @@ export const fetchWorldInfo = HeadlessControlService.method.fetchWorldInfo;
  * @generated from rpc headless.v1.HeadlessControlService.SearchUserInfo
  */
 export const searchUserInfo = HeadlessControlService.method.searchUserInfo;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.GetFriendRequests
+ */
+export const getFriendRequests = HeadlessControlService.method.getFriendRequests;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.AcceptFriendRequests
+ */
+export const acceptFriendRequests = HeadlessControlService.method.acceptFriendRequests;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.ListContacts
+ */
+export const listContacts = HeadlessControlService.method.listContacts;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.GetContactMessages
+ */
+export const getContactMessages = HeadlessControlService.method.getContactMessages;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.SendContactMessage
+ */
+export const sendContactMessage = HeadlessControlService.method.sendContactMessage;

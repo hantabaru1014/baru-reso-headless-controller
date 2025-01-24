@@ -36,6 +36,11 @@ const (
 	HeadlessControlService_GetAccountInfo_FullMethodName          = "/headless.v1.HeadlessControlService/GetAccountInfo"
 	HeadlessControlService_FetchWorldInfo_FullMethodName          = "/headless.v1.HeadlessControlService/FetchWorldInfo"
 	HeadlessControlService_SearchUserInfo_FullMethodName          = "/headless.v1.HeadlessControlService/SearchUserInfo"
+	HeadlessControlService_GetFriendRequests_FullMethodName       = "/headless.v1.HeadlessControlService/GetFriendRequests"
+	HeadlessControlService_AcceptFriendRequests_FullMethodName    = "/headless.v1.HeadlessControlService/AcceptFriendRequests"
+	HeadlessControlService_ListContacts_FullMethodName            = "/headless.v1.HeadlessControlService/ListContacts"
+	HeadlessControlService_GetContactMessages_FullMethodName      = "/headless.v1.HeadlessControlService/GetContactMessages"
+	HeadlessControlService_SendContactMessage_FullMethodName      = "/headless.v1.HeadlessControlService/SendContactMessage"
 )
 
 // HeadlessControlServiceClient is the client API for HeadlessControlService service.
@@ -60,6 +65,11 @@ type HeadlessControlServiceClient interface {
 	GetAccountInfo(ctx context.Context, in *GetAccountInfoRequest, opts ...grpc.CallOption) (*GetAccountInfoResponse, error)
 	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*FetchWorldInfoResponse, error)
 	SearchUserInfo(ctx context.Context, in *SearchUserInfoRequest, opts ...grpc.CallOption) (*SearchUserInfoResponse, error)
+	GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*GetFriendRequestsResponse, error)
+	AcceptFriendRequests(ctx context.Context, in *AcceptFriendRequestsRequest, opts ...grpc.CallOption) (*AcceptFriendRequestsResponse, error)
+	ListContacts(ctx context.Context, in *ListContactsRequest, opts ...grpc.CallOption) (*ListContactsResponse, error)
+	GetContactMessages(ctx context.Context, in *GetContactMessagesRequest, opts ...grpc.CallOption) (*GetContactMessagesResponse, error)
+	SendContactMessage(ctx context.Context, in *SendContactMessageRequest, opts ...grpc.CallOption) (*SendContactMessageResponse, error)
 }
 
 type headlessControlServiceClient struct {
@@ -240,6 +250,56 @@ func (c *headlessControlServiceClient) SearchUserInfo(ctx context.Context, in *S
 	return out, nil
 }
 
+func (c *headlessControlServiceClient) GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*GetFriendRequestsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFriendRequestsResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_GetFriendRequests_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) AcceptFriendRequests(ctx context.Context, in *AcceptFriendRequestsRequest, opts ...grpc.CallOption) (*AcceptFriendRequestsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AcceptFriendRequestsResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_AcceptFriendRequests_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) ListContacts(ctx context.Context, in *ListContactsRequest, opts ...grpc.CallOption) (*ListContactsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListContactsResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_ListContacts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) GetContactMessages(ctx context.Context, in *GetContactMessagesRequest, opts ...grpc.CallOption) (*GetContactMessagesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetContactMessagesResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_GetContactMessages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) SendContactMessage(ctx context.Context, in *SendContactMessageRequest, opts ...grpc.CallOption) (*SendContactMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendContactMessageResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_SendContactMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // HeadlessControlServiceServer is the server API for HeadlessControlService service.
 // All implementations must embed UnimplementedHeadlessControlServiceServer
 // for forward compatibility.
@@ -262,6 +322,11 @@ type HeadlessControlServiceServer interface {
 	GetAccountInfo(context.Context, *GetAccountInfoRequest) (*GetAccountInfoResponse, error)
 	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*FetchWorldInfoResponse, error)
 	SearchUserInfo(context.Context, *SearchUserInfoRequest) (*SearchUserInfoResponse, error)
+	GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*GetFriendRequestsResponse, error)
+	AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error)
+	ListContacts(context.Context, *ListContactsRequest) (*ListContactsResponse, error)
+	GetContactMessages(context.Context, *GetContactMessagesRequest) (*GetContactMessagesResponse, error)
+	SendContactMessage(context.Context, *SendContactMessageRequest) (*SendContactMessageResponse, error)
 	mustEmbedUnimplementedHeadlessControlServiceServer()
 }
 
@@ -322,6 +387,21 @@ func (UnimplementedHeadlessControlServiceServer) FetchWorldInfo(context.Context,
 }
 func (UnimplementedHeadlessControlServiceServer) SearchUserInfo(context.Context, *SearchUserInfoRequest) (*SearchUserInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SearchUserInfo not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*GetFriendRequestsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFriendRequests not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AcceptFriendRequests not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) ListContacts(context.Context, *ListContactsRequest) (*ListContactsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListContacts not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) GetContactMessages(context.Context, *GetContactMessagesRequest) (*GetContactMessagesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetContactMessages not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) SendContactMessage(context.Context, *SendContactMessageRequest) (*SendContactMessageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendContactMessage not implemented")
 }
 func (UnimplementedHeadlessControlServiceServer) mustEmbedUnimplementedHeadlessControlServiceServer() {
 }
@@ -651,6 +731,96 @@ func _HeadlessControlService_SearchUserInfo_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _HeadlessControlService_GetFriendRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFriendRequestsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).GetFriendRequests(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_GetFriendRequests_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).GetFriendRequests(ctx, req.(*GetFriendRequestsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_AcceptFriendRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AcceptFriendRequestsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).AcceptFriendRequests(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_AcceptFriendRequests_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).AcceptFriendRequests(ctx, req.(*AcceptFriendRequestsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_ListContacts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListContactsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).ListContacts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_ListContacts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).ListContacts(ctx, req.(*ListContactsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_GetContactMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetContactMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).GetContactMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_GetContactMessages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).GetContactMessages(ctx, req.(*GetContactMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_SendContactMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendContactMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).SendContactMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_SendContactMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).SendContactMessage(ctx, req.(*SendContactMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // HeadlessControlService_ServiceDesc is the grpc.ServiceDesc for HeadlessControlService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -725,6 +895,26 @@ var HeadlessControlService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SearchUserInfo",
 			Handler:    _HeadlessControlService_SearchUserInfo_Handler,
+		},
+		{
+			MethodName: "GetFriendRequests",
+			Handler:    _HeadlessControlService_GetFriendRequests_Handler,
+		},
+		{
+			MethodName: "AcceptFriendRequests",
+			Handler:    _HeadlessControlService_AcceptFriendRequests_Handler,
+		},
+		{
+			MethodName: "ListContacts",
+			Handler:    _HeadlessControlService_ListContacts_Handler,
+		},
+		{
+			MethodName: "GetContactMessages",
+			Handler:    _HeadlessControlService_GetContactMessages_Handler,
+		},
+		{
+			MethodName: "SendContactMessage",
+			Handler:    _HeadlessControlService_SendContactMessage_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
