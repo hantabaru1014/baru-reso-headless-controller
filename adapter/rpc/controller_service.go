@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -13,6 +12,7 @@ import (
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -21,11 +21,13 @@ var _ hdlctrlv1connect.ControllerServiceHandler = (*ControllerService)(nil)
 
 type ControllerService struct {
 	hhrepo port.HeadlessHostRepository
+	hhuc   *usecase.HeadlessHostUsecase
 }
 
-func NewControllerService(hhrepo port.HeadlessHostRepository) *ControllerService {
+func NewControllerService(hhrepo port.HeadlessHostRepository, hhuc *usecase.HeadlessHostUsecase) *ControllerService {
 	return &ControllerService{
 		hhrepo: hhrepo,
+		hhuc:   hhuc,
 	}
 }
 
@@ -36,18 +38,8 @@ func (c *ControllerService) NewHandler() (string, http.Handler) {
 
 // RestartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) RestartHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.RestartHeadlessHostRequest]) (*connect.Response[hdlctrlv1.RestartHeadlessHostResponse], error) {
-	host, err := c.hhrepo.Find(ctx, req.Msg.HostId)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	if req.Msg.WithUpdate {
-		_, err := c.hhrepo.PullLatestContainerImage(ctx)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
-		}
-	}
 	// TODO: うまい具合に非同期化する
-	newId, err := c.hhrepo.Restart(ctx, host)
+	newId, err := c.hhuc.HeadlessHostRestart(ctx, req.Msg.HostId, req.Msg.WithUpdate)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -96,7 +88,7 @@ func (c *ControllerService) GetHeadlessHostLogs(ctx context.Context, req *connec
 	if since != nil {
 		sinceStr = fmt.Sprintf("%d", since.AsTime().Unix())
 	}
-	logs, err := c.hhrepo.GetLogs(ctx, req.Msg.HostId, req.Msg.GetLimit(), untilStr, sinceStr)
+	logs, err := c.hhuc.HeadlessHostGetLogs(ctx, req.Msg.HostId, untilStr, sinceStr, req.Msg.GetLimit())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -117,11 +109,7 @@ func (c *ControllerService) GetHeadlessHostLogs(ctx context.Context, req *connec
 
 // ShutdownHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) ShutdownHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.ShutdownHeadlessHostRequest]) (*connect.Response[hdlctrlv1.ShutdownHeadlessHostResponse], error) {
-	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeUnavailable, err)
-	}
-	_, err = conn.Shutdown(ctx, &headlessv1.ShutdownRequest{})
+	err := c.hhuc.HeadlessHostShutdown(ctx, req.Msg.HostId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -194,12 +182,9 @@ func (c *ControllerService) FetchWorldInfo(ctx context.Context, req *connect.Req
 
 // GetHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) GetHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.GetHeadlessHostRequest]) (*connect.Response[hdlctrlv1.GetHeadlessHostResponse], error) {
-	host, err := c.hhrepo.Find(ctx, req.Msg.HostId)
+	host, err := c.hhuc.HeadlessHostGet(ctx, req.Msg.HostId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	if host == nil {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("host not found"))
 	}
 	res := connect.NewResponse(&hdlctrlv1.GetHeadlessHostResponse{
 		Host: converter.HeadlessHostEntityToProto(host),
@@ -209,7 +194,7 @@ func (c *ControllerService) GetHeadlessHost(ctx context.Context, req *connect.Re
 
 // ListHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) ListHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.ListHeadlessHostRequest]) (*connect.Response[hdlctrlv1.ListHeadlessHostResponse], error) {
-	hosts, err := c.hhrepo.ListAll(ctx)
+	hosts, err := c.hhuc.HeadlessHostList(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
