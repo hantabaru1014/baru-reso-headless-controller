@@ -16,9 +16,11 @@ import { useNavigate } from "react-router";
 export default function HostDetailPanel({ hostId }: { hostId: string }) {
   const navigate = useNavigate();
   const { data, isPending, refetch } = useQuery(getHeadlessHost, { hostId });
-  const { mutateAsync: shutdownHost } = useMutation(shutdownHeadlessHost);
+  const { mutateAsync: shutdownHost, isPending: isPendingShutdown } =
+    useMutation(shutdownHeadlessHost);
   const { mutateAsync: updateHost } = useMutation(updateHeadlessHostSettings);
-  const { mutateAsync: restartHost } = useMutation(restartHeadlessHost);
+  const { mutateAsync: restartHost, isPending: isPendingRestart } =
+    useMutation(restartHeadlessHost);
 
   return (
     <Grid2 container spacing={2}>
@@ -60,6 +62,7 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
               disabled={
                 isPending || data?.host?.status !== HeadlessHostStatus.RUNNING
               }
+              loading={isPendingShutdown}
             >
               シャットダウン
             </Button>
@@ -76,6 +79,7 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
                 }
               }}
               disabled={isPending}
+              loading={isPendingRestart}
             >
               再起動
             </Button>

@@ -199,21 +199,15 @@ func (h *HeadlessHostRepository) GetRpcClient(ctx context.Context, id string) (h
 
 // Find implements repository.HeadlessHostRepository.
 func (h *HeadlessHostRepository) Find(ctx context.Context, id string) (*entity.HeadlessHost, error) {
-	cli, err := h.newDockerClient()
+	container, err := h.getContainer(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	containers, err := cli.ContainerList(ctx, container.ListOptions{
-		All:     true,
-		Filters: filters.NewArgs(filters.Arg("ancestor", imageName), filters.Arg("id", id)),
-	})
+	host, err := h.containerToEntity(ctx, *container)
 	if err != nil {
 		return nil, err
 	}
-	if len(containers) == 1 {
-		return h.containerToEntity(ctx, containers[0])
-	}
-	return nil, fmt.Errorf("host not found")
+	return host, nil
 }
 
 // ListAll implements repository.HeadlessHostRepository.
@@ -293,9 +287,38 @@ func (h *HeadlessHostRepository) newDockerClient() (*client.Client, error) {
 	return cli, nil
 }
 
-func (h *HeadlessHostRepository) getOrNewHeadlessConnection(_ context.Context, id string, address string) (headlessv1.HeadlessControlServiceClient, error) {
+func (h *HeadlessHostRepository) getContainer(ctx context.Context, id string) (*types.Container, error) {
+	cli, err := h.newDockerClient()
+	if err != nil {
+		return nil, err
+	}
+	containers, err := cli.ContainerList(ctx, container.ListOptions{
+		All:     true,
+		Filters: filters.NewArgs(filters.Arg("ancestor", imageName), filters.Arg("id", id)),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(containers) > 1 {
+		return nil, fmt.Errorf("found several containers")
+	}
+	return &containers[0], nil
+}
+
+func (h *HeadlessHostRepository) getOrNewHeadlessConnection(ctx context.Context, id string, address string) (headlessv1.HeadlessControlServiceClient, error) {
+	container, err := h.getContainer(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 	if conn, ok := h.connections[id]; ok {
+		if container.State != "running" {
+			delete(h.connections, id)
+			return nil, fmt.Errorf("specific container is not running")
+		}
 		return conn, nil
+	}
+	if container.State != "running" {
+		return nil, fmt.Errorf("specific container is not running")
 	}
 
 	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
