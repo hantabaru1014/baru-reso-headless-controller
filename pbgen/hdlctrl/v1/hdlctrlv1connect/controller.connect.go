@@ -61,6 +61,12 @@ const (
 	// ControllerServiceSearchUserInfoProcedure is the fully-qualified name of the ControllerService's
 	// SearchUserInfo RPC.
 	ControllerServiceSearchUserInfoProcedure = "/hdlctrl.v1.ControllerService/SearchUserInfo"
+	// ControllerServiceGetFriendRequestsProcedure is the fully-qualified name of the
+	// ControllerService's GetFriendRequests RPC.
+	ControllerServiceGetFriendRequestsProcedure = "/hdlctrl.v1.ControllerService/GetFriendRequests"
+	// ControllerServiceAcceptFriendRequestsProcedure is the fully-qualified name of the
+	// ControllerService's AcceptFriendRequests RPC.
+	ControllerServiceAcceptFriendRequestsProcedure = "/hdlctrl.v1.ControllerService/AcceptFriendRequests"
 	// ControllerServiceListSessionsProcedure is the fully-qualified name of the ControllerService's
 	// ListSessions RPC.
 	ControllerServiceListSessionsProcedure = "/hdlctrl.v1.ControllerService/ListSessions"
@@ -107,6 +113,8 @@ type ControllerServiceClient interface {
 	RestartHeadlessHost(context.Context, *connect.Request[v1.RestartHeadlessHostRequest]) (*connect.Response[v1.RestartHeadlessHostResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
+	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v11.GetFriendRequestsResponse], error)
+	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	GetSessionDetails(context.Context, *connect.Request[v1.GetSessionDetailsRequest]) (*connect.Response[v1.GetSessionDetailsResponse], error)
 	StartWorld(context.Context, *connect.Request[v1.StartWorldRequest]) (*connect.Response[v1.StartWorldResponse], error)
@@ -183,6 +191,18 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+ControllerServiceSearchUserInfoProcedure,
 			connect.WithSchema(controllerServiceMethods.ByName("SearchUserInfo")),
+			connect.WithClientOptions(opts...),
+		),
+		getFriendRequests: connect.NewClient[v1.GetFriendRequestsRequest, v11.GetFriendRequestsResponse](
+			httpClient,
+			baseURL+ControllerServiceGetFriendRequestsProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("GetFriendRequests")),
+			connect.WithClientOptions(opts...),
+		),
+		acceptFriendRequests: connect.NewClient[v1.AcceptFriendRequestsRequest, v1.AcceptFriendRequestsResponse](
+			httpClient,
+			baseURL+ControllerServiceAcceptFriendRequestsProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("AcceptFriendRequests")),
 			connect.WithClientOptions(opts...),
 		),
 		listSessions: connect.NewClient[v1.ListSessionsRequest, v1.ListSessionsResponse](
@@ -265,6 +285,8 @@ type controllerServiceClient struct {
 	restartHeadlessHost        *connect.Client[v1.RestartHeadlessHostRequest, v1.RestartHeadlessHostResponse]
 	fetchWorldInfo             *connect.Client[v1.FetchWorldInfoRequest, v11.FetchWorldInfoResponse]
 	searchUserInfo             *connect.Client[v1.SearchUserInfoRequest, v11.SearchUserInfoResponse]
+	getFriendRequests          *connect.Client[v1.GetFriendRequestsRequest, v11.GetFriendRequestsResponse]
+	acceptFriendRequests       *connect.Client[v1.AcceptFriendRequestsRequest, v1.AcceptFriendRequestsResponse]
 	listSessions               *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
 	getSessionDetails          *connect.Client[v1.GetSessionDetailsRequest, v1.GetSessionDetailsResponse]
 	startWorld                 *connect.Client[v1.StartWorldRequest, v1.StartWorldResponse]
@@ -321,6 +343,16 @@ func (c *controllerServiceClient) FetchWorldInfo(ctx context.Context, req *conne
 // SearchUserInfo calls hdlctrl.v1.ControllerService.SearchUserInfo.
 func (c *controllerServiceClient) SearchUserInfo(ctx context.Context, req *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error) {
 	return c.searchUserInfo.CallUnary(ctx, req)
+}
+
+// GetFriendRequests calls hdlctrl.v1.ControllerService.GetFriendRequests.
+func (c *controllerServiceClient) GetFriendRequests(ctx context.Context, req *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v11.GetFriendRequestsResponse], error) {
+	return c.getFriendRequests.CallUnary(ctx, req)
+}
+
+// AcceptFriendRequests calls hdlctrl.v1.ControllerService.AcceptFriendRequests.
+func (c *controllerServiceClient) AcceptFriendRequests(ctx context.Context, req *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error) {
+	return c.acceptFriendRequests.CallUnary(ctx, req)
 }
 
 // ListSessions calls hdlctrl.v1.ControllerService.ListSessions.
@@ -389,6 +421,8 @@ type ControllerServiceHandler interface {
 	RestartHeadlessHost(context.Context, *connect.Request[v1.RestartHeadlessHostRequest]) (*connect.Response[v1.RestartHeadlessHostResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
+	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v11.GetFriendRequestsResponse], error)
+	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	GetSessionDetails(context.Context, *connect.Request[v1.GetSessionDetailsRequest]) (*connect.Response[v1.GetSessionDetailsResponse], error)
 	StartWorld(context.Context, *connect.Request[v1.StartWorldRequest]) (*connect.Response[v1.StartWorldResponse], error)
@@ -461,6 +495,18 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		ControllerServiceSearchUserInfoProcedure,
 		svc.SearchUserInfo,
 		connect.WithSchema(controllerServiceMethods.ByName("SearchUserInfo")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceGetFriendRequestsHandler := connect.NewUnaryHandler(
+		ControllerServiceGetFriendRequestsProcedure,
+		svc.GetFriendRequests,
+		connect.WithSchema(controllerServiceMethods.ByName("GetFriendRequests")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceAcceptFriendRequestsHandler := connect.NewUnaryHandler(
+		ControllerServiceAcceptFriendRequestsProcedure,
+		svc.AcceptFriendRequests,
+		connect.WithSchema(controllerServiceMethods.ByName("AcceptFriendRequests")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceListSessionsHandler := connect.NewUnaryHandler(
@@ -549,6 +595,10 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceFetchWorldInfoHandler.ServeHTTP(w, r)
 		case ControllerServiceSearchUserInfoProcedure:
 			controllerServiceSearchUserInfoHandler.ServeHTTP(w, r)
+		case ControllerServiceGetFriendRequestsProcedure:
+			controllerServiceGetFriendRequestsHandler.ServeHTTP(w, r)
+		case ControllerServiceAcceptFriendRequestsProcedure:
+			controllerServiceAcceptFriendRequestsHandler.ServeHTTP(w, r)
 		case ControllerServiceListSessionsProcedure:
 			controllerServiceListSessionsHandler.ServeHTTP(w, r)
 		case ControllerServiceGetSessionDetailsProcedure:
@@ -614,6 +664,14 @@ func (UnimplementedControllerServiceHandler) FetchWorldInfo(context.Context, *co
 
 func (UnimplementedControllerServiceHandler) SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.SearchUserInfo is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v11.GetFriendRequestsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.GetFriendRequests is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.AcceptFriendRequests is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error) {

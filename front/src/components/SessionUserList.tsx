@@ -1,16 +1,10 @@
 import {
-  Avatar,
   Button,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  IconButton,
   InputAdornment,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
   Stack,
   Table,
   TableBody,
@@ -20,11 +14,7 @@ import {
   TableRow,
   TextField,
 } from "@mui/material";
-import {
-  CheckOutlined,
-  Refresh as RefreshIcon,
-  SearchOutlined,
-} from "@mui/icons-material";
+import { CheckOutlined, SearchOutlined } from "@mui/icons-material";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
   banUser,
@@ -42,6 +32,8 @@ import EditableSelectField from "./base/EditableSelectField";
 import { useState } from "react";
 import { useNotifications } from "@toolpad/core/useNotifications";
 import { useDialogs, DialogProps } from "@toolpad/core/useDialogs";
+import UserList from "./base/UserList";
+import RefetchButton from "./base/RefetchButton";
 
 function UserInviteDialog({
   open,
@@ -98,7 +90,13 @@ function UserInviteDialog({
   };
 
   return (
-    <Dialog open={open} onClose={() => onClose()} fullWidth maxWidth="md">
+    <Dialog
+      open={open}
+      onClose={() => onClose()}
+      fullWidth
+      maxWidth="md"
+      sx={{ height: "80vh" }}
+    >
       <DialogTitle>ユーザーを招待</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
@@ -117,25 +115,13 @@ function UserInviteDialog({
             value={query}
             onChange={handleQueryChange}
           />
-          <Loading loading={isPendingSearch}>
-            <List>
-              {searchResult?.users.map((user) => (
-                <ListItem
-                  key={user.id}
-                  secondaryAction={
-                    <Button onClick={() => handleInviteUser(user.id)}>
-                      招待
-                    </Button>
-                  }
-                >
-                  <ListItemAvatar>
-                    <Avatar src={user.iconUrl} />
-                  </ListItemAvatar>
-                  <ListItemText primary={user.name} />
-                </ListItem>
-              ))}
-            </List>
-          </Loading>
+          <UserList
+            data={searchResult?.users || []}
+            isLoading={isPendingSearch}
+            renderActions={(user) => (
+              <Button onClick={() => handleInviteUser(user.id)}>招待</Button>
+            )}
+          />
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -235,9 +221,7 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
         >
           ユーザー招待
         </Button>
-        <IconButton aria-label="再読み込み" onClick={() => refetch()}>
-          <RefreshIcon />
-        </IconButton>
+        <RefetchButton refetch={refetch} />
       </Stack>
       <Loading loading={status === "pending"}>
         <TableContainer>

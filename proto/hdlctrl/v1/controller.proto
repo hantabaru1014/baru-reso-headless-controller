@@ -16,6 +16,8 @@ service ControllerService {
 
   rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
   rpc SearchUserInfo(SearchUserInfoRequest) returns (headless.v1.SearchUserInfoResponse);
+  rpc GetFriendRequests(GetFriendRequestsRequest) returns (headless.v1.GetFriendRequestsResponse);
+  rpc AcceptFriendRequests(AcceptFriendRequestsRequest) returns (AcceptFriendRequestsResponse);
 
   rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
   rpc GetSessionDetails(GetSessionDetailsRequest) returns (GetSessionDetailsResponse);
@@ -28,6 +30,17 @@ service ControllerService {
   rpc ListUsersInSession(ListUsersInSessionRequest) returns (ListUsersInSessionResponse);
   rpc KickUser(KickUserRequest) returns (KickUserResponse);
   rpc BanUser(BanUserRequest) returns (BanUserResponse);
+}
+
+message AcceptFriendRequestsRequest {
+  string host_id = 1;
+  repeated string user_ids = 2;
+}
+
+message AcceptFriendRequestsResponse {}
+
+message GetFriendRequestsRequest {
+  string host_id = 1;
 }
 
 message RestartHeadlessHostRequest {

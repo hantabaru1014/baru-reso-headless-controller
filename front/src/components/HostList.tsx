@@ -2,7 +2,6 @@ import { useQuery } from "@connectrpc/connect-query";
 import { listHeadlessHost } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import {
   Grid2,
-  IconButton,
   Skeleton,
   Stack,
   Table,
@@ -13,9 +12,9 @@ import {
   TableRow,
 } from "@mui/material";
 import prettyBytes from "../libs/prettyBytes";
-import { Refresh } from "@mui/icons-material";
 import { useNavigate } from "react-router";
 import { hostStatusToLabel } from "../libs/hostUtils";
+import RefetchButton from "./base/RefetchButton";
 
 export default function HostList() {
   const { data, isPending, refetch } = useQuery(listHeadlessHost);
@@ -25,9 +24,7 @@ export default function HostList() {
     <Grid2 container>
       <Grid2 size={12}>
         <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end" }}>
-          <IconButton aria-label="再読み込み" onClick={() => refetch()}>
-            <Refresh />
-          </IconButton>
+          <RefetchButton refetch={refetch} />
         </Stack>
       </Grid2>
       <Grid2 size={12}>

@@ -2,6 +2,7 @@ import { Grid2, Typography } from "@mui/material";
 import HostLogViewer from "../../components/HostLogViewer";
 import { useParams } from "react-router";
 import HostDetailPanel from "../../components/HostDetailPanel";
+import FriendRequestList from "../../components/FriendRequestList";
 
 export default function HostDetail() {
   const { id } = useParams();
@@ -12,6 +13,9 @@ export default function HostDetail() {
         <>
           <Grid2 size={12}>
             <HostDetailPanel hostId={id} />
+          </Grid2>
+          <Grid2 size={12}>
+            <FriendRequestList hostId={id} />
           </Grid2>
           <Grid2 size={12}>
             <HostLogViewer hostId={id} />

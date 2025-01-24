@@ -29,6 +29,8 @@ const (
 	ControllerService_RestartHeadlessHost_FullMethodName        = "/hdlctrl.v1.ControllerService/RestartHeadlessHost"
 	ControllerService_FetchWorldInfo_FullMethodName             = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
 	ControllerService_SearchUserInfo_FullMethodName             = "/hdlctrl.v1.ControllerService/SearchUserInfo"
+	ControllerService_GetFriendRequests_FullMethodName          = "/hdlctrl.v1.ControllerService/GetFriendRequests"
+	ControllerService_AcceptFriendRequests_FullMethodName       = "/hdlctrl.v1.ControllerService/AcceptFriendRequests"
 	ControllerService_ListSessions_FullMethodName               = "/hdlctrl.v1.ControllerService/ListSessions"
 	ControllerService_GetSessionDetails_FullMethodName          = "/hdlctrl.v1.ControllerService/GetSessionDetails"
 	ControllerService_StartWorld_FullMethodName                 = "/hdlctrl.v1.ControllerService/StartWorld"
@@ -55,6 +57,8 @@ type ControllerServiceClient interface {
 	RestartHeadlessHost(ctx context.Context, in *RestartHeadlessHostRequest, opts ...grpc.CallOption) (*RestartHeadlessHostResponse, error)
 	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(ctx context.Context, in *SearchUserInfoRequest, opts ...grpc.CallOption) (*v1.SearchUserInfoResponse, error)
+	GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*v1.GetFriendRequestsResponse, error)
+	AcceptFriendRequests(ctx context.Context, in *AcceptFriendRequestsRequest, opts ...grpc.CallOption) (*AcceptFriendRequestsResponse, error)
 	ListSessions(ctx context.Context, in *ListSessionsRequest, opts ...grpc.CallOption) (*ListSessionsResponse, error)
 	GetSessionDetails(ctx context.Context, in *GetSessionDetailsRequest, opts ...grpc.CallOption) (*GetSessionDetailsResponse, error)
 	StartWorld(ctx context.Context, in *StartWorldRequest, opts ...grpc.CallOption) (*StartWorldResponse, error)
@@ -160,6 +164,26 @@ func (c *controllerServiceClient) SearchUserInfo(ctx context.Context, in *Search
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(v1.SearchUserInfoResponse)
 	err := c.cc.Invoke(ctx, ControllerService_SearchUserInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*v1.GetFriendRequestsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(v1.GetFriendRequestsResponse)
+	err := c.cc.Invoke(ctx, ControllerService_GetFriendRequests_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) AcceptFriendRequests(ctx context.Context, in *AcceptFriendRequestsRequest, opts ...grpc.CallOption) (*AcceptFriendRequestsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AcceptFriendRequestsResponse)
+	err := c.cc.Invoke(ctx, ControllerService_AcceptFriendRequests_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -289,6 +313,8 @@ type ControllerServiceServer interface {
 	RestartHeadlessHost(context.Context, *RestartHeadlessHostRequest) (*RestartHeadlessHostResponse, error)
 	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(context.Context, *SearchUserInfoRequest) (*v1.SearchUserInfoResponse, error)
+	GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*v1.GetFriendRequestsResponse, error)
+	AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error)
 	ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error)
 	GetSessionDetails(context.Context, *GetSessionDetailsRequest) (*GetSessionDetailsResponse, error)
 	StartWorld(context.Context, *StartWorldRequest) (*StartWorldResponse, error)
@@ -336,6 +362,12 @@ func (UnimplementedControllerServiceServer) FetchWorldInfo(context.Context, *Fet
 }
 func (UnimplementedControllerServiceServer) SearchUserInfo(context.Context, *SearchUserInfoRequest) (*v1.SearchUserInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SearchUserInfo not implemented")
+}
+func (UnimplementedControllerServiceServer) GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*v1.GetFriendRequestsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFriendRequests not implemented")
+}
+func (UnimplementedControllerServiceServer) AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AcceptFriendRequests not implemented")
 }
 func (UnimplementedControllerServiceServer) ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSessions not implemented")
@@ -549,6 +581,42 @@ func _ControllerService_SearchUserInfo_Handler(srv interface{}, ctx context.Cont
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).SearchUserInfo(ctx, req.(*SearchUserInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_GetFriendRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFriendRequestsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).GetFriendRequests(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_GetFriendRequests_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).GetFriendRequests(ctx, req.(*GetFriendRequestsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_AcceptFriendRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AcceptFriendRequestsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).AcceptFriendRequests(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_AcceptFriendRequests_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).AcceptFriendRequests(ctx, req.(*AcceptFriendRequestsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -793,6 +861,14 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SearchUserInfo",
 			Handler:    _ControllerService_SearchUserInfo_Handler,
+		},
+		{
+			MethodName: "GetFriendRequests",
+			Handler:    _ControllerService_GetFriendRequests_Handler,
+		},
+		{
+			MethodName: "AcceptFriendRequests",
+			Handler:    _ControllerService_AcceptFriendRequests_Handler,
 		},
 		{
 			MethodName: "ListSessions",

@@ -50,6 +50,16 @@ export const fetchWorldInfo = ControllerService.method.fetchWorldInfo;
 export const searchUserInfo = ControllerService.method.searchUserInfo;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.GetFriendRequests
+ */
+export const getFriendRequests = ControllerService.method.getFriendRequests;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.AcceptFriendRequests
+ */
+export const acceptFriendRequests = ControllerService.method.acceptFriendRequests;
+
+/**
  * @generated from rpc hdlctrl.v1.ControllerService.ListSessions
  */
 export const listSessions = ControllerService.method.listSessions;

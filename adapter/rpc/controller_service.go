@@ -36,6 +36,37 @@ func (c *ControllerService) NewHandler() (string, http.Handler) {
 	return hdlctrlv1connect.NewControllerServiceHandler(c, interceptors)
 }
 
+// AcceptFriendRequests implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) AcceptFriendRequests(ctx context.Context, req *connect.Request[hdlctrlv1.AcceptFriendRequestsRequest]) (*connect.Response[hdlctrlv1.AcceptFriendRequestsResponse], error) {
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	_, err = conn.AcceptFriendRequests(ctx, &headlessv1.AcceptFriendRequestsRequest{
+		UserIds: req.Msg.UserIds,
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.AcceptFriendRequestsResponse{})
+	return res, nil
+}
+
+// GetFriendRequests implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) GetFriendRequests(ctx context.Context, req *connect.Request[hdlctrlv1.GetFriendRequestsRequest]) (*connect.Response[headlessv1.GetFriendRequestsResponse], error) {
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	headlessRes, err := conn.GetFriendRequests(ctx, &headlessv1.GetFriendRequestsRequest{})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(headlessRes), nil
+}
+
 // RestartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) RestartHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.RestartHeadlessHostRequest]) (*connect.Response[hdlctrlv1.RestartHeadlessHostResponse], error) {
 	// TODO: うまい具合に非同期化する

@@ -1,6 +1,5 @@
 import {
   Button,
-  IconButton,
   Skeleton,
   Stack,
   Table,
@@ -10,13 +9,13 @@ import {
   TableHead,
   TableRow,
 } from "@mui/material";
-import { Refresh as RefreshIcon } from "@mui/icons-material";
 import { useQuery } from "@connectrpc/connect-query";
 import { listSessions } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { useAtom } from "jotai";
 import { selectedHostAtom } from "../atoms/selectedHostAtom";
 import { useNavigate } from "react-router";
 import { AccessLevels } from "../constants";
+import RefetchButton from "./base/RefetchButton";
 
 export default function SessionList() {
   const [selectedHost] = useAtom(selectedHostAtom);
@@ -35,9 +34,7 @@ export default function SessionList() {
         >
           新規セッション
         </Button>
-        <IconButton aria-label="再読み込み" onClick={() => refetch()}>
-          <RefreshIcon />
-        </IconButton>
+        <RefetchButton refetch={refetch} />
       </Stack>
       <TableContainer>
         <Table>

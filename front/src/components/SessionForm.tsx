@@ -5,16 +5,14 @@ import {
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { useAtom } from "jotai";
 import { selectedHostAtom } from "../atoms/selectedHostAtom";
-import { Card, CardContent, Grid2, IconButton, Stack } from "@mui/material";
+import { Card, CardContent, Grid2, Stack } from "@mui/material";
 import Loading from "./base/Loading";
 import EditableTextField from "./base/EditableTextField";
 import EditableSelectField from "./base/EditableSelectField";
 import { AccessLevels } from "../constants";
 import SessionControlButtons from "./SessionControlButtons";
-import {
-  ImageNotSupportedOutlined,
-  RefreshOutlined,
-} from "@mui/icons-material";
+import { ImageNotSupportedOutlined } from "@mui/icons-material";
+import RefetchButton from "./base/RefetchButton";
 
 export default function SessionForm({ sessionId }: { sessionId: string }) {
   const [selectedHost] = useAtom(selectedHostAtom);
@@ -75,11 +73,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
             <SessionControlButtons
               sessionId={sessionId}
               canSave={data?.session?.canSave}
-              additionalButtons={
-                <IconButton aria-label="再読み込み" onClick={() => refetch()}>
-                  <RefreshOutlined />
-                </IconButton>
-              }
+              additionalButtons={<RefetchButton refetch={refetch} />}
             />
           </Grid2>
           <Grid2 size={12}>
