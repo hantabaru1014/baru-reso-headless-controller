@@ -6,10 +6,11 @@ import {
 import { Button, Card, CardContent, CardHeader } from "@mui/material";
 import RefetchButton from "./base/RefetchButton";
 import UserList from "./base/UserList";
+import ScrollBase from "./base/ScrollBase";
 
 export default function FriendRequestList({
   hostId,
-  scrollHeight = "20rem",
+  scrollHeight = "15rem",
 }: {
   hostId: string;
   scrollHeight?: string;
@@ -24,19 +25,8 @@ export default function FriendRequestList({
         title="フレンドリクエスト"
         action={<RefetchButton refetch={refetch} />}
       />
-      <CardContent
-        sx={{ position: "relative", height: scrollHeight, overflowY: "scroll" }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: 0,
-            overflowY: "scroll",
-          }}
-        >
+      <CardContent>
+        <ScrollBase height={scrollHeight}>
           <UserList
             data={data?.users ?? []}
             isLoading={isPending}
@@ -52,7 +42,7 @@ export default function FriendRequestList({
               </Button>
             )}
           />
-        </div>
+        </ScrollBase>
       </CardContent>
     </Card>
   );

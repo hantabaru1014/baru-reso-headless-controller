@@ -12,6 +12,7 @@ import prettyBytes from "../libs/prettyBytes";
 import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { hostStatusToLabel } from "../libs/hostUtils";
 import { useNavigate } from "react-router";
+import FriendRequestList from "./FriendRequestList";
 
 export default function HostDetailPanel({ hostId }: { hostId: string }) {
   const navigate = useNavigate();
@@ -115,6 +116,9 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
               value={data?.host?.fps?.toString()}
               isLoading={isPending}
             />
+          </Grid2>
+          <Grid2 size={6}>
+            <FriendRequestList hostId={hostId} />
           </Grid2>
         </>
       )}

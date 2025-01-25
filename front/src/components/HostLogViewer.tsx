@@ -170,7 +170,7 @@ export default function HostLogViewer({
                 {log.timestamp
                   ? new Date(
                       Number(log.timestamp.seconds) * 1000,
-                    ).toLocaleTimeString("ja-JP")
+                    ).toLocaleTimeString("ja-JP") + " "
                   : ""}
                 {log.body}
               </Typography>

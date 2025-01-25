@@ -34,6 +34,7 @@ import { useNotifications } from "@toolpad/core/useNotifications";
 import { useDialogs, DialogProps } from "@toolpad/core/useDialogs";
 import UserList from "./base/UserList";
 import RefetchButton from "./base/RefetchButton";
+import ScrollBase from "./base/ScrollBase";
 
 function UserInviteDialog({
   open,
@@ -90,13 +91,7 @@ function UserInviteDialog({
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={() => onClose()}
-      fullWidth
-      maxWidth="md"
-      sx={{ height: "80vh" }}
-    >
+    <Dialog open={open} onClose={() => onClose()} fullWidth maxWidth="md">
       <DialogTitle>ユーザーを招待</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
@@ -115,13 +110,15 @@ function UserInviteDialog({
             value={query}
             onChange={handleQueryChange}
           />
-          <UserList
-            data={searchResult?.users || []}
-            isLoading={isPendingSearch}
-            renderActions={(user) => (
-              <Button onClick={() => handleInviteUser(user.id)}>招待</Button>
-            )}
-          />
+          <ScrollBase height="60vh">
+            <UserList
+              data={searchResult?.users || []}
+              isLoading={isPendingSearch}
+              renderActions={(user) => (
+                <Button onClick={() => handleInviteUser(user.id)}>招待</Button>
+              )}
+            />
+          </ScrollBase>
         </Stack>
       </DialogContent>
       <DialogActions>
