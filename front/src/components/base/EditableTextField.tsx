@@ -55,7 +55,7 @@ export default function EditableTextField(
           },
         }}
         error={!!errorMessage}
-        helperText={errorMessage}
+        helperText={errorMessage ?? props.helperText}
       />
     </EditableFieldBase>
   );

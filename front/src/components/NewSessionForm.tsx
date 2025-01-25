@@ -8,6 +8,7 @@ import { useNotifications } from "@toolpad/core/useNotifications";
 import { selectedHostAtom } from "../atoms/selectedHostAtom";
 import {
   Button,
+  Checkbox,
   FormControl,
   FormControlLabel,
   FormLabel,
@@ -40,6 +41,13 @@ export default function NewSessionForm() {
   const [maxUsers, setMaxUsers] = useState(15);
   const [accessLevel, setAccessLevel] = useState(1);
   const [customSessionId, setCustomSessionId] = useState("");
+  const [hideFromPublicListing, setHideFromPublicListing] = useState(false);
+  const [awayKickMinutes, setAwayKickMinutes] = useState(-1);
+  const [idleRestartIntervalSeconds, setIdleRestartIntervalSeconds] =
+    useState(-1);
+  const [saveOnExit, setSaveOnExit] = useState(false);
+  const [autoSaveIntervalSeconds, setAutoSaveIntervalSeconds] = useState(-1);
+  const [autoSleep, setAutoSleep] = useState(false);
 
   const handleFetchInfo = async () => {
     try {
@@ -162,6 +170,15 @@ export default function NewSessionForm() {
           selectedId={`${accessLevel}`}
           onChange={(option) => setAccessLevel(option.value as number)}
         />
+        <FormControlLabel
+          label="セッションリストから隠す"
+          control={
+            <Checkbox
+              checked={hideFromPublicListing}
+              onChange={(e) => setHideFromPublicListing(e.target.checked)}
+            />
+          }
+        />
       </Stack>
       <TextField
         label="カスタムセッションID"
@@ -169,6 +186,51 @@ export default function NewSessionForm() {
         value={customSessionId}
         onChange={(e) => setCustomSessionId(e.target.value)}
       />
+      <TextField
+        label="AFKキック時間(分)"
+        type="number"
+        value={awayKickMinutes}
+        onChange={(e) => setAwayKickMinutes(parseFloat(e.target.value))}
+        helperText="-1で無効"
+      />
+      <Stack direction="row" spacing={2}>
+        <TextField
+          label="自動保存間隔(秒)"
+          type="number"
+          value={autoSaveIntervalSeconds}
+          onChange={(e) => setAutoSaveIntervalSeconds(parseInt(e.target.value))}
+          helperText="-1で無効"
+        />
+        <FormControlLabel
+          label="セッション終了時に保存"
+          control={
+            <Checkbox
+              checked={saveOnExit}
+              onChange={(e) => setSaveOnExit(e.target.checked)}
+            />
+          }
+        />
+      </Stack>
+      <Stack direction="row" spacing={2}>
+        <TextField
+          label="アイドル時の自動再起動間隔(秒)"
+          type="number"
+          value={idleRestartIntervalSeconds}
+          onChange={(e) =>
+            setIdleRestartIntervalSeconds(parseInt(e.target.value))
+          }
+          helperText="-1で無効"
+        />
+        <FormControlLabel
+          label="自動スリープ"
+          control={
+            <Checkbox
+              checked={autoSleep}
+              onChange={(e) => setAutoSleep(e.target.checked)}
+            />
+          }
+        />
+      </Stack>
 
       <Button
         variant="contained"

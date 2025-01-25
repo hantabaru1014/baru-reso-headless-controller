@@ -54,7 +54,7 @@ export default function EditableSelectField<V>(
           onChange={(option) => setEditingValue(option)}
           readOnly={props.readOnly || !isEditing}
           error={!!errorMessage}
-          helperText={errorMessage}
+          helperText={errorMessage ?? props.helperText}
         />
       ) : (
         <TextField
@@ -67,8 +67,7 @@ export default function EditableSelectField<V>(
               readOnly: true,
             },
           }}
-          error={!!errorMessage}
-          helperText={errorMessage}
+          helperText={props.helperText}
         />
       )}
     </EditableFieldBase>

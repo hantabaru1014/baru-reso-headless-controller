@@ -5,7 +5,7 @@ import {
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { useAtom } from "jotai";
 import { selectedHostAtom } from "../atoms/selectedHostAtom";
-import { Card, CardContent, Grid2, Stack } from "@mui/material";
+import { Button, Card, CardContent, Grid2, Stack } from "@mui/material";
 import Loading from "./base/Loading";
 import EditableTextField from "./base/EditableTextField";
 import EditableSelectField from "./base/EditableSelectField";
@@ -13,6 +13,8 @@ import { AccessLevels } from "../constants";
 import SessionControlButtons from "./SessionControlButtons";
 import { ImageNotSupportedOutlined } from "@mui/icons-material";
 import RefetchButton from "./base/RefetchButton";
+import EditableCheckBox from "./base/EditableCheckBox";
+import { useNotifications } from "@toolpad/core/useNotifications";
 
 export default function SessionForm({ sessionId }: { sessionId: string }) {
   const [selectedHost] = useAtom(selectedHostAtom);
@@ -21,6 +23,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
     sessionId,
   });
   const { mutateAsync: mutateSave } = useMutation(updateSessionParameters);
+  const notifications = useNotifications();
 
   const handleSave = async <V,>(fieldName: string, value: V) => {
     try {
@@ -37,6 +40,18 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : `${e}` };
     }
+  };
+
+  const handleCopyUrl = () => {
+    const url = data?.session?.sessionUrl;
+    if (!url) {
+      return;
+    }
+    navigator.clipboard.writeText(url);
+    notifications.show("セッションURLをコピーしました", {
+      severity: "info",
+      autoHideDuration: 3000,
+    });
   };
 
   return (
@@ -73,7 +88,14 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
             <SessionControlButtons
               sessionId={sessionId}
               canSave={data?.session?.canSave}
-              additionalButtons={<RefetchButton refetch={refetch} />}
+              additionalButtons={
+                <>
+                  <Button variant="contained" onClick={handleCopyUrl}>
+                    URLをコピー
+                  </Button>
+                  <RefetchButton refetch={refetch} />
+                </>
+              }
             />
           </Grid2>
           <Grid2 size={12}>
@@ -105,6 +127,52 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
               </Stack>
             </Stack>
           </Grid2>
+        </Grid2>
+        <Grid2 size={12}>
+          <Stack spacing={2}>
+            <Stack direction="row" spacing={2}>
+              <EditableTextField
+                label="AFKキック時間(分)"
+                type="number"
+                value={data?.session?.awayKickMinutes}
+                onSave={(v) => handleSave("awayKickMinutes", v)}
+                helperText="-1で無効"
+              />
+              <EditableCheckBox
+                label="セッションリストから隠す"
+                checked={data?.session?.hideFromPublicListing}
+                onSave={(v) => handleSave("hideFromPublicListing", v)}
+              />
+            </Stack>
+            <Stack direction="row" spacing={2}>
+              <EditableCheckBox
+                label="セッション終了時に保存"
+                checked={data?.session?.saveOnExit || false}
+                onSave={(v) => handleSave("saveOnExit", v)}
+              />
+              <EditableTextField
+                label="自動保存間隔(秒)"
+                type="number"
+                value={data?.session?.autoSaveIntervalSeconds}
+                onSave={(v) => handleSave("autoSaveIntervalSeconds", v)}
+                helperText="-1で無効"
+              />
+            </Stack>
+            <Stack direction="row" spacing={2}>
+              <EditableCheckBox
+                label="オートスリープ"
+                checked={data?.session?.autoSleep}
+                onSave={(v) => handleSave("autoSleep", v)}
+              />
+              <EditableTextField
+                label="アイドル時の自動再起動間隔(秒)"
+                type="number"
+                value={data?.session?.idleRestartIntervalSeconds}
+                onSave={(v) => handleSave("idleRestartIntervalSeconds", v)}
+                helperText="-1で無効"
+              />
+            </Stack>
+          </Stack>
         </Grid2>
       </Grid2>
     </Loading>
