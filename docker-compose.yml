@@ -2,4 +2,9 @@ services:
   app:
     image: ghcr.io/hantabaru1014/baru-reso-headless-controller:latest
     env_file: .env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    # docker.sockのpermission denied対策 ref: https://qiita.com/asaneyuki/items/c46b93cf55e0835c9cd4
+    group_add:
+      - ${DOCKER_GID}
     network_mode: host
