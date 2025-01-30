@@ -7,17 +7,18 @@
 package app
 
 import (
-	"github.com/google/wire"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
+	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
-	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
 
 // Injectors from wire.go:
 
 func InitializeServer() *Server {
-	userService := rpc.NewUserService()
+	queries := db.NewQueries()
+	userUsecase := usecase.NewUserUsecase(queries)
+	userService := rpc.NewUserService(userUsecase)
 	headlessHostRepository := adapter.NewHeadlessHostRepository()
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository)
 	controllerService := rpc.NewControllerService(headlessHostRepository, headlessHostUsecase)
@@ -25,10 +26,9 @@ func InitializeServer() *Server {
 	return server
 }
 
-// wire.go:
-
-var (
-	repositorySet = wire.NewSet(wire.Bind(new(port.HeadlessHostRepository), new(*adapter.HeadlessHostRepository)), adapter.NewHeadlessHostRepository)
-	usecaseSet    = wire.NewSet(usecase.NewHeadlessHostUsecase)
-	rpcServiceSet = wire.NewSet(rpc.NewUserService, rpc.NewControllerService)
-)
+func InitializeCli() *Cli {
+	queries := db.NewQueries()
+	userUsecase := usecase.NewUserUsecase(queries)
+	cli := NewCli(userUsecase)
+	return cli
+}

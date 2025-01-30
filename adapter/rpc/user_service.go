@@ -11,6 +11,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 )
 
 var _ hdlctrlv1connect.UserServiceHandler = (*UserService)(nil)
@@ -18,7 +19,9 @@ var _ hdlctrlv1connect.UserServiceHandler = (*UserService)(nil)
 var apiKey = os.Getenv("API_KEY")
 var userCredentials = strings.Split(os.Getenv("USER_CREDENTIALS"), ",")
 
-type UserService struct{}
+type UserService struct {
+	uu *usecase.UserUsecase
+}
 
 // RefreshToken implements hdlctrlv1connect.UserServiceHandler.
 func (u *UserService) RefreshToken(ctx context.Context, req *connect.Request[hdlctrlv1.RefreshTokenRequest]) (*connect.Response[hdlctrlv1.TokenSetResponse], error) {
@@ -81,8 +84,10 @@ func (u *UserService) GetTokenByAPIKey(ctx context.Context, req *connect.Request
 	return res, nil
 }
 
-func NewUserService() *UserService {
-	return &UserService{}
+func NewUserService(uu *usecase.UserUsecase) *UserService {
+	return &UserService{
+		uu: uu,
+	}
 }
 
 func (u *UserService) NewHandler() (string, http.Handler) {
