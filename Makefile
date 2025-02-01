@@ -36,3 +36,7 @@ build.cli:
 .PHONY: build.docker
 build.docker:
 	docker build -t ghcr.io/hantabaru1014/baru-reso-headless-controller .
+
+.PHONY: exec.psql
+exec.psql:
+	docker compose -f docker-compose.db.yml exec -it db psql -U postgres -d brhcdb
