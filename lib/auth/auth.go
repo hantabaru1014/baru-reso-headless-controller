@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -109,4 +110,13 @@ func NewAuthInterceptor() connect.UnaryInterceptorFunc {
 		})
 	}
 	return connect.UnaryInterceptorFunc(i)
+}
+
+func HashPassword(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(hash), err
+}
+
+func ComparePasswordAndHash(password, hash string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 }

@@ -59,29 +59,6 @@ func (q *Queries) GetUser(ctx context.Context, id string) (User, error) {
 	return i, err
 }
 
-const getUserWithPassword = `-- name: GetUserWithPassword :one
-SELECT id, password, resonite_id, icon_url, created_at, updated_at FROM users WHERE id = $1 AND password = $2
-`
-
-type GetUserWithPasswordParams struct {
-	ID       string
-	Password string
-}
-
-func (q *Queries) GetUserWithPassword(ctx context.Context, arg GetUserWithPasswordParams) (User, error) {
-	row := q.db.QueryRow(ctx, getUserWithPassword, arg.ID, arg.Password)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Password,
-		&i.ResoniteID,
-		&i.IconUrl,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const listUsers = `-- name: ListUsers :many
 SELECT id, password, resonite_id, icon_url, created_at, updated_at FROM users ORDER BY id
 `

@@ -13,6 +13,6 @@ type User struct {
 	Password   string
 	ResoniteID pgtype.Text
 	IconUrl    pgtype.Text
-	CreatedAt  pgtype.Timestamp
-	UpdatedAt  pgtype.Timestamp
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
 }

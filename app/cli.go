@@ -31,11 +31,30 @@ func (c *Cli) Execute() error {
 				cmd.PrintErrln(err)
 				return
 			}
+			_, err = c.uu.GetUserWithPassword(cmd.Context(), args[0], args[1])
+			if err != nil {
+				cmd.PrintErrln("Failed validate created user:", err)
+				return
+			}
 			cmd.Println("User created successfully")
+		},
+	}
+	deleteUserCmd := &cobra.Command{
+		Use:   "delete-user",
+		Short: "Delete a user",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			err := c.uu.DeleteUser(cmd.Context(), args[0])
+			if err != nil {
+				cmd.PrintErrln(err)
+				return
+			}
+			cmd.Println("User deleted successfully")
 		},
 	}
 
 	rootCmd.AddCommand(createUserCmd)
+	rootCmd.AddCommand(deleteUserCmd)
 
 	return rootCmd.Execute()
 }

@@ -11,6 +11,7 @@ sqlc := go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 install.tools:
 	mkdir -p $(BIN_DIR);
 	@GOBIN=$(BIN_DIR) go install github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION);
+	@GOBIN=$(BIN_DIR) go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest;
 
 .PHONY: gen.proto
 gen.proto:
