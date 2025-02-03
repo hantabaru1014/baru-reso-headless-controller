@@ -8,6 +8,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type HeadlessAccount struct {
+	ResoniteID      string
+	Credential      string
+	Password        string
+	LastDisplayName pgtype.Text
+	LastIconUrl     pgtype.Text
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
 type User struct {
 	ID         string
 	Password   string

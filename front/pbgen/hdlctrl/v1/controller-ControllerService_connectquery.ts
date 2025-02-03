@@ -40,6 +40,16 @@ export const pullLatestHostImage = ControllerService.method.pullLatestHostImage;
 export const restartHeadlessHost = ControllerService.method.restartHeadlessHost;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.CreateHeadlessAccount
+ */
+export const createHeadlessAccount = ControllerService.method.createHeadlessAccount;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.ListHeadlessAccounts
+ */
+export const listHeadlessAccounts = ControllerService.method.listHeadlessAccounts;
+
+/**
  * @generated from rpc hdlctrl.v1.ControllerService.FetchWorldInfo
  */
 export const fetchWorldInfo = ControllerService.method.fetchWorldInfo;

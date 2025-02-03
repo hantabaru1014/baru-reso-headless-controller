@@ -13,6 +13,8 @@ service ControllerService {
   rpc UpdateHeadlessHostSettings(UpdateHeadlessHostSettingsRequest) returns (UpdateHeadlessHostSettingsResponse);
   rpc PullLatestHostImage(PullLatestHostImageRequest) returns (PullLatestHostImageResponse);
   rpc RestartHeadlessHost(RestartHeadlessHostRequest) returns (RestartHeadlessHostResponse);
+  rpc CreateHeadlessAccount(CreateHeadlessAccountRequest) returns (CreateHeadlessAccountResponse);
+  rpc ListHeadlessAccounts(ListHeadlessAccountsRequest) returns (ListHeadlessAccountsResponse);
 
   rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
   rpc SearchUserInfo(SearchUserInfoRequest) returns (headless.v1.SearchUserInfoResponse);
@@ -30,6 +32,20 @@ service ControllerService {
   rpc ListUsersInSession(ListUsersInSessionRequest) returns (ListUsersInSessionResponse);
   rpc KickUser(KickUserRequest) returns (KickUserResponse);
   rpc BanUser(BanUserRequest) returns (BanUserResponse);
+}
+
+message CreateHeadlessAccountRequest {
+  string resonite_user_id = 1;
+  string credential = 2;
+  string password = 3;
+}
+
+message CreateHeadlessAccountResponse {}
+
+message ListHeadlessAccountsRequest {}
+
+message ListHeadlessAccountsResponse {
+  repeated HeadlessAccount accounts = 1;
 }
 
 message AcceptFriendRequestsRequest {
@@ -238,4 +254,10 @@ message HeadlessHost {
   int64 storage_quota_bytes = 8;
   int64 storage_used_bytes = 9;
   HeadlessHostStatus status = 10;
+}
+
+message HeadlessAccount {
+  string user_id = 1;
+  string user_name = 2;
+  string icon_url = 3;
 }

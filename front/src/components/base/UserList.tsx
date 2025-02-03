@@ -6,7 +6,12 @@ import {
   ListItemText,
   Skeleton,
 } from "@mui/material";
-import { UserInfo } from "../../../pbgen/headless/v1/headless_pb";
+
+export type UserInfo = {
+  id: string;
+  name: string;
+  iconUrl: string;
+};
 
 export default function UserList({
   data,

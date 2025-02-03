@@ -10,6 +10,7 @@ import SessionDetail from "./pages/sessions/detail";
 import SessionNew from "./pages/sessions/new";
 import Hosts from "./pages/hosts";
 import HostDetail from "./pages/hosts/detail";
+import HeadlessAccounts from "./pages/headlessAccounts";
 
 const router = createBrowserRouter([
   {
@@ -50,6 +51,15 @@ const router = createBrowserRouter([
               {
                 path: ":id",
                 Component: HostDetail,
+              },
+            ],
+          },
+          {
+            path: "headlessAccounts",
+            children: [
+              {
+                index: true,
+                Component: HeadlessAccounts,
               },
             ],
           },

@@ -17,6 +17,10 @@ const NAVIGATION: Navigation = [
     icon: <DashboardIcon />,
   },
   {
+    segment: "headlessAccounts",
+    title: "Headless Accounts",
+  },
+  {
     segment: "hosts",
     title: "Hosts",
   },

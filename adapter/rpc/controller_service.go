@@ -22,18 +22,59 @@ var _ hdlctrlv1connect.ControllerServiceHandler = (*ControllerService)(nil)
 type ControllerService struct {
 	hhrepo port.HeadlessHostRepository
 	hhuc   *usecase.HeadlessHostUsecase
+	hauc   *usecase.HeadlessAccountUsecase
 }
 
-func NewControllerService(hhrepo port.HeadlessHostRepository, hhuc *usecase.HeadlessHostUsecase) *ControllerService {
+func NewControllerService(hhrepo port.HeadlessHostRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase) *ControllerService {
 	return &ControllerService{
 		hhrepo: hhrepo,
 		hhuc:   hhuc,
+		hauc:   hauc,
 	}
 }
 
 func (c *ControllerService) NewHandler() (string, http.Handler) {
 	interceptors := connect.WithInterceptors(auth.NewAuthInterceptor())
 	return hdlctrlv1connect.NewControllerServiceHandler(c, interceptors)
+}
+
+// CreateHeadlessAccount implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) CreateHeadlessAccount(ctx context.Context, req *connect.Request[hdlctrlv1.CreateHeadlessAccountRequest]) (*connect.Response[hdlctrlv1.CreateHeadlessAccountResponse], error) {
+	err := c.hauc.CreateHeadlessAccount(ctx, req.Msg.ResoniteUserId, req.Msg.Credential, req.Msg.Password)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.CreateHeadlessAccountResponse{})
+	return res, nil
+}
+
+// ListHeadlessAccounts implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) ListHeadlessAccounts(ctx context.Context, req *connect.Request[hdlctrlv1.ListHeadlessAccountsRequest]) (*connect.Response[hdlctrlv1.ListHeadlessAccountsResponse], error) {
+	list, err := c.hauc.ListHeadlessAccounts(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	protoAccounts := make([]*hdlctrlv1.HeadlessAccount, 0, len(list))
+	for _, account := range list {
+		a := &hdlctrlv1.HeadlessAccount{
+			UserId: account.ResoniteID,
+		}
+		if account.LastDisplayName != nil {
+			a.UserName = *account.LastDisplayName
+		} else {
+			a.UserName = ""
+		}
+		if account.LastIconUrl != nil {
+			a.IconUrl = *account.LastIconUrl
+		} else {
+			a.IconUrl = ""
+		}
+		protoAccounts = append(protoAccounts, a)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.ListHeadlessAccountsResponse{Accounts: protoAccounts})
+	return res, nil
 }
 
 // AcceptFriendRequests implements hdlctrlv1connect.ControllerServiceHandler.

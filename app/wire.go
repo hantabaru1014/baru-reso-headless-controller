@@ -24,6 +24,7 @@ func InitializeServer() *Server {
 		// usecase
 		usecase.NewHeadlessHostUsecase,
 		usecase.NewUserUsecase,
+		usecase.NewHeadlessAccountUsecase,
 
 		// controller
 		rpc.NewUserService,
