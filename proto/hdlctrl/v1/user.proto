@@ -4,7 +4,6 @@ package hdlctrl.v1;
 
 service UserService {
   // 認証なしRPC
-  rpc GetTokenByAPIKey(GetTokenByAPIKeyRequest) returns (TokenSetResponse) {}
   rpc GetTokenByPassword(GetTokenByPasswordRequest) returns (TokenSetResponse) {}
 
   // 認証付きRPC
@@ -14,10 +13,6 @@ service UserService {
 message TokenSetResponse {
   string token = 1;
   string refresh_token = 2;
-}
-
-message GetTokenByAPIKeyRequest {
-  string api_key = 1;
 }
 
 message GetTokenByPasswordRequest {

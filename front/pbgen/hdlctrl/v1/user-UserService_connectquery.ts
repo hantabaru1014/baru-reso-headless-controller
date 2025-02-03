@@ -7,11 +7,6 @@ import { UserService } from "./user_pb";
 /**
  * 認証なしRPC
  *
- * @generated from rpc hdlctrl.v1.UserService.GetTokenByAPIKey
- */
-export const getTokenByAPIKey = UserService.method.getTokenByAPIKey;
-
-/**
  * @generated from rpc hdlctrl.v1.UserService.GetTokenByPassword
  */
 export const getTokenByPassword = UserService.method.getTokenByPassword;

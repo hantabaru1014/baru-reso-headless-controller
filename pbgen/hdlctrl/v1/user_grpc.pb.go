@@ -19,7 +19,6 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_GetTokenByAPIKey_FullMethodName   = "/hdlctrl.v1.UserService/GetTokenByAPIKey"
 	UserService_GetTokenByPassword_FullMethodName = "/hdlctrl.v1.UserService/GetTokenByPassword"
 	UserService_RefreshToken_FullMethodName       = "/hdlctrl.v1.UserService/RefreshToken"
 )
@@ -29,7 +28,6 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserServiceClient interface {
 	// 認証なしRPC
-	GetTokenByAPIKey(ctx context.Context, in *GetTokenByAPIKeyRequest, opts ...grpc.CallOption) (*TokenSetResponse, error)
 	GetTokenByPassword(ctx context.Context, in *GetTokenByPasswordRequest, opts ...grpc.CallOption) (*TokenSetResponse, error)
 	// 認証付きRPC
 	RefreshToken(ctx context.Context, in *RefreshTokenRequest, opts ...grpc.CallOption) (*TokenSetResponse, error)
@@ -41,16 +39,6 @@ type userServiceClient struct {
 
 func NewUserServiceClient(cc grpc.ClientConnInterface) UserServiceClient {
 	return &userServiceClient{cc}
-}
-
-func (c *userServiceClient) GetTokenByAPIKey(ctx context.Context, in *GetTokenByAPIKeyRequest, opts ...grpc.CallOption) (*TokenSetResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(TokenSetResponse)
-	err := c.cc.Invoke(ctx, UserService_GetTokenByAPIKey_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *userServiceClient) GetTokenByPassword(ctx context.Context, in *GetTokenByPasswordRequest, opts ...grpc.CallOption) (*TokenSetResponse, error) {
@@ -78,7 +66,6 @@ func (c *userServiceClient) RefreshToken(ctx context.Context, in *RefreshTokenRe
 // for forward compatibility.
 type UserServiceServer interface {
 	// 認証なしRPC
-	GetTokenByAPIKey(context.Context, *GetTokenByAPIKeyRequest) (*TokenSetResponse, error)
 	GetTokenByPassword(context.Context, *GetTokenByPasswordRequest) (*TokenSetResponse, error)
 	// 認証付きRPC
 	RefreshToken(context.Context, *RefreshTokenRequest) (*TokenSetResponse, error)
@@ -92,9 +79,6 @@ type UserServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedUserServiceServer struct{}
 
-func (UnimplementedUserServiceServer) GetTokenByAPIKey(context.Context, *GetTokenByAPIKeyRequest) (*TokenSetResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetTokenByAPIKey not implemented")
-}
 func (UnimplementedUserServiceServer) GetTokenByPassword(context.Context, *GetTokenByPasswordRequest) (*TokenSetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTokenByPassword not implemented")
 }
@@ -120,24 +104,6 @@ func RegisterUserServiceServer(s grpc.ServiceRegistrar, srv UserServiceServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&UserService_ServiceDesc, srv)
-}
-
-func _UserService_GetTokenByAPIKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetTokenByAPIKeyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(UserServiceServer).GetTokenByAPIKey(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: UserService_GetTokenByAPIKey_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserServiceServer).GetTokenByAPIKey(ctx, req.(*GetTokenByAPIKeyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _UserService_GetTokenByPassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -183,10 +149,6 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "hdlctrl.v1.UserService",
 	HandlerType: (*UserServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "GetTokenByAPIKey",
-			Handler:    _UserService_GetTokenByAPIKey_Handler,
-		},
 		{
 			MethodName: "GetTokenByPassword",
 			Handler:    _UserService_GetTokenByPassword_Handler,

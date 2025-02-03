@@ -11,6 +11,8 @@ import { jwtDecode, JwtPayload as DefaultJwtPayload } from "jwt-decode";
 
 type JwtPayload = DefaultJwtPayload & {
   user_id: string;
+  resonite_id: string;
+  icon_url: string;
 };
 
 const decodeJwt = (token: string) => jwtDecode<JwtPayload>(token);
@@ -52,6 +54,7 @@ export const useAuth = (baseUrl: string) => {
             user: {
               name: payload.user_id,
               email: payload.user_id,
+              image: payload.icon_url,
             },
           });
           setRefreshToken(refreshResponse.refreshToken);
@@ -126,6 +129,7 @@ export const useAuth = (baseUrl: string) => {
             user: {
               name: payload.user_id,
               email: payload.user_id,
+              image: payload.icon_url,
             },
           });
           setRefreshToken(response.refreshToken);

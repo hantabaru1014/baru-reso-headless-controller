@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hdlctrl/v1/user.proto.
  */
 export const file_hdlctrl_v1_user: GenFile = /*@__PURE__*/
-  fileDesc("ChVoZGxjdHJsL3YxL3VzZXIucHJvdG8SCmhkbGN0cmwudjEiOAoQVG9rZW5TZXRSZXNwb25zZRINCgV0b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJIioKF0dldFRva2VuQnlBUElLZXlSZXF1ZXN0Eg8KB2FwaV9rZXkYASABKAkiOQoZR2V0VG9rZW5CeVBhc3N3b3JkUmVxdWVzdBIKCgJpZBgBIAEoCRIQCghwYXNzd29yZBgCIAEoCSIVChNSZWZyZXNoVG9rZW5SZXF1ZXN0MpQCCgtVc2VyU2VydmljZRJXChBHZXRUb2tlbkJ5QVBJS2V5EiMuaGRsY3RybC52MS5HZXRUb2tlbkJ5QVBJS2V5UmVxdWVzdBocLmhkbGN0cmwudjEuVG9rZW5TZXRSZXNwb25zZSIAElsKEkdldFRva2VuQnlQYXNzd29yZBIlLmhkbGN0cmwudjEuR2V0VG9rZW5CeVBhc3N3b3JkUmVxdWVzdBocLmhkbGN0cmwudjEuVG9rZW5TZXRSZXNwb25zZSIAEk8KDFJlZnJlc2hUb2tlbhIfLmhkbGN0cmwudjEuUmVmcmVzaFRva2VuUmVxdWVzdBocLmhkbGN0cmwudjEuVG9rZW5TZXRSZXNwb25zZSIAQrcBCg5jb20uaGRsY3RybC52MUIJVXNlclByb3RvUAFaUWdpdGh1Yi5jb20vaGFudGFiYXJ1MTAxNC9iYXJ1LXJlc28taGVhZGxlc3MtY29udHJvbGxlci9wYmdlbi9oZGxjdHJsL3YxO2hkbGN0cmx2MaICA0hYWKoCCkhkbGN0cmwuVjHKAgpIZGxjdHJsXFYx4gIWSGRsY3RybFxWMVxHUEJNZXRhZGF0YeoCC0hkbGN0cmw6OlYxYgZwcm90bzM");
+  fileDesc("ChVoZGxjdHJsL3YxL3VzZXIucHJvdG8SCmhkbGN0cmwudjEiOAoQVG9rZW5TZXRSZXNwb25zZRINCgV0b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJIjkKGUdldFRva2VuQnlQYXNzd29yZFJlcXVlc3QSCgoCaWQYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiFQoTUmVmcmVzaFRva2VuUmVxdWVzdDK7AQoLVXNlclNlcnZpY2USWwoSR2V0VG9rZW5CeVBhc3N3b3JkEiUuaGRsY3RybC52MS5HZXRUb2tlbkJ5UGFzc3dvcmRSZXF1ZXN0GhwuaGRsY3RybC52MS5Ub2tlblNldFJlc3BvbnNlIgASTwoMUmVmcmVzaFRva2VuEh8uaGRsY3RybC52MS5SZWZyZXNoVG9rZW5SZXF1ZXN0GhwuaGRsY3RybC52MS5Ub2tlblNldFJlc3BvbnNlIgBCtwEKDmNvbS5oZGxjdHJsLnYxQglVc2VyUHJvdG9QAVpRZ2l0aHViLmNvbS9oYW50YWJhcnUxMDE0L2JhcnUtcmVzby1oZWFkbGVzcy1jb250cm9sbGVyL3BiZ2VuL2hkbGN0cmwvdjE7aGRsY3RybHYxogIDSFhYqgIKSGRsY3RybC5WMcoCCkhkbGN0cmxcVjHiAhZIZGxjdHJsXFYxXEdQQk1ldGFkYXRh6gILSGRsY3RybDo6VjFiBnByb3RvMw");
 
 /**
  * @generated from message hdlctrl.v1.TokenSetResponse
@@ -35,23 +35,6 @@ export const TokenSetResponseSchema: GenMessage<TokenSetResponse> = /*@__PURE__*
   messageDesc(file_hdlctrl_v1_user, 0);
 
 /**
- * @generated from message hdlctrl.v1.GetTokenByAPIKeyRequest
- */
-export type GetTokenByAPIKeyRequest = Message<"hdlctrl.v1.GetTokenByAPIKeyRequest"> & {
-  /**
-   * @generated from field: string api_key = 1;
-   */
-  apiKey: string;
-};
-
-/**
- * Describes the message hdlctrl.v1.GetTokenByAPIKeyRequest.
- * Use `create(GetTokenByAPIKeyRequestSchema)` to create a new message.
- */
-export const GetTokenByAPIKeyRequestSchema: GenMessage<GetTokenByAPIKeyRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_user, 1);
-
-/**
  * @generated from message hdlctrl.v1.GetTokenByPasswordRequest
  */
 export type GetTokenByPasswordRequest = Message<"hdlctrl.v1.GetTokenByPasswordRequest"> & {
@@ -71,7 +54,7 @@ export type GetTokenByPasswordRequest = Message<"hdlctrl.v1.GetTokenByPasswordRe
  * Use `create(GetTokenByPasswordRequestSchema)` to create a new message.
  */
 export const GetTokenByPasswordRequestSchema: GenMessage<GetTokenByPasswordRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_user, 2);
+  messageDesc(file_hdlctrl_v1_user, 1);
 
 /**
  * 既に持っているトークンをheaderに付与してリクエストする
@@ -86,7 +69,7 @@ export type RefreshTokenRequest = Message<"hdlctrl.v1.RefreshTokenRequest"> & {
  * Use `create(RefreshTokenRequestSchema)` to create a new message.
  */
 export const RefreshTokenRequestSchema: GenMessage<RefreshTokenRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_user, 3);
+  messageDesc(file_hdlctrl_v1_user, 2);
 
 /**
  * @generated from service hdlctrl.v1.UserService
@@ -95,14 +78,6 @@ export const UserService: GenService<{
   /**
    * 認証なしRPC
    *
-   * @generated from rpc hdlctrl.v1.UserService.GetTokenByAPIKey
-   */
-  getTokenByAPIKey: {
-    methodKind: "unary";
-    input: typeof GetTokenByAPIKeyRequestSchema;
-    output: typeof TokenSetResponseSchema;
-  },
-  /**
    * @generated from rpc hdlctrl.v1.UserService.GetTokenByPassword
    */
   getTokenByPassword: {

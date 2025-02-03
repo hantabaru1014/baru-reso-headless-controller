@@ -16,7 +16,9 @@ var (
 )
 
 type AuthClaims struct {
-	UserID string `json:"user_id"`
+	UserID     string `json:"user_id"`
+	ResoniteID string `json:"resonite_id"`
+	IconUrl    string `json:"icon_url"`
 	jwt.RegisteredClaims
 }
 
