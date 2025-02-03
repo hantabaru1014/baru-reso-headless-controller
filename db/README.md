@@ -7,5 +7,8 @@
 
 ## Up
 ```
-./bin/migrate -path db/migrations -database "${DB_URL}?sslmode=disable" up
+./bin/migrate -path db/migrations -database "${DB_URL}" up
 ```
+
+golang-migrate CLI README:
+https://github.com/golang-migrate/migrate/tree/master/cmd/migrate
