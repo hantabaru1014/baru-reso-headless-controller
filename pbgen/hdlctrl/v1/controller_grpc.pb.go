@@ -27,6 +27,7 @@ const (
 	ControllerService_UpdateHeadlessHostSettings_FullMethodName = "/hdlctrl.v1.ControllerService/UpdateHeadlessHostSettings"
 	ControllerService_PullLatestHostImage_FullMethodName        = "/hdlctrl.v1.ControllerService/PullLatestHostImage"
 	ControllerService_RestartHeadlessHost_FullMethodName        = "/hdlctrl.v1.ControllerService/RestartHeadlessHost"
+	ControllerService_StartHeadlessHost_FullMethodName          = "/hdlctrl.v1.ControllerService/StartHeadlessHost"
 	ControllerService_CreateHeadlessAccount_FullMethodName      = "/hdlctrl.v1.ControllerService/CreateHeadlessAccount"
 	ControllerService_ListHeadlessAccounts_FullMethodName       = "/hdlctrl.v1.ControllerService/ListHeadlessAccounts"
 	ControllerService_FetchWorldInfo_FullMethodName             = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
@@ -57,6 +58,7 @@ type ControllerServiceClient interface {
 	UpdateHeadlessHostSettings(ctx context.Context, in *UpdateHeadlessHostSettingsRequest, opts ...grpc.CallOption) (*UpdateHeadlessHostSettingsResponse, error)
 	PullLatestHostImage(ctx context.Context, in *PullLatestHostImageRequest, opts ...grpc.CallOption) (*PullLatestHostImageResponse, error)
 	RestartHeadlessHost(ctx context.Context, in *RestartHeadlessHostRequest, opts ...grpc.CallOption) (*RestartHeadlessHostResponse, error)
+	StartHeadlessHost(ctx context.Context, in *StartHeadlessHostRequest, opts ...grpc.CallOption) (*StartHeadlessHostResponse, error)
 	CreateHeadlessAccount(ctx context.Context, in *CreateHeadlessAccountRequest, opts ...grpc.CallOption) (*CreateHeadlessAccountResponse, error)
 	ListHeadlessAccounts(ctx context.Context, in *ListHeadlessAccountsRequest, opts ...grpc.CallOption) (*ListHeadlessAccountsResponse, error)
 	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*v1.FetchWorldInfoResponse, error)
@@ -148,6 +150,16 @@ func (c *controllerServiceClient) RestartHeadlessHost(ctx context.Context, in *R
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RestartHeadlessHostResponse)
 	err := c.cc.Invoke(ctx, ControllerService_RestartHeadlessHost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) StartHeadlessHost(ctx context.Context, in *StartHeadlessHostRequest, opts ...grpc.CallOption) (*StartHeadlessHostResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StartHeadlessHostResponse)
+	err := c.cc.Invoke(ctx, ControllerService_StartHeadlessHost_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -335,6 +347,7 @@ type ControllerServiceServer interface {
 	UpdateHeadlessHostSettings(context.Context, *UpdateHeadlessHostSettingsRequest) (*UpdateHeadlessHostSettingsResponse, error)
 	PullLatestHostImage(context.Context, *PullLatestHostImageRequest) (*PullLatestHostImageResponse, error)
 	RestartHeadlessHost(context.Context, *RestartHeadlessHostRequest) (*RestartHeadlessHostResponse, error)
+	StartHeadlessHost(context.Context, *StartHeadlessHostRequest) (*StartHeadlessHostResponse, error)
 	CreateHeadlessAccount(context.Context, *CreateHeadlessAccountRequest) (*CreateHeadlessAccountResponse, error)
 	ListHeadlessAccounts(context.Context, *ListHeadlessAccountsRequest) (*ListHeadlessAccountsResponse, error)
 	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error)
@@ -382,6 +395,9 @@ func (UnimplementedControllerServiceServer) PullLatestHostImage(context.Context,
 }
 func (UnimplementedControllerServiceServer) RestartHeadlessHost(context.Context, *RestartHeadlessHostRequest) (*RestartHeadlessHostResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RestartHeadlessHost not implemented")
+}
+func (UnimplementedControllerServiceServer) StartHeadlessHost(context.Context, *StartHeadlessHostRequest) (*StartHeadlessHostResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StartHeadlessHost not implemented")
 }
 func (UnimplementedControllerServiceServer) CreateHeadlessAccount(context.Context, *CreateHeadlessAccountRequest) (*CreateHeadlessAccountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateHeadlessAccount not implemented")
@@ -577,6 +593,24 @@ func _ControllerService_RestartHeadlessHost_Handler(srv interface{}, ctx context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).RestartHeadlessHost(ctx, req.(*RestartHeadlessHostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_StartHeadlessHost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartHeadlessHostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).StartHeadlessHost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_StartHeadlessHost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).StartHeadlessHost(ctx, req.(*StartHeadlessHostRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -921,6 +955,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RestartHeadlessHost",
 			Handler:    _ControllerService_RestartHeadlessHost_Handler,
+		},
+		{
+			MethodName: "StartHeadlessHost",
+			Handler:    _ControllerService_StartHeadlessHost_Handler,
 		},
 		{
 			MethodName: "CreateHeadlessAccount",

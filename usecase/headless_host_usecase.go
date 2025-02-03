@@ -18,6 +18,10 @@ func NewHeadlessHostUsecase(hhrepo port.HeadlessHostRepository) *HeadlessHostUse
 	}
 }
 
+func (hhuc *HeadlessHostUsecase) HeadlessHostStart(ctx context.Context, params port.HeadlessHostStartParams) (string, error) {
+	return hhuc.hhrepo.Start(ctx, params)
+}
+
 func (hhuc *HeadlessHostUsecase) HeadlessHostList(ctx context.Context) (entity.HeadlessHostList, error) {
 	hosts, err := hhuc.hhrepo.ListAll(ctx)
 	if err != nil {

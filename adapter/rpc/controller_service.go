@@ -38,6 +38,33 @@ func (c *ControllerService) NewHandler() (string, http.Handler) {
 	return hdlctrlv1connect.NewControllerServiceHandler(c, interceptors)
 }
 
+// StartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) StartHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.StartHeadlessHostRequest]) (*connect.Response[hdlctrlv1.StartHeadlessHostResponse], error) {
+	_, err := c.hhrepo.PullLatestContainerImage(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	account, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.HeadlessAccountId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	hostId, err := c.hhuc.HeadlessHostStart(ctx, port.HeadlessHostStartParams{
+		Name:                      req.Msg.Name,
+		HeadlessAccountCredential: account.Credential,
+		HeadlessAccountPassword:   account.Password,
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.StartHeadlessHostResponse{
+		HostId: hostId,
+	})
+	return res, nil
+}
+
 // CreateHeadlessAccount implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) CreateHeadlessAccount(ctx context.Context, req *connect.Request[hdlctrlv1.CreateHeadlessAccountRequest]) (*connect.Response[hdlctrlv1.CreateHeadlessAccountResponse], error) {
 	err := c.hauc.CreateHeadlessAccount(ctx, req.Msg.ResoniteUserId, req.Msg.Credential, req.Msg.Password)

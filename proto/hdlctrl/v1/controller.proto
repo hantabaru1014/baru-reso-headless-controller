@@ -13,6 +13,7 @@ service ControllerService {
   rpc UpdateHeadlessHostSettings(UpdateHeadlessHostSettingsRequest) returns (UpdateHeadlessHostSettingsResponse);
   rpc PullLatestHostImage(PullLatestHostImageRequest) returns (PullLatestHostImageResponse);
   rpc RestartHeadlessHost(RestartHeadlessHostRequest) returns (RestartHeadlessHostResponse);
+  rpc StartHeadlessHost(StartHeadlessHostRequest) returns (StartHeadlessHostResponse);
   rpc CreateHeadlessAccount(CreateHeadlessAccountRequest) returns (CreateHeadlessAccountResponse);
   rpc ListHeadlessAccounts(ListHeadlessAccountsRequest) returns (ListHeadlessAccountsResponse);
 
@@ -32,6 +33,15 @@ service ControllerService {
   rpc ListUsersInSession(ListUsersInSessionRequest) returns (ListUsersInSessionResponse);
   rpc KickUser(KickUserRequest) returns (KickUserResponse);
   rpc BanUser(BanUserRequest) returns (BanUserResponse);
+}
+
+message StartHeadlessHostRequest {
+  string name = 1;
+  string headless_account_id = 2;
+}
+
+message StartHeadlessHostResponse {
+  string host_id = 1;
 }
 
 message CreateHeadlessAccountRequest {

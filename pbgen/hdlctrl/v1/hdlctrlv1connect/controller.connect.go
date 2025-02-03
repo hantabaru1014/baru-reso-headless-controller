@@ -55,6 +55,9 @@ const (
 	// ControllerServiceRestartHeadlessHostProcedure is the fully-qualified name of the
 	// ControllerService's RestartHeadlessHost RPC.
 	ControllerServiceRestartHeadlessHostProcedure = "/hdlctrl.v1.ControllerService/RestartHeadlessHost"
+	// ControllerServiceStartHeadlessHostProcedure is the fully-qualified name of the
+	// ControllerService's StartHeadlessHost RPC.
+	ControllerServiceStartHeadlessHostProcedure = "/hdlctrl.v1.ControllerService/StartHeadlessHost"
 	// ControllerServiceCreateHeadlessAccountProcedure is the fully-qualified name of the
 	// ControllerService's CreateHeadlessAccount RPC.
 	ControllerServiceCreateHeadlessAccountProcedure = "/hdlctrl.v1.ControllerService/CreateHeadlessAccount"
@@ -117,6 +120,7 @@ type ControllerServiceClient interface {
 	UpdateHeadlessHostSettings(context.Context, *connect.Request[v1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[v1.UpdateHeadlessHostSettingsResponse], error)
 	PullLatestHostImage(context.Context, *connect.Request[v1.PullLatestHostImageRequest]) (*connect.Response[v1.PullLatestHostImageResponse], error)
 	RestartHeadlessHost(context.Context, *connect.Request[v1.RestartHeadlessHostRequest]) (*connect.Response[v1.RestartHeadlessHostResponse], error)
+	StartHeadlessHost(context.Context, *connect.Request[v1.StartHeadlessHostRequest]) (*connect.Response[v1.StartHeadlessHostResponse], error)
 	CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error)
 	ListHeadlessAccounts(context.Context, *connect.Request[v1.ListHeadlessAccountsRequest]) (*connect.Response[v1.ListHeadlessAccountsResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
@@ -187,6 +191,12 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+ControllerServiceRestartHeadlessHostProcedure,
 			connect.WithSchema(controllerServiceMethods.ByName("RestartHeadlessHost")),
+			connect.WithClientOptions(opts...),
+		),
+		startHeadlessHost: connect.NewClient[v1.StartHeadlessHostRequest, v1.StartHeadlessHostResponse](
+			httpClient,
+			baseURL+ControllerServiceStartHeadlessHostProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("StartHeadlessHost")),
 			connect.WithClientOptions(opts...),
 		),
 		createHeadlessAccount: connect.NewClient[v1.CreateHeadlessAccountRequest, v1.CreateHeadlessAccountResponse](
@@ -303,6 +313,7 @@ type controllerServiceClient struct {
 	updateHeadlessHostSettings *connect.Client[v1.UpdateHeadlessHostSettingsRequest, v1.UpdateHeadlessHostSettingsResponse]
 	pullLatestHostImage        *connect.Client[v1.PullLatestHostImageRequest, v1.PullLatestHostImageResponse]
 	restartHeadlessHost        *connect.Client[v1.RestartHeadlessHostRequest, v1.RestartHeadlessHostResponse]
+	startHeadlessHost          *connect.Client[v1.StartHeadlessHostRequest, v1.StartHeadlessHostResponse]
 	createHeadlessAccount      *connect.Client[v1.CreateHeadlessAccountRequest, v1.CreateHeadlessAccountResponse]
 	listHeadlessAccounts       *connect.Client[v1.ListHeadlessAccountsRequest, v1.ListHeadlessAccountsResponse]
 	fetchWorldInfo             *connect.Client[v1.FetchWorldInfoRequest, v11.FetchWorldInfoResponse]
@@ -355,6 +366,11 @@ func (c *controllerServiceClient) PullLatestHostImage(ctx context.Context, req *
 // RestartHeadlessHost calls hdlctrl.v1.ControllerService.RestartHeadlessHost.
 func (c *controllerServiceClient) RestartHeadlessHost(ctx context.Context, req *connect.Request[v1.RestartHeadlessHostRequest]) (*connect.Response[v1.RestartHeadlessHostResponse], error) {
 	return c.restartHeadlessHost.CallUnary(ctx, req)
+}
+
+// StartHeadlessHost calls hdlctrl.v1.ControllerService.StartHeadlessHost.
+func (c *controllerServiceClient) StartHeadlessHost(ctx context.Context, req *connect.Request[v1.StartHeadlessHostRequest]) (*connect.Response[v1.StartHeadlessHostResponse], error) {
+	return c.startHeadlessHost.CallUnary(ctx, req)
 }
 
 // CreateHeadlessAccount calls hdlctrl.v1.ControllerService.CreateHeadlessAccount.
@@ -451,6 +467,7 @@ type ControllerServiceHandler interface {
 	UpdateHeadlessHostSettings(context.Context, *connect.Request[v1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[v1.UpdateHeadlessHostSettingsResponse], error)
 	PullLatestHostImage(context.Context, *connect.Request[v1.PullLatestHostImageRequest]) (*connect.Response[v1.PullLatestHostImageResponse], error)
 	RestartHeadlessHost(context.Context, *connect.Request[v1.RestartHeadlessHostRequest]) (*connect.Response[v1.RestartHeadlessHostResponse], error)
+	StartHeadlessHost(context.Context, *connect.Request[v1.StartHeadlessHostRequest]) (*connect.Response[v1.StartHeadlessHostResponse], error)
 	CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error)
 	ListHeadlessAccounts(context.Context, *connect.Request[v1.ListHeadlessAccountsRequest]) (*connect.Response[v1.ListHeadlessAccountsResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
@@ -517,6 +534,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		ControllerServiceRestartHeadlessHostProcedure,
 		svc.RestartHeadlessHost,
 		connect.WithSchema(controllerServiceMethods.ByName("RestartHeadlessHost")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceStartHeadlessHostHandler := connect.NewUnaryHandler(
+		ControllerServiceStartHeadlessHostProcedure,
+		svc.StartHeadlessHost,
+		connect.WithSchema(controllerServiceMethods.ByName("StartHeadlessHost")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceCreateHeadlessAccountHandler := connect.NewUnaryHandler(
@@ -637,6 +660,8 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServicePullLatestHostImageHandler.ServeHTTP(w, r)
 		case ControllerServiceRestartHeadlessHostProcedure:
 			controllerServiceRestartHeadlessHostHandler.ServeHTTP(w, r)
+		case ControllerServiceStartHeadlessHostProcedure:
+			controllerServiceStartHeadlessHostHandler.ServeHTTP(w, r)
 		case ControllerServiceCreateHeadlessAccountProcedure:
 			controllerServiceCreateHeadlessAccountHandler.ServeHTTP(w, r)
 		case ControllerServiceListHeadlessAccountsProcedure:
@@ -706,6 +731,10 @@ func (UnimplementedControllerServiceHandler) PullLatestHostImage(context.Context
 
 func (UnimplementedControllerServiceHandler) RestartHeadlessHost(context.Context, *connect.Request[v1.RestartHeadlessHostRequest]) (*connect.Response[v1.RestartHeadlessHostResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.RestartHeadlessHost is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) StartHeadlessHost(context.Context, *connect.Request[v1.StartHeadlessHostRequest]) (*connect.Response[v1.StartHeadlessHostResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.StartHeadlessHost is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error) {

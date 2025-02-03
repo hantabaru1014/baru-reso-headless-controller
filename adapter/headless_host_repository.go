@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -33,6 +34,58 @@ var _ port.HeadlessHostRepository = (*HeadlessHostRepository)(nil)
 
 type HeadlessHostRepository struct {
 	connections map[string]headlessv1.HeadlessControlServiceClient
+}
+
+func getFreePort() (port int, err error) {
+	var a *net.TCPAddr
+	if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
+		var l *net.TCPListener
+		if l, err = net.ListenTCP("tcp", a); err == nil {
+			defer l.Close()
+			return l.Addr().(*net.TCPAddr).Port, nil
+		}
+	}
+	return
+}
+
+// Start implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) Start(ctx context.Context, params port.HeadlessHostStartParams) (string, error) {
+	cli, err := h.newDockerClient()
+	if err != nil {
+		return "", fmt.Errorf("failed to create docker client: %w", err)
+	}
+	imageTag := "latest"
+	if params.ContainerImageTag != nil {
+		imageTag = *params.ContainerImageTag
+	}
+	port, err := getFreePort()
+	if err != nil {
+		return "", fmt.Errorf("failed to get free port: %w", err)
+	}
+	config := container.Config{
+		Env: []string{
+			fmt.Sprintf("RpcHostUrl=%s", fmt.Sprintf("http://localhost:%d", port)),
+			fmt.Sprintf("HeadlessUserCredential=%s", params.HeadlessAccountCredential),
+			fmt.Sprintf("HeadlessUserPassword=%s", params.HeadlessAccountPassword),
+		},
+		Image: fmt.Sprintf("%s:%s", imageName, imageTag),
+		Labels: map[string]string{
+			portLabelKey: fmt.Sprintf("%d", port),
+		},
+	}
+	hostConfig := container.HostConfig{
+		NetworkMode: "host",
+	}
+	createResp, err := cli.ContainerCreate(ctx, &config, &hostConfig, nil, nil, params.Name)
+	if err != nil {
+		return "", fmt.Errorf("failed to create container: %w", err)
+	}
+	err = cli.ContainerStart(ctx, createResp.ID, container.StartOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to start container: %w", err)
+	}
+
+	return createResp.ID, nil
 }
 
 // Restart implements port.HeadlessHostRepository.

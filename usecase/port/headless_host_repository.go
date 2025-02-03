@@ -15,6 +15,13 @@ type LogLine struct {
 
 type LogLineList []*LogLine
 
+type HeadlessHostStartParams struct {
+	Name                      string
+	ContainerImageTag         *string
+	HeadlessAccountCredential string
+	HeadlessAccountPassword   string
+}
+
 type HeadlessHostRepository interface {
 	ListAll(ctx context.Context) (entity.HeadlessHostList, error)
 	Find(ctx context.Context, id string) (*entity.HeadlessHost, error)
@@ -23,4 +30,5 @@ type HeadlessHostRepository interface {
 	Rename(ctx context.Context, id, newName string) error
 	PullLatestContainerImage(ctx context.Context) (string, error)
 	Restart(ctx context.Context, host *entity.HeadlessHost) (string, error)
+	Start(ctx context.Context, params HeadlessHostStartParams) (string, error)
 }
