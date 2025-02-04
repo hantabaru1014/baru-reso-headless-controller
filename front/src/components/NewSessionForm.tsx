@@ -75,6 +75,12 @@ export default function NewSessionForm() {
           maxUsers,
           accessLevel,
           customSessionId,
+          hideFromPublicListing,
+          awayKickMinutes,
+          idleRestartIntervalSeconds,
+          saveOnExit,
+          autoSaveIntervalSeconds,
+          autoSleep,
         },
       });
       notifications.show("セッションを開始しました", {
@@ -83,7 +89,10 @@ export default function NewSessionForm() {
       });
       navigate("/sessions");
     } catch (e) {
-      console.error(e);
+      notifications.show("セッションの開始に失敗しました", {
+        severity: "error",
+        autoHideDuration: 3000,
+      });
     }
   };
 
