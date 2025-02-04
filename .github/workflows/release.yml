@@ -38,9 +38,6 @@ jobs:
 
   build-cli:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        GOARCH: ['amd64', 'arm64']
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -49,11 +46,18 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
+      
+      - name: Make dummy front assets
+        run: mkdir -p ./front/dist && touch ./front/dist/index.html
 
-      - name: Build CLI
-        run: GOOS=linux GOARCH=${{ matrix.GOARCH }} go build -o brhcli-${{ matrix.GOARCH }} cmd/cli/main.go
+      # ビルド時間を考えるとまだjobをmatrix strategyで分割する必要はなさそう
+      - name: Build CLI (amd64)
+        run: GOOS=linux GOARCH=amd64 go build -o brhcli-amd64 cmd/cli/main.go
+
+      - name: Build CLI (arm64)
+        run: GOOS=linux GOARCH=arm64 go build -o brhcli-arm64 cmd/cli/main.go
 
       - name: Upload assets
-        run: gh release upload ${{ github.event.release.tag_name }} brhcli-${{ matrix.GOARCH }}
+        run: gh release upload ${{ github.event.release.tag_name }} brhcli-amd64 brhcli-arm64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
