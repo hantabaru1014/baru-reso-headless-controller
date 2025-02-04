@@ -21,6 +21,7 @@ export default function SelectField<V>({
   readOnly,
   error,
   helperText,
+  minWidth,
 }: {
   label?: string;
   options: SelectFieldOption<V>[];
@@ -29,13 +30,20 @@ export default function SelectField<V>({
   readOnly?: boolean;
   error?: boolean;
   helperText?: ReactNode;
+  minWidth?: string;
 }) {
   const id = useId();
 
   return (
     <FormControl variant="filled" error={error}>
       <InputLabel id={id}>{label}</InputLabel>
-      <Select labelId={id} value={selectedId} readOnly={readOnly} autoWidth>
+      <Select
+        labelId={id}
+        value={selectedId}
+        readOnly={readOnly}
+        autoWidth
+        sx={{ minWidth }}
+      >
         {options.map((option) => (
           <MenuItem
             key={option.id}

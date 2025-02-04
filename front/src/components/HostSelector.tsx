@@ -12,11 +12,18 @@ export default function HostSelector() {
   const { data, status } = useQuery(listHeadlessHost);
 
   useEffect(() => {
-    if (status === "success" && !selectedHost && data?.hosts.length > 0) {
-      setSelectedHost({
-        id: data?.hosts[0].id,
-        name: data?.hosts[0].name,
-      });
+    if (status === "success") {
+      const runningHosts = data?.hosts.filter(
+        (h) => h.status === HeadlessHostStatus.RUNNING,
+      );
+      if (selectedHost && !runningHosts.find((h) => h.id === selectedHost.id)) {
+        setSelectedHost(null);
+      } else if (!selectedHost && runningHosts.length > 0) {
+        setSelectedHost({
+          id: runningHosts[0].id,
+          name: runningHosts[0].name,
+        });
+      }
     } else if (status === "error") {
       setSelectedHost(null);
     }
@@ -37,6 +44,7 @@ export default function HostSelector() {
         }
         selectedId={selectedHost?.id || ""}
         onChange={(option) => setSelectedHost(option.value ?? null)}
+        minWidth="7rem"
       />
     );
   } else {

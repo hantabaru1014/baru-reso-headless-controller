@@ -89,7 +89,7 @@ export default function NewSessionForm() {
       });
       navigate("/sessions");
     } catch (e) {
-      notifications.show("セッションの開始に失敗しました", {
+      notifications.show(`エラー: ${e instanceof Error ? e.message : e}`, {
         severity: "error",
         autoHideDuration: 3000,
       });
