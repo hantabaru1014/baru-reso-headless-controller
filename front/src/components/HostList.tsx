@@ -1,6 +1,16 @@
-import { useQuery } from "@connectrpc/connect-query";
-import { listHeadlessHost } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
+import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
+  listHeadlessAccounts,
+  listHeadlessHost,
+  startHeadlessHost,
+} from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
+import {
+  Avatar,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Grid2,
   Skeleton,
   Stack,
@@ -10,21 +20,138 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
+  Typography,
 } from "@mui/material";
 import prettyBytes from "../libs/prettyBytes";
 import { useNavigate } from "react-router";
 import { hostStatusToLabel } from "../libs/hostUtils";
 import RefetchButton from "./base/RefetchButton";
+import { DialogProps, useDialogs } from "@toolpad/core/useDialogs";
+import UserList, { UserInfo } from "./base/UserList";
+import { useEffect, useState } from "react";
+import { useNotifications } from "@toolpad/core/useNotifications";
+
+function SelectHeadlessAccountDialog({
+  open,
+  onClose,
+}: DialogProps<undefined, UserInfo | null>) {
+  const { data, isPending } = useQuery(listHeadlessAccounts);
+
+  return (
+    <Dialog open={open} onClose={() => onClose(null)} fullWidth maxWidth="sm">
+      <DialogTitle>ヘッドレスアカウントを選択</DialogTitle>
+      <DialogContent dividers>
+        <UserList
+          data={
+            data?.accounts.map((account) => ({
+              id: account.userId,
+              name: account.userName,
+              iconUrl: account.iconUrl,
+            })) ?? []
+          }
+          isLoading={isPending}
+          renderActions={(account) => (
+            <Button onClick={() => onClose(account)}>選択</Button>
+          )}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => onClose(null)}>キャンセル</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+function NewHostDialog({ open, onClose }: DialogProps) {
+  const { mutateAsync: mutateStartHost, isPending } =
+    useMutation(startHeadlessHost);
+  const [name, setName] = useState("");
+  const [account, setAccount] = useState<UserInfo | null>(null);
+  const notifications = useNotifications();
+  const dialogs = useDialogs();
+
+  useEffect(() => {
+    if (open) {
+      setName("");
+      setAccount(null);
+    }
+  }, [open]);
+
+  return (
+    <Dialog open={open} onClose={() => onClose()} fullWidth maxWidth="md">
+      <DialogTitle>ヘッドレスを開始</DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={2}>
+          <TextField
+            label="ホスト名"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          {account ? (
+            <Stack spacing={2} direction="row" alignItems="center">
+              <Avatar src={account.iconUrl} />
+              <Typography>{account.name}</Typography>
+            </Stack>
+          ) : (
+            <Button
+              onClick={async () => {
+                const result = await dialogs.open(SelectHeadlessAccountDialog);
+                if (result) {
+                  setAccount(result);
+                }
+              }}
+            >
+              ホストユーザを選択
+            </Button>
+          )}
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button
+          onClick={async () => {
+            try {
+              await mutateStartHost({
+                name: name,
+                headlessAccountId: account?.id ?? "",
+              });
+              onClose();
+            } catch (e) {
+              notifications.show(e instanceof Error ? e.message : `${e}`, {
+                severity: "error",
+              });
+            }
+          }}
+          disabled={isPending || !account || !name}
+        >
+          開始
+        </Button>
+        <Button onClick={() => onClose()}>キャンセル</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
 
 export default function HostList() {
   const { data, isPending, refetch } = useQuery(listHeadlessHost);
   const navigate = useNavigate();
+  const dialogs = useDialogs();
 
   return (
     <Grid2 container>
       <Grid2 size={12}>
         <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end" }}>
           <RefetchButton refetch={refetch} />
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={async () => {
+              await dialogs.open(NewHostDialog);
+              refetch();
+            }}
+          >
+            ヘッドレスを開始
+          </Button>
         </Stack>
       </Grid2>
       <Grid2 size={12}>
