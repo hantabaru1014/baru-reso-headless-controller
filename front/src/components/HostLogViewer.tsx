@@ -15,6 +15,7 @@ import {
   GetHeadlessHostLogsRequest,
   GetHeadlessHostLogsResponse_Log,
 } from "../../pbgen/hdlctrl/v1/controller_pb";
+import { useNotifications } from "@toolpad/core/useNotifications";
 
 export default function HostLogViewer({
   hostId,
@@ -28,6 +29,7 @@ export default function HostLogViewer({
   const [isFetchedUntilLogs, setIsFetchedUntilLogs] = useState(false);
   const [isTailing, setIsTailing] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const notifications = useNotifications();
 
   const fetchLogs = useCallback(
     async (mode: "init" | "until" | "since") => {
@@ -63,6 +65,9 @@ export default function HostLogViewer({
           hostId,
           query,
         });
+        if (mode === "until") {
+          setIsFetchedUntilLogs(true);
+        }
         if (data.logs.length === 0) {
           return;
         }
@@ -74,9 +79,6 @@ export default function HostLogViewer({
               ? prev.concat(data.logs)
               : data.logs.slice(0, -1).concat(prev),
         );
-        if (mode === "until") {
-          setIsFetchedUntilLogs(true);
-        }
         setTimeout(() => {
           if (scrollAreaRef.current) {
             switch (mode) {
@@ -94,7 +96,9 @@ export default function HostLogViewer({
           }
         }, 10);
       } catch (e) {
-        console.error(e);
+        notifications.show(
+          `ログ取得エラー: ${e instanceof Error ? e.message : e}`,
+        );
       }
     },
     [
@@ -108,8 +112,10 @@ export default function HostLogViewer({
   );
 
   useEffect(() => {
+    setLogs([]);
+    setIsFetchedUntilLogs(false);
     fetchLogs("init");
-  }, []);
+  }, [hostId]);
 
   useEffect(() => {
     if (!isTailing) {
@@ -154,10 +160,17 @@ export default function HostLogViewer({
             overflowY: "scroll",
           }}
         >
-          {!isFetchedUntilLogs && (
+          {!isFetchedUntilLogs && logs.length > 0 && (
             <Stack justifyContent="center">
               <Button onClick={() => fetchLogs("until")} variant="text">
                 以前のログを取得
+              </Button>
+            </Stack>
+          )}
+          {logs.length === 0 && (
+            <Stack justifyContent="center">
+              <Button onClick={() => fetchLogs("init")} variant="text">
+                ログを取得
               </Button>
             </Stack>
           )}
