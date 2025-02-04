@@ -1,8 +1,7 @@
-FROM node:22-slim AS front-build
+FROM node:23-slim AS front-build
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-# https://github.com/pnpm/pnpm/issues/9029
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable
 COPY . /app
 WORKDIR /app
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
