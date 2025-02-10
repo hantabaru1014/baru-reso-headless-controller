@@ -11,16 +11,35 @@
 - 対応CPU archはAMD64 or ARM64
 
 ## Setup
-TODO: 手順を検証してsetupスクリプトの作成
+以下はcontrollerとPostgresSQLをdocker-composeで立ち上げる場合の手順。  
+k8sで立ち上げたり、既存のpostgresに接続したい場合はsetup.shの実行まで行ったらcomposeファイルや.envを見て良しなにやってください。  
+また、baru-reso-headless-containerのdockerイメージのレジストリにアクセスできる状態である必要があります。
 
-- リポジトリルートにある `docker-compose.*.yml` を作業ディレクトリに配置
-- ReleasesからCPUにあった `brhcli-*` を作業ディレクトリにダウンロード
-- `.env.template` を元に `.env` を作業ディレクトリに作成
-  - シェル展開のように書いている箇所は実際には展開されないので、コマンドを実行した結果を `.env` に記載する
+- 空のディレクトリを用意してカレントディレクトリとする
+- 必要なファイルのダウンロードと `.env` のセットアップを行う
+  ```sh
+  sh <(curl -s https://raw.githubusercontent.com/hantabaru1014/baru-reso-headless-controller/refs/heads/main/scripts/setup.sh)
+  ```
+- `.env` から環境変数を読み込み
+  ```sh
+  source .env
+  ```
 - DBを立ち上げる
-  - `docker compose -f docker-compose.db.yml up -d`
-- `./brhcli-amd64 migrate` を実行
+  ```sh
+  docker compose -f docker-compose.db.yml up -d
+  ```
+- DBマイグレーションを実行
+  ```sh
+  ./brhcli migrate
+  ```
 - 管理者ユーザの作成
-  - `./brhcli-amd64 create-user <メールアドレス> <パスワード> <Resonite UserID>`
+  ```sh
+  ./brhcli create-user <メールアドレス> <パスワード> <Resonite UserID>
+  ```
 - 本体を起動
-  - `docker compose up -d`
+  ```sh
+  docker compose up -d
+  ```
+- 完了。 http://localhost:8014/ でアクセスできます。
+  - ポートは `.env` にある `HOST` 環境変数で設定可能
+  - 認証認可部分はまだちゃんと作ってないのでエンドポイント自体を何らかの信頼できる方法で保護してください(おすすめ: CloudFlare Zero Trust)
