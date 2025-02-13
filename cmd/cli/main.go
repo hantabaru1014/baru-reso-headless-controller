@@ -4,6 +4,8 @@ import (
 	"os"
 
 	"github.com/hantabaru1014/baru-reso-headless-controller/app"
+
+	_ "github.com/joho/godotenv/autoload"
 )
 
 func main() {

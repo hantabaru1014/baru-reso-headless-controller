@@ -20,10 +20,6 @@ k8sで立ち上げたり、既存のpostgresに接続したい場合はsetup.sh�
   ```sh
   sh <(curl -s https://raw.githubusercontent.com/hantabaru1014/baru-reso-headless-controller/refs/heads/main/scripts/setup.sh)
   ```
-- `.env` から環境変数を読み込み
-  ```sh
-  source .env
-  ```
 - DBを立ち上げる
   ```sh
   docker compose -f docker-compose.db.yml up -d

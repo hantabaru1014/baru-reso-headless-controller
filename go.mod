@@ -14,6 +14,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.18.2
 	github.com/gorilla/mux v1.8.1
 	github.com/jackc/pgx/v5 v5.7.2
+	github.com/joho/godotenv v1.5.1
 	github.com/spf13/cobra v1.8.1
 	github.com/tidwall/gjson v1.18.0
 	golang.org/x/crypto v0.32.0
