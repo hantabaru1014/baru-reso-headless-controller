@@ -271,7 +271,7 @@ func (h *HeadlessHostRepository) ListAll(ctx context.Context) (entity.HeadlessHo
 	}
 	containers, err := cli.ContainerList(ctx, container.ListOptions{
 		All:     true,
-		Filters: filters.NewArgs(filters.Arg("ancestor", imageName)),
+		Filters: filters.NewArgs(filters.Arg("label", portLabelKey)),
 	})
 	if err != nil {
 		return nil, err
@@ -347,7 +347,7 @@ func (h *HeadlessHostRepository) getContainer(ctx context.Context, id string) (*
 	}
 	containers, err := cli.ContainerList(ctx, container.ListOptions{
 		All:     true,
-		Filters: filters.NewArgs(filters.Arg("ancestor", imageName), filters.Arg("id", id)),
+		Filters: filters.NewArgs(filters.Arg("label", portLabelKey), filters.Arg("id", id)),
 	})
 	if err != nil {
 		return nil, err
