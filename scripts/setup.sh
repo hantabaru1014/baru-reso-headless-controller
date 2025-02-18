@@ -31,11 +31,7 @@ n|N|no|NO)
   read -p 'docker image pullに必要なAuth情報を入力: ' HEADLESS_REGISTRY_AUTH
   ;;
 *)
-  DEFAULT_GITHUB_USER=""
-  if command -v git >/dev/null 2>&1; then
-    DEFAULT_GITHUB_USER="$(git config user.name)"
-  fi
-  if [ -n "${DEFAULT_GITHUB_USER}" ]; then
+  if command -v git >/dev/null 2>&1 && DEFAULT_GITHUB_USER="$(git config user.name)"; then
     read -p "image pullを行うGitHubのユーザー名を入力 (default: ${DEFAULT_GITHUB_USER}): " GHCR_USERNAME
     GHCR_USERNAME=${GHCR_USERNAME:-$DEFAULT_GITHUB_USER}
   else
