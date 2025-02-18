@@ -135,7 +135,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                 label="AFKキック時間(分)"
                 type="number"
                 value={data?.session?.awayKickMinutes}
-                onSave={(v) => handleSave("awayKickMinutes", v)}
+                onSave={(v) => handleSave("awayKickMinutes", parseFloat(v))}
                 helperText="-1で無効"
               />
               <EditableCheckBox
@@ -154,21 +154,26 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                 label="自動保存間隔(秒)"
                 type="number"
                 value={data?.session?.autoSaveIntervalSeconds}
-                onSave={(v) => handleSave("autoSaveIntervalSeconds", v)}
+                onSave={(v) =>
+                  handleSave("autoSaveIntervalSeconds", parseInt(v))
+                }
                 helperText="-1で無効"
               />
             </Stack>
             <Stack direction="row" spacing={2}>
-              <EditableCheckBox
+              {/* FIXME: 反応しないのでヘッドレス側を修正するまで一旦コメントアウト */}
+              {/* <EditableCheckBox
                 label="オートスリープ"
                 checked={data?.session?.autoSleep}
                 onSave={(v) => handleSave("autoSleep", v)}
-              />
+              /> */}
               <EditableTextField
                 label="アイドル時の自動再起動間隔(秒)"
                 type="number"
                 value={data?.session?.idleRestartIntervalSeconds}
-                onSave={(v) => handleSave("idleRestartIntervalSeconds", v)}
+                onSave={(v) =>
+                  handleSave("idleRestartIntervalSeconds", parseInt(v))
+                }
                 helperText="-1で無効"
               />
             </Stack>
