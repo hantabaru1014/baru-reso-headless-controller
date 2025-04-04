@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
 	"github.com/hantabaru1014/baru-reso-headless-controller/front"
+	"github.com/hantabaru1014/baru-reso-headless-controller/worker"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )
@@ -15,19 +16,25 @@ import (
 type Server struct {
 	userService       *rpc.UserService
 	controllerService *rpc.ControllerService
+	imageChecker      *worker.ImageChecker
 }
 
 func NewServer(
 	userService *rpc.UserService,
 	controllerService *rpc.ControllerService,
+	imageChecker *worker.ImageChecker,
 ) *Server {
 	return &Server{
 		userService:       userService,
 		controllerService: controllerService,
+		imageChecker:      imageChecker,
 	}
 }
 
 func (s *Server) ListenAndServe(addr string, frontUrl string) error {
+	s.imageChecker.Start()
+	defer s.imageChecker.Stop()
+
 	router := mux.NewRouter()
 
 	{
