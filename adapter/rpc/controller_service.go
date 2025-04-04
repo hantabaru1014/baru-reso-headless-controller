@@ -40,7 +40,7 @@ func (c *ControllerService) NewHandler() (string, http.Handler) {
 
 // StartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) StartHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.StartHeadlessHostRequest]) (*connect.Response[hdlctrlv1.StartHeadlessHostResponse], error) {
-	_, err := c.hhrepo.PullLatestContainerImage(ctx)
+	err := c.hhrepo.PullContainerImage(ctx, "latest")
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -151,14 +151,12 @@ func (c *ControllerService) RestartHeadlessHost(ctx context.Context, req *connec
 
 // PullLatestHostImage implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) PullLatestHostImage(ctx context.Context, req *connect.Request[hdlctrlv1.PullLatestHostImageRequest]) (*connect.Response[hdlctrlv1.PullLatestHostImageResponse], error) {
-	logs, err := c.hhrepo.PullLatestContainerImage(ctx)
+	err := c.hhrepo.PullContainerImage(ctx, "latest")
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	res := connect.NewResponse(&hdlctrlv1.PullLatestHostImageResponse{
-		Logs: logs,
-	})
+	res := connect.NewResponse(&hdlctrlv1.PullLatestHostImageResponse{})
 	return res, nil
 }
 

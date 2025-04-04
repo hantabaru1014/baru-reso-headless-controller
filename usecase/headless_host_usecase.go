@@ -44,7 +44,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 		return "", err
 	}
 	if withUpdate {
-		_, err := hhuc.hhrepo.PullLatestContainerImage(ctx)
+		err := hhuc.hhrepo.PullContainerImage(ctx, "latest")
 		if err != nil {
 			return "", err
 		}

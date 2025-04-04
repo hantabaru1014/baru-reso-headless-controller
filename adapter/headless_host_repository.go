@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
-	"io"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -122,24 +123,81 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, host *entity.Headl
 	return resp.ID, nil
 }
 
-// PullLatestContainerImage implements port.HeadlessHostRepository.
-func (h *HeadlessHostRepository) PullLatestContainerImage(ctx context.Context) (string, error) {
+// PullContainerImage implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) PullContainerImage(ctx context.Context, tag string) error {
 	cli, err := h.newDockerClient()
 	if err != nil {
-		return "", err
+		return err
 	}
+
 	registryAuth := base64.StdEncoding.EncodeToString([]byte(os.Getenv("HEADLESS_REGISTRY_AUTH")))
-	reader, err := cli.ImagePull(ctx, os.Getenv("HEADLESS_IMAGE_NAME"), image.PullOptions{
+	refStr := fmt.Sprintf("%s:%s", imageName, tag)
+	_, err = cli.ImagePull(ctx, refStr, image.PullOptions{
 		All:          false,
 		RegistryAuth: registryAuth,
 	})
 	if err != nil {
-		return "", err
+		return err
 	}
-	buf := new(bytes.Buffer)
-	io.Copy(buf, reader)
 
-	return buf.String(), nil
+	return nil
+}
+
+// ListContainerTags implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) ListContainerTags(ctx context.Context, lastTag *string) ([]string, error) {
+	type tagsResponse struct {
+		Name string   `json:"name"`
+		Tags []string `json:"tags"`
+	}
+
+	imageNameParts := strings.Split(imageName, "/")
+	if len(imageNameParts) != 3 {
+		return nil, fmt.Errorf("invalid image name format: %s", imageName)
+	}
+	registryName := imageNameParts[0]
+	userImagePair := strings.Join(imageNameParts[1:], "/")
+	url := fmt.Sprintf("https://%s/v2/%s/tags/list", registryName, userImagePair)
+	if lastTag != nil {
+		url = fmt.Sprintf("%s?last=%s", url, *lastTag)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if registryName == "ghcr.io" {
+		authToken := os.Getenv("GHCR_AUTH_TOKEN")
+		if authToken == "" {
+			return nil, fmt.Errorf("GHCR_AUTH_TOKEN is not set")
+		}
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", base64.StdEncoding.EncodeToString([]byte(authToken))))
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get tags: %s", resp.Status)
+	}
+	var tagsResp tagsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tagsResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	tags := make([]string, 0, len(tagsResp.Tags))
+	for _, tag := range tagsResp.Tags {
+		if tag == "" {
+			continue
+		}
+		tags = append(tags, tag)
+	}
+
+	return tags, nil
 }
 
 // Rename implements port.HeadlessHostRepository.
