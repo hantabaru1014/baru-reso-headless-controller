@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -17,6 +18,7 @@ type Server struct {
 	userService       *rpc.UserService
 	controllerService *rpc.ControllerService
 	imageChecker      *worker.ImageChecker
+	httpServer        *http.Server
 }
 
 func NewServer(
@@ -33,7 +35,6 @@ func NewServer(
 
 func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 	s.imageChecker.Start()
-	defer s.imageChecker.Stop()
 
 	router := mux.NewRouter()
 
@@ -57,8 +58,20 @@ func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 		router.NotFoundHandler = http.FileServerFS(front.FrontAssets)
 	}
 
-	return http.ListenAndServe(
-		addr,
-		h2c.NewHandler(router, &http2.Server{}),
-	)
+	s.httpServer = &http.Server{
+		Addr:    addr,
+		Handler: h2c.NewHandler(router, &http2.Server{}),
+	}
+
+	return s.httpServer.ListenAndServe()
+}
+
+// Shutdown は現在進行中のリクエストを完了させてからサーバーを停止する
+func (s *Server) Shutdown(ctx context.Context) error {
+	s.imageChecker.Stop()
+
+	if s.httpServer != nil {
+		return s.httpServer.Shutdown(ctx)
+	}
+	return nil
 }
