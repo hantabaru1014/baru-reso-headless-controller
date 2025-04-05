@@ -13,20 +13,20 @@ export default function SignIn() {
   const queryCallbackUrl = query.get("callbackUrl");
 
   if (session) {
-    return <Navigate to="/" />;
+    return <Navigate to={queryCallbackUrl || "/"} />;
   }
 
   return (
     <SignInPage
       providers={[{ id: "credentials", name: "Credentials" }]}
-      signIn={async (provider, formData, callbackUrl) => {
+      signIn={async (provider, formData) => {
         if (provider.id === "credentials") {
           const email = formData?.get("email") as string;
           const password = formData?.get("password") as string;
 
           const response = await signIn(email, password);
           if (response.ok) {
-            navigate(callbackUrl || queryCallbackUrl || "/", { replace: true });
+            navigate(queryCallbackUrl || "/", { replace: true });
             return { error: undefined };
           } else {
             return { error: response.error };

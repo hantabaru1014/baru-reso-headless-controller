@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -33,6 +34,22 @@ func NewServer(
 	}
 }
 
+func spaFileHandler(w http.ResponseWriter, r *http.Request) {
+	filePath := r.URL.Path[1:] // Remove leading "/"
+	slog.Debug("Serve http", "path", filePath)
+
+	if filePath == "" {
+		filePath = "index.html"
+	}
+	f, err := front.FrontAssets.Open(filePath)
+	if err == nil {
+		f.Close()
+		http.ServeFileFS(w, r, front.FrontAssets, filePath)
+	} else {
+		http.ServeFileFS(w, r, front.FrontAssets, "index.html")
+	}
+}
+
 func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 	s.imageChecker.Start()
 
@@ -55,7 +72,7 @@ func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 		proxy := httputil.NewSingleHostReverseProxy(rpURL)
 		router.NotFoundHandler = proxy
 	} else {
-		router.NotFoundHandler = http.FileServerFS(front.FrontAssets)
+		router.NotFoundHandler = http.HandlerFunc(spaFileHandler)
 	}
 
 	s.httpServer = &http.Server{
