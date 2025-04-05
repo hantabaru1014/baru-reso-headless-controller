@@ -82,7 +82,7 @@ func (ic *ImageChecker) checkNewImages() {
 		// 必要に応じて新しいイメージをプル
 		if os.Getenv("AUTO_PULL_NEW_IMAGE") == "true" {
 			slog.Info("Pulling latest container image", "tag", newestTag)
-			if err := ic.repo.PullContainerImage(ctx, newestTag); err != nil {
+			if _, err := ic.repo.PullContainerImage(ctx, newestTag); err != nil {
 				slog.Error("Failed to pull container image", "tag", newestTag, "error", err)
 			} else {
 				slog.Info("Successfully pulled container image", "tag", newestTag)

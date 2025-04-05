@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -124,23 +125,25 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, host *entity.Headl
 }
 
 // PullContainerImage implements port.HeadlessHostRepository.
-func (h *HeadlessHostRepository) PullContainerImage(ctx context.Context, tag string) error {
+func (h *HeadlessHostRepository) PullContainerImage(ctx context.Context, tag string) (string, error) {
 	cli, err := h.newDockerClient()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	registryAuth := base64.StdEncoding.EncodeToString([]byte(os.Getenv("HEADLESS_REGISTRY_AUTH")))
 	refStr := fmt.Sprintf("%s:%s", imageName, tag)
-	_, err = cli.ImagePull(ctx, refStr, image.PullOptions{
+	reader, err := cli.ImagePull(ctx, refStr, image.PullOptions{
 		All:          false,
 		RegistryAuth: registryAuth,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
+	buf := new(bytes.Buffer)
+	io.Copy(buf, reader)
 
-	return nil
+	return buf.String(), nil
 }
 
 // ListContainerTags implements port.HeadlessHostRepository.

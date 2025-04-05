@@ -28,7 +28,7 @@ type HeadlessHostRepository interface {
 	GetRpcClient(ctx context.Context, id string) (headlessv1.HeadlessControlServiceClient, error)
 	GetLogs(ctx context.Context, id string, limit int32, until, since string) (LogLineList, error)
 	Rename(ctx context.Context, id, newName string) error
-	PullContainerImage(ctx context.Context, tag string) error
+	PullContainerImage(ctx context.Context, tag string) (string, error)
 	ListContainerTags(ctx context.Context, lastTag *string) ([]string, error)
 	Restart(ctx context.Context, host *entity.HeadlessHost) (string, error)
 	Start(ctx context.Context, params HeadlessHostStartParams) (string, error)
