@@ -45,14 +45,8 @@ func (c *ControllerService) StartHeadlessHost(ctx context.Context, req *connect.
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	tags, err := c.hhrepo.ListLocalAvailableContainerTags(ctx)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	latestTag := tags[len(tags)-1]
 	hostId, err := c.hhuc.HeadlessHostStart(ctx, port.HeadlessHostStartParams{
 		Name:                      req.Msg.Name,
-		ContainerImageTag:         &latestTag,
 		HeadlessAccountCredential: account.Credential,
 		HeadlessAccountPassword:   account.Password,
 	})

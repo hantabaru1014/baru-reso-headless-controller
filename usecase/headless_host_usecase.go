@@ -20,6 +20,18 @@ func NewHeadlessHostUsecase(hhrepo port.HeadlessHostRepository) *HeadlessHostUse
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostStart(ctx context.Context, params port.HeadlessHostStartParams) (string, error) {
+	if params.ContainerImageTag == nil {
+		_, err := hhuc.PullLatestHostImage(ctx)
+		if err != nil {
+			return "", err
+		}
+		tags, err := hhuc.hhrepo.ListLocalAvailableContainerTags(ctx)
+		if err != nil {
+			return "", err
+		}
+		params.ContainerImageTag = &tags[len(tags)-1]
+	}
+
 	return hhuc.hhrepo.Start(ctx, params)
 }
 
