@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"google.golang.org/grpc"
@@ -91,7 +93,7 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, params port.Headless
 }
 
 // Restart implements port.HeadlessHostRepository.
-func (h *HeadlessHostRepository) Restart(ctx context.Context, host *entity.HeadlessHost) (string, error) {
+func (h *HeadlessHostRepository) Restart(ctx context.Context, host *entity.HeadlessHost, newImage *string) (string, error) {
 	cli, err := h.newDockerClient()
 	if err != nil {
 		return "", fmt.Errorf("failed to create docker client: %w", err)
@@ -112,7 +114,13 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, host *entity.Headl
 	if err != nil {
 		return "", fmt.Errorf("failed to remove container: %w", err)
 	}
-	resp, err := cli.ContainerCreate(ctx, inspectResult.Config, inspectResult.HostConfig, nil, nil, host.Name)
+	image := inspectResult.Config.Image
+	if newImage != nil {
+		image = *newImage
+	}
+	newConfig := *inspectResult.Config
+	newConfig.Image = image
+	resp, err := cli.ContainerCreate(ctx, &newConfig, inspectResult.HostConfig, nil, nil, host.Name)
 	if err != nil {
 		return "", fmt.Errorf("failed to create container: %w", err)
 	}
@@ -194,10 +202,41 @@ func (h *HeadlessHostRepository) ListContainerTags(ctx context.Context, lastTag 
 
 	tags := make([]string, 0, len(tagsResp.Tags))
 	for _, tag := range tagsResp.Tags {
-		if tag == "" {
+		if !lib.ValidateResoniteVersionString(tag) {
 			continue
 		}
 		tags = append(tags, tag)
+	}
+
+	return tags, nil
+}
+
+// ListLocalAvailableContainerTags implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) ListLocalAvailableContainerTags(ctx context.Context) ([]string, error) {
+	cli, err := h.newDockerClient()
+	if err != nil {
+		return nil, err
+	}
+	images, err := cli.ImageList(ctx, image.ListOptions{
+		All:     true,
+		Filters: filters.NewArgs(filters.Arg("reference", imageName)),
+	})
+	if err != nil {
+		return nil, err
+	}
+	tags := make([]string, 0, len(images))
+	sort.Slice(images, func(i, j int) bool {
+		return images[i].Created < images[j].Created
+	})
+	for _, img := range images {
+		for _, tag := range img.RepoTags {
+			if strings.HasPrefix(tag, imageName) {
+				splitted := strings.Split(tag, ":")
+				if len(splitted) == 2 && lib.ValidateResoniteVersionString(splitted[1]) {
+					tags = append(tags, splitted[1])
+				}
+			}
+		}
 	}
 
 	return tags, nil
@@ -369,6 +408,11 @@ func (h *HeadlessHostRepository) containerToEntity(ctx context.Context, containe
 		if host.Status == entity.HeadlessHostStatus_RUNNING {
 			if err := h.fetchHeadlessInfo(ctx, host); err != nil {
 				return nil, err
+			}
+		} else {
+			splitted := strings.Split(container.Image, ":")
+			if len(splitted) == 2 {
+				host.ResoniteVersion = splitted[1]
 			}
 		}
 		return host, nil

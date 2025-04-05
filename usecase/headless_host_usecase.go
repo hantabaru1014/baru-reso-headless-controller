@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"os"
 
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
@@ -44,18 +45,32 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 		return "", err
 	}
 	if withUpdate {
-		_, err := hhuc.hhrepo.PullContainerImage(ctx, "latest")
+		_, err := hhuc.PullLatestHostImage(ctx)
 		if err != nil {
 			return "", err
 		}
-	}
-	// TODO: うまい具合に非同期化する
-	newId, err := hhuc.hhrepo.Restart(ctx, host)
-	if err != nil {
-		return "", err
-	}
+		tags, err := hhuc.hhrepo.ListLocalAvailableContainerTags(ctx)
+		if err != nil {
+			return "", err
+		}
+		newImage := os.Getenv("HEADLESS_IMAGE_NAME") + ":" + tags[len(tags)-1]
 
-	return newId, nil
+		// TODO: うまい具合に非同期化する
+		newId, err := hhuc.hhrepo.Restart(ctx, host, &newImage)
+		if err != nil {
+			return "", err
+		}
+
+		return newId, nil
+	} else {
+		// TODO: うまい具合に非同期化する
+		newId, err := hhuc.hhrepo.Restart(ctx, host, nil)
+		if err != nil {
+			return "", err
+		}
+
+		return newId, nil
+	}
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostGetLogs(ctx context.Context, id, until, since string, limit int32) (port.LogLineList, error) {
@@ -73,4 +88,25 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostShutdown(ctx context.Context, id st
 	}
 
 	return nil
+}
+
+func (hhuc *HeadlessHostUsecase) PullLatestHostImage(ctx context.Context) (string, error) {
+	localTags, err := hhuc.hhrepo.ListLocalAvailableContainerTags(ctx)
+	if err != nil {
+		return "", err
+	}
+	remoteTags, err := hhuc.hhrepo.ListContainerTags(ctx, &localTags[len(localTags)-1])
+	if err != nil {
+		return "", err
+	}
+	if len(remoteTags) == 0 {
+		return "Already up to date", nil
+	}
+
+	logs, err := hhuc.hhrepo.PullContainerImage(ctx, remoteTags[len(remoteTags)-1])
+	if err != nil {
+		return "", err
+	}
+
+	return logs, nil
 }

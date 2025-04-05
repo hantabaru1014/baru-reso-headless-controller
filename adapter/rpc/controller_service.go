@@ -40,18 +40,19 @@ func (c *ControllerService) NewHandler() (string, http.Handler) {
 
 // StartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) StartHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.StartHeadlessHostRequest]) (*connect.Response[hdlctrlv1.StartHeadlessHostResponse], error) {
-	_, err := c.hhrepo.PullContainerImage(ctx, "latest")
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
 	account, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.HeadlessAccountId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
+	tags, err := c.hhrepo.ListLocalAvailableContainerTags(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	latestTag := tags[len(tags)-1]
 	hostId, err := c.hhuc.HeadlessHostStart(ctx, port.HeadlessHostStartParams{
 		Name:                      req.Msg.Name,
+		ContainerImageTag:         &latestTag,
 		HeadlessAccountCredential: account.Credential,
 		HeadlessAccountPassword:   account.Password,
 	})
@@ -151,7 +152,7 @@ func (c *ControllerService) RestartHeadlessHost(ctx context.Context, req *connec
 
 // PullLatestHostImage implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) PullLatestHostImage(ctx context.Context, req *connect.Request[hdlctrlv1.PullLatestHostImageRequest]) (*connect.Response[hdlctrlv1.PullLatestHostImageResponse], error) {
-	logs, err := c.hhrepo.PullContainerImage(ctx, "latest")
+	logs, err := c.hhuc.PullLatestHostImage(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
