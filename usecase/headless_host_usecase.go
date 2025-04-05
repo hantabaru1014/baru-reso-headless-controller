@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"os"
 
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
@@ -28,6 +29,9 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostStart(ctx context.Context, params p
 		tags, err := hhuc.hhrepo.ListLocalAvailableContainerTags(ctx)
 		if err != nil {
 			return "", err
+		}
+		if len(tags) == 0 {
+			return "", errors.New("no available container image tags")
 		}
 		params.ContainerImageTag = &tags[len(tags)-1]
 	}
@@ -64,6 +68,9 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 		tags, err := hhuc.hhrepo.ListLocalAvailableContainerTags(ctx)
 		if err != nil {
 			return "", err
+		}
+		if len(tags) == 0 {
+			return "", errors.New("no available container image tags")
 		}
 		newImage := os.Getenv("HEADLESS_IMAGE_NAME") + ":" + tags[len(tags)-1]
 
@@ -107,9 +114,17 @@ func (hhuc *HeadlessHostUsecase) PullLatestHostImage(ctx context.Context) (strin
 	if err != nil {
 		return "", err
 	}
-	remoteTags, err := hhuc.hhrepo.ListContainerTags(ctx, &localTags[len(localTags)-1])
+
+	var latestLocalTag *string
+	if len(localTags) > 0 {
+		latestLocalTag = &localTags[len(localTags)-1]
+	}
+	remoteTags, err := hhuc.hhrepo.ListContainerTags(ctx, latestLocalTag)
 	if err != nil {
 		return "", err
+	}
+	if latestLocalTag == nil && len(remoteTags) == 0 {
+		return "", errors.New("no available container image tags")
 	}
 	if len(remoteTags) == 0 {
 		return "Already up to date", nil
