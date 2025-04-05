@@ -4,7 +4,7 @@ go 1.23.5
 
 require (
 	connectrpc.com/connect v1.18.1
-	golang.org/x/net v0.34.0
+	golang.org/x/net v0.36.0
 	google.golang.org/grpc v1.69.4
 	google.golang.org/protobuf v1.36.3
 )
@@ -18,7 +18,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/spf13/cobra v1.8.1
 	github.com/tidwall/gjson v1.18.0
-	golang.org/x/crypto v0.32.0
+	golang.org/x/crypto v0.35.0
 )
 
 require (
@@ -56,18 +56,18 @@ require (
 	go.opentelemetry.io/otel/sdk v1.34.0 // indirect
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	golang.org/x/sync v0.10.0 // indirect
+	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 )
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.2.2
-	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
 )
 
 require (
 	github.com/google/wire v0.6.0
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 )
