@@ -11,6 +11,11 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
+	"github.com/hantabaru1014/baru-reso-headless-controller/worker"
+)
+
+import (
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 )
 
 // Injectors from wire.go:
@@ -23,7 +28,8 @@ func InitializeServer() *Server {
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository)
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries)
 	controllerService := rpc.NewControllerService(headlessHostRepository, headlessHostUsecase, headlessAccountUsecase)
-	server := NewServer(userService, controllerService)
+	imageChecker := worker.NewImageChecker(headlessHostRepository)
+	server := NewServer(userService, controllerService, imageChecker)
 	return server
 }
 

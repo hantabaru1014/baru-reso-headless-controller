@@ -10,6 +10,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
+	"github.com/hantabaru1014/baru-reso-headless-controller/worker"
 )
 
 func InitializeServer() *Server {
@@ -20,6 +21,9 @@ func InitializeServer() *Server {
 		// repository
 		wire.Bind(new(port.HeadlessHostRepository), new(*adapter.HeadlessHostRepository)),
 		adapter.NewHeadlessHostRepository,
+
+		// worker
+		worker.NewImageChecker,
 
 		// usecase
 		usecase.NewHeadlessHostUsecase,

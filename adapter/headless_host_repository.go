@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -18,6 +21,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"google.golang.org/grpc"
@@ -89,7 +93,7 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, params port.Headless
 }
 
 // Restart implements port.HeadlessHostRepository.
-func (h *HeadlessHostRepository) Restart(ctx context.Context, host *entity.HeadlessHost) (string, error) {
+func (h *HeadlessHostRepository) Restart(ctx context.Context, host *entity.HeadlessHost, newImage *string) (string, error) {
 	cli, err := h.newDockerClient()
 	if err != nil {
 		return "", fmt.Errorf("failed to create docker client: %w", err)
@@ -110,7 +114,13 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, host *entity.Headl
 	if err != nil {
 		return "", fmt.Errorf("failed to remove container: %w", err)
 	}
-	resp, err := cli.ContainerCreate(ctx, inspectResult.Config, inspectResult.HostConfig, nil, nil, host.Name)
+	image := inspectResult.Config.Image
+	if newImage != nil {
+		image = *newImage
+	}
+	newConfig := *inspectResult.Config
+	newConfig.Image = image
+	resp, err := cli.ContainerCreate(ctx, &newConfig, inspectResult.HostConfig, nil, nil, host.Name)
 	if err != nil {
 		return "", fmt.Errorf("failed to create container: %w", err)
 	}
@@ -122,14 +132,16 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, host *entity.Headl
 	return resp.ID, nil
 }
 
-// PullLatestContainerImage implements port.HeadlessHostRepository.
-func (h *HeadlessHostRepository) PullLatestContainerImage(ctx context.Context) (string, error) {
+// PullContainerImage implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) PullContainerImage(ctx context.Context, tag string) (string, error) {
 	cli, err := h.newDockerClient()
 	if err != nil {
 		return "", err
 	}
+
 	registryAuth := base64.StdEncoding.EncodeToString([]byte(os.Getenv("HEADLESS_REGISTRY_AUTH")))
-	reader, err := cli.ImagePull(ctx, os.Getenv("HEADLESS_IMAGE_NAME"), image.PullOptions{
+	refStr := fmt.Sprintf("%s:%s", imageName, tag)
+	reader, err := cli.ImagePull(ctx, refStr, image.PullOptions{
 		All:          false,
 		RegistryAuth: registryAuth,
 	})
@@ -140,6 +152,94 @@ func (h *HeadlessHostRepository) PullLatestContainerImage(ctx context.Context) (
 	io.Copy(buf, reader)
 
 	return buf.String(), nil
+}
+
+// ListContainerTags implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) ListContainerTags(ctx context.Context, lastTag *string) ([]string, error) {
+	type tagsResponse struct {
+		Name string   `json:"name"`
+		Tags []string `json:"tags"`
+	}
+
+	imageNameParts := strings.Split(imageName, "/")
+	if len(imageNameParts) != 3 {
+		return nil, fmt.Errorf("invalid image name format: %s", imageName)
+	}
+	registryName := imageNameParts[0]
+	userImagePair := strings.Join(imageNameParts[1:], "/")
+	url := fmt.Sprintf("https://%s/v2/%s/tags/list", registryName, userImagePair)
+	if lastTag != nil {
+		url = fmt.Sprintf("%s?last=%s", url, *lastTag)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if registryName == "ghcr.io" {
+		authToken := os.Getenv("GHCR_AUTH_TOKEN")
+		if authToken == "" {
+			return nil, fmt.Errorf("GHCR_AUTH_TOKEN is not set")
+		}
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", base64.StdEncoding.EncodeToString([]byte(authToken))))
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get tags: %s", resp.Status)
+	}
+	var tagsResp tagsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tagsResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	tags := make([]string, 0, len(tagsResp.Tags))
+	for _, tag := range tagsResp.Tags {
+		if !lib.ValidateResoniteVersionString(tag) {
+			continue
+		}
+		tags = append(tags, tag)
+	}
+
+	return tags, nil
+}
+
+// ListLocalAvailableContainerTags implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) ListLocalAvailableContainerTags(ctx context.Context) ([]string, error) {
+	cli, err := h.newDockerClient()
+	if err != nil {
+		return nil, err
+	}
+	images, err := cli.ImageList(ctx, image.ListOptions{
+		All:     true,
+		Filters: filters.NewArgs(filters.Arg("reference", imageName)),
+	})
+	if err != nil {
+		return nil, err
+	}
+	tags := make([]string, 0, len(images))
+	sort.Slice(images, func(i, j int) bool {
+		return images[i].Created < images[j].Created
+	})
+	for _, img := range images {
+		for _, tag := range img.RepoTags {
+			if strings.HasPrefix(tag, imageName) {
+				splitted := strings.Split(tag, ":")
+				if len(splitted) == 2 && lib.ValidateResoniteVersionString(splitted[1]) {
+					tags = append(tags, splitted[1])
+				}
+			}
+		}
+	}
+
+	return tags, nil
 }
 
 // Rename implements port.HeadlessHostRepository.
@@ -308,6 +408,11 @@ func (h *HeadlessHostRepository) containerToEntity(ctx context.Context, containe
 		if host.Status == entity.HeadlessHostStatus_RUNNING {
 			if err := h.fetchHeadlessInfo(ctx, host); err != nil {
 				return nil, err
+			}
+		} else {
+			splitted := strings.Split(container.Image, ":")
+			if len(splitted) == 2 {
+				host.ResoniteVersion = splitted[1]
 			}
 		}
 		return host, nil

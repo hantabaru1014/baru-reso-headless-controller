@@ -28,7 +28,11 @@ type HeadlessHostRepository interface {
 	GetRpcClient(ctx context.Context, id string) (headlessv1.HeadlessControlServiceClient, error)
 	GetLogs(ctx context.Context, id string, limit int32, until, since string) (LogLineList, error)
 	Rename(ctx context.Context, id, newName string) error
-	PullLatestContainerImage(ctx context.Context) (string, error)
-	Restart(ctx context.Context, host *entity.HeadlessHost) (string, error)
+	PullContainerImage(ctx context.Context, tag string) (string, error)
+	// コンテナイメージのタグ一覧をリモートから取得する。一番新しいタグが最後。
+	ListContainerTags(ctx context.Context, lastTag *string) ([]string, error)
+	// ローカルにコンテナイメージのタグ一覧を取得する。一番新しいタグが最後。
+	ListLocalAvailableContainerTags(ctx context.Context) ([]string, error)
+	Restart(ctx context.Context, host *entity.HeadlessHost, newImage *string) (string, error)
 	Start(ctx context.Context, params HeadlessHostStartParams) (string, error)
 }
