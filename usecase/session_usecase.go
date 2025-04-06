@@ -180,10 +180,9 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 	var hdlSessions entity.SessionList
 	if filter.HostID != nil {
 		ss, err := u.getHostSessions(ctx, *filter.HostID)
-		if err != nil {
-			return nil, err
+		if err == nil {
+			hdlSessions = ss
 		}
-		hdlSessions = ss
 	} else {
 		hosts, err := u.hostRepo.ListAll(ctx)
 		if err != nil {
@@ -208,6 +207,9 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 		if s, ok := hdlSessionsMap[dbSession.ID]; ok {
 			sessions = append(sessions, s)
 			delete(hdlSessionsMap, dbSession.ID)
+			if dbSession.Status != entity.SessionStatus_RUNNING {
+				_ = u.sessionRepo.UpdateStatus(ctx, dbSession.ID, entity.SessionStatus_RUNNING)
+			}
 		} else {
 			sessions = append(sessions, dbSession)
 		}

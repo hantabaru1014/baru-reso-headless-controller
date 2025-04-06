@@ -79,10 +79,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 	if err != nil {
 		return "", err
 	}
-	stoppedSessions, err := hhuc.stopRunningSessions(ctx, id)
-	if err != nil {
-		return "", err
-	}
+	_, _ = hhuc.stopRunningSessions(ctx, id)
 	var newImage *string
 	if withUpdate {
 		_, err := hhuc.PullLatestHostImage(ctx)
@@ -106,12 +103,13 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 		return "", err
 	}
 
-	for _, session := range stoppedSessions {
-		_, err = hhuc.huc.StartSession(ctx, session.ID, session.StartupParameters)
-		if err != nil {
-			return "", err
-		}
-	}
+	// FIXME: ヘッドレスに起動Configを渡せるようにしたら修正する
+	// for _, session := range stoppedSessions {
+	// 	_, err = hhuc.huc.StartSession(ctx, newId, session.StartupParameters)
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
+	// }
 
 	return newId, nil
 }
