@@ -207,6 +207,11 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
               {data?.session?.endedAt && (
                 <span>終了: {formatTimestamp(data?.session?.endedAt)}</span>
               )}
+              {sessionState?.lastSavedAt && sessionState.canSave && (
+                <span>
+                  最終保存: {formatTimestamp(sessionState.lastSavedAt)}
+                </span>
+              )}
             </Stack>
 
             <Stack component="form" noValidate autoComplete="off" spacing={2}>

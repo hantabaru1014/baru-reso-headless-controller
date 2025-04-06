@@ -12,12 +12,31 @@ import (
 
 type HeadlessHostUsecase struct {
 	hhrepo port.HeadlessHostRepository
+	huc    *SessionUsecase
 }
 
-func NewHeadlessHostUsecase(hhrepo port.HeadlessHostRepository) *HeadlessHostUsecase {
+func NewHeadlessHostUsecase(hhrepo port.HeadlessHostRepository, huc *SessionUsecase) *HeadlessHostUsecase {
 	return &HeadlessHostUsecase{
 		hhrepo: hhrepo,
+		huc:    huc,
 	}
+}
+
+func (hhuc *HeadlessHostUsecase) stopRunningSessions(ctx context.Context, hostId string) (entity.SessionList, error) {
+	sessions, err := hhuc.huc.SearchSessions(ctx, SearchSessionsFilter{
+		HostID: &hostId,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, session := range sessions {
+		err = hhuc.huc.StopSession(ctx, session.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return sessions, nil
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostStart(ctx context.Context, params port.HeadlessHostStartParams) (string, error) {
@@ -60,6 +79,11 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 	if err != nil {
 		return "", err
 	}
+	stoppedSessions, err := hhuc.stopRunningSessions(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	var newImage *string
 	if withUpdate {
 		_, err := hhuc.PullLatestHostImage(ctx)
 		if err != nil {
@@ -72,24 +96,24 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 		if len(tags) == 0 {
 			return "", errors.New("no available container image tags")
 		}
-		newImage := os.Getenv("HEADLESS_IMAGE_NAME") + ":" + tags[len(tags)-1]
-
-		// TODO: うまい具合に非同期化する
-		newId, err := hhuc.hhrepo.Restart(ctx, host, &newImage)
-		if err != nil {
-			return "", err
-		}
-
-		return newId, nil
-	} else {
-		// TODO: うまい具合に非同期化する
-		newId, err := hhuc.hhrepo.Restart(ctx, host, nil)
-		if err != nil {
-			return "", err
-		}
-
-		return newId, nil
+		image := os.Getenv("HEADLESS_IMAGE_NAME") + ":" + tags[len(tags)-1]
+		newImage = &image
 	}
+
+	// TODO: うまい具合に非同期化する
+	newId, err := hhuc.hhrepo.Restart(ctx, host, newImage)
+	if err != nil {
+		return "", err
+	}
+
+	for _, session := range stoppedSessions {
+		_, err = hhuc.huc.StartSession(ctx, session.ID, session.StartupParameters)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return newId, nil
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostGetLogs(ctx context.Context, id, until, since string, limit int32) (port.LogLineList, error) {

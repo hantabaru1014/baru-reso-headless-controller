@@ -18,11 +18,27 @@ import { useNavigate } from "react-router";
 import { AccessLevels } from "../constants";
 import RefetchButton from "./base/RefetchButton";
 import { sessionStatusToLabel } from "../libs/sessionUtils";
+import SelectField from "./base/SelectField";
+import { ReactNode, useState } from "react";
+import { SessionStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 
 export default function SessionList() {
+  const [filterState, setFilterState] = useState<{
+    label: ReactNode;
+    id: string;
+    value: SessionStatus | undefined;
+  }>({
+    label: "全て",
+    id: "ALL",
+    value: undefined,
+  });
+  const [filterHostId, setFilterHostId] = useState("ALL");
   const { data: hosts } = useQuery(listHeadlessHost);
   const { data, status, refetch } = useQuery(searchSessions, {
-    parameters: {},
+    parameters: {
+      status: filterState.value,
+      hostId: filterHostId === "ALL" ? undefined : filterHostId,
+    },
   });
   const navigate = useNavigate();
 
@@ -37,15 +53,50 @@ export default function SessionList() {
 
   return (
     <Stack spacing={2}>
-      <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end" }}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => navigate("/sessions/new")}
-        >
-          新規セッション
-        </Button>
-        <RefetchButton refetch={refetch} />
+      <Stack
+        direction="row"
+        spacing={2}
+        sx={{ justifyContent: "space-between" }}
+      >
+        <Stack direction="row" spacing={1}>
+          <SelectField
+            label="状態"
+            options={[
+              { label: "全て", id: "ALL", value: undefined },
+              { label: "実行中", id: "RUNNING", value: SessionStatus.RUNNING },
+              { label: "終了済み", id: "ENDED", value: SessionStatus.ENDED },
+            ]}
+            onChange={(o) =>
+              setFilterState({
+                label: o.label,
+                id: o.id,
+                value: o.value,
+              })
+            }
+            selectedId={filterState.id}
+          />
+          <SelectField
+            label="ホスト"
+            options={[{ label: "全て", id: "ALL" }].concat(
+              hosts?.hosts.map((host) => ({
+                label: host.name,
+                id: host.id,
+              })) || [],
+            )}
+            onChange={(o) => setFilterHostId(o.id)}
+            selectedId={filterHostId}
+          />
+        </Stack>
+        <div>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => navigate("/sessions/new")}
+          >
+            新規セッション
+          </Button>
+          <RefetchButton refetch={refetch} />
+        </div>
       </Stack>
       <TableContainer>
         <Table>
