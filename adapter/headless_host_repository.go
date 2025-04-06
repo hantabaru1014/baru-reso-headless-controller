@@ -457,6 +457,9 @@ func (h *HeadlessHostRepository) getContainer(ctx context.Context, id string) (*
 	if err != nil {
 		return nil, err
 	}
+	if len(containers) == 0 {
+		return nil, fmt.Errorf("container not found")
+	}
 	if len(containers) > 1 {
 		return nil, fmt.Errorf("found several containers")
 	}

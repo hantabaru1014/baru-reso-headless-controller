@@ -18,14 +18,13 @@ import { CheckOutlined, SearchOutlined } from "@mui/icons-material";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
   banUser,
+  getSessionDetails,
   inviteUser,
   kickUser,
   listUsersInSession,
   searchUserInfo,
   updateUserRole,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import { useAtom } from "jotai";
-import { selectedHostAtom } from "../atoms/selectedHostAtom";
 import Loading from "./base/Loading";
 import { UserRoles } from "../constants";
 import EditableSelectField from "./base/EditableSelectField";
@@ -39,9 +38,8 @@ import ScrollBase from "./base/ScrollBase";
 function UserInviteDialog({
   open,
   onClose,
-  payload: { sessionId },
-}: DialogProps<{ sessionId: string }>) {
-  const [selectedHost] = useAtom(selectedHostAtom);
+  payload: { hostId, sessionId },
+}: DialogProps<{ hostId: string; sessionId: string }>) {
   const notifications = useNotifications();
   const [query, setQuery] = useState("");
   const {
@@ -56,7 +54,7 @@ function UserInviteDialog({
     setQuery(value);
     const isId = value.startsWith("u-");
     mutateSearch({
-      hostId: selectedHost?.id,
+      hostId,
       parameters: {
         user: {
           case: isId ? "userId" : "userName",
@@ -71,7 +69,7 @@ function UserInviteDialog({
   const handleInviteUser = async (userId: string) => {
     try {
       await mutateInviteUser({
-        hostId: selectedHost?.id,
+        hostId,
         sessionId: sessionId,
         user: {
           case: "userId",
@@ -129,10 +127,13 @@ function UserInviteDialog({
 }
 
 export default function SessionUserList({ sessionId }: { sessionId: string }) {
-  const [selectedHost] = useAtom(selectedHostAtom);
   const dialogs = useDialogs();
+  const { data: sessionDetail } = useQuery(getSessionDetails, {
+    sessionId,
+  });
+  const hostId = sessionDetail?.session?.hostId;
   const { data, status, refetch } = useQuery(listUsersInSession, {
-    hostId: selectedHost?.id,
+    hostId,
     sessionId,
   });
   const { mutateAsync: mutateUpdateRole } = useMutation(updateUserRole);
@@ -142,7 +143,7 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
   const handleUpdateRole = async (userId: string, role: string) => {
     try {
       await mutateUpdateRole({
-        hostId: selectedHost?.id,
+        hostId,
         parameters: {
           sessionId,
           user: {
@@ -164,7 +165,7 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
   const handleKickUser = async (userId: string) => {
     try {
       await mutateKickUser({
-        hostId: selectedHost?.id,
+        hostId,
         parameters: {
           sessionId,
           user: {
@@ -185,7 +186,7 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
   const handleBanUser = async (userId: string) => {
     try {
       await mutateBanUser({
-        hostId: selectedHost?.id,
+        hostId,
         parameters: {
           sessionId,
           user: {
@@ -204,7 +205,7 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
   };
 
   const handleOpenInviteDialog = async () => {
-    await dialogs.open(UserInviteDialog, { sessionId });
+    await dialogs.open(UserInviteDialog, { hostId: hostId ?? "", sessionId });
     refetch();
   };
 

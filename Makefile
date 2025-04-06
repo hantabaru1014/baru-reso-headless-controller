@@ -23,7 +23,8 @@ gen.wire:
 
 .PHONY: gen.sqlc
 gen.sqlc:
-	$(sqlc) generate
+	# https://github.com/sqlc-dev/sqlc/issues/3916
+	CGO_CFLAGS="-DHAVE_STRCHRNUL" $(sqlc) generate
 
 .PHONY: lint.proto
 lint.proto:

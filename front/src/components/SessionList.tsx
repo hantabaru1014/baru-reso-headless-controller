@@ -10,19 +10,30 @@ import {
   TableRow,
 } from "@mui/material";
 import { useQuery } from "@connectrpc/connect-query";
-import { listSessions } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import { useAtom } from "jotai";
-import { selectedHostAtom } from "../atoms/selectedHostAtom";
+import {
+  listHeadlessHost,
+  searchSessions,
+} from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { useNavigate } from "react-router";
 import { AccessLevels } from "../constants";
 import RefetchButton from "./base/RefetchButton";
+import { sessionStatusToLabel } from "../libs/sessionUtils";
 
 export default function SessionList() {
-  const [selectedHost] = useAtom(selectedHostAtom);
-  const { data, status, refetch } = useQuery(listSessions, {
-    hostId: selectedHost?.id,
+  const { data: hosts } = useQuery(listHeadlessHost);
+  const { data, status, refetch } = useQuery(searchSessions, {
+    parameters: {},
   });
   const navigate = useNavigate();
+
+  const hostNameMap =
+    hosts?.hosts.reduce(
+      (acc, host) => {
+        acc[host.id] = host.name;
+        return acc;
+      },
+      {} as Record<string, string>,
+    ) || {};
 
   return (
     <Stack spacing={2}>
@@ -41,6 +52,8 @@ export default function SessionList() {
           <TableHead>
             <TableRow>
               <TableCell>セッション名</TableCell>
+              <TableCell>ホスト名</TableCell>
+              <TableCell>状態</TableCell>
               <TableCell>アクセスレベル</TableCell>
               <TableCell>ユーザー数</TableCell>
             </TableRow>
@@ -54,11 +67,19 @@ export default function SessionList() {
                 sx={{ cursor: "pointer" }}
               >
                 <TableCell>{session.name}</TableCell>
+                <TableCell>{hostNameMap[session.hostId]}</TableCell>
+                <TableCell>{sessionStatusToLabel(session.status)}</TableCell>
                 <TableCell>
-                  {AccessLevels[session.accessLevel - 1].label}
+                  {session.currentState
+                    ? AccessLevels[session.currentState.accessLevel - 1].label
+                    : ""}
                 </TableCell>
                 <TableCell>
-                  {session.usersCount}/{session.maxUsers}
+                  {session.currentState
+                    ? session.currentState.usersCount +
+                      "/" +
+                      session.currentState.maxUsers
+                    : ""}
                 </TableCell>
               </TableRow>
             ))}

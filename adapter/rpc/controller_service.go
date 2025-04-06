@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/converter"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
@@ -23,13 +24,15 @@ type ControllerService struct {
 	hhrepo port.HeadlessHostRepository
 	hhuc   *usecase.HeadlessHostUsecase
 	hauc   *usecase.HeadlessAccountUsecase
+	suc    *usecase.SessionUsecase
 }
 
-func NewControllerService(hhrepo port.HeadlessHostRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase) *ControllerService {
+func NewControllerService(hhrepo port.HeadlessHostRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase, suc *usecase.SessionUsecase) *ControllerService {
 	return &ControllerService{
 		hhrepo: hhrepo,
 		hhuc:   hhuc,
 		hauc:   hauc,
+		suc:    suc,
 	}
 }
 
@@ -302,39 +305,16 @@ func (c *ControllerService) ListHeadlessHost(ctx context.Context, req *connect.R
 	return res, nil
 }
 
-// ListSessions implements hdlctrlv1connect.ControllerServiceHandler.
-func (c *ControllerService) ListSessions(ctx context.Context, req *connect.Request[hdlctrlv1.ListSessionsRequest]) (*connect.Response[hdlctrlv1.ListSessionsResponse], error) {
-	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeUnavailable, err)
-	}
-	headlessRes, err := conn.ListSessions(ctx, &headlessv1.ListSessionsRequest{})
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	res := connect.NewResponse(&hdlctrlv1.ListSessionsResponse{
-		Sessions: headlessRes.Sessions,
-	})
-	return res, nil
-}
-
 // GetSessionDetails implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) GetSessionDetails(ctx context.Context, req *connect.Request[hdlctrlv1.GetSessionDetailsRequest]) (*connect.Response[hdlctrlv1.GetSessionDetailsResponse], error) {
-	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeUnavailable, err)
-	}
-	headlessRes, err := conn.GetSession(ctx, &headlessv1.GetSessionRequest{
-		SessionId: req.Msg.SessionId,
-	})
+	s, err := c.suc.GetSession(ctx, req.Msg.SessionId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-
 	res := connect.NewResponse(&hdlctrlv1.GetSessionDetailsResponse{
-		Session: headlessRes.Session,
+		Session: s.ToProto(),
 	})
+
 	return res, nil
 }
 
@@ -372,11 +352,7 @@ func (c *ControllerService) SaveSessionWorld(ctx context.Context, req *connect.R
 
 // UpdateSessionParameters implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) UpdateSessionParameters(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateSessionParametersRequest]) (*connect.Response[hdlctrlv1.UpdateSessionParametersResponse], error) {
-	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeUnavailable, err)
-	}
-	_, err = conn.UpdateSessionParameters(ctx, req.Msg.Parameters)
+	err := c.suc.UpdateSessionParameters(ctx, req.Msg.Parameters.SessionId, req.Msg.Parameters)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -404,17 +380,13 @@ func (c *ControllerService) UpdateUserRole(ctx context.Context, req *connect.Req
 
 // StartWorld implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) StartWorld(ctx context.Context, req *connect.Request[hdlctrlv1.StartWorldRequest]) (*connect.Response[hdlctrlv1.StartWorldResponse], error) {
-	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeUnavailable, err)
-	}
-	headlessRes, err := conn.StartWorld(ctx, &headlessv1.StartWorldRequest{Parameters: req.Msg.Parameters})
+	openedSession, err := c.suc.StartSession(ctx, req.Msg.HostId, req.Msg.Parameters)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	res := connect.NewResponse(&hdlctrlv1.StartWorldResponse{
-		OpenedSession: headlessRes.OpenedSession,
+		OpenedSession: openedSession.ToProto(),
 	})
 	return res, nil
 }
@@ -444,15 +416,36 @@ func (c *ControllerService) InviteUser(ctx context.Context, req *connect.Request
 
 // StopSession implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) StopSession(ctx context.Context, req *connect.Request[hdlctrlv1.StopSessionRequest]) (*connect.Response[hdlctrlv1.StopSessionResponse], error) {
-	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeUnavailable, err)
-	}
-	_, err = conn.StopSession(ctx, &headlessv1.StopSessionRequest{SessionId: req.Msg.SessionId})
+	err := c.suc.StopSession(ctx, req.Msg.SessionId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	res := connect.NewResponse(&hdlctrlv1.StopSessionResponse{})
+	return res, nil
+}
+
+// SearchSessions implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) SearchSessions(ctx context.Context, req *connect.Request[hdlctrlv1.SearchSessionsRequest]) (*connect.Response[hdlctrlv1.SearchSessionsResponse], error) {
+	filter := usecase.SearchSessionsFilter{
+		HostID: req.Msg.Parameters.HostId,
+	}
+	if req.Msg.Parameters.Status != nil {
+		s := entity.SessionStatus(int32(req.Msg.Parameters.Status.Number()))
+		filter.Status = &s
+	}
+
+	sessions, err := c.suc.SearchSessions(ctx, filter)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	protoSessions := make([]*hdlctrlv1.Session, 0, len(sessions))
+	for _, session := range sessions {
+		protoSessions = append(protoSessions, session.ToProto())
+	}
+	res := connect.NewResponse(&hdlctrlv1.SearchSessionsResponse{
+		Sessions: protoSessions,
+	})
+
 	return res, nil
 }

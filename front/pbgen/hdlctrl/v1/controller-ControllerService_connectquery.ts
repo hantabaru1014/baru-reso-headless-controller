@@ -75,9 +75,9 @@ export const getFriendRequests = ControllerService.method.getFriendRequests;
 export const acceptFriendRequests = ControllerService.method.acceptFriendRequests;
 
 /**
- * @generated from rpc hdlctrl.v1.ControllerService.ListSessions
+ * @generated from rpc hdlctrl.v1.ControllerService.SearchSessions
  */
-export const listSessions = ControllerService.method.listSessions;
+export const searchSessions = ControllerService.method.searchSessions;
 
 /**
  * @generated from rpc hdlctrl.v1.ControllerService.GetSessionDetails

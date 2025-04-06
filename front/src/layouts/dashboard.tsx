@@ -4,7 +4,6 @@ import { PageContainer } from "@toolpad/core/PageContainer";
 import { Account } from "@toolpad/core/Account";
 import { useAtom } from "jotai";
 import { sessionAtom } from "../atoms/sessionAtom";
-import HostSelector from "../components/HostSelector";
 import { Stack } from "@mui/material";
 
 function CustomAccount() {
@@ -20,7 +19,6 @@ function CustomAccount() {
 function ToolbarActions() {
   return (
     <Stack direction="row" gap="0.75rem" sx={{ alignItems: "center" }}>
-      <HostSelector />
       <ThemeSwitcher />
     </Stack>
   );
