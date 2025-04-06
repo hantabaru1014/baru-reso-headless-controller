@@ -63,6 +63,16 @@ func (u *SessionUsecase) StopSession(ctx context.Context, id string) error {
 		return err
 	}
 
+	hdlSession, err := client.GetSession(ctx, &headlessv1.GetSessionRequest{SessionId: id})
+	if err != nil {
+		return err
+	}
+	if hdlSession.Session.WorldUrl != "" {
+		s.StartupParameters.LoadWorld = &headlessv1.WorldStartupParameters_LoadWorldUrl{
+			LoadWorldUrl: hdlSession.Session.WorldUrl,
+		}
+	}
+
 	_, err = client.StopSession(ctx, &headlessv1.StopSessionRequest{SessionId: id})
 	if err != nil {
 		return err
