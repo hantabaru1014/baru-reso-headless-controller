@@ -124,7 +124,7 @@ type SearchSessionsFilter struct {
 	Status *entity.SessionStatus
 }
 
-func (u *SessionUsecase) getHostSessions(ctx context.Context, hostId string) (entity.SessionList, error) {
+func (u *SessionUsecase) getHostSessions(ctx context.Context, hostId string) ([]*headlessv1.Session, error) {
 	client, err := u.hostRepo.GetRpcClient(ctx, hostId)
 	if err != nil {
 		return nil, err
@@ -133,20 +133,8 @@ func (u *SessionUsecase) getHostSessions(ctx context.Context, hostId string) (en
 	if err != nil {
 		return nil, err
 	}
-	sessions := make(entity.SessionList, 0, len(resp.Sessions))
-	for _, s := range resp.Sessions {
-		startedAt := s.StartedAt.AsTime()
-		sessions = append(sessions, &entity.Session{
-			ID:                s.Id,
-			Name:              s.Name,
-			HostID:            hostId,
-			Status:            entity.SessionStatus_RUNNING,
-			StartedAt:         &startedAt,
-			StartupParameters: s.StartupParameters,
-			CurrentState:      s,
-		})
-	}
-	return sessions, nil
+
+	return resp.Sessions, nil
 }
 
 func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessionsFilter) (entity.SessionList, error) {
@@ -178,11 +166,15 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 		dbSessions = filteredSessions
 	}
 
-	var hdlSessions entity.SessionList
+	var hdlSessions []*headlessv1.Session
+	sessionHostIdMap := make(map[string]string)
 	if filter.HostID != nil {
 		ss, err := u.getHostSessions(ctx, *filter.HostID)
 		if err == nil {
 			hdlSessions = ss
+		}
+		for _, s := range ss {
+			sessionHostIdMap[s.Id] = *filter.HostID
 		}
 	} else {
 		hosts, err := u.hostRepo.ListAll(ctx)
@@ -196,29 +188,43 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 				continue
 			}
 			hdlSessions = append(hdlSessions, ss...)
+			for _, s := range ss {
+				sessionHostIdMap[s.Id] = h.ID
+			}
 		}
 	}
 
-	hdlSessionsMap := make(map[string]*entity.Session)
+	hdlSessionsMap := make(map[string]*headlessv1.Session)
 	for _, s := range hdlSessions {
-		hdlSessionsMap[s.ID] = s
+		hdlSessionsMap[s.Id] = s
 	}
 	sessions := make(entity.SessionList, 0, len(hdlSessions))
 	for _, dbSession := range dbSessions {
 		if s, ok := hdlSessionsMap[dbSession.ID]; ok {
-			sessions = append(sessions, s)
-			delete(hdlSessionsMap, dbSession.ID)
+			dbSession.CurrentState = s
+			dbSession.Name = s.Name
 			if dbSession.Status != entity.SessionStatus_RUNNING {
 				_ = u.sessionRepo.UpdateStatus(ctx, dbSession.ID, entity.SessionStatus_RUNNING)
 			}
-		} else {
-			sessions = append(sessions, dbSession)
+			dbSession.Status = entity.SessionStatus_RUNNING
+			delete(hdlSessionsMap, dbSession.ID)
 		}
+		sessions = append(sessions, dbSession)
 	}
 	for _, s := range hdlSessionsMap {
-		sessions = append(sessions, s)
-		if err := u.sessionRepo.Upsert(ctx, s); err != nil {
-			slog.Error("Failed to upsert session", "id", s.ID, "err", err)
+		startedAt := s.StartedAt.AsTime()
+		e := &entity.Session{
+			ID:                s.Id,
+			Name:              s.Name,
+			HostID:            sessionHostIdMap[s.Id],
+			Status:            entity.SessionStatus_RUNNING,
+			StartedAt:         &startedAt,
+			StartupParameters: s.StartupParameters,
+			CurrentState:      s,
+		}
+		sessions = append(sessions, e)
+		if err := u.sessionRepo.Upsert(ctx, e); err != nil {
+			slog.Error("Failed to upsert session", "id", e.ID, "err", err)
 		}
 	}
 

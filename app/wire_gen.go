@@ -27,7 +27,7 @@ func InitializeServer() *Server {
 	headlessHostRepository := adapter.NewHeadlessHostRepository()
 	sessionRepository := adapter.NewSessionRepository(queries)
 	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository)
-	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionUsecase)
+	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase)
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries)
 	controllerService := rpc.NewControllerService(headlessHostRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase)
 	imageChecker := worker.NewImageChecker(headlessHostRepository)
