@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
+  deleteEndedSession,
   getSessionDetails,
   listHeadlessHost,
   startWorld,
@@ -80,6 +81,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
   const { mutateAsync: mutateSave } = useMutation(updateSessionParameters);
   const { mutateAsync: mutateStartWorld, isPending: isPendingStartWorld } =
     useMutation(startWorld);
+  const { mutateAsync: mutateDelete } = useMutation(deleteEndedSession);
   const notifications = useNotifications();
   const dialogs = useDialogs();
   const navigate = useNavigate();
@@ -146,6 +148,24 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
     }
   };
 
+  const handleDeleteSession = async () => {
+    if (data?.session?.status !== SessionStatus.ENDED) return;
+
+    try {
+      await mutateDelete({ sessionId });
+      notifications.show("セッションを削除しました", {
+        severity: "success",
+        autoHideDuration: 3000,
+      });
+      navigate("/sessions");
+    } catch (e) {
+      notifications.show(`セッションの削除に失敗しました: ${e}`, {
+        severity: "error",
+        autoHideDuration: 3000,
+      });
+    }
+  };
+
   return (
     <Loading loading={status === "pending"}>
       <Grid2 container spacing={2}>
@@ -192,13 +212,22 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                 }
               />
             ) : (
-              <Button
-                variant="contained"
-                loading={isPendingStartWorld}
-                onClick={handleRestartSession}
-              >
-                同設定で開始
-              </Button>
+              <Stack direction="row" spacing={2}>
+                <Button
+                  variant="contained"
+                  loading={isPendingStartWorld}
+                  onClick={handleRestartSession}
+                >
+                  同設定で開始
+                </Button>
+                <Button
+                  variant="contained"
+                  color="warning"
+                  onClick={handleDeleteSession}
+                >
+                  削除
+                </Button>
+              </Stack>
             )}
           </Grid2>
           <Grid2 size={12}>

@@ -95,6 +95,11 @@ export const startWorld = ControllerService.method.startWorld;
 export const stopSession = ControllerService.method.stopSession;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.DeleteEndedSession
+ */
+export const deleteEndedSession = ControllerService.method.deleteEndedSession;
+
+/**
  * @generated from rpc hdlctrl.v1.ControllerService.SaveSessionWorld
  */
 export const saveSessionWorld = ControllerService.method.saveSessionWorld;

@@ -26,6 +26,7 @@ service ControllerService {
   rpc GetSessionDetails(GetSessionDetailsRequest) returns (GetSessionDetailsResponse);
   rpc StartWorld(StartWorldRequest) returns (StartWorldResponse);
   rpc StopSession(StopSessionRequest) returns (StopSessionResponse);
+  rpc DeleteEndedSession(DeleteEndedSessionRequest) returns (DeleteEndedSessionResponse);
   rpc SaveSessionWorld(SaveSessionWorldRequest) returns (SaveSessionWorldResponse);
   rpc InviteUser(InviteUserRequest) returns (InviteUserResponse);
   rpc UpdateUserRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse);
@@ -202,6 +203,12 @@ message StopSessionRequest {
 }
 
 message StopSessionResponse {}
+
+message DeleteEndedSessionRequest {
+  string session_id = 1;
+}
+
+message DeleteEndedSessionResponse {}
 
 message SaveSessionWorldRequest {
   string host_id = 1;

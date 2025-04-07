@@ -453,3 +453,14 @@ func (c *ControllerService) SearchSessions(ctx context.Context, req *connect.Req
 
 	return res, nil
 }
+
+// DeleteEndedSession implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) DeleteEndedSession(ctx context.Context, req *connect.Request[hdlctrlv1.DeleteEndedSessionRequest]) (*connect.Response[hdlctrlv1.DeleteEndedSessionResponse], error) {
+	err := c.suc.DeleteSession(ctx, req.Msg.SessionId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.DeleteEndedSessionResponse{})
+	return res, nil
+}

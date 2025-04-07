@@ -297,3 +297,7 @@ func (u *SessionUsecase) UpdateSessionParameters(ctx context.Context, id string,
 
 	return u.sessionRepo.Upsert(ctx, s)
 }
+
+func (u *SessionUsecase) DeleteSession(ctx context.Context, id string) error {
+	return u.sessionRepo.Delete(ctx, id)
+}

@@ -38,6 +38,7 @@ const (
 	ControllerService_GetSessionDetails_FullMethodName          = "/hdlctrl.v1.ControllerService/GetSessionDetails"
 	ControllerService_StartWorld_FullMethodName                 = "/hdlctrl.v1.ControllerService/StartWorld"
 	ControllerService_StopSession_FullMethodName                = "/hdlctrl.v1.ControllerService/StopSession"
+	ControllerService_DeleteEndedSession_FullMethodName         = "/hdlctrl.v1.ControllerService/DeleteEndedSession"
 	ControllerService_SaveSessionWorld_FullMethodName           = "/hdlctrl.v1.ControllerService/SaveSessionWorld"
 	ControllerService_InviteUser_FullMethodName                 = "/hdlctrl.v1.ControllerService/InviteUser"
 	ControllerService_UpdateUserRole_FullMethodName             = "/hdlctrl.v1.ControllerService/UpdateUserRole"
@@ -69,6 +70,7 @@ type ControllerServiceClient interface {
 	GetSessionDetails(ctx context.Context, in *GetSessionDetailsRequest, opts ...grpc.CallOption) (*GetSessionDetailsResponse, error)
 	StartWorld(ctx context.Context, in *StartWorldRequest, opts ...grpc.CallOption) (*StartWorldResponse, error)
 	StopSession(ctx context.Context, in *StopSessionRequest, opts ...grpc.CallOption) (*StopSessionResponse, error)
+	DeleteEndedSession(ctx context.Context, in *DeleteEndedSessionRequest, opts ...grpc.CallOption) (*DeleteEndedSessionResponse, error)
 	SaveSessionWorld(ctx context.Context, in *SaveSessionWorldRequest, opts ...grpc.CallOption) (*SaveSessionWorldResponse, error)
 	InviteUser(ctx context.Context, in *InviteUserRequest, opts ...grpc.CallOption) (*InviteUserResponse, error)
 	UpdateUserRole(ctx context.Context, in *UpdateUserRoleRequest, opts ...grpc.CallOption) (*UpdateUserRoleResponse, error)
@@ -266,6 +268,16 @@ func (c *controllerServiceClient) StopSession(ctx context.Context, in *StopSessi
 	return out, nil
 }
 
+func (c *controllerServiceClient) DeleteEndedSession(ctx context.Context, in *DeleteEndedSessionRequest, opts ...grpc.CallOption) (*DeleteEndedSessionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteEndedSessionResponse)
+	err := c.cc.Invoke(ctx, ControllerService_DeleteEndedSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *controllerServiceClient) SaveSessionWorld(ctx context.Context, in *SaveSessionWorldRequest, opts ...grpc.CallOption) (*SaveSessionWorldResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SaveSessionWorldResponse)
@@ -358,6 +370,7 @@ type ControllerServiceServer interface {
 	GetSessionDetails(context.Context, *GetSessionDetailsRequest) (*GetSessionDetailsResponse, error)
 	StartWorld(context.Context, *StartWorldRequest) (*StartWorldResponse, error)
 	StopSession(context.Context, *StopSessionRequest) (*StopSessionResponse, error)
+	DeleteEndedSession(context.Context, *DeleteEndedSessionRequest) (*DeleteEndedSessionResponse, error)
 	SaveSessionWorld(context.Context, *SaveSessionWorldRequest) (*SaveSessionWorldResponse, error)
 	InviteUser(context.Context, *InviteUserRequest) (*InviteUserResponse, error)
 	UpdateUserRole(context.Context, *UpdateUserRoleRequest) (*UpdateUserRoleResponse, error)
@@ -428,6 +441,9 @@ func (UnimplementedControllerServiceServer) StartWorld(context.Context, *StartWo
 }
 func (UnimplementedControllerServiceServer) StopSession(context.Context, *StopSessionRequest) (*StopSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopSession not implemented")
+}
+func (UnimplementedControllerServiceServer) DeleteEndedSession(context.Context, *DeleteEndedSessionRequest) (*DeleteEndedSessionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteEndedSession not implemented")
 }
 func (UnimplementedControllerServiceServer) SaveSessionWorld(context.Context, *SaveSessionWorldRequest) (*SaveSessionWorldResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SaveSessionWorld not implemented")
@@ -795,6 +811,24 @@ func _ControllerService_StopSession_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_DeleteEndedSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteEndedSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).DeleteEndedSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_DeleteEndedSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).DeleteEndedSession(ctx, req.(*DeleteEndedSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ControllerService_SaveSessionWorld_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SaveSessionWorldRequest)
 	if err := dec(in); err != nil {
@@ -999,6 +1033,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StopSession",
 			Handler:    _ControllerService_StopSession_Handler,
+		},
+		{
+			MethodName: "DeleteEndedSession",
+			Handler:    _ControllerService_DeleteEndedSession_Handler,
 		},
 		{
 			MethodName: "SaveSessionWorld",
