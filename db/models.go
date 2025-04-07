@@ -19,16 +19,19 @@ type HeadlessAccount struct {
 }
 
 type Session struct {
-	ID                string
-	Name              string
-	Status            int32
-	StartedAt         pgtype.Timestamptz
-	EndedAt           pgtype.Timestamptz
-	HostID            string
-	StartupParameters []byte
-	AutoUpgrade       bool
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
+	ID                             string
+	Name                           string
+	Status                         int32
+	StartedAt                      pgtype.Timestamptz
+	StartedBy                      pgtype.Text
+	EndedAt                        pgtype.Timestamptz
+	HostID                         string
+	StartupParameters              []byte
+	StartupParametersSchemaVersion int32
+	AutoUpgrade                    bool
+	Memo                           pgtype.Text
+	CreatedAt                      pgtype.Timestamptz
+	UpdatedAt                      pgtype.Timestamptz
 }
 
 type User struct {

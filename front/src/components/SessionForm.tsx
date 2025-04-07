@@ -202,8 +202,13 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
             )}
           </Grid2>
           <Grid2 size={12}>
-            <Stack direction="row" spacing={2}>
-              <span>開始: {formatTimestamp(data?.session?.startedAt)}</span>
+            <Stack direction="column">
+              <span>
+                開始: {formatTimestamp(data?.session?.startedAt)}
+                {data?.session?.startedBy
+                  ? ` (userId: ${data?.session?.startedBy})`
+                  : ""}
+              </span>
               {data?.session?.endedAt && (
                 <span>終了: {formatTimestamp(data?.session?.endedAt)}</span>
               )}

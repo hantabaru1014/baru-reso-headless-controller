@@ -287,6 +287,9 @@ message Session {
   optional google.protobuf.Timestamp ended_at = 6;
   headless.v1.WorldStartupParameters startup_parameters = 7;
   optional headless.v1.Session current_state = 8;
+  optional string started_by = 9;
+  bool auto_upgrade = 10;
+  string memo = 11;
 }
 
 message HeadlessAccount {

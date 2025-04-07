@@ -4,20 +4,26 @@ INSERT INTO sessions (
     name,
     status,
     started_at,
+    started_by,
     ended_at,
     host_id,
     startup_parameters,
-    auto_upgrade
+    startup_parameters_schema_version,
+    auto_upgrade,
+    memo
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 ) ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     status = EXCLUDED.status,
     started_at = EXCLUDED.started_at,
+    started_by = EXCLUDED.started_by,
     ended_at = EXCLUDED.ended_at,
     host_id = EXCLUDED.host_id,
     startup_parameters = EXCLUDED.startup_parameters,
-    auto_upgrade = EXCLUDED.auto_upgrade
+    startup_parameters_schema_version = EXCLUDED.startup_parameters_schema_version,
+    auto_upgrade = EXCLUDED.auto_upgrade,
+    memo = EXCLUDED.memo
 RETURNING *;
 
 -- name: UpdateSessionStatus :exec

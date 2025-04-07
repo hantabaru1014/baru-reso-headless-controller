@@ -45,15 +45,31 @@ func (r *SessionRepository) Upsert(ctx context.Context, session *entity.Session)
 	if session.EndedAt != nil {
 		endedAt.Time = *session.EndedAt
 	}
+	startedBy := pgtype.Text{
+		Valid: session.StartedBy != nil,
+	}
+	if session.StartedBy != nil {
+		startedBy.String = *session.StartedBy
+	}
+	memo := pgtype.Text{
+		Valid: session.Memo != "",
+	}
+	if session.Memo != "" {
+		memo.String = session.Memo
+	}
 
 	_, err = r.q.UpsertSession(ctx, db.UpsertSessionParams{
-		ID:                session.ID,
-		Name:              session.Name,
-		Status:            int32(session.Status),
-		StartedAt:         startedAt,
-		EndedAt:           endedAt,
-		HostID:            session.HostID,
-		StartupParameters: startupParams,
+		ID:                             session.ID,
+		Name:                           session.Name,
+		Status:                         int32(session.Status),
+		StartedAt:                      startedAt,
+		StartedBy:                      startedBy,
+		EndedAt:                        endedAt,
+		HostID:                         session.HostID,
+		StartupParameters:              startupParams,
+		StartupParametersSchemaVersion: 1,
+		AutoUpgrade:                    session.AutoUpgrade,
+		Memo:                           memo,
 	})
 	return err
 }
@@ -118,15 +134,26 @@ func sessionToEntity(s db.Session) (*entity.Session, error) {
 	if err := protojson.Unmarshal(s.StartupParameters, &startupParams); err != nil {
 		return nil, err
 	}
+	var startedBy *string
+	if s.StartedBy.Valid {
+		startedBy = &s.StartedBy.String
+	}
+	memo := ""
+	if s.Memo.Valid {
+		memo = s.Memo.String
+	}
 
 	return &entity.Session{
 		ID:                s.ID,
 		Name:              s.Name,
 		Status:            entity.SessionStatus(s.Status),
 		StartedAt:         startedAt,
+		StartedBy:         startedBy,
 		EndedAt:           endedAt,
 		HostID:            s.HostID,
 		StartupParameters: &startupParams,
+		AutoUpgrade:       s.AutoUpgrade,
+		Memo:              memo,
 	}, nil
 }
 

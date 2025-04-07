@@ -21,11 +21,14 @@ const (
 type Session struct {
 	ID                string
 	Name              string
-	HostID            string
 	Status            SessionStatus
 	StartedAt         *time.Time
+	StartedBy         *string
 	EndedAt           *time.Time
+	HostID            string
 	StartupParameters *headlessv1.WorldStartupParameters
+	AutoUpgrade       bool
+	Memo              string
 	CurrentState      *headlessv1.Session
 }
 
@@ -37,6 +40,9 @@ func (s *Session) ToProto() *hdlctrlv1.Session {
 		Status:            hdlctrlv1.SessionStatus(s.Status),
 		StartupParameters: s.StartupParameters,
 		CurrentState:      s.CurrentState,
+		StartedBy:         s.StartedBy,
+		AutoUpgrade:       s.AutoUpgrade,
+		Memo:              s.Memo,
 	}
 	if s.StartedAt != nil {
 		d.StartedAt = timestamppb.New(*s.StartedAt)

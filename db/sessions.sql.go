@@ -21,7 +21,7 @@ func (q *Queries) DeleteSession(ctx context.Context, id string) error {
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, name, status, started_at, ended_at, host_id, startup_parameters, auto_upgrade, created_at, updated_at FROM sessions WHERE id = $1 LIMIT 1
+SELECT id, name, status, started_at, started_by, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at FROM sessions WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
@@ -32,10 +32,13 @@ func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
 		&i.Name,
 		&i.Status,
 		&i.StartedAt,
+		&i.StartedBy,
 		&i.EndedAt,
 		&i.HostID,
 		&i.StartupParameters,
+		&i.StartupParametersSchemaVersion,
 		&i.AutoUpgrade,
+		&i.Memo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -43,7 +46,7 @@ func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
 }
 
 const listSessions = `-- name: ListSessions :many
-SELECT id, name, status, started_at, ended_at, host_id, startup_parameters, auto_upgrade, created_at, updated_at FROM sessions ORDER BY started_at DESC
+SELECT id, name, status, started_at, started_by, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at FROM sessions ORDER BY started_at DESC
 `
 
 func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
@@ -60,10 +63,13 @@ func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
 			&i.Name,
 			&i.Status,
 			&i.StartedAt,
+			&i.StartedBy,
 			&i.EndedAt,
 			&i.HostID,
 			&i.StartupParameters,
+			&i.StartupParametersSchemaVersion,
 			&i.AutoUpgrade,
+			&i.Memo,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -78,7 +84,7 @@ func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
 }
 
 const listSessionsByStatus = `-- name: ListSessionsByStatus :many
-SELECT id, name, status, started_at, ended_at, host_id, startup_parameters, auto_upgrade, created_at, updated_at FROM sessions WHERE status = $1 ORDER BY started_at DESC
+SELECT id, name, status, started_at, started_by, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at FROM sessions WHERE status = $1 ORDER BY started_at DESC
 `
 
 func (q *Queries) ListSessionsByStatus(ctx context.Context, status int32) ([]Session, error) {
@@ -95,10 +101,13 @@ func (q *Queries) ListSessionsByStatus(ctx context.Context, status int32) ([]Ses
 			&i.Name,
 			&i.Status,
 			&i.StartedAt,
+			&i.StartedBy,
 			&i.EndedAt,
 			&i.HostID,
 			&i.StartupParameters,
+			&i.StartupParametersSchemaVersion,
 			&i.AutoUpgrade,
+			&i.Memo,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -132,32 +141,41 @@ INSERT INTO sessions (
     name,
     status,
     started_at,
+    started_by,
     ended_at,
     host_id,
     startup_parameters,
-    auto_upgrade
+    startup_parameters_schema_version,
+    auto_upgrade,
+    memo
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 ) ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     status = EXCLUDED.status,
     started_at = EXCLUDED.started_at,
+    started_by = EXCLUDED.started_by,
     ended_at = EXCLUDED.ended_at,
     host_id = EXCLUDED.host_id,
     startup_parameters = EXCLUDED.startup_parameters,
-    auto_upgrade = EXCLUDED.auto_upgrade
-RETURNING id, name, status, started_at, ended_at, host_id, startup_parameters, auto_upgrade, created_at, updated_at
+    startup_parameters_schema_version = EXCLUDED.startup_parameters_schema_version,
+    auto_upgrade = EXCLUDED.auto_upgrade,
+    memo = EXCLUDED.memo
+RETURNING id, name, status, started_at, started_by, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at
 `
 
 type UpsertSessionParams struct {
-	ID                string
-	Name              string
-	Status            int32
-	StartedAt         pgtype.Timestamptz
-	EndedAt           pgtype.Timestamptz
-	HostID            string
-	StartupParameters []byte
-	AutoUpgrade       bool
+	ID                             string
+	Name                           string
+	Status                         int32
+	StartedAt                      pgtype.Timestamptz
+	StartedBy                      pgtype.Text
+	EndedAt                        pgtype.Timestamptz
+	HostID                         string
+	StartupParameters              []byte
+	StartupParametersSchemaVersion int32
+	AutoUpgrade                    bool
+	Memo                           pgtype.Text
 }
 
 func (q *Queries) UpsertSession(ctx context.Context, arg UpsertSessionParams) (Session, error) {
@@ -166,10 +184,13 @@ func (q *Queries) UpsertSession(ctx context.Context, arg UpsertSessionParams) (S
 		arg.Name,
 		arg.Status,
 		arg.StartedAt,
+		arg.StartedBy,
 		arg.EndedAt,
 		arg.HostID,
 		arg.StartupParameters,
+		arg.StartupParametersSchemaVersion,
 		arg.AutoUpgrade,
+		arg.Memo,
 	)
 	var i Session
 	err := row.Scan(
@@ -177,10 +198,13 @@ func (q *Queries) UpsertSession(ctx context.Context, arg UpsertSessionParams) (S
 		&i.Name,
 		&i.Status,
 		&i.StartedAt,
+		&i.StartedBy,
 		&i.EndedAt,
 		&i.HostID,
 		&i.StartupParameters,
+		&i.StartupParametersSchemaVersion,
 		&i.AutoUpgrade,
+		&i.Memo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

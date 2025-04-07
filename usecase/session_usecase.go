@@ -22,7 +22,7 @@ func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.Headles
 	}
 }
 
-func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, params *headlessv1.WorldStartupParameters) (*entity.Session, error) {
+func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId *string, params *headlessv1.WorldStartupParameters) (*entity.Session, error) {
 	client, err := u.hostRepo.GetRpcClient(ctx, hostId)
 	if err != nil {
 		return nil, err
@@ -42,6 +42,7 @@ func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, params
 		Status:            entity.SessionStatus_RUNNING,
 		HostID:            hostId,
 		StartedAt:         &startedAt,
+		StartedBy:         userId,
 		StartupParameters: params,
 		CurrentState:      resp.OpenedSession,
 	}

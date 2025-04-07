@@ -380,7 +380,11 @@ func (c *ControllerService) UpdateUserRole(ctx context.Context, req *connect.Req
 
 // StartWorld implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) StartWorld(ctx context.Context, req *connect.Request[hdlctrlv1.StartWorldRequest]) (*connect.Response[hdlctrlv1.StartWorldResponse], error) {
-	openedSession, err := c.suc.StartSession(ctx, req.Msg.HostId, req.Msg.Parameters)
+	claims, err := auth.GetAuthClaimsFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+	openedSession, err := c.suc.StartSession(ctx, req.Msg.HostId, &claims.UserID, req.Msg.Parameters)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
