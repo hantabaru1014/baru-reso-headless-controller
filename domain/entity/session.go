@@ -3,9 +3,7 @@ package entity
 import (
 	"time"
 
-	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type SessionStatus int32
@@ -30,27 +28,6 @@ type Session struct {
 	AutoUpgrade       bool
 	Memo              string
 	CurrentState      *headlessv1.Session
-}
-
-func (s *Session) ToProto() *hdlctrlv1.Session {
-	d := &hdlctrlv1.Session{
-		Id:                s.ID,
-		Name:              s.Name,
-		HostId:            s.HostID,
-		Status:            hdlctrlv1.SessionStatus(s.Status),
-		StartupParameters: s.StartupParameters,
-		CurrentState:      s.CurrentState,
-		StartedBy:         s.StartedBy,
-		AutoUpgrade:       s.AutoUpgrade,
-		Memo:              s.Memo,
-	}
-	if s.StartedAt != nil {
-		d.StartedAt = timestamppb.New(*s.StartedAt)
-	}
-	if s.EndedAt != nil {
-		d.EndedAt = timestamppb.New(*s.EndedAt)
-	}
-	return d
 }
 
 type SessionList []*Session

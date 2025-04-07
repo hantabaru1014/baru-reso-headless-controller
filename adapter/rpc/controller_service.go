@@ -312,7 +312,7 @@ func (c *ControllerService) GetSessionDetails(ctx context.Context, req *connect.
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	res := connect.NewResponse(&hdlctrlv1.GetSessionDetailsResponse{
-		Session: s.ToProto(),
+		Session: converter.SessionEntityToProto(s),
 	})
 
 	return res, nil
@@ -390,7 +390,7 @@ func (c *ControllerService) StartWorld(ctx context.Context, req *connect.Request
 	}
 
 	res := connect.NewResponse(&hdlctrlv1.StartWorldResponse{
-		OpenedSession: openedSession.ToProto(),
+		OpenedSession: converter.SessionEntityToProto(openedSession),
 	})
 	return res, nil
 }
@@ -445,7 +445,7 @@ func (c *ControllerService) SearchSessions(ctx context.Context, req *connect.Req
 	}
 	protoSessions := make([]*hdlctrlv1.Session, 0, len(sessions))
 	for _, session := range sessions {
-		protoSessions = append(protoSessions, session.ToProto())
+		protoSessions = append(protoSessions, converter.SessionEntityToProto(session))
 	}
 	res := connect.NewResponse(&hdlctrlv1.SearchSessionsResponse{
 		Sessions: protoSessions,
