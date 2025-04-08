@@ -21,6 +21,8 @@ func InitializeServer() *Server {
 		// repository
 		wire.Bind(new(port.HeadlessHostRepository), new(*adapter.HeadlessHostRepository)),
 		adapter.NewHeadlessHostRepository,
+		wire.Bind(new(port.SessionRepository), new(*adapter.SessionRepository)),
+		adapter.NewSessionRepository,
 
 		// worker
 		worker.NewImageChecker,
@@ -29,6 +31,7 @@ func InitializeServer() *Server {
 		usecase.NewHeadlessHostUsecase,
 		usecase.NewUserUsecase,
 		usecase.NewHeadlessAccountUsecase,
+		usecase.NewSessionUsecase,
 
 		// controller
 		rpc.NewUserService,

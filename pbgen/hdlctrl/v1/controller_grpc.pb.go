@@ -34,10 +34,11 @@ const (
 	ControllerService_SearchUserInfo_FullMethodName             = "/hdlctrl.v1.ControllerService/SearchUserInfo"
 	ControllerService_GetFriendRequests_FullMethodName          = "/hdlctrl.v1.ControllerService/GetFriendRequests"
 	ControllerService_AcceptFriendRequests_FullMethodName       = "/hdlctrl.v1.ControllerService/AcceptFriendRequests"
-	ControllerService_ListSessions_FullMethodName               = "/hdlctrl.v1.ControllerService/ListSessions"
+	ControllerService_SearchSessions_FullMethodName             = "/hdlctrl.v1.ControllerService/SearchSessions"
 	ControllerService_GetSessionDetails_FullMethodName          = "/hdlctrl.v1.ControllerService/GetSessionDetails"
 	ControllerService_StartWorld_FullMethodName                 = "/hdlctrl.v1.ControllerService/StartWorld"
 	ControllerService_StopSession_FullMethodName                = "/hdlctrl.v1.ControllerService/StopSession"
+	ControllerService_DeleteEndedSession_FullMethodName         = "/hdlctrl.v1.ControllerService/DeleteEndedSession"
 	ControllerService_SaveSessionWorld_FullMethodName           = "/hdlctrl.v1.ControllerService/SaveSessionWorld"
 	ControllerService_InviteUser_FullMethodName                 = "/hdlctrl.v1.ControllerService/InviteUser"
 	ControllerService_UpdateUserRole_FullMethodName             = "/hdlctrl.v1.ControllerService/UpdateUserRole"
@@ -65,10 +66,11 @@ type ControllerServiceClient interface {
 	SearchUserInfo(ctx context.Context, in *SearchUserInfoRequest, opts ...grpc.CallOption) (*v1.SearchUserInfoResponse, error)
 	GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*v1.GetFriendRequestsResponse, error)
 	AcceptFriendRequests(ctx context.Context, in *AcceptFriendRequestsRequest, opts ...grpc.CallOption) (*AcceptFriendRequestsResponse, error)
-	ListSessions(ctx context.Context, in *ListSessionsRequest, opts ...grpc.CallOption) (*ListSessionsResponse, error)
+	SearchSessions(ctx context.Context, in *SearchSessionsRequest, opts ...grpc.CallOption) (*SearchSessionsResponse, error)
 	GetSessionDetails(ctx context.Context, in *GetSessionDetailsRequest, opts ...grpc.CallOption) (*GetSessionDetailsResponse, error)
 	StartWorld(ctx context.Context, in *StartWorldRequest, opts ...grpc.CallOption) (*StartWorldResponse, error)
 	StopSession(ctx context.Context, in *StopSessionRequest, opts ...grpc.CallOption) (*StopSessionResponse, error)
+	DeleteEndedSession(ctx context.Context, in *DeleteEndedSessionRequest, opts ...grpc.CallOption) (*DeleteEndedSessionResponse, error)
 	SaveSessionWorld(ctx context.Context, in *SaveSessionWorldRequest, opts ...grpc.CallOption) (*SaveSessionWorldResponse, error)
 	InviteUser(ctx context.Context, in *InviteUserRequest, opts ...grpc.CallOption) (*InviteUserResponse, error)
 	UpdateUserRole(ctx context.Context, in *UpdateUserRoleRequest, opts ...grpc.CallOption) (*UpdateUserRoleResponse, error)
@@ -226,10 +228,10 @@ func (c *controllerServiceClient) AcceptFriendRequests(ctx context.Context, in *
 	return out, nil
 }
 
-func (c *controllerServiceClient) ListSessions(ctx context.Context, in *ListSessionsRequest, opts ...grpc.CallOption) (*ListSessionsResponse, error) {
+func (c *controllerServiceClient) SearchSessions(ctx context.Context, in *SearchSessionsRequest, opts ...grpc.CallOption) (*SearchSessionsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListSessionsResponse)
-	err := c.cc.Invoke(ctx, ControllerService_ListSessions_FullMethodName, in, out, cOpts...)
+	out := new(SearchSessionsResponse)
+	err := c.cc.Invoke(ctx, ControllerService_SearchSessions_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -260,6 +262,16 @@ func (c *controllerServiceClient) StopSession(ctx context.Context, in *StopSessi
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(StopSessionResponse)
 	err := c.cc.Invoke(ctx, ControllerService_StopSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) DeleteEndedSession(ctx context.Context, in *DeleteEndedSessionRequest, opts ...grpc.CallOption) (*DeleteEndedSessionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteEndedSessionResponse)
+	err := c.cc.Invoke(ctx, ControllerService_DeleteEndedSession_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -354,10 +366,11 @@ type ControllerServiceServer interface {
 	SearchUserInfo(context.Context, *SearchUserInfoRequest) (*v1.SearchUserInfoResponse, error)
 	GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*v1.GetFriendRequestsResponse, error)
 	AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error)
-	ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error)
+	SearchSessions(context.Context, *SearchSessionsRequest) (*SearchSessionsResponse, error)
 	GetSessionDetails(context.Context, *GetSessionDetailsRequest) (*GetSessionDetailsResponse, error)
 	StartWorld(context.Context, *StartWorldRequest) (*StartWorldResponse, error)
 	StopSession(context.Context, *StopSessionRequest) (*StopSessionResponse, error)
+	DeleteEndedSession(context.Context, *DeleteEndedSessionRequest) (*DeleteEndedSessionResponse, error)
 	SaveSessionWorld(context.Context, *SaveSessionWorldRequest) (*SaveSessionWorldResponse, error)
 	InviteUser(context.Context, *InviteUserRequest) (*InviteUserResponse, error)
 	UpdateUserRole(context.Context, *UpdateUserRoleRequest) (*UpdateUserRoleResponse, error)
@@ -417,8 +430,8 @@ func (UnimplementedControllerServiceServer) GetFriendRequests(context.Context, *
 func (UnimplementedControllerServiceServer) AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AcceptFriendRequests not implemented")
 }
-func (UnimplementedControllerServiceServer) ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListSessions not implemented")
+func (UnimplementedControllerServiceServer) SearchSessions(context.Context, *SearchSessionsRequest) (*SearchSessionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SearchSessions not implemented")
 }
 func (UnimplementedControllerServiceServer) GetSessionDetails(context.Context, *GetSessionDetailsRequest) (*GetSessionDetailsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSessionDetails not implemented")
@@ -428,6 +441,9 @@ func (UnimplementedControllerServiceServer) StartWorld(context.Context, *StartWo
 }
 func (UnimplementedControllerServiceServer) StopSession(context.Context, *StopSessionRequest) (*StopSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopSession not implemented")
+}
+func (UnimplementedControllerServiceServer) DeleteEndedSession(context.Context, *DeleteEndedSessionRequest) (*DeleteEndedSessionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteEndedSession not implemented")
 }
 func (UnimplementedControllerServiceServer) SaveSessionWorld(context.Context, *SaveSessionWorldRequest) (*SaveSessionWorldResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SaveSessionWorld not implemented")
@@ -723,20 +739,20 @@ func _ControllerService_AcceptFriendRequests_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ControllerService_ListSessions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListSessionsRequest)
+func _ControllerService_SearchSessions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchSessionsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ControllerServiceServer).ListSessions(ctx, in)
+		return srv.(ControllerServiceServer).SearchSessions(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ControllerService_ListSessions_FullMethodName,
+		FullMethod: ControllerService_SearchSessions_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ControllerServiceServer).ListSessions(ctx, req.(*ListSessionsRequest))
+		return srv.(ControllerServiceServer).SearchSessions(ctx, req.(*SearchSessionsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -791,6 +807,24 @@ func _ControllerService_StopSession_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).StopSession(ctx, req.(*StopSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_DeleteEndedSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteEndedSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).DeleteEndedSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_DeleteEndedSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).DeleteEndedSession(ctx, req.(*DeleteEndedSessionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -985,8 +1019,8 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ControllerService_AcceptFriendRequests_Handler,
 		},
 		{
-			MethodName: "ListSessions",
-			Handler:    _ControllerService_ListSessions_Handler,
+			MethodName: "SearchSessions",
+			Handler:    _ControllerService_SearchSessions_Handler,
 		},
 		{
 			MethodName: "GetSessionDetails",
@@ -999,6 +1033,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StopSession",
 			Handler:    _ControllerService_StopSession_Handler,
+		},
+		{
+			MethodName: "DeleteEndedSession",
+			Handler:    _ControllerService_DeleteEndedSession_Handler,
 		},
 		{
 			MethodName: "SaveSessionWorld",

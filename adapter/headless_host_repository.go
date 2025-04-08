@@ -12,6 +12,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -38,6 +39,7 @@ var _ port.HeadlessHostRepository = (*HeadlessHostRepository)(nil)
 
 type HeadlessHostRepository struct {
 	connections map[string]headlessv1.HeadlessControlServiceClient
+	mu          sync.RWMutex
 }
 
 func getFreePort() (port int, err error) {
@@ -339,9 +341,12 @@ func (h *HeadlessHostRepository) GetLogs(ctx context.Context, id string, limit i
 
 // GetRpcClient implements port.HeadlessHostRepository.
 func (h *HeadlessHostRepository) GetRpcClient(ctx context.Context, id string) (headlessv1.HeadlessControlServiceClient, error) {
+	h.mu.RLock()
 	if conn, ok := h.connections[id]; ok {
+		h.mu.RUnlock()
 		return conn, nil
 	}
+	h.mu.RUnlock()
 
 	host, err := h.Find(ctx, id)
 	if err != nil {
@@ -457,6 +462,9 @@ func (h *HeadlessHostRepository) getContainer(ctx context.Context, id string) (*
 	if err != nil {
 		return nil, err
 	}
+	if len(containers) == 0 {
+		return nil, fmt.Errorf("container not found")
+	}
 	if len(containers) > 1 {
 		return nil, fmt.Errorf("found several containers")
 	}
@@ -464,6 +472,9 @@ func (h *HeadlessHostRepository) getContainer(ctx context.Context, id string) (*
 }
 
 func (h *HeadlessHostRepository) getOrNewHeadlessConnection(ctx context.Context, id string, address string) (headlessv1.HeadlessControlServiceClient, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	container, err := h.getContainer(ctx, id)
 	if err != nil {
 		return nil, err

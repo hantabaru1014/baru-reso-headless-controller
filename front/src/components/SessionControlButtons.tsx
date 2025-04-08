@@ -1,25 +1,24 @@
 import { Stack, Button } from "@mui/material";
 import { useNotifications } from "@toolpad/core/useNotifications";
-import { useAtom } from "jotai";
 import { useNavigate } from "react-router";
 import {
   saveSessionWorld,
   stopSession,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import { selectedHostAtom } from "../atoms/selectedHostAtom";
 import { useMutation } from "@connectrpc/connect-query";
 
 export default function SessionControlButtons({
+  hostId,
   sessionId,
   canSave,
   additionalButtons,
 }: {
+  hostId: string;
   sessionId: string;
   canSave?: boolean;
   additionalButtons?: React.ReactNode;
 }) {
   const navigate = useNavigate();
-  const [selectedHost] = useAtom(selectedHostAtom);
   const notifications = useNotifications();
   const { mutateAsync: mutateSave, isPending: isPendingSave } =
     useMutation(saveSessionWorld);
@@ -27,13 +26,9 @@ export default function SessionControlButtons({
     useMutation(stopSession);
 
   const handleSave = async () => {
-    if (!selectedHost) {
-      return;
-    }
-
     try {
       await mutateSave({
-        hostId: selectedHost.id,
+        hostId,
         sessionId,
       });
       notifications.show("ワールドを保存しました", {
@@ -49,13 +44,9 @@ export default function SessionControlButtons({
   };
 
   const handleStop = async () => {
-    if (!selectedHost) {
-      return;
-    }
-
     try {
       await mutateStop({
-        hostId: selectedHost.id,
+        hostId,
         sessionId,
       });
       notifications.show("セッションを停止しました", {

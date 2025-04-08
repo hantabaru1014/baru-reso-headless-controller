@@ -18,6 +18,22 @@ type HeadlessAccount struct {
 	UpdatedAt       pgtype.Timestamptz
 }
 
+type Session struct {
+	ID                             string
+	Name                           string
+	Status                         int32
+	StartedAt                      pgtype.Timestamptz
+	OwnerID                        pgtype.Text
+	EndedAt                        pgtype.Timestamptz
+	HostID                         string
+	StartupParameters              []byte
+	StartupParametersSchemaVersion int32
+	AutoUpgrade                    bool
+	Memo                           pgtype.Text
+	CreatedAt                      pgtype.Timestamptz
+	UpdatedAt                      pgtype.Timestamptz
+}
+
 type User struct {
 	ID         string
 	Password   string

@@ -1,11 +1,10 @@
-import { useMutation } from "@connectrpc/connect-query";
+import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
   fetchWorldInfo,
+  listHeadlessHost,
   startWorld,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import { useAtom } from "jotai";
 import { useNotifications } from "@toolpad/core/useNotifications";
-import { selectedHostAtom } from "../atoms/selectedHostAtom";
 import {
   Button,
   Checkbox,
@@ -22,6 +21,7 @@ import { useState } from "react";
 import SelectField from "./base/SelectField";
 import { useNavigate } from "react-router";
 import { AccessLevels } from "../constants";
+import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 
 export default function NewSessionForm() {
   const navigate = useNavigate();
@@ -30,9 +30,9 @@ export default function NewSessionForm() {
     useMutation(startWorld);
   const { mutateAsync: mutateFetchInfo, isPending: isPendingFetchInfo } =
     useMutation(fetchWorldInfo);
+  const { data: hostList } = useQuery(listHeadlessHost);
 
-  const [selectedHost] = useAtom(selectedHostAtom);
-
+  const [selectedHostId, setSelectedHostId] = useState("");
   const [useWorldUrl, setUseWorldUrl] = useState(true);
   const [worldUrl, setWorldUrl] = useState("");
   const [worldTemplate, setWorldTemplate] = useState("grid");
@@ -52,7 +52,7 @@ export default function NewSessionForm() {
   const handleFetchInfo = async () => {
     try {
       const data = await mutateFetchInfo({
-        hostId: selectedHost?.id,
+        hostId: selectedHostId,
         url: worldUrl,
       });
       setName(data.name);
@@ -65,7 +65,7 @@ export default function NewSessionForm() {
   const handleStartSession = async () => {
     try {
       await mutateStart({
-        hostId: selectedHost?.id,
+        hostId: selectedHostId,
         parameters: {
           loadWorld: useWorldUrl
             ? { case: "loadWorldUrl", value: worldUrl }
@@ -98,6 +98,22 @@ export default function NewSessionForm() {
 
   return (
     <Stack component="form" noValidate autoComplete="off" spacing={2}>
+      <SelectField
+        label="Host"
+        options={
+          hostList?.hosts
+            .filter((host) => host.status === HeadlessHostStatus.RUNNING)
+            .map((host) => ({
+              id: host.id,
+              label: `${host.name} (${host.id.slice(0, 6)})`,
+              value: host,
+            })) ?? []
+        }
+        selectedId={selectedHostId || ""}
+        onChange={(option) => setSelectedHostId(option.value?.id ?? "")}
+        minWidth="7rem"
+      />
+
       <FormControl>
         <FormLabel id="session-form-use-world-url">ワールド指定方法</FormLabel>
         <RadioGroup

@@ -22,10 +22,11 @@ service ControllerService {
   rpc GetFriendRequests(GetFriendRequestsRequest) returns (headless.v1.GetFriendRequestsResponse);
   rpc AcceptFriendRequests(AcceptFriendRequestsRequest) returns (AcceptFriendRequestsResponse);
 
-  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+  rpc SearchSessions(SearchSessionsRequest) returns (SearchSessionsResponse);
   rpc GetSessionDetails(GetSessionDetailsRequest) returns (GetSessionDetailsResponse);
   rpc StartWorld(StartWorldRequest) returns (StartWorldResponse);
   rpc StopSession(StopSessionRequest) returns (StopSessionResponse);
+  rpc DeleteEndedSession(DeleteEndedSessionRequest) returns (DeleteEndedSessionResponse);
   rpc SaveSessionWorld(SaveSessionWorldRequest) returns (SaveSessionWorldResponse);
   rpc InviteUser(InviteUserRequest) returns (InviteUserResponse);
   rpc UpdateUserRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse);
@@ -166,21 +167,25 @@ message AddHeadlessHostResponse {
   HeadlessHost host = 1;
 }
 
-message ListSessionsRequest {
-  string host_id = 1;
+message SearchSessionsRequest {
+  message SearchParameters {
+    optional string host_id = 1;
+    optional SessionStatus status = 2;
+  }
+  SearchParameters parameters = 1;
 }
 
-message ListSessionsResponse {
-  repeated headless.v1.Session sessions = 1;
+message SearchSessionsResponse {
+  repeated Session sessions = 1;
 }
 
 message GetSessionDetailsRequest {
-  string host_id = 1;
+  string host_id = 1 [deprecated = true]; // 指定不要
   string session_id = 2;
 }
 
 message GetSessionDetailsResponse {
-  headless.v1.Session session = 1;
+  Session session = 1;
 }
 
 message StartWorldRequest {
@@ -189,7 +194,7 @@ message StartWorldRequest {
 }
 
 message StartWorldResponse {
-  headless.v1.Session opened_session = 1;
+  Session opened_session = 1;
 }
 
 message StopSessionRequest {
@@ -198,6 +203,12 @@ message StopSessionRequest {
 }
 
 message StopSessionResponse {}
+
+message DeleteEndedSessionRequest {
+  string session_id = 1;
+}
+
+message DeleteEndedSessionResponse {}
 
 message SaveSessionWorldRequest {
   string host_id = 1;
@@ -253,6 +264,14 @@ enum HeadlessHostStatus {
   HEADLESS_HOST_STATUS_CRASHED = 5;
 }
 
+enum SessionStatus {
+  SESSION_STATUS_UNKNOWN = 0;
+  SESSION_STATUS_STARTING = 1;
+  SESSION_STATUS_RUNNING = 2;
+  SESSION_STATUS_ENDED = 3;
+  SESSION_STATUS_CRASHED = 4;
+}
+
 message HeadlessHost {
   string id = 1;
   string name = 2;
@@ -264,6 +283,20 @@ message HeadlessHost {
   int64 storage_quota_bytes = 8;
   int64 storage_used_bytes = 9;
   HeadlessHostStatus status = 10;
+}
+
+message Session {
+  string id = 1;
+  string name = 2;
+  string host_id = 3;
+  SessionStatus status = 4;
+  google.protobuf.Timestamp started_at = 5;
+  optional google.protobuf.Timestamp ended_at = 6;
+  headless.v1.WorldStartupParameters startup_parameters = 7;
+  optional headless.v1.Session current_state = 8;
+  optional string owner_id = 9;
+  bool auto_upgrade = 10;
+  string memo = 11;
 }
 
 message HeadlessAccount {

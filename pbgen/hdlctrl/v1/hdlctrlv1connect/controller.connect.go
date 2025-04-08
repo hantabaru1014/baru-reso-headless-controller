@@ -76,9 +76,9 @@ const (
 	// ControllerServiceAcceptFriendRequestsProcedure is the fully-qualified name of the
 	// ControllerService's AcceptFriendRequests RPC.
 	ControllerServiceAcceptFriendRequestsProcedure = "/hdlctrl.v1.ControllerService/AcceptFriendRequests"
-	// ControllerServiceListSessionsProcedure is the fully-qualified name of the ControllerService's
-	// ListSessions RPC.
-	ControllerServiceListSessionsProcedure = "/hdlctrl.v1.ControllerService/ListSessions"
+	// ControllerServiceSearchSessionsProcedure is the fully-qualified name of the ControllerService's
+	// SearchSessions RPC.
+	ControllerServiceSearchSessionsProcedure = "/hdlctrl.v1.ControllerService/SearchSessions"
 	// ControllerServiceGetSessionDetailsProcedure is the fully-qualified name of the
 	// ControllerService's GetSessionDetails RPC.
 	ControllerServiceGetSessionDetailsProcedure = "/hdlctrl.v1.ControllerService/GetSessionDetails"
@@ -88,6 +88,9 @@ const (
 	// ControllerServiceStopSessionProcedure is the fully-qualified name of the ControllerService's
 	// StopSession RPC.
 	ControllerServiceStopSessionProcedure = "/hdlctrl.v1.ControllerService/StopSession"
+	// ControllerServiceDeleteEndedSessionProcedure is the fully-qualified name of the
+	// ControllerService's DeleteEndedSession RPC.
+	ControllerServiceDeleteEndedSessionProcedure = "/hdlctrl.v1.ControllerService/DeleteEndedSession"
 	// ControllerServiceSaveSessionWorldProcedure is the fully-qualified name of the ControllerService's
 	// SaveSessionWorld RPC.
 	ControllerServiceSaveSessionWorldProcedure = "/hdlctrl.v1.ControllerService/SaveSessionWorld"
@@ -127,10 +130,11 @@ type ControllerServiceClient interface {
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
 	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v11.GetFriendRequestsResponse], error)
 	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
-	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
+	SearchSessions(context.Context, *connect.Request[v1.SearchSessionsRequest]) (*connect.Response[v1.SearchSessionsResponse], error)
 	GetSessionDetails(context.Context, *connect.Request[v1.GetSessionDetailsRequest]) (*connect.Response[v1.GetSessionDetailsResponse], error)
 	StartWorld(context.Context, *connect.Request[v1.StartWorldRequest]) (*connect.Response[v1.StartWorldResponse], error)
 	StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error)
+	DeleteEndedSession(context.Context, *connect.Request[v1.DeleteEndedSessionRequest]) (*connect.Response[v1.DeleteEndedSessionResponse], error)
 	SaveSessionWorld(context.Context, *connect.Request[v1.SaveSessionWorldRequest]) (*connect.Response[v1.SaveSessionWorldResponse], error)
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
@@ -235,10 +239,10 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(controllerServiceMethods.ByName("AcceptFriendRequests")),
 			connect.WithClientOptions(opts...),
 		),
-		listSessions: connect.NewClient[v1.ListSessionsRequest, v1.ListSessionsResponse](
+		searchSessions: connect.NewClient[v1.SearchSessionsRequest, v1.SearchSessionsResponse](
 			httpClient,
-			baseURL+ControllerServiceListSessionsProcedure,
-			connect.WithSchema(controllerServiceMethods.ByName("ListSessions")),
+			baseURL+ControllerServiceSearchSessionsProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("SearchSessions")),
 			connect.WithClientOptions(opts...),
 		),
 		getSessionDetails: connect.NewClient[v1.GetSessionDetailsRequest, v1.GetSessionDetailsResponse](
@@ -257,6 +261,12 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+ControllerServiceStopSessionProcedure,
 			connect.WithSchema(controllerServiceMethods.ByName("StopSession")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteEndedSession: connect.NewClient[v1.DeleteEndedSessionRequest, v1.DeleteEndedSessionResponse](
+			httpClient,
+			baseURL+ControllerServiceDeleteEndedSessionProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("DeleteEndedSession")),
 			connect.WithClientOptions(opts...),
 		),
 		saveSessionWorld: connect.NewClient[v1.SaveSessionWorldRequest, v1.SaveSessionWorldResponse](
@@ -320,10 +330,11 @@ type controllerServiceClient struct {
 	searchUserInfo             *connect.Client[v1.SearchUserInfoRequest, v11.SearchUserInfoResponse]
 	getFriendRequests          *connect.Client[v1.GetFriendRequestsRequest, v11.GetFriendRequestsResponse]
 	acceptFriendRequests       *connect.Client[v1.AcceptFriendRequestsRequest, v1.AcceptFriendRequestsResponse]
-	listSessions               *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
+	searchSessions             *connect.Client[v1.SearchSessionsRequest, v1.SearchSessionsResponse]
 	getSessionDetails          *connect.Client[v1.GetSessionDetailsRequest, v1.GetSessionDetailsResponse]
 	startWorld                 *connect.Client[v1.StartWorldRequest, v1.StartWorldResponse]
 	stopSession                *connect.Client[v1.StopSessionRequest, v1.StopSessionResponse]
+	deleteEndedSession         *connect.Client[v1.DeleteEndedSessionRequest, v1.DeleteEndedSessionResponse]
 	saveSessionWorld           *connect.Client[v1.SaveSessionWorldRequest, v1.SaveSessionWorldResponse]
 	inviteUser                 *connect.Client[v1.InviteUserRequest, v1.InviteUserResponse]
 	updateUserRole             *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
@@ -403,9 +414,9 @@ func (c *controllerServiceClient) AcceptFriendRequests(ctx context.Context, req 
 	return c.acceptFriendRequests.CallUnary(ctx, req)
 }
 
-// ListSessions calls hdlctrl.v1.ControllerService.ListSessions.
-func (c *controllerServiceClient) ListSessions(ctx context.Context, req *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error) {
-	return c.listSessions.CallUnary(ctx, req)
+// SearchSessions calls hdlctrl.v1.ControllerService.SearchSessions.
+func (c *controllerServiceClient) SearchSessions(ctx context.Context, req *connect.Request[v1.SearchSessionsRequest]) (*connect.Response[v1.SearchSessionsResponse], error) {
+	return c.searchSessions.CallUnary(ctx, req)
 }
 
 // GetSessionDetails calls hdlctrl.v1.ControllerService.GetSessionDetails.
@@ -421,6 +432,11 @@ func (c *controllerServiceClient) StartWorld(ctx context.Context, req *connect.R
 // StopSession calls hdlctrl.v1.ControllerService.StopSession.
 func (c *controllerServiceClient) StopSession(ctx context.Context, req *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error) {
 	return c.stopSession.CallUnary(ctx, req)
+}
+
+// DeleteEndedSession calls hdlctrl.v1.ControllerService.DeleteEndedSession.
+func (c *controllerServiceClient) DeleteEndedSession(ctx context.Context, req *connect.Request[v1.DeleteEndedSessionRequest]) (*connect.Response[v1.DeleteEndedSessionResponse], error) {
+	return c.deleteEndedSession.CallUnary(ctx, req)
 }
 
 // SaveSessionWorld calls hdlctrl.v1.ControllerService.SaveSessionWorld.
@@ -474,10 +490,11 @@ type ControllerServiceHandler interface {
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
 	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v11.GetFriendRequestsResponse], error)
 	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
-	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
+	SearchSessions(context.Context, *connect.Request[v1.SearchSessionsRequest]) (*connect.Response[v1.SearchSessionsResponse], error)
 	GetSessionDetails(context.Context, *connect.Request[v1.GetSessionDetailsRequest]) (*connect.Response[v1.GetSessionDetailsResponse], error)
 	StartWorld(context.Context, *connect.Request[v1.StartWorldRequest]) (*connect.Response[v1.StartWorldResponse], error)
 	StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error)
+	DeleteEndedSession(context.Context, *connect.Request[v1.DeleteEndedSessionRequest]) (*connect.Response[v1.DeleteEndedSessionResponse], error)
 	SaveSessionWorld(context.Context, *connect.Request[v1.SaveSessionWorldRequest]) (*connect.Response[v1.SaveSessionWorldResponse], error)
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
@@ -578,10 +595,10 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		connect.WithSchema(controllerServiceMethods.ByName("AcceptFriendRequests")),
 		connect.WithHandlerOptions(opts...),
 	)
-	controllerServiceListSessionsHandler := connect.NewUnaryHandler(
-		ControllerServiceListSessionsProcedure,
-		svc.ListSessions,
-		connect.WithSchema(controllerServiceMethods.ByName("ListSessions")),
+	controllerServiceSearchSessionsHandler := connect.NewUnaryHandler(
+		ControllerServiceSearchSessionsProcedure,
+		svc.SearchSessions,
+		connect.WithSchema(controllerServiceMethods.ByName("SearchSessions")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceGetSessionDetailsHandler := connect.NewUnaryHandler(
@@ -600,6 +617,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		ControllerServiceStopSessionProcedure,
 		svc.StopSession,
 		connect.WithSchema(controllerServiceMethods.ByName("StopSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceDeleteEndedSessionHandler := connect.NewUnaryHandler(
+		ControllerServiceDeleteEndedSessionProcedure,
+		svc.DeleteEndedSession,
+		connect.WithSchema(controllerServiceMethods.ByName("DeleteEndedSession")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceSaveSessionWorldHandler := connect.NewUnaryHandler(
@@ -674,14 +697,16 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceGetFriendRequestsHandler.ServeHTTP(w, r)
 		case ControllerServiceAcceptFriendRequestsProcedure:
 			controllerServiceAcceptFriendRequestsHandler.ServeHTTP(w, r)
-		case ControllerServiceListSessionsProcedure:
-			controllerServiceListSessionsHandler.ServeHTTP(w, r)
+		case ControllerServiceSearchSessionsProcedure:
+			controllerServiceSearchSessionsHandler.ServeHTTP(w, r)
 		case ControllerServiceGetSessionDetailsProcedure:
 			controllerServiceGetSessionDetailsHandler.ServeHTTP(w, r)
 		case ControllerServiceStartWorldProcedure:
 			controllerServiceStartWorldHandler.ServeHTTP(w, r)
 		case ControllerServiceStopSessionProcedure:
 			controllerServiceStopSessionHandler.ServeHTTP(w, r)
+		case ControllerServiceDeleteEndedSessionProcedure:
+			controllerServiceDeleteEndedSessionHandler.ServeHTTP(w, r)
 		case ControllerServiceSaveSessionWorldProcedure:
 			controllerServiceSaveSessionWorldHandler.ServeHTTP(w, r)
 		case ControllerServiceInviteUserProcedure:
@@ -761,8 +786,8 @@ func (UnimplementedControllerServiceHandler) AcceptFriendRequests(context.Contex
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.AcceptFriendRequests is not implemented"))
 }
 
-func (UnimplementedControllerServiceHandler) ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.ListSessions is not implemented"))
+func (UnimplementedControllerServiceHandler) SearchSessions(context.Context, *connect.Request[v1.SearchSessionsRequest]) (*connect.Response[v1.SearchSessionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.SearchSessions is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) GetSessionDetails(context.Context, *connect.Request[v1.GetSessionDetailsRequest]) (*connect.Response[v1.GetSessionDetailsResponse], error) {
@@ -775,6 +800,10 @@ func (UnimplementedControllerServiceHandler) StartWorld(context.Context, *connec
 
 func (UnimplementedControllerServiceHandler) StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.StopSession is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) DeleteEndedSession(context.Context, *connect.Request[v1.DeleteEndedSessionRequest]) (*connect.Response[v1.DeleteEndedSessionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.DeleteEndedSession is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) SaveSessionWorld(context.Context, *connect.Request[v1.SaveSessionWorldRequest]) (*connect.Response[v1.SaveSessionWorldResponse], error) {

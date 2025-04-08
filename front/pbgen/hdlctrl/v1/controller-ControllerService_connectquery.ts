@@ -75,9 +75,9 @@ export const getFriendRequests = ControllerService.method.getFriendRequests;
 export const acceptFriendRequests = ControllerService.method.acceptFriendRequests;
 
 /**
- * @generated from rpc hdlctrl.v1.ControllerService.ListSessions
+ * @generated from rpc hdlctrl.v1.ControllerService.SearchSessions
  */
-export const listSessions = ControllerService.method.listSessions;
+export const searchSessions = ControllerService.method.searchSessions;
 
 /**
  * @generated from rpc hdlctrl.v1.ControllerService.GetSessionDetails
@@ -93,6 +93,11 @@ export const startWorld = ControllerService.method.startWorld;
  * @generated from rpc hdlctrl.v1.ControllerService.StopSession
  */
 export const stopSession = ControllerService.method.stopSession;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.DeleteEndedSession
+ */
+export const deleteEndedSession = ControllerService.method.deleteEndedSession;
 
 /**
  * @generated from rpc hdlctrl.v1.ControllerService.SaveSessionWorld

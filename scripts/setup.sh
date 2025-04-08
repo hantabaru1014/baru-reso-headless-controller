@@ -39,6 +39,7 @@ n|N|no|NO)
   fi
   read -p 'read:packages scope を持つ GitHub Personal Access Token を入力: ' GHCR_TOKEN
   HEADLESS_REGISTRY_AUTH="{\\\"username\\\":\\\"${GHCR_USERNAME}\\\",\\\"password\\\":\\\"${GHCR_TOKEN}\\\"}"
+  GHCR_AUTH_TOKEN="${GHCR_TOKEN}"
   ;;
 esac
 
@@ -49,8 +50,14 @@ cat > .env << EOF
 JWT_SECRET="${JWT_SECRET}"
 HEADLESS_IMAGE_NAME="${HEADLESS_IMAGE_NAME}"
 HEADLESS_REGISTRY_AUTH="${HEADLESS_REGISTRY_AUTH}"
+GHCR_AUTH_TOKEN="${GHCR_AUTH_TOKEN}"
 DOCKER_GID="${DOCKER_GID}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
 DB_URL="${DB_URL}"
 HOST=":8014"
+
+# コンテナイメージの確認間隔（秒単位、デフォルト: 15秒）
+IMAGE_CHECK_INTERVAL_SEC=15
+# 新しいコンテナイメージを自動的にプルするか（デフォルト: false）
+AUTO_PULL_NEW_IMAGE=true
 EOF

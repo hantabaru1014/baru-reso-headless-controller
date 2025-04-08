@@ -122,3 +122,13 @@ func HashPassword(password string) (string, error) {
 func ComparePasswordAndHash(password, hash string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 }
+
+// GetAuthClaimsFromContext はコンテキストからAuthClaimsを取得します。
+// 認証されていない場合はエラーを返します。
+func GetAuthClaimsFromContext(ctx context.Context) (*AuthClaims, error) {
+	claims, ok := ctx.Value(AuthClaimsKey).(*AuthClaims)
+	if !ok {
+		return nil, errors.New("認証されていません")
+	}
+	return claims, nil
+}
