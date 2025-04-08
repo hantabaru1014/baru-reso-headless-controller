@@ -21,7 +21,7 @@ type Session struct {
 	Name              string
 	Status            SessionStatus
 	StartedAt         *time.Time
-	StartedBy         *string
+	OwnerID           *string
 	EndedAt           *time.Time
 	HostID            string
 	StartupParameters *headlessv1.WorldStartupParameters

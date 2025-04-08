@@ -2660,7 +2660,7 @@ type Session struct {
 	EndedAt           *timestamppb.Timestamp     `protobuf:"bytes,6,opt,name=ended_at,json=endedAt,proto3,oneof" json:"ended_at,omitempty"`
 	StartupParameters *v1.WorldStartupParameters `protobuf:"bytes,7,opt,name=startup_parameters,json=startupParameters,proto3" json:"startup_parameters,omitempty"`
 	CurrentState      *v1.Session                `protobuf:"bytes,8,opt,name=current_state,json=currentState,proto3,oneof" json:"current_state,omitempty"`
-	StartedBy         *string                    `protobuf:"bytes,9,opt,name=started_by,json=startedBy,proto3,oneof" json:"started_by,omitempty"`
+	OwnerId           *string                    `protobuf:"bytes,9,opt,name=owner_id,json=ownerId,proto3,oneof" json:"owner_id,omitempty"`
 	AutoUpgrade       bool                       `protobuf:"varint,10,opt,name=auto_upgrade,json=autoUpgrade,proto3" json:"auto_upgrade,omitempty"`
 	Memo              string                     `protobuf:"bytes,11,opt,name=memo,proto3" json:"memo,omitempty"`
 	unknownFields     protoimpl.UnknownFields
@@ -2753,9 +2753,9 @@ func (x *Session) GetCurrentState() *v1.Session {
 	return nil
 }
 
-func (x *Session) GetStartedBy() string {
-	if x != nil && x.StartedBy != nil {
-		return *x.StartedBy
+func (x *Session) GetOwnerId() string {
+	if x != nil && x.OwnerId != nil {
+		return *x.OwnerId
 	}
 	return ""
 }
@@ -3113,7 +3113,7 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x13storage_quota_bytes\x18\b \x01(\x03R\x11storageQuotaBytes\x12,\n" +
 	"\x12storage_used_bytes\x18\t \x01(\x03R\x10storageUsedBytes\x126\n" +
 	"\x06status\x18\n" +
-	" \x01(\x0e2\x1e.hdlctrl.v1.HeadlessHostStatusR\x06status\"\x8d\x04\n" +
+	" \x01(\x0e2\x1e.hdlctrl.v1.HeadlessHostStatusR\x06status\"\x87\x04\n" +
 	"\aSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -3123,15 +3123,14 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"started_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12:\n" +
 	"\bended_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\aendedAt\x88\x01\x01\x12R\n" +
 	"\x12startup_parameters\x18\a \x01(\v2#.headless.v1.WorldStartupParametersR\x11startupParameters\x12>\n" +
-	"\rcurrent_state\x18\b \x01(\v2\x14.headless.v1.SessionH\x01R\fcurrentState\x88\x01\x01\x12\"\n" +
-	"\n" +
-	"started_by\x18\t \x01(\tH\x02R\tstartedBy\x88\x01\x01\x12!\n" +
+	"\rcurrent_state\x18\b \x01(\v2\x14.headless.v1.SessionH\x01R\fcurrentState\x88\x01\x01\x12\x1e\n" +
+	"\bowner_id\x18\t \x01(\tH\x02R\aownerId\x88\x01\x01\x12!\n" +
 	"\fauto_upgrade\x18\n" +
 	" \x01(\bR\vautoUpgrade\x12\x12\n" +
 	"\x04memo\x18\v \x01(\tR\x04memoB\v\n" +
 	"\t_ended_atB\x10\n" +
-	"\x0e_current_stateB\r\n" +
-	"\v_started_by\"b\n" +
+	"\x0e_current_stateB\v\n" +
+	"\t_owner_id\"b\n" +
 	"\x0fHeadlessAccount\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
 	"\tuser_name\x18\x02 \x01(\tR\buserName\x12\x19\n" +

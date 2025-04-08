@@ -29,7 +29,7 @@ func SessionEntityToProto(e *entity.Session) *hdlctrlv1.Session {
 		Status:            hdlctrlv1.SessionStatus(e.Status),
 		StartupParameters: e.StartupParameters,
 		CurrentState:      e.CurrentState,
-		StartedBy:         e.StartedBy,
+		OwnerId:           e.OwnerID,
 		AutoUpgrade:       e.AutoUpgrade,
 		Memo:              e.Memo,
 	}

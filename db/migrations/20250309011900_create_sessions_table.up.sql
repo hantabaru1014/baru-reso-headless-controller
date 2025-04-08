@@ -3,7 +3,7 @@ CREATE TABLE sessions (
     name TEXT NOT NULL,
     status INTEGER NOT NULL, -- domain/entity/session.go のenum
     started_at TIMESTAMP WITH TIME ZONE,
-    started_by TEXT, -- users.id
+    owner_id TEXT, -- users.id
     ended_at TIMESTAMP WITH TIME ZONE,
     host_id TEXT NOT NULL,
     startup_parameters JSONB NOT NULL,

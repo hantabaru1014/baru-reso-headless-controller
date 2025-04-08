@@ -23,7 +23,7 @@ type Session struct {
 	Name                           string
 	Status                         int32
 	StartedAt                      pgtype.Timestamptz
-	StartedBy                      pgtype.Text
+	OwnerID                        pgtype.Text
 	EndedAt                        pgtype.Timestamptz
 	HostID                         string
 	StartupParameters              []byte

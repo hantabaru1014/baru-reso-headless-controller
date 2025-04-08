@@ -234,8 +234,8 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
             <Stack direction="column">
               <span>
                 開始: {formatTimestamp(data?.session?.startedAt)}
-                {data?.session?.startedBy
-                  ? ` (userId: ${data?.session?.startedBy})`
+                {data?.session?.ownerId
+                  ? ` (userId: ${data?.session?.ownerId})`
                   : ""}
               </span>
               {data?.session?.endedAt && (

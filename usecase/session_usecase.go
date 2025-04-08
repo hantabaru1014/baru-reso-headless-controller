@@ -42,7 +42,7 @@ func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId
 		Status:            entity.SessionStatus_RUNNING,
 		HostID:            hostId,
 		StartedAt:         &startedAt,
-		StartedBy:         userId,
+		OwnerID:           userId,
 		StartupParameters: params,
 		CurrentState:      resp.OpenedSession,
 	}

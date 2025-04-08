@@ -45,11 +45,11 @@ func (r *SessionRepository) Upsert(ctx context.Context, session *entity.Session)
 	if session.EndedAt != nil {
 		endedAt.Time = *session.EndedAt
 	}
-	startedBy := pgtype.Text{
-		Valid: session.StartedBy != nil,
+	ownerId := pgtype.Text{
+		Valid: session.OwnerID != nil,
 	}
-	if session.StartedBy != nil {
-		startedBy.String = *session.StartedBy
+	if session.OwnerID != nil {
+		ownerId.String = *session.OwnerID
 	}
 	memo := pgtype.Text{
 		Valid: session.Memo != "",
@@ -63,7 +63,7 @@ func (r *SessionRepository) Upsert(ctx context.Context, session *entity.Session)
 		Name:                           session.Name,
 		Status:                         int32(session.Status),
 		StartedAt:                      startedAt,
-		StartedBy:                      startedBy,
+		OwnerID:                        ownerId,
 		EndedAt:                        endedAt,
 		HostID:                         session.HostID,
 		StartupParameters:              startupParams,
@@ -134,9 +134,9 @@ func sessionToEntity(s db.Session) (*entity.Session, error) {
 	if err := protojson.Unmarshal(s.StartupParameters, &startupParams); err != nil {
 		return nil, err
 	}
-	var startedBy *string
-	if s.StartedBy.Valid {
-		startedBy = &s.StartedBy.String
+	var ownerId *string
+	if s.OwnerID.Valid {
+		ownerId = &s.OwnerID.String
 	}
 	memo := ""
 	if s.Memo.Valid {
@@ -148,7 +148,7 @@ func sessionToEntity(s db.Session) (*entity.Session, error) {
 		Name:              s.Name,
 		Status:            entity.SessionStatus(s.Status),
 		StartedAt:         startedAt,
-		StartedBy:         startedBy,
+		OwnerID:           ownerId,
 		EndedAt:           endedAt,
 		HostID:            s.HostID,
 		StartupParameters: &startupParams,
