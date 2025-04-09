@@ -64,6 +64,9 @@ const (
 	// ControllerServiceListHeadlessAccountsProcedure is the fully-qualified name of the
 	// ControllerService's ListHeadlessAccounts RPC.
 	ControllerServiceListHeadlessAccountsProcedure = "/hdlctrl.v1.ControllerService/ListHeadlessAccounts"
+	// ControllerServiceListHeadlessHostImageTagsProcedure is the fully-qualified name of the
+	// ControllerService's ListHeadlessHostImageTags RPC.
+	ControllerServiceListHeadlessHostImageTagsProcedure = "/hdlctrl.v1.ControllerService/ListHeadlessHostImageTags"
 	// ControllerServiceFetchWorldInfoProcedure is the fully-qualified name of the ControllerService's
 	// FetchWorldInfo RPC.
 	ControllerServiceFetchWorldInfoProcedure = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
@@ -103,6 +106,9 @@ const (
 	// ControllerServiceUpdateSessionParametersProcedure is the fully-qualified name of the
 	// ControllerService's UpdateSessionParameters RPC.
 	ControllerServiceUpdateSessionParametersProcedure = "/hdlctrl.v1.ControllerService/UpdateSessionParameters"
+	// ControllerServiceUpdateSessionExtraSettingsProcedure is the fully-qualified name of the
+	// ControllerService's UpdateSessionExtraSettings RPC.
+	ControllerServiceUpdateSessionExtraSettingsProcedure = "/hdlctrl.v1.ControllerService/UpdateSessionExtraSettings"
 	// ControllerServiceListUsersInSessionProcedure is the fully-qualified name of the
 	// ControllerService's ListUsersInSession RPC.
 	ControllerServiceListUsersInSessionProcedure = "/hdlctrl.v1.ControllerService/ListUsersInSession"
@@ -126,6 +132,7 @@ type ControllerServiceClient interface {
 	StartHeadlessHost(context.Context, *connect.Request[v1.StartHeadlessHostRequest]) (*connect.Response[v1.StartHeadlessHostResponse], error)
 	CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error)
 	ListHeadlessAccounts(context.Context, *connect.Request[v1.ListHeadlessAccountsRequest]) (*connect.Response[v1.ListHeadlessAccountsResponse], error)
+	ListHeadlessHostImageTags(context.Context, *connect.Request[v1.ListHeadlessHostImageTagsRequest]) (*connect.Response[v1.ListHeadlessHostImageTagsResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
 	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v11.GetFriendRequestsResponse], error)
@@ -139,6 +146,7 @@ type ControllerServiceClient interface {
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	UpdateSessionParameters(context.Context, *connect.Request[v1.UpdateSessionParametersRequest]) (*connect.Response[v1.UpdateSessionParametersResponse], error)
+	UpdateSessionExtraSettings(context.Context, *connect.Request[v1.UpdateSessionExtraSettingsRequest]) (*connect.Response[v1.UpdateSessionExtraSettingsResponse], error)
 	ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error)
 	KickUser(context.Context, *connect.Request[v1.KickUserRequest]) (*connect.Response[v1.KickUserResponse], error)
 	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
@@ -213,6 +221,12 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+ControllerServiceListHeadlessAccountsProcedure,
 			connect.WithSchema(controllerServiceMethods.ByName("ListHeadlessAccounts")),
+			connect.WithClientOptions(opts...),
+		),
+		listHeadlessHostImageTags: connect.NewClient[v1.ListHeadlessHostImageTagsRequest, v1.ListHeadlessHostImageTagsResponse](
+			httpClient,
+			baseURL+ControllerServiceListHeadlessHostImageTagsProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("ListHeadlessHostImageTags")),
 			connect.WithClientOptions(opts...),
 		),
 		fetchWorldInfo: connect.NewClient[v1.FetchWorldInfoRequest, v11.FetchWorldInfoResponse](
@@ -293,6 +307,12 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(controllerServiceMethods.ByName("UpdateSessionParameters")),
 			connect.WithClientOptions(opts...),
 		),
+		updateSessionExtraSettings: connect.NewClient[v1.UpdateSessionExtraSettingsRequest, v1.UpdateSessionExtraSettingsResponse](
+			httpClient,
+			baseURL+ControllerServiceUpdateSessionExtraSettingsProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("UpdateSessionExtraSettings")),
+			connect.WithClientOptions(opts...),
+		),
 		listUsersInSession: connect.NewClient[v1.ListUsersInSessionRequest, v1.ListUsersInSessionResponse](
 			httpClient,
 			baseURL+ControllerServiceListUsersInSessionProcedure,
@@ -326,6 +346,7 @@ type controllerServiceClient struct {
 	startHeadlessHost          *connect.Client[v1.StartHeadlessHostRequest, v1.StartHeadlessHostResponse]
 	createHeadlessAccount      *connect.Client[v1.CreateHeadlessAccountRequest, v1.CreateHeadlessAccountResponse]
 	listHeadlessAccounts       *connect.Client[v1.ListHeadlessAccountsRequest, v1.ListHeadlessAccountsResponse]
+	listHeadlessHostImageTags  *connect.Client[v1.ListHeadlessHostImageTagsRequest, v1.ListHeadlessHostImageTagsResponse]
 	fetchWorldInfo             *connect.Client[v1.FetchWorldInfoRequest, v11.FetchWorldInfoResponse]
 	searchUserInfo             *connect.Client[v1.SearchUserInfoRequest, v11.SearchUserInfoResponse]
 	getFriendRequests          *connect.Client[v1.GetFriendRequestsRequest, v11.GetFriendRequestsResponse]
@@ -339,6 +360,7 @@ type controllerServiceClient struct {
 	inviteUser                 *connect.Client[v1.InviteUserRequest, v1.InviteUserResponse]
 	updateUserRole             *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
 	updateSessionParameters    *connect.Client[v1.UpdateSessionParametersRequest, v1.UpdateSessionParametersResponse]
+	updateSessionExtraSettings *connect.Client[v1.UpdateSessionExtraSettingsRequest, v1.UpdateSessionExtraSettingsResponse]
 	listUsersInSession         *connect.Client[v1.ListUsersInSessionRequest, v1.ListUsersInSessionResponse]
 	kickUser                   *connect.Client[v1.KickUserRequest, v1.KickUserResponse]
 	banUser                    *connect.Client[v1.BanUserRequest, v1.BanUserResponse]
@@ -392,6 +414,11 @@ func (c *controllerServiceClient) CreateHeadlessAccount(ctx context.Context, req
 // ListHeadlessAccounts calls hdlctrl.v1.ControllerService.ListHeadlessAccounts.
 func (c *controllerServiceClient) ListHeadlessAccounts(ctx context.Context, req *connect.Request[v1.ListHeadlessAccountsRequest]) (*connect.Response[v1.ListHeadlessAccountsResponse], error) {
 	return c.listHeadlessAccounts.CallUnary(ctx, req)
+}
+
+// ListHeadlessHostImageTags calls hdlctrl.v1.ControllerService.ListHeadlessHostImageTags.
+func (c *controllerServiceClient) ListHeadlessHostImageTags(ctx context.Context, req *connect.Request[v1.ListHeadlessHostImageTagsRequest]) (*connect.Response[v1.ListHeadlessHostImageTagsResponse], error) {
+	return c.listHeadlessHostImageTags.CallUnary(ctx, req)
 }
 
 // FetchWorldInfo calls hdlctrl.v1.ControllerService.FetchWorldInfo.
@@ -459,6 +486,11 @@ func (c *controllerServiceClient) UpdateSessionParameters(ctx context.Context, r
 	return c.updateSessionParameters.CallUnary(ctx, req)
 }
 
+// UpdateSessionExtraSettings calls hdlctrl.v1.ControllerService.UpdateSessionExtraSettings.
+func (c *controllerServiceClient) UpdateSessionExtraSettings(ctx context.Context, req *connect.Request[v1.UpdateSessionExtraSettingsRequest]) (*connect.Response[v1.UpdateSessionExtraSettingsResponse], error) {
+	return c.updateSessionExtraSettings.CallUnary(ctx, req)
+}
+
 // ListUsersInSession calls hdlctrl.v1.ControllerService.ListUsersInSession.
 func (c *controllerServiceClient) ListUsersInSession(ctx context.Context, req *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error) {
 	return c.listUsersInSession.CallUnary(ctx, req)
@@ -486,6 +518,7 @@ type ControllerServiceHandler interface {
 	StartHeadlessHost(context.Context, *connect.Request[v1.StartHeadlessHostRequest]) (*connect.Response[v1.StartHeadlessHostResponse], error)
 	CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error)
 	ListHeadlessAccounts(context.Context, *connect.Request[v1.ListHeadlessAccountsRequest]) (*connect.Response[v1.ListHeadlessAccountsResponse], error)
+	ListHeadlessHostImageTags(context.Context, *connect.Request[v1.ListHeadlessHostImageTagsRequest]) (*connect.Response[v1.ListHeadlessHostImageTagsResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
 	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v11.GetFriendRequestsResponse], error)
@@ -499,6 +532,7 @@ type ControllerServiceHandler interface {
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	UpdateSessionParameters(context.Context, *connect.Request[v1.UpdateSessionParametersRequest]) (*connect.Response[v1.UpdateSessionParametersResponse], error)
+	UpdateSessionExtraSettings(context.Context, *connect.Request[v1.UpdateSessionExtraSettingsRequest]) (*connect.Response[v1.UpdateSessionExtraSettingsResponse], error)
 	ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error)
 	KickUser(context.Context, *connect.Request[v1.KickUserRequest]) (*connect.Response[v1.KickUserResponse], error)
 	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
@@ -569,6 +603,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		ControllerServiceListHeadlessAccountsProcedure,
 		svc.ListHeadlessAccounts,
 		connect.WithSchema(controllerServiceMethods.ByName("ListHeadlessAccounts")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceListHeadlessHostImageTagsHandler := connect.NewUnaryHandler(
+		ControllerServiceListHeadlessHostImageTagsProcedure,
+		svc.ListHeadlessHostImageTags,
+		connect.WithSchema(controllerServiceMethods.ByName("ListHeadlessHostImageTags")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceFetchWorldInfoHandler := connect.NewUnaryHandler(
@@ -649,6 +689,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		connect.WithSchema(controllerServiceMethods.ByName("UpdateSessionParameters")),
 		connect.WithHandlerOptions(opts...),
 	)
+	controllerServiceUpdateSessionExtraSettingsHandler := connect.NewUnaryHandler(
+		ControllerServiceUpdateSessionExtraSettingsProcedure,
+		svc.UpdateSessionExtraSettings,
+		connect.WithSchema(controllerServiceMethods.ByName("UpdateSessionExtraSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	controllerServiceListUsersInSessionHandler := connect.NewUnaryHandler(
 		ControllerServiceListUsersInSessionProcedure,
 		svc.ListUsersInSession,
@@ -689,6 +735,8 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceCreateHeadlessAccountHandler.ServeHTTP(w, r)
 		case ControllerServiceListHeadlessAccountsProcedure:
 			controllerServiceListHeadlessAccountsHandler.ServeHTTP(w, r)
+		case ControllerServiceListHeadlessHostImageTagsProcedure:
+			controllerServiceListHeadlessHostImageTagsHandler.ServeHTTP(w, r)
 		case ControllerServiceFetchWorldInfoProcedure:
 			controllerServiceFetchWorldInfoHandler.ServeHTTP(w, r)
 		case ControllerServiceSearchUserInfoProcedure:
@@ -715,6 +763,8 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceUpdateUserRoleHandler.ServeHTTP(w, r)
 		case ControllerServiceUpdateSessionParametersProcedure:
 			controllerServiceUpdateSessionParametersHandler.ServeHTTP(w, r)
+		case ControllerServiceUpdateSessionExtraSettingsProcedure:
+			controllerServiceUpdateSessionExtraSettingsHandler.ServeHTTP(w, r)
 		case ControllerServiceListUsersInSessionProcedure:
 			controllerServiceListUsersInSessionHandler.ServeHTTP(w, r)
 		case ControllerServiceKickUserProcedure:
@@ -770,6 +820,10 @@ func (UnimplementedControllerServiceHandler) ListHeadlessAccounts(context.Contex
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.ListHeadlessAccounts is not implemented"))
 }
 
+func (UnimplementedControllerServiceHandler) ListHeadlessHostImageTags(context.Context, *connect.Request[v1.ListHeadlessHostImageTagsRequest]) (*connect.Response[v1.ListHeadlessHostImageTagsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.ListHeadlessHostImageTags is not implemented"))
+}
+
 func (UnimplementedControllerServiceHandler) FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.FetchWorldInfo is not implemented"))
 }
@@ -820,6 +874,10 @@ func (UnimplementedControllerServiceHandler) UpdateUserRole(context.Context, *co
 
 func (UnimplementedControllerServiceHandler) UpdateSessionParameters(context.Context, *connect.Request[v1.UpdateSessionParametersRequest]) (*connect.Response[v1.UpdateSessionParametersResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.UpdateSessionParameters is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) UpdateSessionExtraSettings(context.Context, *connect.Request[v1.UpdateSessionExtraSettingsRequest]) (*connect.Response[v1.UpdateSessionExtraSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.UpdateSessionExtraSettings is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error) {

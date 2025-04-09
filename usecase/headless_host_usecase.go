@@ -38,7 +38,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostStart(ctx context.Context, params p
 		if len(tags) == 0 {
 			return "", errors.New("no available container image tags")
 		}
-		params.ContainerImageTag = &tags[len(tags)-1]
+		params.ContainerImageTag = &tags[len(tags)-1].Tag
 	}
 
 	return hhuc.hhrepo.Start(ctx, params)
@@ -106,7 +106,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 		if len(tags) == 0 {
 			return "", errors.New("no available container image tags")
 		}
-		image := os.Getenv("HEADLESS_IMAGE_NAME") + ":" + tags[len(tags)-1]
+		image := os.Getenv("HEADLESS_IMAGE_NAME") + ":" + tags[len(tags)-1].Tag
 		newImage = &image
 	}
 
@@ -168,10 +168,16 @@ func (hhuc *HeadlessHostUsecase) PullLatestHostImage(ctx context.Context) (strin
 	if err != nil {
 		return "", err
 	}
+	filteredTags := make(port.ContainerImageList, 0, len(localTags))
+	for _, tag := range localTags {
+		if !tag.IsPreRelease {
+			filteredTags = append(filteredTags, tag)
+		}
+	}
 
 	var latestLocalTag *string
-	if len(localTags) > 0 {
-		latestLocalTag = &localTags[len(localTags)-1]
+	if len(filteredTags) > 0 {
+		latestLocalTag = &filteredTags[len(filteredTags)-1].Tag
 	}
 	remoteTags, err := hhuc.hhrepo.ListContainerTags(ctx, latestLocalTag)
 	if err != nil {
@@ -180,11 +186,17 @@ func (hhuc *HeadlessHostUsecase) PullLatestHostImage(ctx context.Context) (strin
 	if latestLocalTag == nil && len(remoteTags) == 0 {
 		return "", errors.New("no available container image tags")
 	}
-	if len(remoteTags) == 0 {
+	filteredRemoteTags := make(port.ContainerImageList, 0, len(remoteTags))
+	for _, tag := range remoteTags {
+		if !tag.IsPreRelease {
+			filteredRemoteTags = append(filteredRemoteTags, tag)
+		}
+	}
+	if len(filteredRemoteTags) == 0 {
 		return "Already up to date", nil
 	}
 
-	logs, err := hhuc.hhrepo.PullContainerImage(ctx, remoteTags[len(remoteTags)-1])
+	logs, err := hhuc.hhrepo.PullContainerImage(ctx, filteredRemoteTags[len(filteredRemoteTags)-1].Tag)
 	if err != nil {
 		return "", err
 	}

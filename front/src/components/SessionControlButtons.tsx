@@ -78,7 +78,7 @@ export default function SessionControlButtons({
         loading={isPendingStop}
         onClick={handleStop}
       >
-        セッション停止
+        停止
       </Button>
       {additionalButtons}
     </Stack>

@@ -94,6 +94,46 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, params port.Headless
 	return createResp.ID, nil
 }
 
+// GetStartParams implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) GetStartParams(ctx context.Context, id string) (*port.HeadlessHostStartParams, error) {
+	cli, err := h.newDockerClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create docker client: %w", err)
+	}
+	container, err := cli.ContainerInspect(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to inspect container: %w", err)
+	}
+	if container.Config == nil {
+		return nil, fmt.Errorf("container config is nil")
+	}
+
+	params := &port.HeadlessHostStartParams{}
+	name := container.Name
+	if len(name) > 1 && name[0] == '/' {
+		name = name[1:]
+	}
+	params.Name = name
+	splittedImage := strings.Split(container.Config.Image, ":")
+	var imageTag *string
+	if len(splittedImage) == 2 {
+		imageTag = &splittedImage[1]
+	}
+	params.ContainerImageTag = imageTag
+	for _, env := range container.Config.Env {
+		splitted := strings.SplitN(env, "=", 2)
+		if len(splitted) != 2 {
+			continue
+		}
+		if splitted[0] == "HeadlessUserCredential" {
+			params.HeadlessAccountCredential = splitted[1]
+		} else if splitted[0] == "HeadlessUserPassword" {
+			params.HeadlessAccountPassword = splitted[1]
+		}
+	}
+	return params, nil
+}
+
 // Restart implements port.HeadlessHostRepository.
 func (h *HeadlessHostRepository) Restart(ctx context.Context, host *entity.HeadlessHost, newImage *string) (string, error) {
 	cli, err := h.newDockerClient()
@@ -156,8 +196,35 @@ func (h *HeadlessHostRepository) PullContainerImage(ctx context.Context, tag str
 	return buf.String(), nil
 }
 
+type TagInfo struct {
+	Tag             string
+	IsVersioned     bool
+	IsPreRelease    bool
+	ResoniteVersion string
+}
+
+// TODO: imageに情報を埋め込んだらタグ名からパースするのをやめる
+func parseTag(tag string) TagInfo {
+	trimmed := strings.TrimPrefix(tag, "prerelease-")
+	if lib.ValidateResoniteVersionString(trimmed) {
+		return TagInfo{
+			Tag:             tag,
+			IsVersioned:     true,
+			IsPreRelease:    strings.HasPrefix(tag, "prerelease-"),
+			ResoniteVersion: trimmed,
+		}
+	} else {
+		return TagInfo{
+			Tag:             tag,
+			IsVersioned:     false,
+			IsPreRelease:    false,
+			ResoniteVersion: "",
+		}
+	}
+}
+
 // ListContainerTags implements port.HeadlessHostRepository.
-func (h *HeadlessHostRepository) ListContainerTags(ctx context.Context, lastTag *string) ([]string, error) {
+func (h *HeadlessHostRepository) ListContainerTags(ctx context.Context, lastTag *string) (port.ContainerImageList, error) {
 	type tagsResponse struct {
 		Name string   `json:"name"`
 		Tags []string `json:"tags"`
@@ -202,19 +269,23 @@ func (h *HeadlessHostRepository) ListContainerTags(ctx context.Context, lastTag 
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	tags := make([]string, 0, len(tagsResp.Tags))
+	tags := make(port.ContainerImageList, 0, len(tagsResp.Tags))
 	for _, tag := range tagsResp.Tags {
-		if !lib.ValidateResoniteVersionString(tag) {
-			continue
+		info := parseTag(tag)
+		if info.IsVersioned {
+			tags = append(tags, &port.ContainerImage{
+				Tag:             info.Tag,
+				ResoniteVersion: info.ResoniteVersion,
+				IsPreRelease:    info.IsPreRelease,
+			})
 		}
-		tags = append(tags, tag)
 	}
 
 	return tags, nil
 }
 
 // ListLocalAvailableContainerTags implements port.HeadlessHostRepository.
-func (h *HeadlessHostRepository) ListLocalAvailableContainerTags(ctx context.Context) ([]string, error) {
+func (h *HeadlessHostRepository) ListLocalAvailableContainerTags(ctx context.Context) (port.ContainerImageList, error) {
 	cli, err := h.newDockerClient()
 	if err != nil {
 		return nil, err
@@ -226,7 +297,7 @@ func (h *HeadlessHostRepository) ListLocalAvailableContainerTags(ctx context.Con
 	if err != nil {
 		return nil, err
 	}
-	tags := make([]string, 0, len(images))
+	tags := make(port.ContainerImageList, 0, len(images))
 	sort.Slice(images, func(i, j int) bool {
 		return images[i].Created < images[j].Created
 	})
@@ -234,8 +305,16 @@ func (h *HeadlessHostRepository) ListLocalAvailableContainerTags(ctx context.Con
 		for _, tag := range img.RepoTags {
 			if strings.HasPrefix(tag, imageName) {
 				splitted := strings.Split(tag, ":")
-				if len(splitted) == 2 && lib.ValidateResoniteVersionString(splitted[1]) {
-					tags = append(tags, splitted[1])
+				if len(splitted) != 2 {
+					continue
+				}
+				info := parseTag(splitted[1])
+				if info.IsVersioned {
+					tags = append(tags, &port.ContainerImage{
+						Tag:             info.Tag,
+						ResoniteVersion: info.ResoniteVersion,
+						IsPreRelease:    info.IsPreRelease,
+					})
 				}
 			}
 		}

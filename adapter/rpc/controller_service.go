@@ -22,14 +22,16 @@ var _ hdlctrlv1connect.ControllerServiceHandler = (*ControllerService)(nil)
 
 type ControllerService struct {
 	hhrepo port.HeadlessHostRepository
+	srepo  port.SessionRepository
 	hhuc   *usecase.HeadlessHostUsecase
 	hauc   *usecase.HeadlessAccountUsecase
 	suc    *usecase.SessionUsecase
 }
 
-func NewControllerService(hhrepo port.HeadlessHostRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase, suc *usecase.SessionUsecase) *ControllerService {
+func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase, suc *usecase.SessionUsecase) *ControllerService {
 	return &ControllerService{
 		hhrepo: hhrepo,
+		srepo:  srepo,
 		hhuc:   hhuc,
 		hauc:   hauc,
 		suc:    suc,
@@ -39,6 +41,27 @@ func NewControllerService(hhrepo port.HeadlessHostRepository, hhuc *usecase.Head
 func (c *ControllerService) NewHandler() (string, http.Handler) {
 	interceptors := connect.WithInterceptors(auth.NewAuthInterceptor())
 	return hdlctrlv1connect.NewControllerServiceHandler(c, interceptors)
+}
+
+// ListHeadlessHostImageTags implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) ListHeadlessHostImageTags(ctx context.Context, req *connect.Request[hdlctrlv1.ListHeadlessHostImageTagsRequest]) (*connect.Response[hdlctrlv1.ListHeadlessHostImageTagsResponse], error) {
+	tags, err := c.hhrepo.ListContainerTags(ctx, nil)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	protoTags := make([]*hdlctrlv1.ListHeadlessHostImageTagsResponse_ContainerImage, 0, len(tags))
+	for _, tag := range tags {
+		protoTags = append(protoTags, &hdlctrlv1.ListHeadlessHostImageTagsResponse_ContainerImage{
+			Tag:             tag.Tag,
+			ResoniteVersion: tag.ResoniteVersion,
+			IsPrerelease:    tag.IsPreRelease,
+		})
+	}
+	res := connect.NewResponse(&hdlctrlv1.ListHeadlessHostImageTagsResponse{
+		Tags: protoTags,
+	})
+
+	return res, nil
 }
 
 // StartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
@@ -462,5 +485,27 @@ func (c *ControllerService) DeleteEndedSession(ctx context.Context, req *connect
 	}
 
 	res := connect.NewResponse(&hdlctrlv1.DeleteEndedSessionResponse{})
+	return res, nil
+}
+
+// UpdateSessionExtraSettings implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) UpdateSessionExtraSettings(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateSessionExtraSettingsRequest]) (*connect.Response[hdlctrlv1.UpdateSessionExtraSettingsResponse], error) {
+	// TODO: いい感じにusecaseに移動する
+	s, err := c.suc.GetSession(ctx, req.Msg.SessionId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	if req.Msg.AutoUpgrade != nil {
+		s.AutoUpgrade = *req.Msg.AutoUpgrade
+	}
+	if req.Msg.Memo != nil {
+		s.Memo = *req.Msg.Memo
+	}
+	err = c.srepo.Upsert(ctx, s)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	res := connect.NewResponse(&hdlctrlv1.UpdateSessionExtraSettingsResponse{})
+
 	return res, nil
 }

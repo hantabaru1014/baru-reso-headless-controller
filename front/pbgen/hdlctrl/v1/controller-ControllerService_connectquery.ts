@@ -55,6 +55,11 @@ export const createHeadlessAccount = ControllerService.method.createHeadlessAcco
 export const listHeadlessAccounts = ControllerService.method.listHeadlessAccounts;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.ListHeadlessHostImageTags
+ */
+export const listHeadlessHostImageTags = ControllerService.method.listHeadlessHostImageTags;
+
+/**
  * @generated from rpc hdlctrl.v1.ControllerService.FetchWorldInfo
  */
 export const fetchWorldInfo = ControllerService.method.fetchWorldInfo;
@@ -118,6 +123,11 @@ export const updateUserRole = ControllerService.method.updateUserRole;
  * @generated from rpc hdlctrl.v1.ControllerService.UpdateSessionParameters
  */
 export const updateSessionParameters = ControllerService.method.updateSessionParameters;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.UpdateSessionExtraSettings
+ */
+export const updateSessionExtraSettings = ControllerService.method.updateSessionExtraSettings;
 
 /**
  * @generated from rpc hdlctrl.v1.ControllerService.ListUsersInSession
