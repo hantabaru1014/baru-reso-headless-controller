@@ -211,7 +211,7 @@ func parseTag(tag string) TagInfo {
 			Tag:             tag,
 			IsVersioned:     true,
 			IsPreRelease:    strings.HasPrefix(tag, "prerelease-"),
-			ResoniteVersion: trimed,
+			ResoniteVersion: trimmed,
 		}
 	} else {
 		return TagInfo{
