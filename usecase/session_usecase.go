@@ -208,6 +208,9 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 			}
 			dbSession.Status = entity.SessionStatus_RUNNING
 			delete(hdlSessionsMap, dbSession.ID)
+		} else if dbSession.Status == entity.SessionStatus_RUNNING {
+			dbSession.Status = entity.SessionStatus_UNKNOWN
+			_ = u.sessionRepo.UpdateStatus(ctx, dbSession.ID, entity.SessionStatus_UNKNOWN)
 		}
 		sessions = append(sessions, dbSession)
 	}
