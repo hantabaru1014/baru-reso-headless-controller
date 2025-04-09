@@ -4,6 +4,7 @@ import {
   getSessionDetails,
   listHeadlessHost,
   startWorld,
+  updateSessionExtraSettings,
   updateSessionParameters,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import {
@@ -79,6 +80,9 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
     sessionId,
   });
   const { mutateAsync: mutateSave } = useMutation(updateSessionParameters);
+  const { mutateAsync: mutateSaveExtra } = useMutation(
+    updateSessionExtraSettings,
+  );
   const { mutateAsync: mutateStartWorld, isPending: isPendingStartWorld } =
     useMutation(startWorld);
   const { mutateAsync: mutateDelete } = useMutation(deleteEndedSession);
@@ -108,6 +112,19 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
     }
   };
 
+  const handleSaveExtra = async <V,>(fieldName: string, value: V) => {
+    try {
+      await mutateSaveExtra({
+        sessionId,
+        [fieldName]: value,
+      });
+      refetch();
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : `${e}` };
+    }
+  };
+
   const handleCopyUrl = () => {
     const url = sessionState?.sessionUrl;
     if (!url) {
@@ -115,6 +132,18 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
     }
     navigator.clipboard.writeText(url);
     notifications.show("セッションURLをコピーしました", {
+      severity: "info",
+      autoHideDuration: 3000,
+    });
+  };
+
+  const handleCopyWorldUrl = () => {
+    const url = sessionState?.worldUrl;
+    if (!url) {
+      return;
+    }
+    navigator.clipboard.writeText(url);
+    notifications.show("ワールドURLをコピーしました", {
       severity: "info",
       autoHideDuration: 3000,
     });
@@ -207,6 +236,11 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                     <Button variant="contained" onClick={handleCopyUrl}>
                       URLをコピー
                     </Button>
+                    {sessionState?.worldUrl && (
+                      <Button variant="contained" onClick={handleCopyWorldUrl}>
+                        ワールドURLをコピー
+                      </Button>
+                    )}
                     <RefetchButton refetch={refetch} />
                   </>
                 }
@@ -231,23 +265,6 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
             )}
           </Grid2>
           <Grid2 size={12}>
-            <Stack direction="column">
-              <span>
-                開始: {formatTimestamp(data?.session?.startedAt)}
-                {data?.session?.ownerId
-                  ? ` (userId: ${data?.session?.ownerId})`
-                  : ""}
-              </span>
-              {data?.session?.endedAt && (
-                <span>終了: {formatTimestamp(data?.session?.endedAt)}</span>
-              )}
-              {sessionState?.lastSavedAt && sessionState.canSave && (
-                <span>
-                  最終保存: {formatTimestamp(sessionState.lastSavedAt)}
-                </span>
-              )}
-            </Stack>
-
             <Stack component="form" noValidate autoComplete="off" spacing={2}>
               <EditableTextField
                 label="セッション名"
@@ -290,7 +307,38 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
             </Stack>
           </Grid2>
         </Grid2>
-        <Grid2 size={12}>
+        <Grid2 size={5}>
+          <Stack spacing={2}>
+            <Stack direction="column">
+              <span>開始: {formatTimestamp(data?.session?.startedAt)}</span>
+              {data?.session?.ownerId && (
+                <span>オーナー: {data?.session?.ownerId}</span>
+              )}
+              {data?.session?.endedAt && (
+                <span>終了: {formatTimestamp(data?.session?.endedAt)}</span>
+              )}
+              {sessionState?.lastSavedAt && sessionState.canSave && (
+                <span>
+                  最終保存: {formatTimestamp(sessionState.lastSavedAt)}
+                </span>
+              )}
+            </Stack>
+            <EditableCheckBox
+              label="自動アップデート"
+              checked={data?.session?.autoUpgrade || false}
+              onSave={(v) => handleSaveExtra("autoUpgrade", v)}
+              helperText="新しいバージョンが出た場合にユーザがいなければ自動で新しいバージョンのホストに移行します"
+            />
+            <EditableTextField
+              label="管理者メモ"
+              multiline
+              minRows={3}
+              value={data?.session?.memo || ""}
+              onSave={(v) => handleSaveExtra("memo", v)}
+            />
+          </Stack>
+        </Grid2>
+        <Grid2 size={7}>
           <Stack spacing={2}>
             <Stack direction="row" spacing={2}>
               <EditableTextField

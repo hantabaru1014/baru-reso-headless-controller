@@ -30,6 +30,7 @@ const (
 	ControllerService_StartHeadlessHost_FullMethodName          = "/hdlctrl.v1.ControllerService/StartHeadlessHost"
 	ControllerService_CreateHeadlessAccount_FullMethodName      = "/hdlctrl.v1.ControllerService/CreateHeadlessAccount"
 	ControllerService_ListHeadlessAccounts_FullMethodName       = "/hdlctrl.v1.ControllerService/ListHeadlessAccounts"
+	ControllerService_ListHeadlessHostImageTags_FullMethodName  = "/hdlctrl.v1.ControllerService/ListHeadlessHostImageTags"
 	ControllerService_FetchWorldInfo_FullMethodName             = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
 	ControllerService_SearchUserInfo_FullMethodName             = "/hdlctrl.v1.ControllerService/SearchUserInfo"
 	ControllerService_GetFriendRequests_FullMethodName          = "/hdlctrl.v1.ControllerService/GetFriendRequests"
@@ -43,6 +44,7 @@ const (
 	ControllerService_InviteUser_FullMethodName                 = "/hdlctrl.v1.ControllerService/InviteUser"
 	ControllerService_UpdateUserRole_FullMethodName             = "/hdlctrl.v1.ControllerService/UpdateUserRole"
 	ControllerService_UpdateSessionParameters_FullMethodName    = "/hdlctrl.v1.ControllerService/UpdateSessionParameters"
+	ControllerService_UpdateSessionExtraSettings_FullMethodName = "/hdlctrl.v1.ControllerService/UpdateSessionExtraSettings"
 	ControllerService_ListUsersInSession_FullMethodName         = "/hdlctrl.v1.ControllerService/ListUsersInSession"
 	ControllerService_KickUser_FullMethodName                   = "/hdlctrl.v1.ControllerService/KickUser"
 	ControllerService_BanUser_FullMethodName                    = "/hdlctrl.v1.ControllerService/BanUser"
@@ -62,6 +64,7 @@ type ControllerServiceClient interface {
 	StartHeadlessHost(ctx context.Context, in *StartHeadlessHostRequest, opts ...grpc.CallOption) (*StartHeadlessHostResponse, error)
 	CreateHeadlessAccount(ctx context.Context, in *CreateHeadlessAccountRequest, opts ...grpc.CallOption) (*CreateHeadlessAccountResponse, error)
 	ListHeadlessAccounts(ctx context.Context, in *ListHeadlessAccountsRequest, opts ...grpc.CallOption) (*ListHeadlessAccountsResponse, error)
+	ListHeadlessHostImageTags(ctx context.Context, in *ListHeadlessHostImageTagsRequest, opts ...grpc.CallOption) (*ListHeadlessHostImageTagsResponse, error)
 	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(ctx context.Context, in *SearchUserInfoRequest, opts ...grpc.CallOption) (*v1.SearchUserInfoResponse, error)
 	GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*v1.GetFriendRequestsResponse, error)
@@ -75,6 +78,7 @@ type ControllerServiceClient interface {
 	InviteUser(ctx context.Context, in *InviteUserRequest, opts ...grpc.CallOption) (*InviteUserResponse, error)
 	UpdateUserRole(ctx context.Context, in *UpdateUserRoleRequest, opts ...grpc.CallOption) (*UpdateUserRoleResponse, error)
 	UpdateSessionParameters(ctx context.Context, in *UpdateSessionParametersRequest, opts ...grpc.CallOption) (*UpdateSessionParametersResponse, error)
+	UpdateSessionExtraSettings(ctx context.Context, in *UpdateSessionExtraSettingsRequest, opts ...grpc.CallOption) (*UpdateSessionExtraSettingsResponse, error)
 	ListUsersInSession(ctx context.Context, in *ListUsersInSessionRequest, opts ...grpc.CallOption) (*ListUsersInSessionResponse, error)
 	KickUser(ctx context.Context, in *KickUserRequest, opts ...grpc.CallOption) (*KickUserResponse, error)
 	BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*BanUserResponse, error)
@@ -182,6 +186,16 @@ func (c *controllerServiceClient) ListHeadlessAccounts(ctx context.Context, in *
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListHeadlessAccountsResponse)
 	err := c.cc.Invoke(ctx, ControllerService_ListHeadlessAccounts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) ListHeadlessHostImageTags(ctx context.Context, in *ListHeadlessHostImageTagsRequest, opts ...grpc.CallOption) (*ListHeadlessHostImageTagsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListHeadlessHostImageTagsResponse)
+	err := c.cc.Invoke(ctx, ControllerService_ListHeadlessHostImageTags_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -318,6 +332,16 @@ func (c *controllerServiceClient) UpdateSessionParameters(ctx context.Context, i
 	return out, nil
 }
 
+func (c *controllerServiceClient) UpdateSessionExtraSettings(ctx context.Context, in *UpdateSessionExtraSettingsRequest, opts ...grpc.CallOption) (*UpdateSessionExtraSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateSessionExtraSettingsResponse)
+	err := c.cc.Invoke(ctx, ControllerService_UpdateSessionExtraSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *controllerServiceClient) ListUsersInSession(ctx context.Context, in *ListUsersInSessionRequest, opts ...grpc.CallOption) (*ListUsersInSessionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListUsersInSessionResponse)
@@ -362,6 +386,7 @@ type ControllerServiceServer interface {
 	StartHeadlessHost(context.Context, *StartHeadlessHostRequest) (*StartHeadlessHostResponse, error)
 	CreateHeadlessAccount(context.Context, *CreateHeadlessAccountRequest) (*CreateHeadlessAccountResponse, error)
 	ListHeadlessAccounts(context.Context, *ListHeadlessAccountsRequest) (*ListHeadlessAccountsResponse, error)
+	ListHeadlessHostImageTags(context.Context, *ListHeadlessHostImageTagsRequest) (*ListHeadlessHostImageTagsResponse, error)
 	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(context.Context, *SearchUserInfoRequest) (*v1.SearchUserInfoResponse, error)
 	GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*v1.GetFriendRequestsResponse, error)
@@ -375,6 +400,7 @@ type ControllerServiceServer interface {
 	InviteUser(context.Context, *InviteUserRequest) (*InviteUserResponse, error)
 	UpdateUserRole(context.Context, *UpdateUserRoleRequest) (*UpdateUserRoleResponse, error)
 	UpdateSessionParameters(context.Context, *UpdateSessionParametersRequest) (*UpdateSessionParametersResponse, error)
+	UpdateSessionExtraSettings(context.Context, *UpdateSessionExtraSettingsRequest) (*UpdateSessionExtraSettingsResponse, error)
 	ListUsersInSession(context.Context, *ListUsersInSessionRequest) (*ListUsersInSessionResponse, error)
 	KickUser(context.Context, *KickUserRequest) (*KickUserResponse, error)
 	BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error)
@@ -418,6 +444,9 @@ func (UnimplementedControllerServiceServer) CreateHeadlessAccount(context.Contex
 func (UnimplementedControllerServiceServer) ListHeadlessAccounts(context.Context, *ListHeadlessAccountsRequest) (*ListHeadlessAccountsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListHeadlessAccounts not implemented")
 }
+func (UnimplementedControllerServiceServer) ListHeadlessHostImageTags(context.Context, *ListHeadlessHostImageTagsRequest) (*ListHeadlessHostImageTagsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListHeadlessHostImageTags not implemented")
+}
 func (UnimplementedControllerServiceServer) FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchWorldInfo not implemented")
 }
@@ -456,6 +485,9 @@ func (UnimplementedControllerServiceServer) UpdateUserRole(context.Context, *Upd
 }
 func (UnimplementedControllerServiceServer) UpdateSessionParameters(context.Context, *UpdateSessionParametersRequest) (*UpdateSessionParametersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateSessionParameters not implemented")
+}
+func (UnimplementedControllerServiceServer) UpdateSessionExtraSettings(context.Context, *UpdateSessionExtraSettingsRequest) (*UpdateSessionExtraSettingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateSessionExtraSettings not implemented")
 }
 func (UnimplementedControllerServiceServer) ListUsersInSession(context.Context, *ListUsersInSessionRequest) (*ListUsersInSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListUsersInSession not implemented")
@@ -663,6 +695,24 @@ func _ControllerService_ListHeadlessAccounts_Handler(srv interface{}, ctx contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).ListHeadlessAccounts(ctx, req.(*ListHeadlessAccountsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_ListHeadlessHostImageTags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListHeadlessHostImageTagsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).ListHeadlessHostImageTags(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_ListHeadlessHostImageTags_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).ListHeadlessHostImageTags(ctx, req.(*ListHeadlessHostImageTagsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -901,6 +951,24 @@ func _ControllerService_UpdateSessionParameters_Handler(srv interface{}, ctx con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_UpdateSessionExtraSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateSessionExtraSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).UpdateSessionExtraSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_UpdateSessionExtraSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).UpdateSessionExtraSettings(ctx, req.(*UpdateSessionExtraSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ControllerService_ListUsersInSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListUsersInSessionRequest)
 	if err := dec(in); err != nil {
@@ -1003,6 +1071,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ControllerService_ListHeadlessAccounts_Handler,
 		},
 		{
+			MethodName: "ListHeadlessHostImageTags",
+			Handler:    _ControllerService_ListHeadlessHostImageTags_Handler,
+		},
+		{
 			MethodName: "FetchWorldInfo",
 			Handler:    _ControllerService_FetchWorldInfo_Handler,
 		},
@@ -1053,6 +1125,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateSessionParameters",
 			Handler:    _ControllerService_UpdateSessionParameters_Handler,
+		},
+		{
+			MethodName: "UpdateSessionExtraSettings",
+			Handler:    _ControllerService_UpdateSessionExtraSettings_Handler,
 		},
 		{
 			MethodName: "ListUsersInSession",

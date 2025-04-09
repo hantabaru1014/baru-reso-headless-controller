@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
   listHeadlessAccounts,
   listHeadlessHost,
+  listHeadlessHostImageTags,
   startHeadlessHost,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import {
@@ -29,8 +30,9 @@ import { hostStatusToLabel } from "../libs/hostUtils";
 import RefetchButton from "./base/RefetchButton";
 import { DialogProps, useDialogs } from "@toolpad/core/useDialogs";
 import UserList, { UserInfo } from "./base/UserList";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNotifications } from "@toolpad/core/useNotifications";
+import SelectField from "./base/SelectField";
 
 function SelectHeadlessAccountDialog({
   open,
@@ -64,9 +66,11 @@ function SelectHeadlessAccountDialog({
 }
 
 function NewHostDialog({ open, onClose }: DialogProps) {
+  const { data: tags } = useQuery(listHeadlessHostImageTags);
   const { mutateAsync: mutateStartHost, isPending } =
     useMutation(startHeadlessHost);
   const [name, setName] = useState("");
+  const [tag, setTag] = useState("");
   const [account, setAccount] = useState<UserInfo | null>(null);
   const notifications = useNotifications();
   const dialogs = useDialogs();
@@ -75,8 +79,27 @@ function NewHostDialog({ open, onClose }: DialogProps) {
     if (open) {
       setName("");
       setAccount(null);
+      setTag("");
     }
   }, [open]);
+
+  const tagOptions = useMemo(() => {
+    const list = tags?.tags ?? [];
+    list.reverse();
+
+    return list.slice(0, 5).map((tag) => ({
+      id: tag.tag,
+      label: tag.tag,
+    }));
+  }, [tags]);
+
+  useEffect(() => {
+    const releaseTags =
+      tags?.tags.filter((t) => !t.isPrerelease).map((t) => t.tag) ?? [];
+    if (!tag && releaseTags.length > 0) {
+      setTag(releaseTags.at(-1) ?? "");
+    }
+  }, [tags]);
 
   return (
     <Dialog open={open} onClose={() => onClose()} fullWidth maxWidth="md">
@@ -87,6 +110,12 @@ function NewHostDialog({ open, onClose }: DialogProps) {
             label="ホスト名"
             value={name}
             onChange={(e) => setName(e.target.value)}
+          />
+          <SelectField
+            label="バージョン"
+            options={tagOptions}
+            selectedId={tag}
+            onChange={(option) => setTag(option.id)}
           />
           {account ? (
             <Stack spacing={2} direction="row" alignItems="center">
@@ -114,6 +143,7 @@ function NewHostDialog({ open, onClose }: DialogProps) {
               await mutateStartHost({
                 name: name,
                 headlessAccountId: account?.id ?? "",
+                imageTag: tag,
               });
               onClose();
             } catch (e) {
@@ -122,7 +152,7 @@ function NewHostDialog({ open, onClose }: DialogProps) {
               });
             }
           }}
-          disabled={isPending || !account || !name}
+          disabled={isPending || !account || !name || !tag}
         >
           開始
         </Button>

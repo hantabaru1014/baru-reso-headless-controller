@@ -22,6 +22,14 @@ type HeadlessHostStartParams struct {
 	HeadlessAccountPassword   string
 }
 
+type ContainerImage struct {
+	Tag             string
+	ResoniteVersion string
+	IsPreRelease    bool
+}
+
+type ContainerImageList []*ContainerImage
+
 type HeadlessHostRepository interface {
 	ListAll(ctx context.Context) (entity.HeadlessHostList, error)
 	Find(ctx context.Context, id string) (*entity.HeadlessHost, error)
@@ -30,9 +38,10 @@ type HeadlessHostRepository interface {
 	Rename(ctx context.Context, id, newName string) error
 	PullContainerImage(ctx context.Context, tag string) (string, error)
 	// コンテナイメージのタグ一覧をリモートから取得する。一番新しいタグが最後。
-	ListContainerTags(ctx context.Context, lastTag *string) ([]string, error)
-	// ローカルにコンテナイメージのタグ一覧を取得する。一番新しいタグが最後。
-	ListLocalAvailableContainerTags(ctx context.Context) ([]string, error)
+	ListContainerTags(ctx context.Context, lastTag *string) (ContainerImageList, error)
+	// ローカルにあるコンテナイメージのタグ一覧を取得する。一番新しいタグが最後。
+	ListLocalAvailableContainerTags(ctx context.Context) (ContainerImageList, error)
 	Restart(ctx context.Context, host *entity.HeadlessHost, newImage *string) (string, error)
 	Start(ctx context.Context, params HeadlessHostStartParams) (string, error)
+	GetStartParams(ctx context.Context, id string) (*HeadlessHostStartParams, error)
 }

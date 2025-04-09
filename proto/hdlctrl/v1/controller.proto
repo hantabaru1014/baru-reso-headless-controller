@@ -16,6 +16,7 @@ service ControllerService {
   rpc StartHeadlessHost(StartHeadlessHostRequest) returns (StartHeadlessHostResponse);
   rpc CreateHeadlessAccount(CreateHeadlessAccountRequest) returns (CreateHeadlessAccountResponse);
   rpc ListHeadlessAccounts(ListHeadlessAccountsRequest) returns (ListHeadlessAccountsResponse);
+  rpc ListHeadlessHostImageTags(ListHeadlessHostImageTagsRequest) returns (ListHeadlessHostImageTagsResponse);
 
   rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
   rpc SearchUserInfo(SearchUserInfoRequest) returns (headless.v1.SearchUserInfoResponse);
@@ -31,6 +32,7 @@ service ControllerService {
   rpc InviteUser(InviteUserRequest) returns (InviteUserResponse);
   rpc UpdateUserRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse);
   rpc UpdateSessionParameters(UpdateSessionParametersRequest) returns (UpdateSessionParametersResponse);
+  rpc UpdateSessionExtraSettings(UpdateSessionExtraSettingsRequest) returns (UpdateSessionExtraSettingsResponse);
   rpc ListUsersInSession(ListUsersInSessionRequest) returns (ListUsersInSessionResponse);
   rpc KickUser(KickUserRequest) returns (KickUserResponse);
   rpc BanUser(BanUserRequest) returns (BanUserResponse);
@@ -39,6 +41,7 @@ service ControllerService {
 message StartHeadlessHostRequest {
   string name = 1;
   string headless_account_id = 2;
+  optional string image_tag = 3;
 }
 
 message StartHeadlessHostResponse {
@@ -57,6 +60,17 @@ message ListHeadlessAccountsRequest {}
 
 message ListHeadlessAccountsResponse {
   repeated HeadlessAccount accounts = 1;
+}
+
+message ListHeadlessHostImageTagsRequest {}
+
+message ListHeadlessHostImageTagsResponse {
+  message ContainerImage {
+    string tag = 1;
+    string resonite_version = 2;
+    bool is_prerelease = 3;
+  }
+  repeated ContainerImage tags = 1;
 }
 
 message AcceptFriendRequestsRequest {
@@ -243,6 +257,14 @@ message UpdateSessionParametersRequest {
 }
 
 message UpdateSessionParametersResponse {}
+
+message UpdateSessionExtraSettingsRequest {
+  string session_id = 1;
+  optional bool auto_upgrade = 2;
+  optional string memo = 3;
+}
+
+message UpdateSessionExtraSettingsResponse {}
 
 message ListUsersInSessionRequest {
   string host_id = 1;
