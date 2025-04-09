@@ -205,8 +205,8 @@ type TagInfo struct {
 
 // TODO: imageに情報を埋め込んだらタグ名からパースするのをやめる
 func parseTag(tag string) TagInfo {
-	trimed := strings.TrimPrefix(tag, "prerelease-")
-	if lib.ValidateResoniteVersionString(trimed) {
+	trimmed := strings.TrimPrefix(tag, "prerelease-")
+	if lib.ValidateResoniteVersionString(trimmed) {
 		return TagInfo{
 			Tag:             tag,
 			IsVersioned:     true,
