@@ -64,6 +64,12 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, params port.Headless
 	if params.ContainerImageTag != nil {
 		imageTag = *params.ContainerImageTag
 	}
+	if !h.isAvailableTag(ctx, imageTag) {
+		_, err := h.PullContainerImage(ctx, imageTag)
+		if err != nil {
+			return "", fmt.Errorf("failed to pull container image: %w", err)
+		}
+	}
 	port, err := getFreePort()
 	if err != nil {
 		return "", fmt.Errorf("failed to get free port: %w", err)
@@ -162,6 +168,12 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, host *entity.Headl
 	}
 	newConfig := *inspectResult.Config
 	newConfig.Image = image
+	if !h.isAvailableTag(ctx, image) {
+		_, err := h.PullContainerImage(ctx, image)
+		if err != nil {
+			return "", fmt.Errorf("failed to pull container image: %w", err)
+		}
+	}
 	resp, err := cli.ContainerCreate(ctx, &newConfig, inspectResult.HostConfig, nil, nil, host.Name)
 	if err != nil {
 		return "", fmt.Errorf("failed to create container: %w", err)
@@ -221,6 +233,20 @@ func parseTag(tag string) TagInfo {
 			ResoniteVersion: "",
 		}
 	}
+}
+
+// 指定したタグがローカルに存在するかどうかを確認する
+func (h *HeadlessHostRepository) isAvailableTag(ctx context.Context, tag string) bool {
+	list, err := h.ListLocalAvailableContainerTags(ctx)
+	if err != nil {
+		return false
+	}
+	for _, t := range list {
+		if t.Tag == tag {
+			return true
+		}
+	}
+	return false
 }
 
 // ListContainerTags implements port.HeadlessHostRepository.
