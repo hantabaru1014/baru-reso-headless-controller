@@ -75,6 +75,7 @@ func (c *ControllerService) StartHeadlessHost(ctx context.Context, req *connect.
 		Name:                      req.Msg.Name,
 		HeadlessAccountCredential: account.Credential,
 		HeadlessAccountPassword:   account.Password,
+		ContainerImageTag:         req.Msg.ImageTag,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
