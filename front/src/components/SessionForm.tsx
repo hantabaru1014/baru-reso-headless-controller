@@ -321,12 +321,12 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                 </span>
               )}
             </Stack>
-            <EditableCheckBox
+            {/* <EditableCheckBox
               label="自動アップデート"
               checked={data?.session?.autoUpgrade || false}
               onSave={(v) => handleSaveExtra("autoUpgrade", v)}
               helperText="新しいバージョンが出た場合にユーザがいなければ自動で新しいバージョンのホストに移行します"
-            />
+            /> */}
             <EditableTextField
               label="管理者メモ"
               multiline

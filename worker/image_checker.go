@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-co-op/gocron"
-	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
@@ -100,85 +99,7 @@ func (ic *ImageChecker) checkNewImages() {
 				slog.Error("Failed to pull container image", "tag", newestTag, "error", err)
 			} else {
 				slog.Info("Successfully pulled container image", "tag", newestTag)
-				ic.upgradeAutoUpgradeSessions(ctx, *newestTag)
 			}
-		}
-	}
-}
-
-func (ic *ImageChecker) upgradeAutoUpgradeSessions(ctx context.Context, tag port.ContainerImage) {
-	status := entity.SessionStatus_RUNNING
-	sessions, err := ic.suc.SearchSessions(ctx, usecase.SearchSessionsFilter{
-		Status: &status,
-	})
-	if err != nil {
-		slog.Error("Failed to search runnning sessions", "error", err)
-		return
-	}
-	runningHosts, err := ic.hhrepo.ListAll(ctx)
-	if err != nil {
-		slog.Error("Failed to list all hosts", "error", err)
-		return
-	}
-	hostVersionMap := make(map[string]string)
-	for _, host := range runningHosts {
-		hostVersionMap[host.ID] = host.ResoniteVersion
-	}
-
-	sessionsToUpgrade := make([]*entity.Session, 0)
-	hostIds := make(map[string]*string)
-	for _, session := range sessions {
-		if !session.AutoUpgrade {
-			continue
-		}
-		if tag.ResoniteVersion == hostVersionMap[session.HostID] {
-			continue
-		}
-		if session.CurrentState.UsersCount > 0 {
-			// TODO: ユーザがいなくなったタイミングでアップグレードするようにする
-			continue
-		}
-
-		err = ic.suc.StopSession(ctx, session.ID)
-		if err != nil {
-			slog.Error("Failed to stop session", "sessionId", session.ID, "error", err)
-			continue
-		}
-
-		sessionsToUpgrade = append(sessionsToUpgrade, session)
-		hostIds[session.HostID] = nil
-	}
-	if len(sessionsToUpgrade) == 0 {
-		slog.Info("No sessions to upgrade")
-		return
-	}
-
-	for id := range hostIds {
-		current, err := ic.hhrepo.GetStartParams(ctx, id)
-		if err != nil {
-			slog.Error("Failed to find host", "hostId", id, "error", err)
-			continue
-		}
-		current.ContainerImageTag = &tag.Tag
-		startedId, err := ic.hhrepo.Start(ctx, *current)
-		if err != nil {
-			slog.Error("Failed to start host", "hostId", id, "error", err)
-			continue
-		}
-		hostIds[id] = &startedId
-	}
-
-	for _, session := range sessionsToUpgrade {
-		if newHostId, ok := hostIds[session.HostID]; ok {
-			if newHostId == nil {
-				continue
-			}
-			newSession, err := ic.suc.StartSession(ctx, *newHostId, nil, session.StartupParameters)
-			if err != nil {
-				slog.Error("Failed to start session", "sessionId", session.ID, "error", err)
-				continue
-			}
-			slog.Info("Session started", "sessionId", session.ID, "newHostId", *newHostId, "newSessionId", newSession.ID)
 		}
 	}
 }
