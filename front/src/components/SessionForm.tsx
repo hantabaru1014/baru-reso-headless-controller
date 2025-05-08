@@ -161,6 +161,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
       const result = await mutateStartWorld({
         hostId: selectedHostId,
         parameters: startupParams,
+        memo: data?.session?.memo,
       });
       if (result.openedSession) {
         notifications.show("セッションを開始しました", {

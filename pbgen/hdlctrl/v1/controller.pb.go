@@ -1860,6 +1860,7 @@ type StartWorldRequest struct {
 	state         protoimpl.MessageState     `protogen:"open.v1"`
 	HostId        string                     `protobuf:"bytes,1,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
 	Parameters    *v1.WorldStartupParameters `protobuf:"bytes,2,opt,name=parameters,proto3" json:"parameters,omitempty"`
+	Memo          string                     `protobuf:"bytes,3,opt,name=memo,proto3" json:"memo,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1906,6 +1907,13 @@ func (x *StartWorldRequest) GetParameters() *v1.WorldStartupParameters {
 		return x.Parameters
 	}
 	return nil
+}
+
+func (x *StartWorldRequest) GetMemo() string {
+	if x != nil {
+		return x.Memo
+	}
+	return ""
 }
 
 type StartWorldResponse struct {
@@ -3306,12 +3314,13 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x02 \x01(\tR\tsessionId\"J\n" +
 	"\x19GetSessionDetailsResponse\x12-\n" +
-	"\asession\x18\x01 \x01(\v2\x13.hdlctrl.v1.SessionR\asession\"q\n" +
+	"\asession\x18\x01 \x01(\v2\x13.hdlctrl.v1.SessionR\asession\"\x85\x01\n" +
 	"\x11StartWorldRequest\x12\x17\n" +
 	"\ahost_id\x18\x01 \x01(\tR\x06hostId\x12C\n" +
 	"\n" +
 	"parameters\x18\x02 \x01(\v2#.headless.v1.WorldStartupParametersR\n" +
-	"parameters\"P\n" +
+	"parameters\x12\x12\n" +
+	"\x04memo\x18\x03 \x01(\tR\x04memo\"P\n" +
 	"\x12StartWorldResponse\x12:\n" +
 	"\x0eopened_session\x18\x01 \x01(\v2\x13.hdlctrl.v1.SessionR\ropenedSession\"L\n" +
 	"\x12StopSessionRequest\x12\x17\n" +

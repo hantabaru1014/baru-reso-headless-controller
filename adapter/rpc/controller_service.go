@@ -408,7 +408,7 @@ func (c *ControllerService) StartWorld(ctx context.Context, req *connect.Request
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
-	openedSession, err := c.suc.StartSession(ctx, req.Msg.HostId, &claims.UserID, req.Msg.Parameters)
+	openedSession, err := c.suc.StartSession(ctx, req.Msg.HostId, &claims.UserID, req.Msg.Parameters, &req.Msg.Memo)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

@@ -205,6 +205,7 @@ message GetSessionDetailsResponse {
 message StartWorldRequest {
   string host_id = 1;
   headless.v1.WorldStartupParameters parameters = 2;
+  string memo = 3;
 }
 
 message StartWorldResponse {
