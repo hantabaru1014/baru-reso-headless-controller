@@ -178,8 +178,6 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
   };
 
   const handleDeleteSession = async () => {
-    if (data?.session?.status !== SessionStatus.ENDED) return;
-
     try {
       await mutateDelete({ sessionId });
       notifications.show("セッションを削除しました", {
