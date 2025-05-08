@@ -55,6 +55,7 @@ func (c *ControllerService) ListHeadlessHostImageTags(ctx context.Context, req *
 			Tag:             tag.Tag,
 			ResoniteVersion: tag.ResoniteVersion,
 			IsPrerelease:    tag.IsPreRelease,
+			AppVersion:      tag.AppVersion,
 		})
 	}
 	res := connect.NewResponse(&hdlctrlv1.ListHeadlessHostImageTagsResponse{

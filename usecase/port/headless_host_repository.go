@@ -26,6 +26,7 @@ type ContainerImage struct {
 	Tag             string
 	ResoniteVersion string
 	IsPreRelease    bool
+	AppVersion      string
 }
 
 type ContainerImageList []*ContainerImage
