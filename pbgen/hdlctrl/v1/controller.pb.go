@@ -3031,6 +3031,7 @@ type ListHeadlessHostImageTagsResponse_ContainerImage struct {
 	Tag             string                 `protobuf:"bytes,1,opt,name=tag,proto3" json:"tag,omitempty"`
 	ResoniteVersion string                 `protobuf:"bytes,2,opt,name=resonite_version,json=resoniteVersion,proto3" json:"resonite_version,omitempty"`
 	IsPrerelease    bool                   `protobuf:"varint,3,opt,name=is_prerelease,json=isPrerelease,proto3" json:"is_prerelease,omitempty"`
+	AppVersion      string                 `protobuf:"bytes,4,opt,name=app_version,json=appVersion,proto3" json:"app_version,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -3084,6 +3085,13 @@ func (x *ListHeadlessHostImageTagsResponse_ContainerImage) GetIsPrerelease() boo
 		return x.IsPrerelease
 	}
 	return false
+}
+
+func (x *ListHeadlessHostImageTagsResponse_ContainerImage) GetAppVersion() string {
+	if x != nil {
+		return x.AppVersion
+	}
+	return ""
 }
 
 type GetHeadlessHostLogsResponse_Log struct {
@@ -3222,13 +3230,15 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x1bListHeadlessAccountsRequest\"W\n" +
 	"\x1cListHeadlessAccountsResponse\x127\n" +
 	"\baccounts\x18\x01 \x03(\v2\x1b.hdlctrl.v1.HeadlessAccountR\baccounts\"\"\n" +
-	" ListHeadlessHostImageTagsRequest\"\xe9\x01\n" +
+	" ListHeadlessHostImageTagsRequest\"\x8b\x02\n" +
 	"!ListHeadlessHostImageTagsResponse\x12P\n" +
-	"\x04tags\x18\x01 \x03(\v2<.hdlctrl.v1.ListHeadlessHostImageTagsResponse.ContainerImageR\x04tags\x1ar\n" +
+	"\x04tags\x18\x01 \x03(\v2<.hdlctrl.v1.ListHeadlessHostImageTagsResponse.ContainerImageR\x04tags\x1a\x93\x01\n" +
 	"\x0eContainerImage\x12\x10\n" +
 	"\x03tag\x18\x01 \x01(\tR\x03tag\x12)\n" +
 	"\x10resonite_version\x18\x02 \x01(\tR\x0fresoniteVersion\x12#\n" +
-	"\ris_prerelease\x18\x03 \x01(\bR\fisPrerelease\"Q\n" +
+	"\ris_prerelease\x18\x03 \x01(\bR\fisPrerelease\x12\x1f\n" +
+	"\vapp_version\x18\x04 \x01(\tR\n" +
+	"appVersion\"Q\n" +
 	"\x1bAcceptFriendRequestsRequest\x12\x17\n" +
 	"\ahost_id\x18\x01 \x01(\tR\x06hostId\x12\x19\n" +
 	"\buser_ids\x18\x02 \x03(\tR\auserIds\"\x1e\n" +

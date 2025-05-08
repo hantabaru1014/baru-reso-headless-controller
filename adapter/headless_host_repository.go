@@ -213,17 +213,24 @@ type TagInfo struct {
 	IsVersioned     bool
 	IsPreRelease    bool
 	ResoniteVersion string
+	AppVersion      string
 }
 
 // TODO: imageに情報を埋め込んだらタグ名からパースするのをやめる
 func parseTag(tag string) TagInfo {
 	trimmed := strings.TrimPrefix(tag, "prerelease-")
-	if lib.ValidateResoniteVersionString(trimmed) {
+	splitted := strings.Split(trimmed, "-")
+	appVersion := "v0.0.0"
+	if len(splitted) == 2 {
+		appVersion = splitted[1]
+	}
+	if len(splitted) > 0 && lib.ValidateResoniteVersionString(splitted[0]) {
 		return TagInfo{
 			Tag:             tag,
 			IsVersioned:     true,
 			IsPreRelease:    strings.HasPrefix(tag, "prerelease-"),
-			ResoniteVersion: trimmed,
+			ResoniteVersion: splitted[0],
+			AppVersion:      appVersion,
 		}
 	} else {
 		return TagInfo{
@@ -303,6 +310,7 @@ func (h *HeadlessHostRepository) ListContainerTags(ctx context.Context, lastTag 
 				Tag:             info.Tag,
 				ResoniteVersion: info.ResoniteVersion,
 				IsPreRelease:    info.IsPreRelease,
+				AppVersion:      info.AppVersion,
 			})
 		}
 	}
@@ -340,6 +348,7 @@ func (h *HeadlessHostRepository) ListLocalAvailableContainerTags(ctx context.Con
 						Tag:             info.Tag,
 						ResoniteVersion: info.ResoniteVersion,
 						IsPreRelease:    info.IsPreRelease,
+						AppVersion:      info.AppVersion,
 					})
 				}
 			}
