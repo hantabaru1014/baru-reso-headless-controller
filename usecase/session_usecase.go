@@ -22,7 +22,7 @@ func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.Headles
 	}
 }
 
-func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId *string, params *headlessv1.WorldStartupParameters) (*entity.Session, error) {
+func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId *string, params *headlessv1.WorldStartupParameters, memo *string) (*entity.Session, error) {
 	client, err := u.hostRepo.GetRpcClient(ctx, hostId)
 	if err != nil {
 		return nil, err
@@ -45,6 +45,9 @@ func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId
 		OwnerID:           userId,
 		StartupParameters: params,
 		CurrentState:      resp.OpenedSession,
+	}
+	if memo != nil {
+		session.Memo = *memo
 	}
 	err = u.sessionRepo.Upsert(ctx, session)
 	if err != nil {
@@ -93,6 +96,8 @@ func (u *SessionUsecase) GetSession(ctx context.Context, id string) (*entity.Ses
 	}
 	client, err := u.hostRepo.GetRpcClient(ctx, dbSession.HostID)
 	if err != nil {
+		// TODO: 詳細画面に来る前に SearchSessions を叩いていればhostIdが違うということはないはずだが、
+		// 直接来た & customSessionIdが設定されている場合は、hostIdが違うことがある
 		if dbSession.Status == entity.SessionStatus_STARTING || dbSession.Status == entity.SessionStatus_RUNNING {
 			_ = u.sessionRepo.UpdateStatus(ctx, id, entity.SessionStatus_CRASHED)
 			dbSession.Status = entity.SessionStatus_CRASHED
@@ -207,6 +212,16 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 				_ = u.sessionRepo.UpdateStatus(ctx, dbSession.ID, entity.SessionStatus_RUNNING)
 			}
 			dbSession.Status = entity.SessionStatus_RUNNING
+			if dbSession.HostID != sessionHostIdMap[dbSession.ID] {
+				// たぶんCustomSessionIdが設定されているセッションが知らないうちに別のホストに移動している
+				dbSession.HostID = sessionHostIdMap[dbSession.ID]
+				startedAt := s.StartedAt.AsTime()
+				dbSession.StartedAt = &startedAt
+				dbSession.StartupParameters = s.StartupParameters
+				if err := u.sessionRepo.Upsert(ctx, dbSession); err != nil {
+					slog.Error("Failed to upsert session", "id", dbSession.ID, "err", err)
+				}
+			}
 			delete(hdlSessionsMap, dbSession.ID)
 		} else if dbSession.Status == entity.SessionStatus_RUNNING {
 			dbSession.Status = entity.SessionStatus_UNKNOWN

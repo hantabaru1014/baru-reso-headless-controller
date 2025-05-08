@@ -161,6 +161,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
       const result = await mutateStartWorld({
         hostId: selectedHostId,
         parameters: startupParams,
+        memo: data?.session?.memo,
       });
       if (result.openedSession) {
         notifications.show("セッションを開始しました", {
@@ -178,8 +179,6 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
   };
 
   const handleDeleteSession = async () => {
-    if (data?.session?.status !== SessionStatus.ENDED) return;
-
     try {
       await mutateDelete({ sessionId });
       notifications.show("セッションを削除しました", {
@@ -323,12 +322,12 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                 </span>
               )}
             </Stack>
-            <EditableCheckBox
+            {/* <EditableCheckBox
               label="自動アップデート"
               checked={data?.session?.autoUpgrade || false}
               onSave={(v) => handleSaveExtra("autoUpgrade", v)}
               helperText="新しいバージョンが出た場合にユーザがいなければ自動で新しいバージョンのホストに移行します"
-            />
+            /> */}
             <EditableTextField
               label="管理者メモ"
               multiline
