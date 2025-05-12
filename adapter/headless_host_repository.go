@@ -164,16 +164,22 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, host *entity.Headl
 	}
 	image := inspectResult.Config.Image
 	if newImage != nil {
+		splittedImage := strings.Split(*newImage, ":")
+		if len(splittedImage) != 2 {
+			return "", fmt.Errorf("no tag specified: %s", *newImage)
+		}
+		newTag := splittedImage[1]
+		if !h.isAvailableTag(ctx, newTag) {
+			_, err := h.PullContainerImage(ctx, newTag)
+			if err != nil {
+				return "", fmt.Errorf("failed to pull container image: %w", err)
+			}
+		}
 		image = *newImage
 	}
 	newConfig := *inspectResult.Config
 	newConfig.Image = image
-	if !h.isAvailableTag(ctx, image) {
-		_, err := h.PullContainerImage(ctx, image)
-		if err != nil {
-			return "", fmt.Errorf("failed to pull container image: %w", err)
-		}
-	}
+
 	resp, err := cli.ContainerCreate(ctx, &newConfig, inspectResult.HostConfig, nil, nil, host.Name)
 	if err != nil {
 		return "", fmt.Errorf("failed to create container: %w", err)
