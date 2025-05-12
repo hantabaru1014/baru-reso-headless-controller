@@ -75,6 +75,31 @@ export const kickUser = HeadlessControlService.method.kickUser;
 export const banUser = HeadlessControlService.method.banUser;
 
 /**
+ * @generated from rpc headless.v1.HeadlessControlService.GetHostSettings
+ */
+export const getHostSettings = HeadlessControlService.method.getHostSettings;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.UpdateHostSettings
+ */
+export const updateHostSettings = HeadlessControlService.method.updateHostSettings;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.AllowHostAccess
+ */
+export const allowHostAccess = HeadlessControlService.method.allowHostAccess;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.DenyHostAccess
+ */
+export const denyHostAccess = HeadlessControlService.method.denyHostAccess;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.GetStartupConfigToRestore
+ */
+export const getStartupConfigToRestore = HeadlessControlService.method.getStartupConfigToRestore;
+
+/**
  * Cloud系
  *
  * @generated from rpc headless.v1.HeadlessControlService.GetAccountInfo
