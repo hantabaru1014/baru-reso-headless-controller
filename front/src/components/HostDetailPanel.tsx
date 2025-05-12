@@ -13,6 +13,7 @@ import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { hostStatusToLabel } from "../libs/hostUtils";
 import { useNavigate } from "react-router";
 import FriendRequestList from "./FriendRequestList";
+import { useNotifications } from "@toolpad/core/useNotifications";
 
 export default function HostDetailPanel({ hostId }: { hostId: string }) {
   const navigate = useNavigate();
@@ -22,6 +23,39 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
   const { mutateAsync: updateHost } = useMutation(updateHeadlessHostSettings);
   const { mutateAsync: restartHost, isPending: isPendingRestart } =
     useMutation(restartHeadlessHost);
+  const notifications = useNotifications();
+
+  const handleRestart = async () => {
+    try {
+      const result = await restartHost({
+        hostId,
+        withUpdate: true,
+      });
+      setTimeout(() => {
+        refetch();
+      }, 1000);
+      if (result.newHostId) {
+        navigate(`/hosts/${result.newHostId}`);
+      }
+    } catch (e) {
+      notifications.show(e instanceof Error ? e.message : `${e}`, {
+        severity: "error",
+      });
+    }
+  };
+
+  const handleShutdown = async () => {
+    try {
+      await shutdownHost({ hostId });
+      setTimeout(() => {
+        refetch();
+      }, 1000);
+    } catch (e) {
+      notifications.show(e instanceof Error ? e.message : `${e}`, {
+        severity: "error",
+      });
+    }
+  };
 
   return (
     <Grid2 container spacing={2}>
@@ -54,14 +88,11 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
             <Button
               variant="contained"
               color="warning"
-              onClick={async () => {
-                await shutdownHost({ hostId });
-                setTimeout(() => {
-                  refetch();
-                }, 1000);
-              }}
+              onClick={handleShutdown}
               disabled={
-                isPending || data?.host?.status !== HeadlessHostStatus.RUNNING
+                isPending ||
+                isPendingShutdown ||
+                data?.host?.status !== HeadlessHostStatus.RUNNING
               }
               loading={isPendingShutdown}
             >
@@ -70,16 +101,8 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
             <Button
               variant="contained"
               color="primary"
-              onClick={async () => {
-                setTimeout(() => {
-                  refetch();
-                }, 1000);
-                const result = await restartHost({ hostId, withUpdate: true });
-                if (result.newHostId) {
-                  navigate(`/hosts/${result.newHostId}`);
-                }
-              }}
-              disabled={isPending}
+              onClick={handleRestart}
+              disabled={isPending || isPendingRestart}
               loading={isPendingRestart}
             >
               再起動

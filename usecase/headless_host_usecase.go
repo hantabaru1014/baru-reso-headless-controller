@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
@@ -95,18 +96,24 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 
 	var newImage *string
 	if withUpdate {
-		_, err := hhuc.PullLatestHostImage(ctx)
-		if err != nil {
-			return "", err
-		}
-		tags, err := hhuc.hhrepo.ListLocalAvailableContainerTags(ctx)
+		tags, err := hhuc.hhrepo.ListContainerTags(ctx, nil)
 		if err != nil {
 			return "", err
 		}
 		if len(tags) == 0 {
 			return "", errors.New("no available container image tags")
 		}
-		image := os.Getenv("HEADLESS_IMAGE_NAME") + ":" + tags[len(tags)-1].Tag
+		var latestReleaseTag *string
+		for _, tag := range slices.Backward(tags) {
+			if !tag.IsPreRelease {
+				latestReleaseTag = &tag.Tag
+				break
+			}
+		}
+		if latestReleaseTag == nil {
+			return "", errors.New("no available container image tags (release version)")
+		}
+		image := os.Getenv("HEADLESS_IMAGE_NAME") + ":" + *latestReleaseTag
 		newImage = &image
 	}
 

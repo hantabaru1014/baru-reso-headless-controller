@@ -72,19 +72,13 @@ func (ic *ImageChecker) checkNewImages() {
 		slog.Error("Failed to list container tags", "error", err)
 		return
 	}
-	filteredTags := make([]*port.ContainerImage, 0, len(tags))
-	for _, tag := range tags {
-		if !tag.IsPreRelease {
-			filteredTags = append(filteredTags, tag)
-		}
-	}
 
-	if len(filteredTags) == 0 {
+	if len(tags) == 0 {
 		return
 	}
 
 	// 最新のタグは配列の最後に入っている
-	newestTag := filteredTags[len(filteredTags)-1]
+	newestTag := tags[len(tags)-1]
 
 	// 前回の最新タグがない、またはタグが変わった場合に通知
 	if ic.lastTag == nil || ic.lastTag.Tag != newestTag.Tag {
