@@ -158,10 +158,7 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, host *entity.Headl
 			return "", fmt.Errorf("failed to stop container: %w", err)
 		}
 	}
-	err = cli.ContainerRemove(ctx, inspectResult.ID, container.RemoveOptions{})
-	if err != nil {
-		return "", fmt.Errorf("failed to remove container: %w", err)
-	}
+
 	image := inspectResult.Config.Image
 	if newImage != nil {
 		splittedImage := strings.Split(*newImage, ":")
@@ -179,6 +176,11 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, host *entity.Headl
 	}
 	newConfig := *inspectResult.Config
 	newConfig.Image = image
+
+	err = cli.ContainerRemove(ctx, inspectResult.ID, container.RemoveOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to remove container: %w", err)
+	}
 
 	resp, err := cli.ContainerCreate(ctx, &newConfig, inspectResult.HostConfig, nil, nil, host.Name)
 	if err != nil {
