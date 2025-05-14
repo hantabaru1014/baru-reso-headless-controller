@@ -3,6 +3,7 @@ package converter
 import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
+	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -12,12 +13,36 @@ func HeadlessHostEntityToProto(e *entity.HeadlessHost) *hdlctrlv1.HeadlessHost {
 		Name:              e.Name,
 		Address:           e.Address,
 		ResoniteVersion:   e.ResoniteVersion,
+		AppVersion:        e.AppVersion,
 		AccountId:         e.AccountId,
 		AccountName:       e.AccountName,
 		StorageQuotaBytes: e.StorageQuotaBytes,
 		StorageUsedBytes:  e.StorageUsedBytes,
 		Fps:               e.Fps,
 		Status:            hdlctrlv1.HeadlessHostStatus(e.Status),
+	}
+}
+
+func HeadlessHostSettingsToProto(e *entity.HeadlessHostSettings) *hdlctrlv1.HeadlessHostSettings {
+	allowedUrlHosts := make([]*headlessv1.AllowedAccessEntry, 0, len(e.AllowedUrlHosts))
+	for _, entry := range e.AllowedUrlHosts {
+		types := make([]headlessv1.AllowedAccessEntry_AccessType, 0, len(entry.AccessTypes))
+		for _, accessType := range entry.AccessTypes {
+			types = append(types, headlessv1.AllowedAccessEntry_AccessType(accessType))
+		}
+		allowedUrlHosts = append(allowedUrlHosts, &headlessv1.AllowedAccessEntry{
+			Host:        entry.Host,
+			Ports:       entry.Ports,
+			AccessTypes: types,
+		})
+	}
+	return &hdlctrlv1.HeadlessHostSettings{
+		UniverseId:                  e.UniverseID,
+		TickRate:                    e.TickRate,
+		MaxConcurrentAssetTransfers: e.MaxConcurrentAssetTransfers,
+		UsernameOverride:            e.UsernameOverride,
+		AllowedUrlHosts:             allowedUrlHosts,
+		AutoSpawnItems:              e.AutoSpawnItems,
 	}
 }
 

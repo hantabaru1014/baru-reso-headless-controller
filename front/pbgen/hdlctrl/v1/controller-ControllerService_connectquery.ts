@@ -5,6 +5,8 @@
 import { ControllerService } from "./controller_pb";
 
 /**
+ * ホスト系
+ *
  * @generated from rpc hdlctrl.v1.ControllerService.ListHeadlessHost
  */
 export const listHeadlessHost = ControllerService.method.listHeadlessHost;
@@ -45,6 +47,18 @@ export const restartHeadlessHost = ControllerService.method.restartHeadlessHost;
 export const startHeadlessHost = ControllerService.method.startHeadlessHost;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.AllowHostAccess
+ */
+export const allowHostAccess = ControllerService.method.allowHostAccess;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.DenyHostAccess
+ */
+export const denyHostAccess = ControllerService.method.denyHostAccess;
+
+/**
+ * アカウント系
+ *
  * @generated from rpc hdlctrl.v1.ControllerService.CreateHeadlessAccount
  */
 export const createHeadlessAccount = ControllerService.method.createHeadlessAccount;
@@ -60,6 +74,8 @@ export const listHeadlessAccounts = ControllerService.method.listHeadlessAccount
 export const listHeadlessHostImageTags = ControllerService.method.listHeadlessHostImageTags;
 
 /**
+ * Cloud系
+ *
  * @generated from rpc hdlctrl.v1.ControllerService.FetchWorldInfo
  */
 export const fetchWorldInfo = ControllerService.method.fetchWorldInfo;
@@ -80,6 +96,8 @@ export const getFriendRequests = ControllerService.method.getFriendRequests;
 export const acceptFriendRequests = ControllerService.method.acceptFriendRequests;
 
 /**
+ * セッション系
+ *
  * @generated from rpc hdlctrl.v1.ControllerService.SearchSessions
  */
 export const searchSessions = ControllerService.method.searchSessions;

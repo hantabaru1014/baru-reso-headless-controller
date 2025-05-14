@@ -6,6 +6,7 @@ import "headless/v1/headless.proto";
 import "google/protobuf/timestamp.proto";
 
 service ControllerService {
+  // ホスト系
   rpc ListHeadlessHost(ListHeadlessHostRequest) returns (ListHeadlessHostResponse);
   rpc GetHeadlessHost(GetHeadlessHostRequest) returns (GetHeadlessHostResponse);
   rpc GetHeadlessHostLogs(GetHeadlessHostLogsRequest) returns (GetHeadlessHostLogsResponse);
@@ -14,15 +15,21 @@ service ControllerService {
   rpc PullLatestHostImage(PullLatestHostImageRequest) returns (PullLatestHostImageResponse);
   rpc RestartHeadlessHost(RestartHeadlessHostRequest) returns (RestartHeadlessHostResponse);
   rpc StartHeadlessHost(StartHeadlessHostRequest) returns (StartHeadlessHostResponse);
+  rpc AllowHostAccess(AllowHostAccessRequest) returns (AllowHostAccessResponse);
+  rpc DenyHostAccess(DenyHostAccessRequest) returns (DenyHostAccessResponse);
+
+  // アカウント系
   rpc CreateHeadlessAccount(CreateHeadlessAccountRequest) returns (CreateHeadlessAccountResponse);
   rpc ListHeadlessAccounts(ListHeadlessAccountsRequest) returns (ListHeadlessAccountsResponse);
   rpc ListHeadlessHostImageTags(ListHeadlessHostImageTagsRequest) returns (ListHeadlessHostImageTagsResponse);
 
+  // Cloud系
   rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
   rpc SearchUserInfo(SearchUserInfoRequest) returns (headless.v1.SearchUserInfoResponse);
   rpc GetFriendRequests(GetFriendRequestsRequest) returns (headless.v1.GetFriendRequestsResponse);
   rpc AcceptFriendRequests(AcceptFriendRequestsRequest) returns (AcceptFriendRequestsResponse);
 
+  // セッション系
   rpc SearchSessions(SearchSessionsRequest) returns (SearchSessionsResponse);
   rpc GetSessionDetails(GetSessionDetailsRequest) returns (GetSessionDetailsResponse);
   rpc StartWorld(StartWorldRequest) returns (StartWorldResponse);
@@ -38,10 +45,25 @@ service ControllerService {
   rpc BanUser(BanUserRequest) returns (BanUserResponse);
 }
 
+message AllowHostAccessRequest {
+  string host_id = 1;
+  headless.v1.AllowHostAccessRequest request = 2;
+}
+
+message AllowHostAccessResponse {}
+
+message DenyHostAccessRequest {
+  string host_id = 1;
+  headless.v1.DenyHostAccessRequest request = 2;
+}
+
+message DenyHostAccessResponse {}
+
 message StartHeadlessHostRequest {
   string name = 1;
   string headless_account_id = 2;
   optional string image_tag = 3;
+  optional headless.v1.StartupConfig startup_config = 4;
 }
 
 message StartHeadlessHostResponse {
@@ -88,6 +110,9 @@ message GetFriendRequestsRequest {
 message RestartHeadlessHostRequest {
   string host_id = 1;
   bool with_update = 2;
+  optional string with_image_tag = 3;
+  bool with_world_restart = 4;
+  optional int32 timeout_seconds = 5;
 }
 
 message RestartHeadlessHostResponse {
@@ -103,6 +128,11 @@ message PullLatestHostImageResponse {
 message UpdateHeadlessHostSettingsRequest {
   string host_id = 1;
   optional string name = 2;
+  optional float tick_rate = 3;
+  optional int32 max_concurrent_asset_transfers = 4;
+  optional string username_override = 5;
+  bool update_auto_spawn_items = 6;
+  repeated string auto_spawn_items = 7;
 }
 
 message UpdateHeadlessHostSettingsResponse {}
@@ -171,6 +201,7 @@ message GetHeadlessHostRequest {
 
 message GetHeadlessHostResponse {
   HeadlessHost host = 1;
+  HeadlessHostSettings settings = 2;
 }
 
 message AddHeadlessHostRequest {
@@ -296,11 +327,21 @@ enum SessionStatus {
   SESSION_STATUS_CRASHED = 4;
 }
 
+message HeadlessHostSettings {
+  optional string universe_id = 1;
+  float tick_rate = 2;
+  int32 max_concurrent_asset_transfers = 3;
+  optional string username_override = 4;
+  repeated headless.v1.AllowedAccessEntry allowed_url_hosts = 5;
+  repeated string auto_spawn_items = 6;
+}
+
 message HeadlessHost {
   string id = 1;
   string name = 2;
   string address = 3;
   string resonite_version = 4;
+  string app_version = 11;
   string account_id = 5;
   string account_name = 6;
   float fps = 7;

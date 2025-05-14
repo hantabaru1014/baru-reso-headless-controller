@@ -30,6 +30,7 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
       const result = await restartHost({
         hostId,
         withUpdate: true,
+        withWorldRestart: true,
       });
       setTimeout(() => {
         refetch();

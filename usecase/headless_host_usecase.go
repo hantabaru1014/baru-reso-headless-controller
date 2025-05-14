@@ -28,18 +28,21 @@ func NewHeadlessHostUsecase(hhrepo port.HeadlessHostRepository, srepo port.Sessi
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostStart(ctx context.Context, params port.HeadlessHostStartParams) (string, error) {
 	if params.ContainerImageTag == nil {
-		_, err := hhuc.PullLatestHostImage(ctx)
+		tags, err := hhuc.hhrepo.ListContainerTags(ctx, nil)
 		if err != nil {
 			return "", err
 		}
-		tags, err := hhuc.hhrepo.ListLocalAvailableContainerTags(ctx)
-		if err != nil {
-			return "", err
+		var latestReleaseTag *string
+		for _, tag := range slices.Backward(tags) {
+			if !tag.IsPreRelease {
+				latestReleaseTag = &tag.Tag
+				break
+			}
 		}
-		if len(tags) == 0 {
-			return "", errors.New("no available container image tags")
+		if latestReleaseTag == nil {
+			return "", errors.New("no available container image tags (release version)")
 		}
-		params.ContainerImageTag = &tags[len(tags)-1].Tag
+		params.ContainerImageTag = latestReleaseTag
 	}
 
 	return hhuc.hhrepo.Start(ctx, params)
@@ -61,6 +64,38 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostGet(ctx context.Context, id string)
 	return host, nil
 }
 
+func (hhuc *HeadlessHostUsecase) HeadlessHostGetSettings(ctx context.Context, id string) (*entity.HeadlessHostSettings, error) {
+	cli, err := hhuc.hhrepo.GetRpcClient(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := cli.GetHostSettings(ctx, &headlessv1.GetHostSettingsRequest{})
+	if err != nil {
+		return nil, err
+	}
+	settings := &entity.HeadlessHostSettings{
+		UniverseID:                  resp.UniverseId,
+		TickRate:                    resp.TickRate,
+		MaxConcurrentAssetTransfers: resp.MaxConcurrentAssetTransfers,
+		UsernameOverride:            resp.UsernameOverride,
+		AllowedUrlHosts:             make([]entity.HostAllowedAccessEntry, 0, len(resp.AllowedUrlHosts)),
+		AutoSpawnItems:              resp.AutoSpawnItems,
+	}
+	for _, entry := range resp.AllowedUrlHosts {
+		types := make([]entity.HostAllowedAccessType, len(entry.AccessTypes))
+		for _, t := range entry.AccessTypes {
+			types = append(types, entity.HostAllowedAccessType(t))
+		}
+		settings.AllowedUrlHosts = append(settings.AllowedUrlHosts, entity.HostAllowedAccessEntry{
+			Host:        entry.Host,
+			Ports:       entry.Ports,
+			AccessTypes: types,
+		})
+	}
+
+	return settings, nil
+}
+
 func (hhuc *HeadlessHostUsecase) markSessionsAsEnded(ctx context.Context, sessions entity.SessionList) error {
 	// FIXME: 仮の実装. session usecaseにまとめられるようにする
 	now := time.Now()
@@ -80,7 +115,9 @@ func (hhuc *HeadlessHostUsecase) markSessionsAsEnded(ctx context.Context, sessio
 	return nil
 }
 
-func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id string, withUpdate bool) (string, error) {
+// HeadlessHostRestart restarts the headless host with the specified ID.
+// If newTag is "latestRelease", it will use the latest release tag.
+func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id string, newTag *string, withWorldRestart bool, timeoutSeconds int) (string, error) {
 	host, err := hhuc.hhrepo.Find(ctx, id)
 	if err != nil {
 		return "", err
@@ -94,27 +131,28 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 		return "", err
 	}
 
-	var newImage *string
-	if withUpdate {
-		tags, err := hhuc.hhrepo.ListContainerTags(ctx, nil)
-		if err != nil {
-			return "", err
-		}
-		if len(tags) == 0 {
-			return "", errors.New("no available container image tags")
-		}
-		var latestReleaseTag *string
-		for _, tag := range slices.Backward(tags) {
-			if !tag.IsPreRelease {
-				latestReleaseTag = &tag.Tag
-				break
+	var tagToUse *string
+	if newTag != nil && *newTag == "" {
+		if *newTag == "latestRelease" {
+			tags, err := hhuc.hhrepo.ListContainerTags(ctx, nil)
+			if err != nil {
+				return "", err
 			}
+			if len(tags) == 0 {
+				return "", errors.New("no available container image tags")
+			}
+			for _, tag := range slices.Backward(tags) {
+				if !tag.IsPreRelease {
+					tagToUse = &tag.Tag
+					break
+				}
+			}
+			if tagToUse == nil {
+				return "", errors.New("no available container image tags")
+			}
+		} else {
+			tagToUse = newTag
 		}
-		if latestReleaseTag == nil {
-			return "", errors.New("no available container image tags (release version)")
-		}
-		image := os.Getenv("HEADLESS_IMAGE_NAME") + ":" + *latestReleaseTag
-		newImage = &image
 	}
 
 	err = hhuc.markSessionsAsEnded(ctx, sessions)
@@ -122,21 +160,38 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 		return "", err
 	}
 
-	// TODO: うまい具合に非同期化する
-	newId, err := hhuc.hhrepo.Restart(ctx, host, newImage)
-	if err != nil {
-		return "", err
+	if host.Status == entity.HeadlessHostStatus_RUNNING {
+		startupConfig, err := hhuc.hhrepo.GetStartParams(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		startupConfig.ContainerImageTag = tagToUse
+		if !withWorldRestart && startupConfig.StartupConfig != nil {
+			startupConfig.StartupConfig.StartWorlds = nil
+		}
+		err = hhuc.hhrepo.Stop(ctx, id, timeoutSeconds)
+		if err != nil {
+			return "", err
+		}
+		newId, err := hhuc.hhrepo.Start(ctx, *startupConfig)
+		if err != nil {
+			return "", err
+		}
+
+		return newId, nil
+	} else {
+		var newImage *string
+		if tagToUse != nil {
+			str := os.Getenv("HEADLESS_IMAGE_NAME") + ":" + *tagToUse
+			newImage = &str
+		}
+		newId, err := hhuc.hhrepo.Restart(ctx, host, newImage)
+		if err != nil {
+			return "", err
+		}
+
+		return newId, nil
 	}
-
-	// FIXME: ヘッドレスに起動Configを渡せるようにしたら修正する
-	// for _, session := range stoppedSessions {
-	// 	_, err = hhuc.huc.StartSession(ctx, newId, session.StartupParameters)
-	// 	if err != nil {
-	// 		return "", err
-	// 	}
-	// }
-
-	return newId, nil
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostGetLogs(ctx context.Context, id, until, since string, limit int32) (port.LogLineList, error) {

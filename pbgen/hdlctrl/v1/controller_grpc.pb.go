@@ -28,6 +28,8 @@ const (
 	ControllerService_PullLatestHostImage_FullMethodName        = "/hdlctrl.v1.ControllerService/PullLatestHostImage"
 	ControllerService_RestartHeadlessHost_FullMethodName        = "/hdlctrl.v1.ControllerService/RestartHeadlessHost"
 	ControllerService_StartHeadlessHost_FullMethodName          = "/hdlctrl.v1.ControllerService/StartHeadlessHost"
+	ControllerService_AllowHostAccess_FullMethodName            = "/hdlctrl.v1.ControllerService/AllowHostAccess"
+	ControllerService_DenyHostAccess_FullMethodName             = "/hdlctrl.v1.ControllerService/DenyHostAccess"
 	ControllerService_CreateHeadlessAccount_FullMethodName      = "/hdlctrl.v1.ControllerService/CreateHeadlessAccount"
 	ControllerService_ListHeadlessAccounts_FullMethodName       = "/hdlctrl.v1.ControllerService/ListHeadlessAccounts"
 	ControllerService_ListHeadlessHostImageTags_FullMethodName  = "/hdlctrl.v1.ControllerService/ListHeadlessHostImageTags"
@@ -54,6 +56,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ControllerServiceClient interface {
+	// ホスト系
 	ListHeadlessHost(ctx context.Context, in *ListHeadlessHostRequest, opts ...grpc.CallOption) (*ListHeadlessHostResponse, error)
 	GetHeadlessHost(ctx context.Context, in *GetHeadlessHostRequest, opts ...grpc.CallOption) (*GetHeadlessHostResponse, error)
 	GetHeadlessHostLogs(ctx context.Context, in *GetHeadlessHostLogsRequest, opts ...grpc.CallOption) (*GetHeadlessHostLogsResponse, error)
@@ -62,13 +65,18 @@ type ControllerServiceClient interface {
 	PullLatestHostImage(ctx context.Context, in *PullLatestHostImageRequest, opts ...grpc.CallOption) (*PullLatestHostImageResponse, error)
 	RestartHeadlessHost(ctx context.Context, in *RestartHeadlessHostRequest, opts ...grpc.CallOption) (*RestartHeadlessHostResponse, error)
 	StartHeadlessHost(ctx context.Context, in *StartHeadlessHostRequest, opts ...grpc.CallOption) (*StartHeadlessHostResponse, error)
+	AllowHostAccess(ctx context.Context, in *AllowHostAccessRequest, opts ...grpc.CallOption) (*AllowHostAccessResponse, error)
+	DenyHostAccess(ctx context.Context, in *DenyHostAccessRequest, opts ...grpc.CallOption) (*DenyHostAccessResponse, error)
+	// アカウント系
 	CreateHeadlessAccount(ctx context.Context, in *CreateHeadlessAccountRequest, opts ...grpc.CallOption) (*CreateHeadlessAccountResponse, error)
 	ListHeadlessAccounts(ctx context.Context, in *ListHeadlessAccountsRequest, opts ...grpc.CallOption) (*ListHeadlessAccountsResponse, error)
 	ListHeadlessHostImageTags(ctx context.Context, in *ListHeadlessHostImageTagsRequest, opts ...grpc.CallOption) (*ListHeadlessHostImageTagsResponse, error)
+	// Cloud系
 	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(ctx context.Context, in *SearchUserInfoRequest, opts ...grpc.CallOption) (*v1.SearchUserInfoResponse, error)
 	GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*v1.GetFriendRequestsResponse, error)
 	AcceptFriendRequests(ctx context.Context, in *AcceptFriendRequestsRequest, opts ...grpc.CallOption) (*AcceptFriendRequestsResponse, error)
+	// セッション系
 	SearchSessions(ctx context.Context, in *SearchSessionsRequest, opts ...grpc.CallOption) (*SearchSessionsResponse, error)
 	GetSessionDetails(ctx context.Context, in *GetSessionDetailsRequest, opts ...grpc.CallOption) (*GetSessionDetailsResponse, error)
 	StartWorld(ctx context.Context, in *StartWorldRequest, opts ...grpc.CallOption) (*StartWorldResponse, error)
@@ -166,6 +174,26 @@ func (c *controllerServiceClient) StartHeadlessHost(ctx context.Context, in *Sta
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(StartHeadlessHostResponse)
 	err := c.cc.Invoke(ctx, ControllerService_StartHeadlessHost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) AllowHostAccess(ctx context.Context, in *AllowHostAccessRequest, opts ...grpc.CallOption) (*AllowHostAccessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AllowHostAccessResponse)
+	err := c.cc.Invoke(ctx, ControllerService_AllowHostAccess_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) DenyHostAccess(ctx context.Context, in *DenyHostAccessRequest, opts ...grpc.CallOption) (*DenyHostAccessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DenyHostAccessResponse)
+	err := c.cc.Invoke(ctx, ControllerService_DenyHostAccess_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -376,6 +404,7 @@ func (c *controllerServiceClient) BanUser(ctx context.Context, in *BanUserReques
 // All implementations must embed UnimplementedControllerServiceServer
 // for forward compatibility.
 type ControllerServiceServer interface {
+	// ホスト系
 	ListHeadlessHost(context.Context, *ListHeadlessHostRequest) (*ListHeadlessHostResponse, error)
 	GetHeadlessHost(context.Context, *GetHeadlessHostRequest) (*GetHeadlessHostResponse, error)
 	GetHeadlessHostLogs(context.Context, *GetHeadlessHostLogsRequest) (*GetHeadlessHostLogsResponse, error)
@@ -384,13 +413,18 @@ type ControllerServiceServer interface {
 	PullLatestHostImage(context.Context, *PullLatestHostImageRequest) (*PullLatestHostImageResponse, error)
 	RestartHeadlessHost(context.Context, *RestartHeadlessHostRequest) (*RestartHeadlessHostResponse, error)
 	StartHeadlessHost(context.Context, *StartHeadlessHostRequest) (*StartHeadlessHostResponse, error)
+	AllowHostAccess(context.Context, *AllowHostAccessRequest) (*AllowHostAccessResponse, error)
+	DenyHostAccess(context.Context, *DenyHostAccessRequest) (*DenyHostAccessResponse, error)
+	// アカウント系
 	CreateHeadlessAccount(context.Context, *CreateHeadlessAccountRequest) (*CreateHeadlessAccountResponse, error)
 	ListHeadlessAccounts(context.Context, *ListHeadlessAccountsRequest) (*ListHeadlessAccountsResponse, error)
 	ListHeadlessHostImageTags(context.Context, *ListHeadlessHostImageTagsRequest) (*ListHeadlessHostImageTagsResponse, error)
+	// Cloud系
 	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(context.Context, *SearchUserInfoRequest) (*v1.SearchUserInfoResponse, error)
 	GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*v1.GetFriendRequestsResponse, error)
 	AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error)
+	// セッション系
 	SearchSessions(context.Context, *SearchSessionsRequest) (*SearchSessionsResponse, error)
 	GetSessionDetails(context.Context, *GetSessionDetailsRequest) (*GetSessionDetailsResponse, error)
 	StartWorld(context.Context, *StartWorldRequest) (*StartWorldResponse, error)
@@ -437,6 +471,12 @@ func (UnimplementedControllerServiceServer) RestartHeadlessHost(context.Context,
 }
 func (UnimplementedControllerServiceServer) StartHeadlessHost(context.Context, *StartHeadlessHostRequest) (*StartHeadlessHostResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StartHeadlessHost not implemented")
+}
+func (UnimplementedControllerServiceServer) AllowHostAccess(context.Context, *AllowHostAccessRequest) (*AllowHostAccessResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AllowHostAccess not implemented")
+}
+func (UnimplementedControllerServiceServer) DenyHostAccess(context.Context, *DenyHostAccessRequest) (*DenyHostAccessResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DenyHostAccess not implemented")
 }
 func (UnimplementedControllerServiceServer) CreateHeadlessAccount(context.Context, *CreateHeadlessAccountRequest) (*CreateHeadlessAccountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateHeadlessAccount not implemented")
@@ -659,6 +699,42 @@ func _ControllerService_StartHeadlessHost_Handler(srv interface{}, ctx context.C
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).StartHeadlessHost(ctx, req.(*StartHeadlessHostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_AllowHostAccess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AllowHostAccessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).AllowHostAccess(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_AllowHostAccess_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).AllowHostAccess(ctx, req.(*AllowHostAccessRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_DenyHostAccess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DenyHostAccessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).DenyHostAccess(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_DenyHostAccess_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).DenyHostAccess(ctx, req.(*DenyHostAccessRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1061,6 +1137,14 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StartHeadlessHost",
 			Handler:    _ControllerService_StartHeadlessHost_Handler,
+		},
+		{
+			MethodName: "AllowHostAccess",
+			Handler:    _ControllerService_AllowHostAccess_Handler,
+		},
+		{
+			MethodName: "DenyHostAccess",
+			Handler:    _ControllerService_DenyHostAccess_Handler,
 		},
 		{
 			MethodName: "CreateHeadlessAccount",
