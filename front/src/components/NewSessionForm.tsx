@@ -27,21 +27,62 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 const sessionFormSchema = z
   .object({
+    // protoにない独自フィールド
     hostId: z.string().min(1, "ホストを選択してください"),
     worldSource: z.enum(["url", "template"]),
-    worldUrl: z.string().optional(),
-    worldTemplate: z.enum(["grid", "platform", "blank"]),
+
+    // WorldStartupParametersのフィールド順に対応
     name: z.string().min(1, "セッション名を入力してください"),
+    customSessionId: z.string().optional(),
     description: z.string().optional(),
+    tags: z.string().optional(),
     maxUsers: z.number().int().min(1, "最低1人以上の設定が必要です"),
     accessLevel: z.number().int().min(1).max(6),
-    customSessionId: z.string().optional(),
+    // loadWorld関連
+    worldUrl: z.string().optional(),
+    worldTemplate: z.enum(["grid", "platform", "blank"]),
+    // 追加フィールド
+    autoInviteUsernames: z.string().optional(),
     hideFromPublicListing: z.boolean(),
+    defaultUserRoles: z
+      .array(
+        z.object({
+          role: z.string(),
+          userName: z.string(),
+        }),
+      )
+      .optional(),
     awayKickMinutes: z.number(),
     idleRestartIntervalSeconds: z.number().int(),
     saveOnExit: z.boolean(),
     autoSaveIntervalSeconds: z.number().int(),
     autoSleep: z.boolean(),
+    inviteRequestHandlerUsernames: z.string().optional(),
+    forcePort: z.number().int().optional(),
+    parentSessionIds: z.string().optional(),
+    autoRecover: z.boolean().optional(),
+    forcedRestartIntervalSeconds: z.number().int().optional(),
+    useCustomJoinVerifier: z.boolean().optional(),
+    mobileFriendly: z.boolean().optional(),
+    overrideCorrespondingWorldId: z
+      .string()
+      .optional()
+      .refine(
+        (value) => {
+          if (!value) return true; // 空文字列または未定義の場合はOK
+          return /^[^/]+\/[^/]+$/.test(value); // ownerId/id 形式を検証
+        },
+        {
+          message: "ownerId/id の形式で入力してください",
+        },
+      ),
+    keepOriginalRoles: z.boolean().optional(),
+    roleCloudVariable: z.string().optional(),
+    allowUserCloudVariable: z.string().optional(),
+    denyUserCloudVariable: z.string().optional(),
+    requiredUserJoinCloudVariable: z.string().optional(),
+    requiredUserJoinCloudVariableDenyMessage: z.string().optional(),
+    autoInviteMessage: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -55,6 +96,27 @@ const sessionFormSchema = z
       path: ["worldUrl"],
     },
   );
+
+// TODO: これ使ってるフォームはちゃんとしたのに作り変える！
+const processCSV = (csv: string | undefined) =>
+  csv
+    ?.split(",")
+    .map((n) => n.trim())
+    .filter((n) => n) || [];
+
+const processRecordId = (
+  recordId: string | undefined,
+): { id: string; ownerId: string } | undefined => {
+  if (!recordId) return undefined;
+
+  const parts = recordId.split("/");
+  if (parts.length !== 2) return undefined;
+
+  return {
+    ownerId: parts[0],
+    id: parts[1],
+  };
+};
 
 export default function NewSessionForm() {
   const navigate = useNavigate();
@@ -74,16 +136,29 @@ export default function NewSessionForm() {
     resolver: zodResolver(sessionFormSchema),
     mode: "onBlur",
     defaultValues: {
+      // 独自フィールド
       worldSource: "url",
+
+      // WorldStartupParametersのフィールド
       worldTemplate: "grid",
       maxUsers: 15,
       accessLevel: 1,
       hideFromPublicListing: false,
+      tags: "",
+      autoInviteUsernames: "",
+      defaultUserRoles: [],
       awayKickMinutes: -1,
       idleRestartIntervalSeconds: -1,
       saveOnExit: false,
       autoSaveIntervalSeconds: -1,
       autoSleep: false,
+      inviteRequestHandlerUsernames: "",
+      parentSessionIds: "",
+      autoRecover: false,
+      forcedRestartIntervalSeconds: -1,
+      useCustomJoinVerifier: false,
+      mobileFriendly: false,
+      keepOriginalRoles: false,
     },
   });
 
@@ -117,15 +192,38 @@ export default function NewSessionForm() {
               : { case: "loadWorldPresetName", value: data.worldTemplate },
           name: data.name,
           description: data.description || "",
+          tags: processCSV(data.tags),
           maxUsers: data.maxUsers,
           accessLevel: data.accessLevel,
           customSessionId: data.customSessionId || "",
+          autoInviteUsernames: processCSV(data.autoInviteUsernames),
           hideFromPublicListing: data.hideFromPublicListing,
+          defaultUserRoles: data.defaultUserRoles || [],
           awayKickMinutes: data.awayKickMinutes,
           idleRestartIntervalSeconds: data.idleRestartIntervalSeconds,
           saveOnExit: data.saveOnExit,
           autoSaveIntervalSeconds: data.autoSaveIntervalSeconds,
           autoSleep: data.autoSleep,
+          inviteRequestHandlerUsernames: processCSV(
+            data.inviteRequestHandlerUsernames,
+          ),
+          forcePort: data.forcePort,
+          parentSessionIds: processCSV(data.parentSessionIds),
+          autoRecover: data.autoRecover,
+          forcedRestartIntervalSeconds: data.forcedRestartIntervalSeconds,
+          useCustomJoinVerifier: data.useCustomJoinVerifier,
+          mobileFriendly: data.mobileFriendly,
+          overrideCorrespondingWorldId: processRecordId(
+            data.overrideCorrespondingWorldId,
+          ),
+          keepOriginalRoles: data.keepOriginalRoles,
+          roleCloudVariable: data.roleCloudVariable,
+          allowUserCloudVariable: data.allowUserCloudVariable,
+          denyUserCloudVariable: data.denyUserCloudVariable,
+          requiredUserJoinCloudVariable: data.requiredUserJoinCloudVariable,
+          requiredUserJoinCloudVariableDenyMessage:
+            data.requiredUserJoinCloudVariableDenyMessage,
+          autoInviteMessage: data.autoInviteMessage,
         },
       });
       notifications.show("セッションを開始しました", {
@@ -274,6 +372,21 @@ export default function NewSessionForm() {
           />
         )}
       />
+      <Controller
+        name="tags"
+        control={control}
+        render={({ field }) => (
+          <TextField
+            label="タグ"
+            fullWidth
+            {...field}
+            error={!!errors.tags}
+            helperText={
+              errors.tags?.message || "カンマ区切りで入力してください"
+            }
+          />
+        )}
+      />
       <Stack direction="row" spacing={2}>
         <Controller
           name="maxUsers"
@@ -337,7 +450,42 @@ export default function NewSessionForm() {
             helperText={errors.customSessionId?.message}
           />
         )}
-      />{" "}
+      />
+
+      <Controller
+        name="parentSessionIds"
+        control={control}
+        render={({ field }) => (
+          <TextField
+            label="parentSessionIds"
+            fullWidth
+            {...field}
+            error={!!errors.parentSessionIds}
+            helperText={
+              errors.parentSessionIds?.message ||
+              "カンマ区切りで入力してください"
+            }
+          />
+        )}
+      />
+
+      <Controller
+        name="overrideCorrespondingWorldId"
+        control={control}
+        render={({ field }) => (
+          <TextField
+            label="overrideCorrespondingWorldId"
+            fullWidth
+            {...field}
+            error={!!errors.overrideCorrespondingWorldId}
+            helperText={
+              errors.overrideCorrespondingWorldId?.message ||
+              "ownerId/id の形式で入力してください"
+            }
+          />
+        )}
+      />
+
       <Controller
         name="awayKickMinutes"
         control={control}
@@ -415,6 +563,27 @@ export default function NewSessionForm() {
         />
 
         <Controller
+          name="forcedRestartIntervalSeconds"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="forcedRestartInterval(秒)"
+              type="number"
+              {...field}
+              onChange={(e) => {
+                const value =
+                  e.target.value === "" ? "" : parseInt(e.target.value);
+                field.onChange(value);
+              }}
+              error={!!errors.forcedRestartIntervalSeconds}
+              helperText={
+                errors.forcedRestartIntervalSeconds?.message || "-1で無効"
+              }
+            />
+          )}
+        />
+
+        <Controller
           name="autoSleep"
           control={control}
           render={({ field }) => (
@@ -429,7 +598,200 @@ export default function NewSessionForm() {
             />
           )}
         />
+
+        <Controller
+          name="autoRecover"
+          control={control}
+          render={({ field }) => (
+            <FormControlLabel
+              label="autoRecover"
+              control={
+                <Checkbox
+                  checked={field.value}
+                  onChange={(e) => field.onChange(e.target.checked)}
+                />
+              }
+            />
+          )}
+        />
       </Stack>
+      <Stack direction="row" spacing={2}>
+        <Controller
+          name="forcePort"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="forcePort"
+              type="number"
+              {...field}
+              onChange={(e) => {
+                const value =
+                  e.target.value === "" ? "" : parseInt(e.target.value);
+                field.onChange(value);
+              }}
+              error={!!errors.forcePort}
+              helperText={errors.forcePort?.message}
+            />
+          )}
+        />
+
+        <Controller
+          name="mobileFriendly"
+          control={control}
+          render={({ field }) => (
+            <FormControlLabel
+              label="mobileFriendly"
+              control={
+                <Checkbox
+                  checked={field.value}
+                  onChange={(e) => field.onChange(e.target.checked)}
+                />
+              }
+            />
+          )}
+        />
+      </Stack>
+      <Stack direction="row" spacing={2}>
+        <Controller
+          name="keepOriginalRoles"
+          control={control}
+          render={({ field }) => (
+            <FormControlLabel
+              label="keepOriginalRoles"
+              control={
+                <Checkbox
+                  checked={field.value}
+                  onChange={(e) => field.onChange(e.target.checked)}
+                />
+              }
+            />
+          )}
+        />
+
+        <Controller
+          name="useCustomJoinVerifier"
+          control={control}
+          render={({ field }) => (
+            <FormControlLabel
+              label="useCustomJoinVerifier"
+              control={
+                <Checkbox
+                  checked={field.value}
+                  onChange={(e) => field.onChange(e.target.checked)}
+                />
+              }
+            />
+          )}
+        />
+      </Stack>
+      <Stack direction="row" spacing={2}>
+        <Controller
+          name="autoInviteUsernames"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="自動招待ユーザ"
+              multiline
+              fullWidth
+              {...field}
+              error={!!errors.autoInviteUsernames}
+              helperText={
+                errors.autoInviteUsernames?.message ||
+                "カンマ区切りで入力してください"
+              }
+            />
+          )}
+        />
+
+        <Controller
+          name="autoInviteMessage"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="招待メッセージ"
+              multiline
+              fullWidth
+              {...field}
+              error={!!errors.autoInviteMessage}
+              helperText={errors.autoInviteMessage?.message}
+            />
+          )}
+        />
+      </Stack>
+      <Controller
+        name="roleCloudVariable"
+        control={control}
+        render={({ field }) => (
+          <TextField
+            label="roleCloudVariable"
+            fullWidth
+            {...field}
+            error={!!errors.roleCloudVariable}
+            helperText={errors.roleCloudVariable?.message}
+          />
+        )}
+      />
+      <Stack direction="row" spacing={2}>
+        <Controller
+          name="allowUserCloudVariable"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="allowUserCloudVariable"
+              fullWidth
+              {...field}
+              error={!!errors.allowUserCloudVariable}
+              helperText={errors.allowUserCloudVariable?.message}
+            />
+          )}
+        />
+
+        <Controller
+          name="denyUserCloudVariable"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="denyUserCloudVariable"
+              fullWidth
+              {...field}
+              error={!!errors.denyUserCloudVariable}
+              helperText={errors.denyUserCloudVariable?.message}
+            />
+          )}
+        />
+      </Stack>
+      <Stack direction="row" spacing={2}>
+        <Controller
+          name="requiredUserJoinCloudVariable"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="requiredUserJoinCloudVariable"
+              fullWidth
+              {...field}
+              error={!!errors.requiredUserJoinCloudVariable}
+              helperText={errors.requiredUserJoinCloudVariable?.message}
+            />
+          )}
+        />
+
+        <Controller
+          name="requiredUserJoinCloudVariableDenyMessage"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="requiredUserJoinCloudVariableDenyMessage"
+              fullWidth
+              {...field}
+              error={!!errors.requiredUserJoinCloudVariableDenyMessage}
+              helperText={
+                errors.requiredUserJoinCloudVariableDenyMessage?.message
+              }
+            />
+          )}
+        />
+      </Stack>
+
       <Button
         variant="contained"
         type="submit"
