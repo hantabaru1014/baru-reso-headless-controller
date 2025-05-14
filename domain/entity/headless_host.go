@@ -11,12 +11,38 @@ const (
 	HeadlessHostStatus_CRASHED  HeadlessHostStatus = 5
 )
 
+type HostAllowedAccessType int32
+
+const (
+	HostAllowedAccessType_UNSPECIFIED   HostAllowedAccessType = 0
+	HostAllowedAccessType_HTTP          HostAllowedAccessType = 1
+	HostAllowedAccessType_WEBSOCKET     HostAllowedAccessType = 2
+	HostAllowedAccessType_OSC_RECEIVING HostAllowedAccessType = 3
+	HostAllowedAccessType_OSC_SENDING   HostAllowedAccessType = 4
+)
+
+type HostAllowedAccessEntry struct {
+	Host        string
+	Ports       []int32
+	AccessTypes []HostAllowedAccessType
+}
+
+type HeadlessHostSettings struct {
+	UniverseID                  *string
+	TickRate                    float32
+	MaxConcurrentAssetTransfers int32
+	UsernameOverride            *string
+	AllowedUrlHosts             []HostAllowedAccessEntry
+	AutoSpawnItems              []string
+}
+
 type HeadlessHost struct {
 	ID                string
 	Name              string
 	Status            HeadlessHostStatus
 	Address           string
 	ResoniteVersion   string
+	AppVersion        string
 	AccountId         string
 	AccountName       string
 	StorageQuotaBytes int64

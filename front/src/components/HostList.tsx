@@ -6,6 +6,9 @@ import {
   startHeadlessHost,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Avatar,
   Button,
   Dialog,
@@ -33,6 +36,7 @@ import UserList, { UserInfo } from "./base/UserList";
 import { useEffect, useMemo, useState } from "react";
 import { useNotifications } from "@toolpad/core/useNotifications";
 import SelectField from "./base/SelectField";
+import { ArrowDropDown } from "@mui/icons-material";
 
 function SelectHeadlessAccountDialog({
   open,
@@ -70,6 +74,8 @@ function NewHostDialog({ open, onClose }: DialogProps) {
   const { mutateAsync: mutateStartHost, isPending } =
     useMutation(startHeadlessHost);
   const [name, setName] = useState("");
+  const [universeId, setUniverseId] = useState("");
+  const [usernameOverride, setUsernameOverride] = useState("");
   const [tag, setTag] = useState("");
   const [account, setAccount] = useState<UserInfo | null>(null);
   const notifications = useNotifications();
@@ -134,6 +140,25 @@ function NewHostDialog({ open, onClose }: DialogProps) {
               ホストユーザを選択
             </Button>
           )}
+          <Accordion>
+            <AccordionSummary expandIcon={<ArrowDropDown />}>
+              詳細設定(任意)
+            </AccordionSummary>
+            <AccordionDetails>
+              <Stack spacing={2}>
+                <TextField
+                  label="Universe ID"
+                  value={universeId}
+                  onChange={(e) => setUniverseId(e.target.value)}
+                />
+                <TextField
+                  label="Username Override"
+                  value={usernameOverride}
+                  onChange={(e) => setUsernameOverride(e.target.value)}
+                />
+              </Stack>
+            </AccordionDetails>
+          </Accordion>
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -141,9 +166,15 @@ function NewHostDialog({ open, onClose }: DialogProps) {
           onClick={async () => {
             try {
               await mutateStartHost({
-                name: name,
+                name,
                 headlessAccountId: account?.id ?? "",
                 imageTag: tag,
+                startupConfig: {
+                  universeId: universeId ? universeId : undefined,
+                  usernameOverride: usernameOverride
+                    ? usernameOverride
+                    : undefined,
+                },
               });
               onClose();
             } catch (e) {

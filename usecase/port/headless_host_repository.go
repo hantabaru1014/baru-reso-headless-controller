@@ -20,6 +20,7 @@ type HeadlessHostStartParams struct {
 	ContainerImageTag         *string
 	HeadlessAccountCredential string
 	HeadlessAccountPassword   string
+	StartupConfig             *headlessv1.StartupConfig
 }
 
 type ContainerImage struct {
@@ -45,4 +46,9 @@ type HeadlessHostRepository interface {
 	Restart(ctx context.Context, host *entity.HeadlessHost, newImage *string) (string, error)
 	Start(ctx context.Context, params HeadlessHostStartParams) (string, error)
 	GetStartParams(ctx context.Context, id string) (*HeadlessHostStartParams, error)
+	// コンテナを終了する
+	// timeoutSeconds:
+	// - Use '-1' to wait indefinitely.
+	// - Use '0' to not wait for the container to exit gracefully, and immediately proceeds to forcibly terminating the container.
+	Stop(ctx context.Context, id string, timeoutSeconds int) error
 }

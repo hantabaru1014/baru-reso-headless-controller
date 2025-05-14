@@ -19,28 +19,33 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	HeadlessControlService_GetAbout_FullMethodName                = "/headless.v1.HeadlessControlService/GetAbout"
-	HeadlessControlService_GetStatus_FullMethodName               = "/headless.v1.HeadlessControlService/GetStatus"
-	HeadlessControlService_Shutdown_FullMethodName                = "/headless.v1.HeadlessControlService/Shutdown"
-	HeadlessControlService_ListSessions_FullMethodName            = "/headless.v1.HeadlessControlService/ListSessions"
-	HeadlessControlService_GetSession_FullMethodName              = "/headless.v1.HeadlessControlService/GetSession"
-	HeadlessControlService_StartWorld_FullMethodName              = "/headless.v1.HeadlessControlService/StartWorld"
-	HeadlessControlService_StopSession_FullMethodName             = "/headless.v1.HeadlessControlService/StopSession"
-	HeadlessControlService_SaveSessionWorld_FullMethodName        = "/headless.v1.HeadlessControlService/SaveSessionWorld"
-	HeadlessControlService_InviteUser_FullMethodName              = "/headless.v1.HeadlessControlService/InviteUser"
-	HeadlessControlService_UpdateUserRole_FullMethodName          = "/headless.v1.HeadlessControlService/UpdateUserRole"
-	HeadlessControlService_UpdateSessionParameters_FullMethodName = "/headless.v1.HeadlessControlService/UpdateSessionParameters"
-	HeadlessControlService_ListUsersInSession_FullMethodName      = "/headless.v1.HeadlessControlService/ListUsersInSession"
-	HeadlessControlService_KickUser_FullMethodName                = "/headless.v1.HeadlessControlService/KickUser"
-	HeadlessControlService_BanUser_FullMethodName                 = "/headless.v1.HeadlessControlService/BanUser"
-	HeadlessControlService_GetAccountInfo_FullMethodName          = "/headless.v1.HeadlessControlService/GetAccountInfo"
-	HeadlessControlService_FetchWorldInfo_FullMethodName          = "/headless.v1.HeadlessControlService/FetchWorldInfo"
-	HeadlessControlService_SearchUserInfo_FullMethodName          = "/headless.v1.HeadlessControlService/SearchUserInfo"
-	HeadlessControlService_GetFriendRequests_FullMethodName       = "/headless.v1.HeadlessControlService/GetFriendRequests"
-	HeadlessControlService_AcceptFriendRequests_FullMethodName    = "/headless.v1.HeadlessControlService/AcceptFriendRequests"
-	HeadlessControlService_ListContacts_FullMethodName            = "/headless.v1.HeadlessControlService/ListContacts"
-	HeadlessControlService_GetContactMessages_FullMethodName      = "/headless.v1.HeadlessControlService/GetContactMessages"
-	HeadlessControlService_SendContactMessage_FullMethodName      = "/headless.v1.HeadlessControlService/SendContactMessage"
+	HeadlessControlService_GetAbout_FullMethodName                  = "/headless.v1.HeadlessControlService/GetAbout"
+	HeadlessControlService_GetStatus_FullMethodName                 = "/headless.v1.HeadlessControlService/GetStatus"
+	HeadlessControlService_Shutdown_FullMethodName                  = "/headless.v1.HeadlessControlService/Shutdown"
+	HeadlessControlService_ListSessions_FullMethodName              = "/headless.v1.HeadlessControlService/ListSessions"
+	HeadlessControlService_GetSession_FullMethodName                = "/headless.v1.HeadlessControlService/GetSession"
+	HeadlessControlService_StartWorld_FullMethodName                = "/headless.v1.HeadlessControlService/StartWorld"
+	HeadlessControlService_StopSession_FullMethodName               = "/headless.v1.HeadlessControlService/StopSession"
+	HeadlessControlService_SaveSessionWorld_FullMethodName          = "/headless.v1.HeadlessControlService/SaveSessionWorld"
+	HeadlessControlService_InviteUser_FullMethodName                = "/headless.v1.HeadlessControlService/InviteUser"
+	HeadlessControlService_UpdateUserRole_FullMethodName            = "/headless.v1.HeadlessControlService/UpdateUserRole"
+	HeadlessControlService_UpdateSessionParameters_FullMethodName   = "/headless.v1.HeadlessControlService/UpdateSessionParameters"
+	HeadlessControlService_ListUsersInSession_FullMethodName        = "/headless.v1.HeadlessControlService/ListUsersInSession"
+	HeadlessControlService_KickUser_FullMethodName                  = "/headless.v1.HeadlessControlService/KickUser"
+	HeadlessControlService_BanUser_FullMethodName                   = "/headless.v1.HeadlessControlService/BanUser"
+	HeadlessControlService_GetHostSettings_FullMethodName           = "/headless.v1.HeadlessControlService/GetHostSettings"
+	HeadlessControlService_UpdateHostSettings_FullMethodName        = "/headless.v1.HeadlessControlService/UpdateHostSettings"
+	HeadlessControlService_AllowHostAccess_FullMethodName           = "/headless.v1.HeadlessControlService/AllowHostAccess"
+	HeadlessControlService_DenyHostAccess_FullMethodName            = "/headless.v1.HeadlessControlService/DenyHostAccess"
+	HeadlessControlService_GetStartupConfigToRestore_FullMethodName = "/headless.v1.HeadlessControlService/GetStartupConfigToRestore"
+	HeadlessControlService_GetAccountInfo_FullMethodName            = "/headless.v1.HeadlessControlService/GetAccountInfo"
+	HeadlessControlService_FetchWorldInfo_FullMethodName            = "/headless.v1.HeadlessControlService/FetchWorldInfo"
+	HeadlessControlService_SearchUserInfo_FullMethodName            = "/headless.v1.HeadlessControlService/SearchUserInfo"
+	HeadlessControlService_GetFriendRequests_FullMethodName         = "/headless.v1.HeadlessControlService/GetFriendRequests"
+	HeadlessControlService_AcceptFriendRequests_FullMethodName      = "/headless.v1.HeadlessControlService/AcceptFriendRequests"
+	HeadlessControlService_ListContacts_FullMethodName              = "/headless.v1.HeadlessControlService/ListContacts"
+	HeadlessControlService_GetContactMessages_FullMethodName        = "/headless.v1.HeadlessControlService/GetContactMessages"
+	HeadlessControlService_SendContactMessage_FullMethodName        = "/headless.v1.HeadlessControlService/SendContactMessage"
 )
 
 // HeadlessControlServiceClient is the client API for HeadlessControlService service.
@@ -61,6 +66,11 @@ type HeadlessControlServiceClient interface {
 	ListUsersInSession(ctx context.Context, in *ListUsersInSessionRequest, opts ...grpc.CallOption) (*ListUsersInSessionResponse, error)
 	KickUser(ctx context.Context, in *KickUserRequest, opts ...grpc.CallOption) (*KickUserResponse, error)
 	BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*BanUserResponse, error)
+	GetHostSettings(ctx context.Context, in *GetHostSettingsRequest, opts ...grpc.CallOption) (*GetHostSettingsResponse, error)
+	UpdateHostSettings(ctx context.Context, in *UpdateHostSettingsRequest, opts ...grpc.CallOption) (*UpdateHostSettingsResponse, error)
+	AllowHostAccess(ctx context.Context, in *AllowHostAccessRequest, opts ...grpc.CallOption) (*AllowHostAccessResponse, error)
+	DenyHostAccess(ctx context.Context, in *DenyHostAccessRequest, opts ...grpc.CallOption) (*DenyHostAccessResponse, error)
+	GetStartupConfigToRestore(ctx context.Context, in *GetStartupConfigToRestoreRequest, opts ...grpc.CallOption) (*GetStartupConfigToRestoreResponse, error)
 	// Cloud系
 	GetAccountInfo(ctx context.Context, in *GetAccountInfoRequest, opts ...grpc.CallOption) (*GetAccountInfoResponse, error)
 	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*FetchWorldInfoResponse, error)
@@ -220,6 +230,56 @@ func (c *headlessControlServiceClient) BanUser(ctx context.Context, in *BanUserR
 	return out, nil
 }
 
+func (c *headlessControlServiceClient) GetHostSettings(ctx context.Context, in *GetHostSettingsRequest, opts ...grpc.CallOption) (*GetHostSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHostSettingsResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_GetHostSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) UpdateHostSettings(ctx context.Context, in *UpdateHostSettingsRequest, opts ...grpc.CallOption) (*UpdateHostSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateHostSettingsResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_UpdateHostSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) AllowHostAccess(ctx context.Context, in *AllowHostAccessRequest, opts ...grpc.CallOption) (*AllowHostAccessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AllowHostAccessResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_AllowHostAccess_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) DenyHostAccess(ctx context.Context, in *DenyHostAccessRequest, opts ...grpc.CallOption) (*DenyHostAccessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DenyHostAccessResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_DenyHostAccess_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) GetStartupConfigToRestore(ctx context.Context, in *GetStartupConfigToRestoreRequest, opts ...grpc.CallOption) (*GetStartupConfigToRestoreResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetStartupConfigToRestoreResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_GetStartupConfigToRestore_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *headlessControlServiceClient) GetAccountInfo(ctx context.Context, in *GetAccountInfoRequest, opts ...grpc.CallOption) (*GetAccountInfoResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetAccountInfoResponse)
@@ -318,6 +378,11 @@ type HeadlessControlServiceServer interface {
 	ListUsersInSession(context.Context, *ListUsersInSessionRequest) (*ListUsersInSessionResponse, error)
 	KickUser(context.Context, *KickUserRequest) (*KickUserResponse, error)
 	BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error)
+	GetHostSettings(context.Context, *GetHostSettingsRequest) (*GetHostSettingsResponse, error)
+	UpdateHostSettings(context.Context, *UpdateHostSettingsRequest) (*UpdateHostSettingsResponse, error)
+	AllowHostAccess(context.Context, *AllowHostAccessRequest) (*AllowHostAccessResponse, error)
+	DenyHostAccess(context.Context, *DenyHostAccessRequest) (*DenyHostAccessResponse, error)
+	GetStartupConfigToRestore(context.Context, *GetStartupConfigToRestoreRequest) (*GetStartupConfigToRestoreResponse, error)
 	// Cloud系
 	GetAccountInfo(context.Context, *GetAccountInfoRequest) (*GetAccountInfoResponse, error)
 	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*FetchWorldInfoResponse, error)
@@ -378,6 +443,21 @@ func (UnimplementedHeadlessControlServiceServer) KickUser(context.Context, *Kick
 }
 func (UnimplementedHeadlessControlServiceServer) BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BanUser not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) GetHostSettings(context.Context, *GetHostSettingsRequest) (*GetHostSettingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetHostSettings not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) UpdateHostSettings(context.Context, *UpdateHostSettingsRequest) (*UpdateHostSettingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateHostSettings not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) AllowHostAccess(context.Context, *AllowHostAccessRequest) (*AllowHostAccessResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AllowHostAccess not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) DenyHostAccess(context.Context, *DenyHostAccessRequest) (*DenyHostAccessResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DenyHostAccess not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) GetStartupConfigToRestore(context.Context, *GetStartupConfigToRestoreRequest) (*GetStartupConfigToRestoreResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetStartupConfigToRestore not implemented")
 }
 func (UnimplementedHeadlessControlServiceServer) GetAccountInfo(context.Context, *GetAccountInfoRequest) (*GetAccountInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAccountInfo not implemented")
@@ -677,6 +757,96 @@ func _HeadlessControlService_BanUser_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _HeadlessControlService_GetHostSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHostSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).GetHostSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_GetHostSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).GetHostSettings(ctx, req.(*GetHostSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_UpdateHostSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateHostSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).UpdateHostSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_UpdateHostSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).UpdateHostSettings(ctx, req.(*UpdateHostSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_AllowHostAccess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AllowHostAccessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).AllowHostAccess(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_AllowHostAccess_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).AllowHostAccess(ctx, req.(*AllowHostAccessRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_DenyHostAccess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DenyHostAccessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).DenyHostAccess(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_DenyHostAccess_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).DenyHostAccess(ctx, req.(*DenyHostAccessRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_GetStartupConfigToRestore_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetStartupConfigToRestoreRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).GetStartupConfigToRestore(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_GetStartupConfigToRestore_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).GetStartupConfigToRestore(ctx, req.(*GetStartupConfigToRestoreRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _HeadlessControlService_GetAccountInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetAccountInfoRequest)
 	if err := dec(in); err != nil {
@@ -883,6 +1053,26 @@ var HeadlessControlService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BanUser",
 			Handler:    _HeadlessControlService_BanUser_Handler,
+		},
+		{
+			MethodName: "GetHostSettings",
+			Handler:    _HeadlessControlService_GetHostSettings_Handler,
+		},
+		{
+			MethodName: "UpdateHostSettings",
+			Handler:    _HeadlessControlService_UpdateHostSettings_Handler,
+		},
+		{
+			MethodName: "AllowHostAccess",
+			Handler:    _HeadlessControlService_AllowHostAccess_Handler,
+		},
+		{
+			MethodName: "DenyHostAccess",
+			Handler:    _HeadlessControlService_DenyHostAccess_Handler,
+		},
+		{
+			MethodName: "GetStartupConfigToRestore",
+			Handler:    _HeadlessControlService_GetStartupConfigToRestore_Handler,
 		},
 		{
 			MethodName: "GetAccountInfo",

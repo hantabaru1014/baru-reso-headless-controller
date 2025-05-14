@@ -27,6 +27,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var (
@@ -74,12 +75,25 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, params port.Headless
 	if err != nil {
 		return "", fmt.Errorf("failed to get free port: %w", err)
 	}
+	var startupConfig *string
+	if params.StartupConfig != nil {
+		configJson, err := protojson.Marshal(params.StartupConfig)
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal startup config: %w", err)
+		}
+		str := string(configJson)
+		startupConfig = &str
+	}
+	envs := []string{
+		fmt.Sprintf("RpcHostUrl=%s", fmt.Sprintf("http://localhost:%d", port)),
+		fmt.Sprintf("HeadlessUserCredential=%s", params.HeadlessAccountCredential),
+		fmt.Sprintf("HeadlessUserPassword=%s", params.HeadlessAccountPassword),
+	}
+	if startupConfig != nil {
+		envs = append(envs, fmt.Sprintf("StartupConfig=%s", *startupConfig))
+	}
 	config := container.Config{
-		Env: []string{
-			fmt.Sprintf("RpcHostUrl=%s", fmt.Sprintf("http://localhost:%d", port)),
-			fmt.Sprintf("HeadlessUserCredential=%s", params.HeadlessAccountCredential),
-			fmt.Sprintf("HeadlessUserPassword=%s", params.HeadlessAccountPassword),
-		},
+		Env:   envs,
 		Image: fmt.Sprintf("%s:%s", imageName, imageTag),
 		Labels: map[string]string{
 			portLabelKey: fmt.Sprintf("%d", port),
@@ -137,6 +151,21 @@ func (h *HeadlessHostRepository) GetStartParams(ctx context.Context, id string) 
 			params.HeadlessAccountPassword = splitted[1]
 		}
 	}
+
+	if container.State.Running {
+		conn, err := h.GetRpcClient(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get rpc client: %w", err)
+		}
+		resp, err := conn.GetStartupConfigToRestore(ctx, &headlessv1.GetStartupConfigToRestoreRequest{
+			IncludeStartWorlds: true,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get startup config: %w", err)
+		}
+		params.StartupConfig = resp.StartupConfig
+	}
+
 	return params, nil
 }
 
@@ -192,6 +221,26 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, host *entity.Headl
 	}
 
 	return resp.ID, nil
+}
+
+// Stop implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) Stop(ctx context.Context, id string, timeoutSeconds int) error {
+	cli, err := h.newDockerClient()
+	if err != nil {
+		return fmt.Errorf("failed to create docker client: %w", err)
+	}
+	err = cli.ContainerStop(ctx, id, container.StopOptions{
+		Timeout: &timeoutSeconds,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to stop container: %w", err)
+	}
+	err = cli.ContainerRemove(ctx, id, container.RemoveOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to remove container: %w", err)
+	}
+
+	return nil
 }
 
 // PullContainerImage implements port.HeadlessHostRepository.
@@ -633,6 +682,7 @@ func (h *HeadlessHostRepository) fetchHeadlessInfo(ctx context.Context, host *en
 		return err
 	}
 	host.ResoniteVersion = info.ResoniteVersion
+	host.AppVersion = info.AppVersion
 
 	accountInfo, err := conn.GetAccountInfo(ctx, &headlessv1.GetAccountInfoRequest{})
 	if err != nil {

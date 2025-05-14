@@ -112,6 +112,27 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
     }
   };
 
+  const handleSaveTags = async (tags: string) => {
+    const tagList = tags
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t);
+    try {
+      await mutateSave({
+        hostId,
+        parameters: {
+          sessionId,
+          updateTags: true,
+          tags: tagList,
+        },
+      });
+      refetch();
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : `${e}` };
+    }
+  };
+
   const handleSaveExtra = async <V,>(fieldName: string, value: V) => {
     try {
       await mutateSaveExtra({
@@ -279,6 +300,17 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                 }
                 onSave={(v) => handleSave("description", v)}
                 readonly={!isRunning}
+              />
+              <EditableTextField
+                label="タグ"
+                value={
+                  sessionState?.tags?.join(", ") ||
+                  startupParams?.tags?.join(", ") ||
+                  ""
+                }
+                onSave={handleSaveTags}
+                readonly={!isRunning}
+                helperText="カンマ区切りで入力してください"
               />
               <Stack direction="row" spacing={2}>
                 <EditableTextField

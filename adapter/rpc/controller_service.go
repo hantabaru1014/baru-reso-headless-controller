@@ -77,6 +77,7 @@ func (c *ControllerService) StartHeadlessHost(ctx context.Context, req *connect.
 		HeadlessAccountCredential: account.Credential,
 		HeadlessAccountPassword:   account.Password,
 		ContainerImageTag:         req.Msg.ImageTag,
+		StartupConfig:             req.Msg.StartupConfig,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -161,7 +162,18 @@ func (c *ControllerService) GetFriendRequests(ctx context.Context, req *connect.
 // RestartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) RestartHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.RestartHeadlessHostRequest]) (*connect.Response[hdlctrlv1.RestartHeadlessHostResponse], error) {
 	// TODO: うまい具合に非同期化する
-	newId, err := c.hhuc.HeadlessHostRestart(ctx, req.Msg.HostId, req.Msg.WithUpdate)
+	var newTag *string
+	if req.Msg.WithUpdate {
+		str := "latestRelease"
+		newTag = &str
+	} else if req.Msg.GetWithImageTag() != "" {
+		newTag = req.Msg.WithImageTag
+	}
+	timeout := 2 * 60
+	if req.Msg.TimeoutSeconds != nil {
+		timeout = int(req.Msg.GetTimeoutSeconds())
+	}
+	newId, err := c.hhuc.HeadlessHostRestart(ctx, req.Msg.HostId, newTag, req.Msg.WithWorldRestart, timeout)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -189,6 +201,39 @@ func (c *ControllerService) PullLatestHostImage(ctx context.Context, req *connec
 func (c *ControllerService) UpdateHeadlessHostSettings(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[hdlctrlv1.UpdateHeadlessHostSettingsResponse], error) {
 	if req.Msg.Name != nil {
 		err := c.hhrepo.Rename(ctx, req.Msg.HostId, req.Msg.GetName())
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+
+	hasUpdateReq := false
+	updateReq := &headlessv1.UpdateHostSettingsRequest{}
+	if req.Msg.TickRate != nil {
+		tickRate := req.Msg.GetTickRate()
+		updateReq.TickRate = &tickRate
+		hasUpdateReq = true
+	}
+	if req.Msg.MaxConcurrentAssetTransfers != nil {
+		maxConcurrentAssetTransfers := req.Msg.GetMaxConcurrentAssetTransfers()
+		updateReq.MaxConcurrentAssetTransfers = &maxConcurrentAssetTransfers
+		hasUpdateReq = true
+	}
+	if req.Msg.UsernameOverride != nil {
+		usernameOverride := req.Msg.GetUsernameOverride()
+		updateReq.UsernameOverride = &usernameOverride
+		hasUpdateReq = true
+	}
+	if req.Msg.UpdateAutoSpawnItems {
+		updateReq.AutoSpawnItems = req.Msg.GetAutoSpawnItems()
+		hasUpdateReq = true
+	}
+
+	if hasUpdateReq {
+		conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeUnavailable, err)
+		}
+		_, err = conn.UpdateHostSettings(ctx, updateReq)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
@@ -237,6 +282,36 @@ func (c *ControllerService) ShutdownHeadlessHost(ctx context.Context, req *conne
 	}
 
 	res := connect.NewResponse(&hdlctrlv1.ShutdownHeadlessHostResponse{})
+	return res, nil
+}
+
+// AllowHostAccess implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) AllowHostAccess(ctx context.Context, req *connect.Request[hdlctrlv1.AllowHostAccessRequest]) (*connect.Response[hdlctrlv1.AllowHostAccessResponse], error) {
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	_, err = conn.AllowHostAccess(ctx, req.Msg.Request)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.AllowHostAccessResponse{})
+	return res, nil
+}
+
+// DenyHostAccess implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) DenyHostAccess(ctx context.Context, req *connect.Request[hdlctrlv1.DenyHostAccessRequest]) (*connect.Response[hdlctrlv1.DenyHostAccessResponse], error) {
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	_, err = conn.DenyHostAccess(ctx, req.Msg.Request)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.DenyHostAccessResponse{})
 	return res, nil
 }
 
@@ -308,9 +383,18 @@ func (c *ControllerService) GetHeadlessHost(ctx context.Context, req *connect.Re
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	settings := &entity.HeadlessHostSettings{}
+	if host.Status == entity.HeadlessHostStatus_RUNNING {
+		settings, err = c.hhuc.HeadlessHostGetSettings(ctx, req.Msg.HostId)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
 	res := connect.NewResponse(&hdlctrlv1.GetHeadlessHostResponse{
-		Host: converter.HeadlessHostEntityToProto(host),
+		Host:     converter.HeadlessHostEntityToProto(host),
+		Settings: converter.HeadlessHostSettingsToProto(settings),
 	})
+
 	return res, nil
 }
 

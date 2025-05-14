@@ -75,6 +75,21 @@ const (
 	// HeadlessControlServiceBanUserProcedure is the fully-qualified name of the
 	// HeadlessControlService's BanUser RPC.
 	HeadlessControlServiceBanUserProcedure = "/headless.v1.HeadlessControlService/BanUser"
+	// HeadlessControlServiceGetHostSettingsProcedure is the fully-qualified name of the
+	// HeadlessControlService's GetHostSettings RPC.
+	HeadlessControlServiceGetHostSettingsProcedure = "/headless.v1.HeadlessControlService/GetHostSettings"
+	// HeadlessControlServiceUpdateHostSettingsProcedure is the fully-qualified name of the
+	// HeadlessControlService's UpdateHostSettings RPC.
+	HeadlessControlServiceUpdateHostSettingsProcedure = "/headless.v1.HeadlessControlService/UpdateHostSettings"
+	// HeadlessControlServiceAllowHostAccessProcedure is the fully-qualified name of the
+	// HeadlessControlService's AllowHostAccess RPC.
+	HeadlessControlServiceAllowHostAccessProcedure = "/headless.v1.HeadlessControlService/AllowHostAccess"
+	// HeadlessControlServiceDenyHostAccessProcedure is the fully-qualified name of the
+	// HeadlessControlService's DenyHostAccess RPC.
+	HeadlessControlServiceDenyHostAccessProcedure = "/headless.v1.HeadlessControlService/DenyHostAccess"
+	// HeadlessControlServiceGetStartupConfigToRestoreProcedure is the fully-qualified name of the
+	// HeadlessControlService's GetStartupConfigToRestore RPC.
+	HeadlessControlServiceGetStartupConfigToRestoreProcedure = "/headless.v1.HeadlessControlService/GetStartupConfigToRestore"
 	// HeadlessControlServiceGetAccountInfoProcedure is the fully-qualified name of the
 	// HeadlessControlService's GetAccountInfo RPC.
 	HeadlessControlServiceGetAccountInfoProcedure = "/headless.v1.HeadlessControlService/GetAccountInfo"
@@ -117,6 +132,11 @@ type HeadlessControlServiceClient interface {
 	ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error)
 	KickUser(context.Context, *connect.Request[v1.KickUserRequest]) (*connect.Response[v1.KickUserResponse], error)
 	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
+	GetHostSettings(context.Context, *connect.Request[v1.GetHostSettingsRequest]) (*connect.Response[v1.GetHostSettingsResponse], error)
+	UpdateHostSettings(context.Context, *connect.Request[v1.UpdateHostSettingsRequest]) (*connect.Response[v1.UpdateHostSettingsResponse], error)
+	AllowHostAccess(context.Context, *connect.Request[v1.AllowHostAccessRequest]) (*connect.Response[v1.AllowHostAccessResponse], error)
+	DenyHostAccess(context.Context, *connect.Request[v1.DenyHostAccessRequest]) (*connect.Response[v1.DenyHostAccessResponse], error)
+	GetStartupConfigToRestore(context.Context, *connect.Request[v1.GetStartupConfigToRestoreRequest]) (*connect.Response[v1.GetStartupConfigToRestoreResponse], error)
 	// Cloud系
 	GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v1.FetchWorldInfoResponse], error)
@@ -223,6 +243,36 @@ func NewHeadlessControlServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(headlessControlServiceMethods.ByName("BanUser")),
 			connect.WithClientOptions(opts...),
 		),
+		getHostSettings: connect.NewClient[v1.GetHostSettingsRequest, v1.GetHostSettingsResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceGetHostSettingsProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("GetHostSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		updateHostSettings: connect.NewClient[v1.UpdateHostSettingsRequest, v1.UpdateHostSettingsResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceUpdateHostSettingsProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("UpdateHostSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		allowHostAccess: connect.NewClient[v1.AllowHostAccessRequest, v1.AllowHostAccessResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceAllowHostAccessProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("AllowHostAccess")),
+			connect.WithClientOptions(opts...),
+		),
+		denyHostAccess: connect.NewClient[v1.DenyHostAccessRequest, v1.DenyHostAccessResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceDenyHostAccessProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("DenyHostAccess")),
+			connect.WithClientOptions(opts...),
+		),
+		getStartupConfigToRestore: connect.NewClient[v1.GetStartupConfigToRestoreRequest, v1.GetStartupConfigToRestoreResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceGetStartupConfigToRestoreProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("GetStartupConfigToRestore")),
+			connect.WithClientOptions(opts...),
+		),
 		getAccountInfo: connect.NewClient[v1.GetAccountInfoRequest, v1.GetAccountInfoResponse](
 			httpClient,
 			baseURL+HeadlessControlServiceGetAccountInfoProcedure,
@@ -276,28 +326,33 @@ func NewHeadlessControlServiceClient(httpClient connect.HTTPClient, baseURL stri
 
 // headlessControlServiceClient implements HeadlessControlServiceClient.
 type headlessControlServiceClient struct {
-	getAbout                *connect.Client[v1.GetAboutRequest, v1.GetAboutResponse]
-	getStatus               *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
-	shutdown                *connect.Client[v1.ShutdownRequest, v1.ShutdownResponse]
-	listSessions            *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
-	getSession              *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
-	startWorld              *connect.Client[v1.StartWorldRequest, v1.StartWorldResponse]
-	stopSession             *connect.Client[v1.StopSessionRequest, v1.StopSessionResponse]
-	saveSessionWorld        *connect.Client[v1.SaveSessionWorldRequest, v1.SaveSessionWorldResponse]
-	inviteUser              *connect.Client[v1.InviteUserRequest, v1.InviteUserResponse]
-	updateUserRole          *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
-	updateSessionParameters *connect.Client[v1.UpdateSessionParametersRequest, v1.UpdateSessionParametersResponse]
-	listUsersInSession      *connect.Client[v1.ListUsersInSessionRequest, v1.ListUsersInSessionResponse]
-	kickUser                *connect.Client[v1.KickUserRequest, v1.KickUserResponse]
-	banUser                 *connect.Client[v1.BanUserRequest, v1.BanUserResponse]
-	getAccountInfo          *connect.Client[v1.GetAccountInfoRequest, v1.GetAccountInfoResponse]
-	fetchWorldInfo          *connect.Client[v1.FetchWorldInfoRequest, v1.FetchWorldInfoResponse]
-	searchUserInfo          *connect.Client[v1.SearchUserInfoRequest, v1.SearchUserInfoResponse]
-	getFriendRequests       *connect.Client[v1.GetFriendRequestsRequest, v1.GetFriendRequestsResponse]
-	acceptFriendRequests    *connect.Client[v1.AcceptFriendRequestsRequest, v1.AcceptFriendRequestsResponse]
-	listContacts            *connect.Client[v1.ListContactsRequest, v1.ListContactsResponse]
-	getContactMessages      *connect.Client[v1.GetContactMessagesRequest, v1.GetContactMessagesResponse]
-	sendContactMessage      *connect.Client[v1.SendContactMessageRequest, v1.SendContactMessageResponse]
+	getAbout                  *connect.Client[v1.GetAboutRequest, v1.GetAboutResponse]
+	getStatus                 *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
+	shutdown                  *connect.Client[v1.ShutdownRequest, v1.ShutdownResponse]
+	listSessions              *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
+	getSession                *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
+	startWorld                *connect.Client[v1.StartWorldRequest, v1.StartWorldResponse]
+	stopSession               *connect.Client[v1.StopSessionRequest, v1.StopSessionResponse]
+	saveSessionWorld          *connect.Client[v1.SaveSessionWorldRequest, v1.SaveSessionWorldResponse]
+	inviteUser                *connect.Client[v1.InviteUserRequest, v1.InviteUserResponse]
+	updateUserRole            *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
+	updateSessionParameters   *connect.Client[v1.UpdateSessionParametersRequest, v1.UpdateSessionParametersResponse]
+	listUsersInSession        *connect.Client[v1.ListUsersInSessionRequest, v1.ListUsersInSessionResponse]
+	kickUser                  *connect.Client[v1.KickUserRequest, v1.KickUserResponse]
+	banUser                   *connect.Client[v1.BanUserRequest, v1.BanUserResponse]
+	getHostSettings           *connect.Client[v1.GetHostSettingsRequest, v1.GetHostSettingsResponse]
+	updateHostSettings        *connect.Client[v1.UpdateHostSettingsRequest, v1.UpdateHostSettingsResponse]
+	allowHostAccess           *connect.Client[v1.AllowHostAccessRequest, v1.AllowHostAccessResponse]
+	denyHostAccess            *connect.Client[v1.DenyHostAccessRequest, v1.DenyHostAccessResponse]
+	getStartupConfigToRestore *connect.Client[v1.GetStartupConfigToRestoreRequest, v1.GetStartupConfigToRestoreResponse]
+	getAccountInfo            *connect.Client[v1.GetAccountInfoRequest, v1.GetAccountInfoResponse]
+	fetchWorldInfo            *connect.Client[v1.FetchWorldInfoRequest, v1.FetchWorldInfoResponse]
+	searchUserInfo            *connect.Client[v1.SearchUserInfoRequest, v1.SearchUserInfoResponse]
+	getFriendRequests         *connect.Client[v1.GetFriendRequestsRequest, v1.GetFriendRequestsResponse]
+	acceptFriendRequests      *connect.Client[v1.AcceptFriendRequestsRequest, v1.AcceptFriendRequestsResponse]
+	listContacts              *connect.Client[v1.ListContactsRequest, v1.ListContactsResponse]
+	getContactMessages        *connect.Client[v1.GetContactMessagesRequest, v1.GetContactMessagesResponse]
+	sendContactMessage        *connect.Client[v1.SendContactMessageRequest, v1.SendContactMessageResponse]
 }
 
 // GetAbout calls headless.v1.HeadlessControlService.GetAbout.
@@ -370,6 +425,31 @@ func (c *headlessControlServiceClient) BanUser(ctx context.Context, req *connect
 	return c.banUser.CallUnary(ctx, req)
 }
 
+// GetHostSettings calls headless.v1.HeadlessControlService.GetHostSettings.
+func (c *headlessControlServiceClient) GetHostSettings(ctx context.Context, req *connect.Request[v1.GetHostSettingsRequest]) (*connect.Response[v1.GetHostSettingsResponse], error) {
+	return c.getHostSettings.CallUnary(ctx, req)
+}
+
+// UpdateHostSettings calls headless.v1.HeadlessControlService.UpdateHostSettings.
+func (c *headlessControlServiceClient) UpdateHostSettings(ctx context.Context, req *connect.Request[v1.UpdateHostSettingsRequest]) (*connect.Response[v1.UpdateHostSettingsResponse], error) {
+	return c.updateHostSettings.CallUnary(ctx, req)
+}
+
+// AllowHostAccess calls headless.v1.HeadlessControlService.AllowHostAccess.
+func (c *headlessControlServiceClient) AllowHostAccess(ctx context.Context, req *connect.Request[v1.AllowHostAccessRequest]) (*connect.Response[v1.AllowHostAccessResponse], error) {
+	return c.allowHostAccess.CallUnary(ctx, req)
+}
+
+// DenyHostAccess calls headless.v1.HeadlessControlService.DenyHostAccess.
+func (c *headlessControlServiceClient) DenyHostAccess(ctx context.Context, req *connect.Request[v1.DenyHostAccessRequest]) (*connect.Response[v1.DenyHostAccessResponse], error) {
+	return c.denyHostAccess.CallUnary(ctx, req)
+}
+
+// GetStartupConfigToRestore calls headless.v1.HeadlessControlService.GetStartupConfigToRestore.
+func (c *headlessControlServiceClient) GetStartupConfigToRestore(ctx context.Context, req *connect.Request[v1.GetStartupConfigToRestoreRequest]) (*connect.Response[v1.GetStartupConfigToRestoreResponse], error) {
+	return c.getStartupConfigToRestore.CallUnary(ctx, req)
+}
+
 // GetAccountInfo calls headless.v1.HeadlessControlService.GetAccountInfo.
 func (c *headlessControlServiceClient) GetAccountInfo(ctx context.Context, req *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error) {
 	return c.getAccountInfo.CallUnary(ctx, req)
@@ -427,6 +507,11 @@ type HeadlessControlServiceHandler interface {
 	ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error)
 	KickUser(context.Context, *connect.Request[v1.KickUserRequest]) (*connect.Response[v1.KickUserResponse], error)
 	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
+	GetHostSettings(context.Context, *connect.Request[v1.GetHostSettingsRequest]) (*connect.Response[v1.GetHostSettingsResponse], error)
+	UpdateHostSettings(context.Context, *connect.Request[v1.UpdateHostSettingsRequest]) (*connect.Response[v1.UpdateHostSettingsResponse], error)
+	AllowHostAccess(context.Context, *connect.Request[v1.AllowHostAccessRequest]) (*connect.Response[v1.AllowHostAccessResponse], error)
+	DenyHostAccess(context.Context, *connect.Request[v1.DenyHostAccessRequest]) (*connect.Response[v1.DenyHostAccessResponse], error)
+	GetStartupConfigToRestore(context.Context, *connect.Request[v1.GetStartupConfigToRestoreRequest]) (*connect.Response[v1.GetStartupConfigToRestoreResponse], error)
 	// Cloud系
 	GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v1.FetchWorldInfoResponse], error)
@@ -529,6 +614,36 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 		connect.WithSchema(headlessControlServiceMethods.ByName("BanUser")),
 		connect.WithHandlerOptions(opts...),
 	)
+	headlessControlServiceGetHostSettingsHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceGetHostSettingsProcedure,
+		svc.GetHostSettings,
+		connect.WithSchema(headlessControlServiceMethods.ByName("GetHostSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceUpdateHostSettingsHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceUpdateHostSettingsProcedure,
+		svc.UpdateHostSettings,
+		connect.WithSchema(headlessControlServiceMethods.ByName("UpdateHostSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceAllowHostAccessHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceAllowHostAccessProcedure,
+		svc.AllowHostAccess,
+		connect.WithSchema(headlessControlServiceMethods.ByName("AllowHostAccess")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceDenyHostAccessHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceDenyHostAccessProcedure,
+		svc.DenyHostAccess,
+		connect.WithSchema(headlessControlServiceMethods.ByName("DenyHostAccess")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceGetStartupConfigToRestoreHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceGetStartupConfigToRestoreProcedure,
+		svc.GetStartupConfigToRestore,
+		connect.WithSchema(headlessControlServiceMethods.ByName("GetStartupConfigToRestore")),
+		connect.WithHandlerOptions(opts...),
+	)
 	headlessControlServiceGetAccountInfoHandler := connect.NewUnaryHandler(
 		HeadlessControlServiceGetAccountInfoProcedure,
 		svc.GetAccountInfo,
@@ -607,6 +722,16 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 			headlessControlServiceKickUserHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceBanUserProcedure:
 			headlessControlServiceBanUserHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceGetHostSettingsProcedure:
+			headlessControlServiceGetHostSettingsHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceUpdateHostSettingsProcedure:
+			headlessControlServiceUpdateHostSettingsHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceAllowHostAccessProcedure:
+			headlessControlServiceAllowHostAccessHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceDenyHostAccessProcedure:
+			headlessControlServiceDenyHostAccessHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceGetStartupConfigToRestoreProcedure:
+			headlessControlServiceGetStartupConfigToRestoreHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceGetAccountInfoProcedure:
 			headlessControlServiceGetAccountInfoHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceFetchWorldInfoProcedure:
@@ -686,6 +811,26 @@ func (UnimplementedHeadlessControlServiceHandler) KickUser(context.Context, *con
 
 func (UnimplementedHeadlessControlServiceHandler) BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.BanUser is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) GetHostSettings(context.Context, *connect.Request[v1.GetHostSettingsRequest]) (*connect.Response[v1.GetHostSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.GetHostSettings is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) UpdateHostSettings(context.Context, *connect.Request[v1.UpdateHostSettingsRequest]) (*connect.Response[v1.UpdateHostSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.UpdateHostSettings is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) AllowHostAccess(context.Context, *connect.Request[v1.AllowHostAccessRequest]) (*connect.Response[v1.AllowHostAccessResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.AllowHostAccess is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) DenyHostAccess(context.Context, *connect.Request[v1.DenyHostAccessRequest]) (*connect.Response[v1.DenyHostAccessResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.DenyHostAccess is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) GetStartupConfigToRestore(context.Context, *connect.Request[v1.GetStartupConfigToRestoreRequest]) (*connect.Response[v1.GetStartupConfigToRestoreResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.GetStartupConfigToRestore is not implemented"))
 }
 
 func (UnimplementedHeadlessControlServiceHandler) GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error) {

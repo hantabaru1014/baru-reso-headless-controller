@@ -58,6 +58,12 @@ const (
 	// ControllerServiceStartHeadlessHostProcedure is the fully-qualified name of the
 	// ControllerService's StartHeadlessHost RPC.
 	ControllerServiceStartHeadlessHostProcedure = "/hdlctrl.v1.ControllerService/StartHeadlessHost"
+	// ControllerServiceAllowHostAccessProcedure is the fully-qualified name of the ControllerService's
+	// AllowHostAccess RPC.
+	ControllerServiceAllowHostAccessProcedure = "/hdlctrl.v1.ControllerService/AllowHostAccess"
+	// ControllerServiceDenyHostAccessProcedure is the fully-qualified name of the ControllerService's
+	// DenyHostAccess RPC.
+	ControllerServiceDenyHostAccessProcedure = "/hdlctrl.v1.ControllerService/DenyHostAccess"
 	// ControllerServiceCreateHeadlessAccountProcedure is the fully-qualified name of the
 	// ControllerService's CreateHeadlessAccount RPC.
 	ControllerServiceCreateHeadlessAccountProcedure = "/hdlctrl.v1.ControllerService/CreateHeadlessAccount"
@@ -122,6 +128,7 @@ const (
 
 // ControllerServiceClient is a client for the hdlctrl.v1.ControllerService service.
 type ControllerServiceClient interface {
+	// ホスト系
 	ListHeadlessHost(context.Context, *connect.Request[v1.ListHeadlessHostRequest]) (*connect.Response[v1.ListHeadlessHostResponse], error)
 	GetHeadlessHost(context.Context, *connect.Request[v1.GetHeadlessHostRequest]) (*connect.Response[v1.GetHeadlessHostResponse], error)
 	GetHeadlessHostLogs(context.Context, *connect.Request[v1.GetHeadlessHostLogsRequest]) (*connect.Response[v1.GetHeadlessHostLogsResponse], error)
@@ -130,13 +137,18 @@ type ControllerServiceClient interface {
 	PullLatestHostImage(context.Context, *connect.Request[v1.PullLatestHostImageRequest]) (*connect.Response[v1.PullLatestHostImageResponse], error)
 	RestartHeadlessHost(context.Context, *connect.Request[v1.RestartHeadlessHostRequest]) (*connect.Response[v1.RestartHeadlessHostResponse], error)
 	StartHeadlessHost(context.Context, *connect.Request[v1.StartHeadlessHostRequest]) (*connect.Response[v1.StartHeadlessHostResponse], error)
+	AllowHostAccess(context.Context, *connect.Request[v1.AllowHostAccessRequest]) (*connect.Response[v1.AllowHostAccessResponse], error)
+	DenyHostAccess(context.Context, *connect.Request[v1.DenyHostAccessRequest]) (*connect.Response[v1.DenyHostAccessResponse], error)
+	// アカウント系
 	CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error)
 	ListHeadlessAccounts(context.Context, *connect.Request[v1.ListHeadlessAccountsRequest]) (*connect.Response[v1.ListHeadlessAccountsResponse], error)
 	ListHeadlessHostImageTags(context.Context, *connect.Request[v1.ListHeadlessHostImageTagsRequest]) (*connect.Response[v1.ListHeadlessHostImageTagsResponse], error)
+	// Cloud系
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
 	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v11.GetFriendRequestsResponse], error)
 	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
+	// セッション系
 	SearchSessions(context.Context, *connect.Request[v1.SearchSessionsRequest]) (*connect.Response[v1.SearchSessionsResponse], error)
 	GetSessionDetails(context.Context, *connect.Request[v1.GetSessionDetailsRequest]) (*connect.Response[v1.GetSessionDetailsResponse], error)
 	StartWorld(context.Context, *connect.Request[v1.StartWorldRequest]) (*connect.Response[v1.StartWorldResponse], error)
@@ -209,6 +221,18 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+ControllerServiceStartHeadlessHostProcedure,
 			connect.WithSchema(controllerServiceMethods.ByName("StartHeadlessHost")),
+			connect.WithClientOptions(opts...),
+		),
+		allowHostAccess: connect.NewClient[v1.AllowHostAccessRequest, v1.AllowHostAccessResponse](
+			httpClient,
+			baseURL+ControllerServiceAllowHostAccessProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("AllowHostAccess")),
+			connect.WithClientOptions(opts...),
+		),
+		denyHostAccess: connect.NewClient[v1.DenyHostAccessRequest, v1.DenyHostAccessResponse](
+			httpClient,
+			baseURL+ControllerServiceDenyHostAccessProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("DenyHostAccess")),
 			connect.WithClientOptions(opts...),
 		),
 		createHeadlessAccount: connect.NewClient[v1.CreateHeadlessAccountRequest, v1.CreateHeadlessAccountResponse](
@@ -344,6 +368,8 @@ type controllerServiceClient struct {
 	pullLatestHostImage        *connect.Client[v1.PullLatestHostImageRequest, v1.PullLatestHostImageResponse]
 	restartHeadlessHost        *connect.Client[v1.RestartHeadlessHostRequest, v1.RestartHeadlessHostResponse]
 	startHeadlessHost          *connect.Client[v1.StartHeadlessHostRequest, v1.StartHeadlessHostResponse]
+	allowHostAccess            *connect.Client[v1.AllowHostAccessRequest, v1.AllowHostAccessResponse]
+	denyHostAccess             *connect.Client[v1.DenyHostAccessRequest, v1.DenyHostAccessResponse]
 	createHeadlessAccount      *connect.Client[v1.CreateHeadlessAccountRequest, v1.CreateHeadlessAccountResponse]
 	listHeadlessAccounts       *connect.Client[v1.ListHeadlessAccountsRequest, v1.ListHeadlessAccountsResponse]
 	listHeadlessHostImageTags  *connect.Client[v1.ListHeadlessHostImageTagsRequest, v1.ListHeadlessHostImageTagsResponse]
@@ -404,6 +430,16 @@ func (c *controllerServiceClient) RestartHeadlessHost(ctx context.Context, req *
 // StartHeadlessHost calls hdlctrl.v1.ControllerService.StartHeadlessHost.
 func (c *controllerServiceClient) StartHeadlessHost(ctx context.Context, req *connect.Request[v1.StartHeadlessHostRequest]) (*connect.Response[v1.StartHeadlessHostResponse], error) {
 	return c.startHeadlessHost.CallUnary(ctx, req)
+}
+
+// AllowHostAccess calls hdlctrl.v1.ControllerService.AllowHostAccess.
+func (c *controllerServiceClient) AllowHostAccess(ctx context.Context, req *connect.Request[v1.AllowHostAccessRequest]) (*connect.Response[v1.AllowHostAccessResponse], error) {
+	return c.allowHostAccess.CallUnary(ctx, req)
+}
+
+// DenyHostAccess calls hdlctrl.v1.ControllerService.DenyHostAccess.
+func (c *controllerServiceClient) DenyHostAccess(ctx context.Context, req *connect.Request[v1.DenyHostAccessRequest]) (*connect.Response[v1.DenyHostAccessResponse], error) {
+	return c.denyHostAccess.CallUnary(ctx, req)
 }
 
 // CreateHeadlessAccount calls hdlctrl.v1.ControllerService.CreateHeadlessAccount.
@@ -508,6 +544,7 @@ func (c *controllerServiceClient) BanUser(ctx context.Context, req *connect.Requ
 
 // ControllerServiceHandler is an implementation of the hdlctrl.v1.ControllerService service.
 type ControllerServiceHandler interface {
+	// ホスト系
 	ListHeadlessHost(context.Context, *connect.Request[v1.ListHeadlessHostRequest]) (*connect.Response[v1.ListHeadlessHostResponse], error)
 	GetHeadlessHost(context.Context, *connect.Request[v1.GetHeadlessHostRequest]) (*connect.Response[v1.GetHeadlessHostResponse], error)
 	GetHeadlessHostLogs(context.Context, *connect.Request[v1.GetHeadlessHostLogsRequest]) (*connect.Response[v1.GetHeadlessHostLogsResponse], error)
@@ -516,13 +553,18 @@ type ControllerServiceHandler interface {
 	PullLatestHostImage(context.Context, *connect.Request[v1.PullLatestHostImageRequest]) (*connect.Response[v1.PullLatestHostImageResponse], error)
 	RestartHeadlessHost(context.Context, *connect.Request[v1.RestartHeadlessHostRequest]) (*connect.Response[v1.RestartHeadlessHostResponse], error)
 	StartHeadlessHost(context.Context, *connect.Request[v1.StartHeadlessHostRequest]) (*connect.Response[v1.StartHeadlessHostResponse], error)
+	AllowHostAccess(context.Context, *connect.Request[v1.AllowHostAccessRequest]) (*connect.Response[v1.AllowHostAccessResponse], error)
+	DenyHostAccess(context.Context, *connect.Request[v1.DenyHostAccessRequest]) (*connect.Response[v1.DenyHostAccessResponse], error)
+	// アカウント系
 	CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error)
 	ListHeadlessAccounts(context.Context, *connect.Request[v1.ListHeadlessAccountsRequest]) (*connect.Response[v1.ListHeadlessAccountsResponse], error)
 	ListHeadlessHostImageTags(context.Context, *connect.Request[v1.ListHeadlessHostImageTagsRequest]) (*connect.Response[v1.ListHeadlessHostImageTagsResponse], error)
+	// Cloud系
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
 	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v11.GetFriendRequestsResponse], error)
 	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
+	// セッション系
 	SearchSessions(context.Context, *connect.Request[v1.SearchSessionsRequest]) (*connect.Response[v1.SearchSessionsResponse], error)
 	GetSessionDetails(context.Context, *connect.Request[v1.GetSessionDetailsRequest]) (*connect.Response[v1.GetSessionDetailsResponse], error)
 	StartWorld(context.Context, *connect.Request[v1.StartWorldRequest]) (*connect.Response[v1.StartWorldResponse], error)
@@ -591,6 +633,18 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		ControllerServiceStartHeadlessHostProcedure,
 		svc.StartHeadlessHost,
 		connect.WithSchema(controllerServiceMethods.ByName("StartHeadlessHost")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceAllowHostAccessHandler := connect.NewUnaryHandler(
+		ControllerServiceAllowHostAccessProcedure,
+		svc.AllowHostAccess,
+		connect.WithSchema(controllerServiceMethods.ByName("AllowHostAccess")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceDenyHostAccessHandler := connect.NewUnaryHandler(
+		ControllerServiceDenyHostAccessProcedure,
+		svc.DenyHostAccess,
+		connect.WithSchema(controllerServiceMethods.ByName("DenyHostAccess")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceCreateHeadlessAccountHandler := connect.NewUnaryHandler(
@@ -731,6 +785,10 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceRestartHeadlessHostHandler.ServeHTTP(w, r)
 		case ControllerServiceStartHeadlessHostProcedure:
 			controllerServiceStartHeadlessHostHandler.ServeHTTP(w, r)
+		case ControllerServiceAllowHostAccessProcedure:
+			controllerServiceAllowHostAccessHandler.ServeHTTP(w, r)
+		case ControllerServiceDenyHostAccessProcedure:
+			controllerServiceDenyHostAccessHandler.ServeHTTP(w, r)
 		case ControllerServiceCreateHeadlessAccountProcedure:
 			controllerServiceCreateHeadlessAccountHandler.ServeHTTP(w, r)
 		case ControllerServiceListHeadlessAccountsProcedure:
@@ -810,6 +868,14 @@ func (UnimplementedControllerServiceHandler) RestartHeadlessHost(context.Context
 
 func (UnimplementedControllerServiceHandler) StartHeadlessHost(context.Context, *connect.Request[v1.StartHeadlessHostRequest]) (*connect.Response[v1.StartHeadlessHostResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.StartHeadlessHost is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) AllowHostAccess(context.Context, *connect.Request[v1.AllowHostAccessRequest]) (*connect.Response[v1.AllowHostAccessResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.AllowHostAccess is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) DenyHostAccess(context.Context, *connect.Request[v1.DenyHostAccessRequest]) (*connect.Response[v1.DenyHostAccessResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.DenyHostAccess is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error) {
