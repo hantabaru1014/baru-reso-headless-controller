@@ -190,7 +190,7 @@ func (x AllowedAccessEntry_AccessType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AllowedAccessEntry_AccessType.Descriptor instead.
 func (AllowedAccessEntry_AccessType) EnumDescriptor() ([]byte, []int) {
-	return file_headless_v1_headless_proto_rawDescGZIP(), []int{60, 0}
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{62, 0}
 }
 
 type GetStartupConfigToRestoreRequest struct {
@@ -2585,6 +2585,94 @@ func (*InviteUserResponse) Descriptor() ([]byte, []int) {
 	return file_headless_v1_headless_proto_rawDescGZIP(), []int{47}
 }
 
+type AllowUserToJoinRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AllowUserToJoinRequest) Reset() {
+	*x = AllowUserToJoinRequest{}
+	mi := &file_headless_v1_headless_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AllowUserToJoinRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AllowUserToJoinRequest) ProtoMessage() {}
+
+func (x *AllowUserToJoinRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_headless_v1_headless_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AllowUserToJoinRequest.ProtoReflect.Descriptor instead.
+func (*AllowUserToJoinRequest) Descriptor() ([]byte, []int) {
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *AllowUserToJoinRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *AllowUserToJoinRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type AllowUserToJoinResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AllowUserToJoinResponse) Reset() {
+	*x = AllowUserToJoinResponse{}
+	mi := &file_headless_v1_headless_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AllowUserToJoinResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AllowUserToJoinResponse) ProtoMessage() {}
+
+func (x *AllowUserToJoinResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_headless_v1_headless_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AllowUserToJoinResponse.ProtoReflect.Descriptor instead.
+func (*AllowUserToJoinResponse) Descriptor() ([]byte, []int) {
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{49}
+}
+
 type UpdateUserRoleRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
@@ -2600,7 +2688,7 @@ type UpdateUserRoleRequest struct {
 
 func (x *UpdateUserRoleRequest) Reset() {
 	*x = UpdateUserRoleRequest{}
-	mi := &file_headless_v1_headless_proto_msgTypes[48]
+	mi := &file_headless_v1_headless_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2612,7 +2700,7 @@ func (x *UpdateUserRoleRequest) String() string {
 func (*UpdateUserRoleRequest) ProtoMessage() {}
 
 func (x *UpdateUserRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_headless_v1_headless_proto_msgTypes[48]
+	mi := &file_headless_v1_headless_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2625,7 +2713,7 @@ func (x *UpdateUserRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateUserRoleRequest.ProtoReflect.Descriptor instead.
 func (*UpdateUserRoleRequest) Descriptor() ([]byte, []int) {
-	return file_headless_v1_headless_proto_rawDescGZIP(), []int{48}
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *UpdateUserRoleRequest) GetSessionId() string {
@@ -2693,7 +2781,7 @@ type UpdateUserRoleResponse struct {
 
 func (x *UpdateUserRoleResponse) Reset() {
 	*x = UpdateUserRoleResponse{}
-	mi := &file_headless_v1_headless_proto_msgTypes[49]
+	mi := &file_headless_v1_headless_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2705,7 +2793,7 @@ func (x *UpdateUserRoleResponse) String() string {
 func (*UpdateUserRoleResponse) ProtoMessage() {}
 
 func (x *UpdateUserRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_headless_v1_headless_proto_msgTypes[49]
+	mi := &file_headless_v1_headless_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2718,7 +2806,7 @@ func (x *UpdateUserRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateUserRoleResponse.ProtoReflect.Descriptor instead.
 func (*UpdateUserRoleResponse) Descriptor() ([]byte, []int) {
-	return file_headless_v1_headless_proto_rawDescGZIP(), []int{49}
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *UpdateUserRoleResponse) GetRole() string {
@@ -2757,7 +2845,7 @@ type UpdateSessionParametersRequest struct {
 
 func (x *UpdateSessionParametersRequest) Reset() {
 	*x = UpdateSessionParametersRequest{}
-	mi := &file_headless_v1_headless_proto_msgTypes[50]
+	mi := &file_headless_v1_headless_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2769,7 +2857,7 @@ func (x *UpdateSessionParametersRequest) String() string {
 func (*UpdateSessionParametersRequest) ProtoMessage() {}
 
 func (x *UpdateSessionParametersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_headless_v1_headless_proto_msgTypes[50]
+	mi := &file_headless_v1_headless_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2782,7 +2870,7 @@ func (x *UpdateSessionParametersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSessionParametersRequest.ProtoReflect.Descriptor instead.
 func (*UpdateSessionParametersRequest) Descriptor() ([]byte, []int) {
-	return file_headless_v1_headless_proto_rawDescGZIP(), []int{50}
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *UpdateSessionParametersRequest) GetSessionId() string {
@@ -2940,7 +3028,7 @@ type UpdateSessionParametersResponse struct {
 
 func (x *UpdateSessionParametersResponse) Reset() {
 	*x = UpdateSessionParametersResponse{}
-	mi := &file_headless_v1_headless_proto_msgTypes[51]
+	mi := &file_headless_v1_headless_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2952,7 +3040,7 @@ func (x *UpdateSessionParametersResponse) String() string {
 func (*UpdateSessionParametersResponse) ProtoMessage() {}
 
 func (x *UpdateSessionParametersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_headless_v1_headless_proto_msgTypes[51]
+	mi := &file_headless_v1_headless_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2965,7 +3053,7 @@ func (x *UpdateSessionParametersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSessionParametersResponse.ProtoReflect.Descriptor instead.
 func (*UpdateSessionParametersResponse) Descriptor() ([]byte, []int) {
-	return file_headless_v1_headless_proto_rawDescGZIP(), []int{51}
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{53}
 }
 
 type ListUsersInSessionRequest struct {
@@ -2977,7 +3065,7 @@ type ListUsersInSessionRequest struct {
 
 func (x *ListUsersInSessionRequest) Reset() {
 	*x = ListUsersInSessionRequest{}
-	mi := &file_headless_v1_headless_proto_msgTypes[52]
+	mi := &file_headless_v1_headless_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2989,7 +3077,7 @@ func (x *ListUsersInSessionRequest) String() string {
 func (*ListUsersInSessionRequest) ProtoMessage() {}
 
 func (x *ListUsersInSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_headless_v1_headless_proto_msgTypes[52]
+	mi := &file_headless_v1_headless_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3002,7 +3090,7 @@ func (x *ListUsersInSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUsersInSessionRequest.ProtoReflect.Descriptor instead.
 func (*ListUsersInSessionRequest) Descriptor() ([]byte, []int) {
-	return file_headless_v1_headless_proto_rawDescGZIP(), []int{52}
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *ListUsersInSessionRequest) GetSessionId() string {
@@ -3021,7 +3109,7 @@ type ListUsersInSessionResponse struct {
 
 func (x *ListUsersInSessionResponse) Reset() {
 	*x = ListUsersInSessionResponse{}
-	mi := &file_headless_v1_headless_proto_msgTypes[53]
+	mi := &file_headless_v1_headless_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3033,7 +3121,7 @@ func (x *ListUsersInSessionResponse) String() string {
 func (*ListUsersInSessionResponse) ProtoMessage() {}
 
 func (x *ListUsersInSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_headless_v1_headless_proto_msgTypes[53]
+	mi := &file_headless_v1_headless_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3046,7 +3134,7 @@ func (x *ListUsersInSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUsersInSessionResponse.ProtoReflect.Descriptor instead.
 func (*ListUsersInSessionResponse) Descriptor() ([]byte, []int) {
-	return file_headless_v1_headless_proto_rawDescGZIP(), []int{53}
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *ListUsersInSessionResponse) GetUsers() []*UserInSession {
@@ -3068,7 +3156,7 @@ type UserInSession struct {
 
 func (x *UserInSession) Reset() {
 	*x = UserInSession{}
-	mi := &file_headless_v1_headless_proto_msgTypes[54]
+	mi := &file_headless_v1_headless_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3080,7 +3168,7 @@ func (x *UserInSession) String() string {
 func (*UserInSession) ProtoMessage() {}
 
 func (x *UserInSession) ProtoReflect() protoreflect.Message {
-	mi := &file_headless_v1_headless_proto_msgTypes[54]
+	mi := &file_headless_v1_headless_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3093,7 +3181,7 @@ func (x *UserInSession) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserInSession.ProtoReflect.Descriptor instead.
 func (*UserInSession) Descriptor() ([]byte, []int) {
-	return file_headless_v1_headless_proto_rawDescGZIP(), []int{54}
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *UserInSession) GetId() string {
@@ -3135,7 +3223,7 @@ type UserInfo struct {
 
 func (x *UserInfo) Reset() {
 	*x = UserInfo{}
-	mi := &file_headless_v1_headless_proto_msgTypes[55]
+	mi := &file_headless_v1_headless_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3147,7 +3235,7 @@ func (x *UserInfo) String() string {
 func (*UserInfo) ProtoMessage() {}
 
 func (x *UserInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_headless_v1_headless_proto_msgTypes[55]
+	mi := &file_headless_v1_headless_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3160,7 +3248,7 @@ func (x *UserInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserInfo.ProtoReflect.Descriptor instead.
 func (*UserInfo) Descriptor() ([]byte, []int) {
-	return file_headless_v1_headless_proto_rawDescGZIP(), []int{55}
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *UserInfo) GetId() string {
@@ -3208,13 +3296,14 @@ type Session struct {
 	CanSave                    bool                   `protobuf:"varint,19,opt,name=can_save,json=canSave,proto3" json:"can_save,omitempty"`
 	WorldUrl                   string                 `protobuf:"bytes,20,opt,name=world_url,json=worldUrl,proto3" json:"world_url,omitempty"`
 	StartedAt                  *timestamppb.Timestamp `protobuf:"bytes,21,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	ConnectUris                []string               `protobuf:"bytes,22,rep,name=connect_uris,json=connectUris,proto3" json:"connect_uris,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *Session) Reset() {
 	*x = Session{}
-	mi := &file_headless_v1_headless_proto_msgTypes[56]
+	mi := &file_headless_v1_headless_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3226,7 +3315,7 @@ func (x *Session) String() string {
 func (*Session) ProtoMessage() {}
 
 func (x *Session) ProtoReflect() protoreflect.Message {
-	mi := &file_headless_v1_headless_proto_msgTypes[56]
+	mi := &file_headless_v1_headless_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3239,7 +3328,7 @@ func (x *Session) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Session.ProtoReflect.Descriptor instead.
 func (*Session) Descriptor() ([]byte, []int) {
-	return file_headless_v1_headless_proto_rawDescGZIP(), []int{56}
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *Session) GetId() string {
@@ -3390,6 +3479,13 @@ func (x *Session) GetStartedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Session) GetConnectUris() []string {
+	if x != nil {
+		return x.ConnectUris
+	}
+	return nil
+}
+
 type DefaultUserRole struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Role          string                 `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
@@ -3400,7 +3496,7 @@ type DefaultUserRole struct {
 
 func (x *DefaultUserRole) Reset() {
 	*x = DefaultUserRole{}
-	mi := &file_headless_v1_headless_proto_msgTypes[57]
+	mi := &file_headless_v1_headless_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3412,7 +3508,7 @@ func (x *DefaultUserRole) String() string {
 func (*DefaultUserRole) ProtoMessage() {}
 
 func (x *DefaultUserRole) ProtoReflect() protoreflect.Message {
-	mi := &file_headless_v1_headless_proto_msgTypes[57]
+	mi := &file_headless_v1_headless_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3425,7 +3521,7 @@ func (x *DefaultUserRole) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DefaultUserRole.ProtoReflect.Descriptor instead.
 func (*DefaultUserRole) Descriptor() ([]byte, []int) {
-	return file_headless_v1_headless_proto_rawDescGZIP(), []int{57}
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *DefaultUserRole) GetRole() string {
@@ -3478,13 +3574,14 @@ type WorldStartupParameters struct {
 	RequiredUserJoinCloudVariable            *string                            `protobuf:"bytes,29,opt,name=required_user_join_cloud_variable,json=requiredUserJoinCloudVariable,proto3,oneof" json:"required_user_join_cloud_variable,omitempty"`
 	RequiredUserJoinCloudVariableDenyMessage *string                            `protobuf:"bytes,30,opt,name=required_user_join_cloud_variable_deny_message,json=requiredUserJoinCloudVariableDenyMessage,proto3,oneof" json:"required_user_join_cloud_variable_deny_message,omitempty"`
 	AutoInviteMessage                        *string                            `protobuf:"bytes,31,opt,name=auto_invite_message,json=autoInviteMessage,proto3,oneof" json:"auto_invite_message,omitempty"`
+	JoinAllowedUserIds                       []string                           `protobuf:"bytes,32,rep,name=join_allowed_user_ids,json=joinAllowedUserIds,proto3" json:"join_allowed_user_ids,omitempty"`
 	unknownFields                            protoimpl.UnknownFields
 	sizeCache                                protoimpl.SizeCache
 }
 
 func (x *WorldStartupParameters) Reset() {
 	*x = WorldStartupParameters{}
-	mi := &file_headless_v1_headless_proto_msgTypes[58]
+	mi := &file_headless_v1_headless_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3496,7 +3593,7 @@ func (x *WorldStartupParameters) String() string {
 func (*WorldStartupParameters) ProtoMessage() {}
 
 func (x *WorldStartupParameters) ProtoReflect() protoreflect.Message {
-	mi := &file_headless_v1_headless_proto_msgTypes[58]
+	mi := &file_headless_v1_headless_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3509,7 +3606,7 @@ func (x *WorldStartupParameters) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorldStartupParameters.ProtoReflect.Descriptor instead.
 func (*WorldStartupParameters) Descriptor() ([]byte, []int) {
-	return file_headless_v1_headless_proto_rawDescGZIP(), []int{58}
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *WorldStartupParameters) GetName() string {
@@ -3740,6 +3837,13 @@ func (x *WorldStartupParameters) GetAutoInviteMessage() string {
 	return ""
 }
 
+func (x *WorldStartupParameters) GetJoinAllowedUserIds() []string {
+	if x != nil {
+		return x.JoinAllowedUserIds
+	}
+	return nil
+}
+
 type isWorldStartupParameters_LoadWorld interface {
 	isWorldStartupParameters_LoadWorld()
 }
@@ -3769,7 +3873,7 @@ type ContactChatMessage struct {
 
 func (x *ContactChatMessage) Reset() {
 	*x = ContactChatMessage{}
-	mi := &file_headless_v1_headless_proto_msgTypes[59]
+	mi := &file_headless_v1_headless_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3781,7 +3885,7 @@ func (x *ContactChatMessage) String() string {
 func (*ContactChatMessage) ProtoMessage() {}
 
 func (x *ContactChatMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_headless_v1_headless_proto_msgTypes[59]
+	mi := &file_headless_v1_headless_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3794,7 +3898,7 @@ func (x *ContactChatMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContactChatMessage.ProtoReflect.Descriptor instead.
 func (*ContactChatMessage) Descriptor() ([]byte, []int) {
-	return file_headless_v1_headless_proto_rawDescGZIP(), []int{59}
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *ContactChatMessage) GetId() string {
@@ -3843,7 +3947,7 @@ type AllowedAccessEntry struct {
 
 func (x *AllowedAccessEntry) Reset() {
 	*x = AllowedAccessEntry{}
-	mi := &file_headless_v1_headless_proto_msgTypes[60]
+	mi := &file_headless_v1_headless_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3855,7 +3959,7 @@ func (x *AllowedAccessEntry) String() string {
 func (*AllowedAccessEntry) ProtoMessage() {}
 
 func (x *AllowedAccessEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_headless_v1_headless_proto_msgTypes[60]
+	mi := &file_headless_v1_headless_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3868,7 +3972,7 @@ func (x *AllowedAccessEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AllowedAccessEntry.ProtoReflect.Descriptor instead.
 func (*AllowedAccessEntry) Descriptor() ([]byte, []int) {
-	return file_headless_v1_headless_proto_rawDescGZIP(), []int{60}
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *AllowedAccessEntry) GetHost() string {
@@ -3907,7 +4011,7 @@ type StartupConfig struct {
 
 func (x *StartupConfig) Reset() {
 	*x = StartupConfig{}
-	mi := &file_headless_v1_headless_proto_msgTypes[61]
+	mi := &file_headless_v1_headless_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3919,7 +4023,7 @@ func (x *StartupConfig) String() string {
 func (*StartupConfig) ProtoMessage() {}
 
 func (x *StartupConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_headless_v1_headless_proto_msgTypes[61]
+	mi := &file_headless_v1_headless_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3932,7 +4036,7 @@ func (x *StartupConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartupConfig.ProtoReflect.Descriptor instead.
 func (*StartupConfig) Descriptor() ([]byte, []int) {
-	return file_headless_v1_headless_proto_rawDescGZIP(), []int{61}
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *StartupConfig) GetUniverseId() string {
@@ -3994,7 +4098,7 @@ type RecordId struct {
 
 func (x *RecordId) Reset() {
 	*x = RecordId{}
-	mi := &file_headless_v1_headless_proto_msgTypes[62]
+	mi := &file_headless_v1_headless_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4006,7 +4110,7 @@ func (x *RecordId) String() string {
 func (*RecordId) ProtoMessage() {}
 
 func (x *RecordId) ProtoReflect() protoreflect.Message {
-	mi := &file_headless_v1_headless_proto_msgTypes[62]
+	mi := &file_headless_v1_headless_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4019,7 +4123,7 @@ func (x *RecordId) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecordId.ProtoReflect.Descriptor instead.
 func (*RecordId) Descriptor() ([]byte, []int) {
-	return file_headless_v1_headless_proto_rawDescGZIP(), []int{62}
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *RecordId) GetId() string {
@@ -4181,7 +4285,12 @@ const file_headless_v1_headless_proto_rawDesc = "" +
 	"\auser_id\x18\x02 \x01(\tH\x00R\x06userId\x12\x1d\n" +
 	"\tuser_name\x18\x03 \x01(\tH\x00R\buserNameB\x06\n" +
 	"\x04user\"\x14\n" +
-	"\x12InviteUserResponse\"\x8c\x01\n" +
+	"\x12InviteUserResponse\"P\n" +
+	"\x16AllowUserToJoinRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\x19\n" +
+	"\x17AllowUserToJoinResponse\"\x8c\x01\n" +
 	"\x15UpdateUserRoleRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x19\n" +
@@ -4253,7 +4362,7 @@ const file_headless_v1_headless_proto_rawDesc = "" +
 	"\bUserInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x19\n" +
-	"\bicon_url\x18\x03 \x01(\tR\aiconUrl\"\xab\a\n" +
+	"\bicon_url\x18\x03 \x01(\tR\aiconUrl\"\xce\a\n" +
 	"\aSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -4281,12 +4390,13 @@ const file_headless_v1_headless_proto_rawDesc = "" +
 	"\bcan_save\x18\x13 \x01(\bR\acanSave\x12\x1b\n" +
 	"\tworld_url\x18\x14 \x01(\tR\bworldUrl\x129\n" +
 	"\n" +
-	"started_at\x18\x15 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAtB\x10\n" +
+	"started_at\x18\x15 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12!\n" +
+	"\fconnect_uris\x18\x16 \x03(\tR\vconnectUrisB\x10\n" +
 	"\x0e_thumbnail_urlB\x10\n" +
 	"\x0e_last_saved_at\"B\n" +
 	"\x0fDefaultUserRole\x12\x12\n" +
 	"\x04role\x18\x01 \x01(\tR\x04role\x12\x1b\n" +
-	"\tuser_name\x18\x02 \x01(\tR\buserName\"\xc7\x0f\n" +
+	"\tuser_name\x18\x02 \x01(\tR\buserName\"\xfa\x0f\n" +
 	"\x16WorldStartupParameters\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x01R\x04name\x88\x01\x01\x12/\n" +
 	"\x11custom_session_id\x18\x02 \x01(\tH\x02R\x0fcustomSessionId\x88\x01\x01\x12%\n" +
@@ -4323,7 +4433,8 @@ const file_headless_v1_headless_proto_rawDesc = "" +
 	"!required_user_join_cloud_variable\x18\x1d \x01(\tH\tR\x1drequiredUserJoinCloudVariable\x88\x01\x01\x12e\n" +
 	".required_user_join_cloud_variable_deny_message\x18\x1e \x01(\tH\n" +
 	"R(requiredUserJoinCloudVariableDenyMessage\x88\x01\x01\x123\n" +
-	"\x13auto_invite_message\x18\x1f \x01(\tH\vR\x11autoInviteMessage\x88\x01\x01B\f\n" +
+	"\x13auto_invite_message\x18\x1f \x01(\tH\vR\x11autoInviteMessage\x88\x01\x01\x121\n" +
+	"\x15join_allowed_user_ids\x18  \x03(\tR\x12joinAllowedUserIdsB\f\n" +
 	"\n" +
 	"load_worldB\a\n" +
 	"\x05_nameB\x14\n" +
@@ -4387,7 +4498,7 @@ const file_headless_v1_headless_proto_rawDesc = "" +
 	"\x1eCONTACT_CHAT_MESSAGE_TYPE_TEXT\x10\x01\x12$\n" +
 	" CONTACT_CHAT_MESSAGE_TYPE_OBJECT\x10\x02\x12#\n" +
 	"\x1fCONTACT_CHAT_MESSAGE_TYPE_SOUND\x10\x03\x12,\n" +
-	"(CONTACT_CHAT_MESSAGE_TYPE_SESSION_INVITE\x10\x042\xb1\x13\n" +
+	"(CONTACT_CHAT_MESSAGE_TYPE_SESSION_INVITE\x10\x042\x8f\x14\n" +
 	"\x16HeadlessControlService\x12G\n" +
 	"\bGetAbout\x12\x1c.headless.v1.GetAboutRequest\x1a\x1d.headless.v1.GetAboutResponse\x12J\n" +
 	"\tGetStatus\x12\x1d.headless.v1.GetStatusRequest\x1a\x1e.headless.v1.GetStatusResponse\x12G\n" +
@@ -4400,7 +4511,8 @@ const file_headless_v1_headless_proto_rawDesc = "" +
 	"\vStopSession\x12\x1f.headless.v1.StopSessionRequest\x1a .headless.v1.StopSessionResponse\x12_\n" +
 	"\x10SaveSessionWorld\x12$.headless.v1.SaveSessionWorldRequest\x1a%.headless.v1.SaveSessionWorldResponse\x12M\n" +
 	"\n" +
-	"InviteUser\x12\x1e.headless.v1.InviteUserRequest\x1a\x1f.headless.v1.InviteUserResponse\x12Y\n" +
+	"InviteUser\x12\x1e.headless.v1.InviteUserRequest\x1a\x1f.headless.v1.InviteUserResponse\x12\\\n" +
+	"\x0fAllowUserToJoin\x12#.headless.v1.AllowUserToJoinRequest\x1a$.headless.v1.AllowUserToJoinResponse\x12Y\n" +
 	"\x0eUpdateUserRole\x12\".headless.v1.UpdateUserRoleRequest\x1a#.headless.v1.UpdateUserRoleResponse\x12t\n" +
 	"\x17UpdateSessionParameters\x12+.headless.v1.UpdateSessionParametersRequest\x1a,.headless.v1.UpdateSessionParametersResponse\x12e\n" +
 	"\x12ListUsersInSession\x12&.headless.v1.ListUsersInSessionRequest\x1a'.headless.v1.ListUsersInSessionResponse\x12G\n" +
@@ -4434,7 +4546,7 @@ func file_headless_v1_headless_proto_rawDescGZIP() []byte {
 }
 
 var file_headless_v1_headless_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_headless_v1_headless_proto_msgTypes = make([]protoimpl.MessageInfo, 63)
+var file_headless_v1_headless_proto_msgTypes = make([]protoimpl.MessageInfo, 65)
 var file_headless_v1_headless_proto_goTypes = []any{
 	(AccessLevel)(0),                          // 0: headless.v1.AccessLevel
 	(ContactChatMessageType)(0),               // 1: headless.v1.ContactChatMessageType
@@ -4487,52 +4599,54 @@ var file_headless_v1_headless_proto_goTypes = []any{
 	(*SaveSessionWorldResponse)(nil),          // 48: headless.v1.SaveSessionWorldResponse
 	(*InviteUserRequest)(nil),                 // 49: headless.v1.InviteUserRequest
 	(*InviteUserResponse)(nil),                // 50: headless.v1.InviteUserResponse
-	(*UpdateUserRoleRequest)(nil),             // 51: headless.v1.UpdateUserRoleRequest
-	(*UpdateUserRoleResponse)(nil),            // 52: headless.v1.UpdateUserRoleResponse
-	(*UpdateSessionParametersRequest)(nil),    // 53: headless.v1.UpdateSessionParametersRequest
-	(*UpdateSessionParametersResponse)(nil),   // 54: headless.v1.UpdateSessionParametersResponse
-	(*ListUsersInSessionRequest)(nil),         // 55: headless.v1.ListUsersInSessionRequest
-	(*ListUsersInSessionResponse)(nil),        // 56: headless.v1.ListUsersInSessionResponse
-	(*UserInSession)(nil),                     // 57: headless.v1.UserInSession
-	(*UserInfo)(nil),                          // 58: headless.v1.UserInfo
-	(*Session)(nil),                           // 59: headless.v1.Session
-	(*DefaultUserRole)(nil),                   // 60: headless.v1.DefaultUserRole
-	(*WorldStartupParameters)(nil),            // 61: headless.v1.WorldStartupParameters
-	(*ContactChatMessage)(nil),                // 62: headless.v1.ContactChatMessage
-	(*AllowedAccessEntry)(nil),                // 63: headless.v1.AllowedAccessEntry
-	(*StartupConfig)(nil),                     // 64: headless.v1.StartupConfig
-	(*RecordId)(nil),                          // 65: headless.v1.RecordId
-	(*timestamppb.Timestamp)(nil),             // 66: google.protobuf.Timestamp
+	(*AllowUserToJoinRequest)(nil),            // 51: headless.v1.AllowUserToJoinRequest
+	(*AllowUserToJoinResponse)(nil),           // 52: headless.v1.AllowUserToJoinResponse
+	(*UpdateUserRoleRequest)(nil),             // 53: headless.v1.UpdateUserRoleRequest
+	(*UpdateUserRoleResponse)(nil),            // 54: headless.v1.UpdateUserRoleResponse
+	(*UpdateSessionParametersRequest)(nil),    // 55: headless.v1.UpdateSessionParametersRequest
+	(*UpdateSessionParametersResponse)(nil),   // 56: headless.v1.UpdateSessionParametersResponse
+	(*ListUsersInSessionRequest)(nil),         // 57: headless.v1.ListUsersInSessionRequest
+	(*ListUsersInSessionResponse)(nil),        // 58: headless.v1.ListUsersInSessionResponse
+	(*UserInSession)(nil),                     // 59: headless.v1.UserInSession
+	(*UserInfo)(nil),                          // 60: headless.v1.UserInfo
+	(*Session)(nil),                           // 61: headless.v1.Session
+	(*DefaultUserRole)(nil),                   // 62: headless.v1.DefaultUserRole
+	(*WorldStartupParameters)(nil),            // 63: headless.v1.WorldStartupParameters
+	(*ContactChatMessage)(nil),                // 64: headless.v1.ContactChatMessage
+	(*AllowedAccessEntry)(nil),                // 65: headless.v1.AllowedAccessEntry
+	(*StartupConfig)(nil),                     // 66: headless.v1.StartupConfig
+	(*RecordId)(nil),                          // 67: headless.v1.RecordId
+	(*timestamppb.Timestamp)(nil),             // 68: google.protobuf.Timestamp
 }
 var file_headless_v1_headless_proto_depIdxs = []int32{
-	64, // 0: headless.v1.GetStartupConfigToRestoreResponse.startup_config:type_name -> headless.v1.StartupConfig
-	63, // 1: headless.v1.GetHostSettingsResponse.allowed_url_hosts:type_name -> headless.v1.AllowedAccessEntry
+	66, // 0: headless.v1.GetStartupConfigToRestoreResponse.startup_config:type_name -> headless.v1.StartupConfig
+	65, // 1: headless.v1.GetHostSettingsResponse.allowed_url_hosts:type_name -> headless.v1.AllowedAccessEntry
 	2,  // 2: headless.v1.AllowHostAccessRequest.access_type:type_name -> headless.v1.AllowedAccessEntry.AccessType
 	2,  // 3: headless.v1.DenyHostAccessRequest.access_type:type_name -> headless.v1.AllowedAccessEntry.AccessType
-	58, // 4: headless.v1.ListContactsResponse.users:type_name -> headless.v1.UserInfo
-	62, // 5: headless.v1.GetContactMessagesResponse.messages:type_name -> headless.v1.ContactChatMessage
-	58, // 6: headless.v1.GetFriendRequestsResponse.users:type_name -> headless.v1.UserInfo
-	58, // 7: headless.v1.SearchUserInfoResponse.users:type_name -> headless.v1.UserInfo
-	59, // 8: headless.v1.ListSessionsResponse.sessions:type_name -> headless.v1.Session
-	59, // 9: headless.v1.GetSessionResponse.session:type_name -> headless.v1.Session
-	61, // 10: headless.v1.StartWorldRequest.parameters:type_name -> headless.v1.WorldStartupParameters
-	59, // 11: headless.v1.StartWorldResponse.opened_session:type_name -> headless.v1.Session
+	60, // 4: headless.v1.ListContactsResponse.users:type_name -> headless.v1.UserInfo
+	64, // 5: headless.v1.GetContactMessagesResponse.messages:type_name -> headless.v1.ContactChatMessage
+	60, // 6: headless.v1.GetFriendRequestsResponse.users:type_name -> headless.v1.UserInfo
+	60, // 7: headless.v1.SearchUserInfoResponse.users:type_name -> headless.v1.UserInfo
+	61, // 8: headless.v1.ListSessionsResponse.sessions:type_name -> headless.v1.Session
+	61, // 9: headless.v1.GetSessionResponse.session:type_name -> headless.v1.Session
+	63, // 10: headless.v1.StartWorldRequest.parameters:type_name -> headless.v1.WorldStartupParameters
+	61, // 11: headless.v1.StartWorldResponse.opened_session:type_name -> headless.v1.Session
 	0,  // 12: headless.v1.UpdateSessionParametersRequest.access_level:type_name -> headless.v1.AccessLevel
-	65, // 13: headless.v1.UpdateSessionParametersRequest.override_corresponding_world_id:type_name -> headless.v1.RecordId
-	57, // 14: headless.v1.ListUsersInSessionResponse.users:type_name -> headless.v1.UserInSession
+	67, // 13: headless.v1.UpdateSessionParametersRequest.override_corresponding_world_id:type_name -> headless.v1.RecordId
+	59, // 14: headless.v1.ListUsersInSessionResponse.users:type_name -> headless.v1.UserInSession
 	0,  // 15: headless.v1.Session.access_level:type_name -> headless.v1.AccessLevel
-	61, // 16: headless.v1.Session.startup_parameters:type_name -> headless.v1.WorldStartupParameters
-	66, // 17: headless.v1.Session.last_saved_at:type_name -> google.protobuf.Timestamp
-	66, // 18: headless.v1.Session.started_at:type_name -> google.protobuf.Timestamp
+	63, // 16: headless.v1.Session.startup_parameters:type_name -> headless.v1.WorldStartupParameters
+	68, // 17: headless.v1.Session.last_saved_at:type_name -> google.protobuf.Timestamp
+	68, // 18: headless.v1.Session.started_at:type_name -> google.protobuf.Timestamp
 	0,  // 19: headless.v1.WorldStartupParameters.access_level:type_name -> headless.v1.AccessLevel
-	60, // 20: headless.v1.WorldStartupParameters.default_user_roles:type_name -> headless.v1.DefaultUserRole
-	65, // 21: headless.v1.WorldStartupParameters.override_corresponding_world_id:type_name -> headless.v1.RecordId
+	62, // 20: headless.v1.WorldStartupParameters.default_user_roles:type_name -> headless.v1.DefaultUserRole
+	67, // 21: headless.v1.WorldStartupParameters.override_corresponding_world_id:type_name -> headless.v1.RecordId
 	1,  // 22: headless.v1.ContactChatMessage.type:type_name -> headless.v1.ContactChatMessageType
-	66, // 23: headless.v1.ContactChatMessage.send_time:type_name -> google.protobuf.Timestamp
-	66, // 24: headless.v1.ContactChatMessage.read_time:type_name -> google.protobuf.Timestamp
+	68, // 23: headless.v1.ContactChatMessage.send_time:type_name -> google.protobuf.Timestamp
+	68, // 24: headless.v1.ContactChatMessage.read_time:type_name -> google.protobuf.Timestamp
 	2,  // 25: headless.v1.AllowedAccessEntry.access_types:type_name -> headless.v1.AllowedAccessEntry.AccessType
-	61, // 26: headless.v1.StartupConfig.start_worlds:type_name -> headless.v1.WorldStartupParameters
-	63, // 27: headless.v1.StartupConfig.allowed_url_hosts:type_name -> headless.v1.AllowedAccessEntry
+	63, // 26: headless.v1.StartupConfig.start_worlds:type_name -> headless.v1.WorldStartupParameters
+	65, // 27: headless.v1.StartupConfig.allowed_url_hosts:type_name -> headless.v1.AllowedAccessEntry
 	33, // 28: headless.v1.HeadlessControlService.GetAbout:input_type -> headless.v1.GetAboutRequest
 	35, // 29: headless.v1.HeadlessControlService.GetStatus:input_type -> headless.v1.GetStatusRequest
 	37, // 30: headless.v1.HeadlessControlService.Shutdown:input_type -> headless.v1.ShutdownRequest
@@ -4542,53 +4656,55 @@ var file_headless_v1_headless_proto_depIdxs = []int32{
 	45, // 34: headless.v1.HeadlessControlService.StopSession:input_type -> headless.v1.StopSessionRequest
 	47, // 35: headless.v1.HeadlessControlService.SaveSessionWorld:input_type -> headless.v1.SaveSessionWorldRequest
 	49, // 36: headless.v1.HeadlessControlService.InviteUser:input_type -> headless.v1.InviteUserRequest
-	51, // 37: headless.v1.HeadlessControlService.UpdateUserRole:input_type -> headless.v1.UpdateUserRoleRequest
-	53, // 38: headless.v1.HeadlessControlService.UpdateSessionParameters:input_type -> headless.v1.UpdateSessionParametersRequest
-	55, // 39: headless.v1.HeadlessControlService.ListUsersInSession:input_type -> headless.v1.ListUsersInSessionRequest
-	23, // 40: headless.v1.HeadlessControlService.KickUser:input_type -> headless.v1.KickUserRequest
-	25, // 41: headless.v1.HeadlessControlService.BanUser:input_type -> headless.v1.BanUserRequest
-	5,  // 42: headless.v1.HeadlessControlService.GetHostSettings:input_type -> headless.v1.GetHostSettingsRequest
-	7,  // 43: headless.v1.HeadlessControlService.UpdateHostSettings:input_type -> headless.v1.UpdateHostSettingsRequest
-	9,  // 44: headless.v1.HeadlessControlService.AllowHostAccess:input_type -> headless.v1.AllowHostAccessRequest
-	11, // 45: headless.v1.HeadlessControlService.DenyHostAccess:input_type -> headless.v1.DenyHostAccessRequest
-	3,  // 46: headless.v1.HeadlessControlService.GetStartupConfigToRestore:input_type -> headless.v1.GetStartupConfigToRestoreRequest
-	29, // 47: headless.v1.HeadlessControlService.GetAccountInfo:input_type -> headless.v1.GetAccountInfoRequest
-	31, // 48: headless.v1.HeadlessControlService.FetchWorldInfo:input_type -> headless.v1.FetchWorldInfoRequest
-	27, // 49: headless.v1.HeadlessControlService.SearchUserInfo:input_type -> headless.v1.SearchUserInfoRequest
-	21, // 50: headless.v1.HeadlessControlService.GetFriendRequests:input_type -> headless.v1.GetFriendRequestsRequest
-	19, // 51: headless.v1.HeadlessControlService.AcceptFriendRequests:input_type -> headless.v1.AcceptFriendRequestsRequest
-	13, // 52: headless.v1.HeadlessControlService.ListContacts:input_type -> headless.v1.ListContactsRequest
-	15, // 53: headless.v1.HeadlessControlService.GetContactMessages:input_type -> headless.v1.GetContactMessagesRequest
-	17, // 54: headless.v1.HeadlessControlService.SendContactMessage:input_type -> headless.v1.SendContactMessageRequest
-	34, // 55: headless.v1.HeadlessControlService.GetAbout:output_type -> headless.v1.GetAboutResponse
-	36, // 56: headless.v1.HeadlessControlService.GetStatus:output_type -> headless.v1.GetStatusResponse
-	38, // 57: headless.v1.HeadlessControlService.Shutdown:output_type -> headless.v1.ShutdownResponse
-	40, // 58: headless.v1.HeadlessControlService.ListSessions:output_type -> headless.v1.ListSessionsResponse
-	42, // 59: headless.v1.HeadlessControlService.GetSession:output_type -> headless.v1.GetSessionResponse
-	44, // 60: headless.v1.HeadlessControlService.StartWorld:output_type -> headless.v1.StartWorldResponse
-	46, // 61: headless.v1.HeadlessControlService.StopSession:output_type -> headless.v1.StopSessionResponse
-	48, // 62: headless.v1.HeadlessControlService.SaveSessionWorld:output_type -> headless.v1.SaveSessionWorldResponse
-	50, // 63: headless.v1.HeadlessControlService.InviteUser:output_type -> headless.v1.InviteUserResponse
-	52, // 64: headless.v1.HeadlessControlService.UpdateUserRole:output_type -> headless.v1.UpdateUserRoleResponse
-	54, // 65: headless.v1.HeadlessControlService.UpdateSessionParameters:output_type -> headless.v1.UpdateSessionParametersResponse
-	56, // 66: headless.v1.HeadlessControlService.ListUsersInSession:output_type -> headless.v1.ListUsersInSessionResponse
-	24, // 67: headless.v1.HeadlessControlService.KickUser:output_type -> headless.v1.KickUserResponse
-	26, // 68: headless.v1.HeadlessControlService.BanUser:output_type -> headless.v1.BanUserResponse
-	6,  // 69: headless.v1.HeadlessControlService.GetHostSettings:output_type -> headless.v1.GetHostSettingsResponse
-	8,  // 70: headless.v1.HeadlessControlService.UpdateHostSettings:output_type -> headless.v1.UpdateHostSettingsResponse
-	10, // 71: headless.v1.HeadlessControlService.AllowHostAccess:output_type -> headless.v1.AllowHostAccessResponse
-	12, // 72: headless.v1.HeadlessControlService.DenyHostAccess:output_type -> headless.v1.DenyHostAccessResponse
-	4,  // 73: headless.v1.HeadlessControlService.GetStartupConfigToRestore:output_type -> headless.v1.GetStartupConfigToRestoreResponse
-	30, // 74: headless.v1.HeadlessControlService.GetAccountInfo:output_type -> headless.v1.GetAccountInfoResponse
-	32, // 75: headless.v1.HeadlessControlService.FetchWorldInfo:output_type -> headless.v1.FetchWorldInfoResponse
-	28, // 76: headless.v1.HeadlessControlService.SearchUserInfo:output_type -> headless.v1.SearchUserInfoResponse
-	22, // 77: headless.v1.HeadlessControlService.GetFriendRequests:output_type -> headless.v1.GetFriendRequestsResponse
-	20, // 78: headless.v1.HeadlessControlService.AcceptFriendRequests:output_type -> headless.v1.AcceptFriendRequestsResponse
-	14, // 79: headless.v1.HeadlessControlService.ListContacts:output_type -> headless.v1.ListContactsResponse
-	16, // 80: headless.v1.HeadlessControlService.GetContactMessages:output_type -> headless.v1.GetContactMessagesResponse
-	18, // 81: headless.v1.HeadlessControlService.SendContactMessage:output_type -> headless.v1.SendContactMessageResponse
-	55, // [55:82] is the sub-list for method output_type
-	28, // [28:55] is the sub-list for method input_type
+	51, // 37: headless.v1.HeadlessControlService.AllowUserToJoin:input_type -> headless.v1.AllowUserToJoinRequest
+	53, // 38: headless.v1.HeadlessControlService.UpdateUserRole:input_type -> headless.v1.UpdateUserRoleRequest
+	55, // 39: headless.v1.HeadlessControlService.UpdateSessionParameters:input_type -> headless.v1.UpdateSessionParametersRequest
+	57, // 40: headless.v1.HeadlessControlService.ListUsersInSession:input_type -> headless.v1.ListUsersInSessionRequest
+	23, // 41: headless.v1.HeadlessControlService.KickUser:input_type -> headless.v1.KickUserRequest
+	25, // 42: headless.v1.HeadlessControlService.BanUser:input_type -> headless.v1.BanUserRequest
+	5,  // 43: headless.v1.HeadlessControlService.GetHostSettings:input_type -> headless.v1.GetHostSettingsRequest
+	7,  // 44: headless.v1.HeadlessControlService.UpdateHostSettings:input_type -> headless.v1.UpdateHostSettingsRequest
+	9,  // 45: headless.v1.HeadlessControlService.AllowHostAccess:input_type -> headless.v1.AllowHostAccessRequest
+	11, // 46: headless.v1.HeadlessControlService.DenyHostAccess:input_type -> headless.v1.DenyHostAccessRequest
+	3,  // 47: headless.v1.HeadlessControlService.GetStartupConfigToRestore:input_type -> headless.v1.GetStartupConfigToRestoreRequest
+	29, // 48: headless.v1.HeadlessControlService.GetAccountInfo:input_type -> headless.v1.GetAccountInfoRequest
+	31, // 49: headless.v1.HeadlessControlService.FetchWorldInfo:input_type -> headless.v1.FetchWorldInfoRequest
+	27, // 50: headless.v1.HeadlessControlService.SearchUserInfo:input_type -> headless.v1.SearchUserInfoRequest
+	21, // 51: headless.v1.HeadlessControlService.GetFriendRequests:input_type -> headless.v1.GetFriendRequestsRequest
+	19, // 52: headless.v1.HeadlessControlService.AcceptFriendRequests:input_type -> headless.v1.AcceptFriendRequestsRequest
+	13, // 53: headless.v1.HeadlessControlService.ListContacts:input_type -> headless.v1.ListContactsRequest
+	15, // 54: headless.v1.HeadlessControlService.GetContactMessages:input_type -> headless.v1.GetContactMessagesRequest
+	17, // 55: headless.v1.HeadlessControlService.SendContactMessage:input_type -> headless.v1.SendContactMessageRequest
+	34, // 56: headless.v1.HeadlessControlService.GetAbout:output_type -> headless.v1.GetAboutResponse
+	36, // 57: headless.v1.HeadlessControlService.GetStatus:output_type -> headless.v1.GetStatusResponse
+	38, // 58: headless.v1.HeadlessControlService.Shutdown:output_type -> headless.v1.ShutdownResponse
+	40, // 59: headless.v1.HeadlessControlService.ListSessions:output_type -> headless.v1.ListSessionsResponse
+	42, // 60: headless.v1.HeadlessControlService.GetSession:output_type -> headless.v1.GetSessionResponse
+	44, // 61: headless.v1.HeadlessControlService.StartWorld:output_type -> headless.v1.StartWorldResponse
+	46, // 62: headless.v1.HeadlessControlService.StopSession:output_type -> headless.v1.StopSessionResponse
+	48, // 63: headless.v1.HeadlessControlService.SaveSessionWorld:output_type -> headless.v1.SaveSessionWorldResponse
+	50, // 64: headless.v1.HeadlessControlService.InviteUser:output_type -> headless.v1.InviteUserResponse
+	52, // 65: headless.v1.HeadlessControlService.AllowUserToJoin:output_type -> headless.v1.AllowUserToJoinResponse
+	54, // 66: headless.v1.HeadlessControlService.UpdateUserRole:output_type -> headless.v1.UpdateUserRoleResponse
+	56, // 67: headless.v1.HeadlessControlService.UpdateSessionParameters:output_type -> headless.v1.UpdateSessionParametersResponse
+	58, // 68: headless.v1.HeadlessControlService.ListUsersInSession:output_type -> headless.v1.ListUsersInSessionResponse
+	24, // 69: headless.v1.HeadlessControlService.KickUser:output_type -> headless.v1.KickUserResponse
+	26, // 70: headless.v1.HeadlessControlService.BanUser:output_type -> headless.v1.BanUserResponse
+	6,  // 71: headless.v1.HeadlessControlService.GetHostSettings:output_type -> headless.v1.GetHostSettingsResponse
+	8,  // 72: headless.v1.HeadlessControlService.UpdateHostSettings:output_type -> headless.v1.UpdateHostSettingsResponse
+	10, // 73: headless.v1.HeadlessControlService.AllowHostAccess:output_type -> headless.v1.AllowHostAccessResponse
+	12, // 74: headless.v1.HeadlessControlService.DenyHostAccess:output_type -> headless.v1.DenyHostAccessResponse
+	4,  // 75: headless.v1.HeadlessControlService.GetStartupConfigToRestore:output_type -> headless.v1.GetStartupConfigToRestoreResponse
+	30, // 76: headless.v1.HeadlessControlService.GetAccountInfo:output_type -> headless.v1.GetAccountInfoResponse
+	32, // 77: headless.v1.HeadlessControlService.FetchWorldInfo:output_type -> headless.v1.FetchWorldInfoResponse
+	28, // 78: headless.v1.HeadlessControlService.SearchUserInfo:output_type -> headless.v1.SearchUserInfoResponse
+	22, // 79: headless.v1.HeadlessControlService.GetFriendRequests:output_type -> headless.v1.GetFriendRequestsResponse
+	20, // 80: headless.v1.HeadlessControlService.AcceptFriendRequests:output_type -> headless.v1.AcceptFriendRequestsResponse
+	14, // 81: headless.v1.HeadlessControlService.ListContacts:output_type -> headless.v1.ListContactsResponse
+	16, // 82: headless.v1.HeadlessControlService.GetContactMessages:output_type -> headless.v1.GetContactMessagesResponse
+	18, // 83: headless.v1.HeadlessControlService.SendContactMessage:output_type -> headless.v1.SendContactMessageResponse
+	56, // [56:84] is the sub-list for method output_type
+	28, // [28:56] is the sub-list for method input_type
 	28, // [28:28] is the sub-list for extension type_name
 	28, // [28:28] is the sub-list for extension extendee
 	0,  // [0:28] is the sub-list for field type_name
@@ -4618,25 +4734,25 @@ func file_headless_v1_headless_proto_init() {
 		(*InviteUserRequest_UserId)(nil),
 		(*InviteUserRequest_UserName)(nil),
 	}
-	file_headless_v1_headless_proto_msgTypes[48].OneofWrappers = []any{
+	file_headless_v1_headless_proto_msgTypes[50].OneofWrappers = []any{
 		(*UpdateUserRoleRequest_UserId)(nil),
 		(*UpdateUserRoleRequest_UserName)(nil),
 	}
-	file_headless_v1_headless_proto_msgTypes[50].OneofWrappers = []any{}
-	file_headless_v1_headless_proto_msgTypes[56].OneofWrappers = []any{}
-	file_headless_v1_headless_proto_msgTypes[58].OneofWrappers = []any{
+	file_headless_v1_headless_proto_msgTypes[52].OneofWrappers = []any{}
+	file_headless_v1_headless_proto_msgTypes[58].OneofWrappers = []any{}
+	file_headless_v1_headless_proto_msgTypes[60].OneofWrappers = []any{
 		(*WorldStartupParameters_LoadWorldUrl)(nil),
 		(*WorldStartupParameters_LoadWorldPresetName)(nil),
 	}
-	file_headless_v1_headless_proto_msgTypes[59].OneofWrappers = []any{}
 	file_headless_v1_headless_proto_msgTypes[61].OneofWrappers = []any{}
+	file_headless_v1_headless_proto_msgTypes[63].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_headless_v1_headless_proto_rawDesc), len(file_headless_v1_headless_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   63,
+			NumMessages:   65,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

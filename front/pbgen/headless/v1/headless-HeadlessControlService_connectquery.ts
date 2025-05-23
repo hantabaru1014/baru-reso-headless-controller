@@ -50,6 +50,11 @@ export const saveSessionWorld = HeadlessControlService.method.saveSessionWorld;
 export const inviteUser = HeadlessControlService.method.inviteUser;
 
 /**
+ * @generated from rpc headless.v1.HeadlessControlService.AllowUserToJoin
+ */
+export const allowUserToJoin = HeadlessControlService.method.allowUserToJoin;
+
+/**
  * @generated from rpc headless.v1.HeadlessControlService.UpdateUserRole
  */
 export const updateUserRole = HeadlessControlService.method.updateUserRole;

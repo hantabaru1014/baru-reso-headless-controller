@@ -28,6 +28,7 @@ const (
 	HeadlessControlService_StopSession_FullMethodName               = "/headless.v1.HeadlessControlService/StopSession"
 	HeadlessControlService_SaveSessionWorld_FullMethodName          = "/headless.v1.HeadlessControlService/SaveSessionWorld"
 	HeadlessControlService_InviteUser_FullMethodName                = "/headless.v1.HeadlessControlService/InviteUser"
+	HeadlessControlService_AllowUserToJoin_FullMethodName           = "/headless.v1.HeadlessControlService/AllowUserToJoin"
 	HeadlessControlService_UpdateUserRole_FullMethodName            = "/headless.v1.HeadlessControlService/UpdateUserRole"
 	HeadlessControlService_UpdateSessionParameters_FullMethodName   = "/headless.v1.HeadlessControlService/UpdateSessionParameters"
 	HeadlessControlService_ListUsersInSession_FullMethodName        = "/headless.v1.HeadlessControlService/ListUsersInSession"
@@ -61,6 +62,7 @@ type HeadlessControlServiceClient interface {
 	StopSession(ctx context.Context, in *StopSessionRequest, opts ...grpc.CallOption) (*StopSessionResponse, error)
 	SaveSessionWorld(ctx context.Context, in *SaveSessionWorldRequest, opts ...grpc.CallOption) (*SaveSessionWorldResponse, error)
 	InviteUser(ctx context.Context, in *InviteUserRequest, opts ...grpc.CallOption) (*InviteUserResponse, error)
+	AllowUserToJoin(ctx context.Context, in *AllowUserToJoinRequest, opts ...grpc.CallOption) (*AllowUserToJoinResponse, error)
 	UpdateUserRole(ctx context.Context, in *UpdateUserRoleRequest, opts ...grpc.CallOption) (*UpdateUserRoleResponse, error)
 	UpdateSessionParameters(ctx context.Context, in *UpdateSessionParametersRequest, opts ...grpc.CallOption) (*UpdateSessionParametersResponse, error)
 	ListUsersInSession(ctx context.Context, in *ListUsersInSessionRequest, opts ...grpc.CallOption) (*ListUsersInSessionResponse, error)
@@ -174,6 +176,16 @@ func (c *headlessControlServiceClient) InviteUser(ctx context.Context, in *Invit
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(InviteUserResponse)
 	err := c.cc.Invoke(ctx, HeadlessControlService_InviteUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) AllowUserToJoin(ctx context.Context, in *AllowUserToJoinRequest, opts ...grpc.CallOption) (*AllowUserToJoinResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AllowUserToJoinResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_AllowUserToJoin_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -373,6 +385,7 @@ type HeadlessControlServiceServer interface {
 	StopSession(context.Context, *StopSessionRequest) (*StopSessionResponse, error)
 	SaveSessionWorld(context.Context, *SaveSessionWorldRequest) (*SaveSessionWorldResponse, error)
 	InviteUser(context.Context, *InviteUserRequest) (*InviteUserResponse, error)
+	AllowUserToJoin(context.Context, *AllowUserToJoinRequest) (*AllowUserToJoinResponse, error)
 	UpdateUserRole(context.Context, *UpdateUserRoleRequest) (*UpdateUserRoleResponse, error)
 	UpdateSessionParameters(context.Context, *UpdateSessionParametersRequest) (*UpdateSessionParametersResponse, error)
 	ListUsersInSession(context.Context, *ListUsersInSessionRequest) (*ListUsersInSessionResponse, error)
@@ -428,6 +441,9 @@ func (UnimplementedHeadlessControlServiceServer) SaveSessionWorld(context.Contex
 }
 func (UnimplementedHeadlessControlServiceServer) InviteUser(context.Context, *InviteUserRequest) (*InviteUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InviteUser not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) AllowUserToJoin(context.Context, *AllowUserToJoinRequest) (*AllowUserToJoinResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AllowUserToJoin not implemented")
 }
 func (UnimplementedHeadlessControlServiceServer) UpdateUserRole(context.Context, *UpdateUserRoleRequest) (*UpdateUserRoleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateUserRole not implemented")
@@ -663,6 +679,24 @@ func _HeadlessControlService_InviteUser_Handler(srv interface{}, ctx context.Con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(HeadlessControlServiceServer).InviteUser(ctx, req.(*InviteUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_AllowUserToJoin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AllowUserToJoinRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).AllowUserToJoin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_AllowUserToJoin_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).AllowUserToJoin(ctx, req.(*AllowUserToJoinRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1033,6 +1067,10 @@ var HeadlessControlService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "InviteUser",
 			Handler:    _HeadlessControlService_InviteUser_Handler,
+		},
+		{
+			MethodName: "AllowUserToJoin",
+			Handler:    _HeadlessControlService_AllowUserToJoin_Handler,
 		},
 		{
 			MethodName: "UpdateUserRole",
