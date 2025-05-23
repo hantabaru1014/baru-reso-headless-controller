@@ -60,6 +60,9 @@ const (
 	// HeadlessControlServiceInviteUserProcedure is the fully-qualified name of the
 	// HeadlessControlService's InviteUser RPC.
 	HeadlessControlServiceInviteUserProcedure = "/headless.v1.HeadlessControlService/InviteUser"
+	// HeadlessControlServiceAllowUserToJoinProcedure is the fully-qualified name of the
+	// HeadlessControlService's AllowUserToJoin RPC.
+	HeadlessControlServiceAllowUserToJoinProcedure = "/headless.v1.HeadlessControlService/AllowUserToJoin"
 	// HeadlessControlServiceUpdateUserRoleProcedure is the fully-qualified name of the
 	// HeadlessControlService's UpdateUserRole RPC.
 	HeadlessControlServiceUpdateUserRoleProcedure = "/headless.v1.HeadlessControlService/UpdateUserRole"
@@ -127,6 +130,7 @@ type HeadlessControlServiceClient interface {
 	StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error)
 	SaveSessionWorld(context.Context, *connect.Request[v1.SaveSessionWorldRequest]) (*connect.Response[v1.SaveSessionWorldResponse], error)
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
+	AllowUserToJoin(context.Context, *connect.Request[v1.AllowUserToJoinRequest]) (*connect.Response[v1.AllowUserToJoinResponse], error)
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	UpdateSessionParameters(context.Context, *connect.Request[v1.UpdateSessionParametersRequest]) (*connect.Response[v1.UpdateSessionParametersResponse], error)
 	ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error)
@@ -211,6 +215,12 @@ func NewHeadlessControlServiceClient(httpClient connect.HTTPClient, baseURL stri
 			httpClient,
 			baseURL+HeadlessControlServiceInviteUserProcedure,
 			connect.WithSchema(headlessControlServiceMethods.ByName("InviteUser")),
+			connect.WithClientOptions(opts...),
+		),
+		allowUserToJoin: connect.NewClient[v1.AllowUserToJoinRequest, v1.AllowUserToJoinResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceAllowUserToJoinProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("AllowUserToJoin")),
 			connect.WithClientOptions(opts...),
 		),
 		updateUserRole: connect.NewClient[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse](
@@ -335,6 +345,7 @@ type headlessControlServiceClient struct {
 	stopSession               *connect.Client[v1.StopSessionRequest, v1.StopSessionResponse]
 	saveSessionWorld          *connect.Client[v1.SaveSessionWorldRequest, v1.SaveSessionWorldResponse]
 	inviteUser                *connect.Client[v1.InviteUserRequest, v1.InviteUserResponse]
+	allowUserToJoin           *connect.Client[v1.AllowUserToJoinRequest, v1.AllowUserToJoinResponse]
 	updateUserRole            *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
 	updateSessionParameters   *connect.Client[v1.UpdateSessionParametersRequest, v1.UpdateSessionParametersResponse]
 	listUsersInSession        *connect.Client[v1.ListUsersInSessionRequest, v1.ListUsersInSessionResponse]
@@ -398,6 +409,11 @@ func (c *headlessControlServiceClient) SaveSessionWorld(ctx context.Context, req
 // InviteUser calls headless.v1.HeadlessControlService.InviteUser.
 func (c *headlessControlServiceClient) InviteUser(ctx context.Context, req *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error) {
 	return c.inviteUser.CallUnary(ctx, req)
+}
+
+// AllowUserToJoin calls headless.v1.HeadlessControlService.AllowUserToJoin.
+func (c *headlessControlServiceClient) AllowUserToJoin(ctx context.Context, req *connect.Request[v1.AllowUserToJoinRequest]) (*connect.Response[v1.AllowUserToJoinResponse], error) {
+	return c.allowUserToJoin.CallUnary(ctx, req)
 }
 
 // UpdateUserRole calls headless.v1.HeadlessControlService.UpdateUserRole.
@@ -502,6 +518,7 @@ type HeadlessControlServiceHandler interface {
 	StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error)
 	SaveSessionWorld(context.Context, *connect.Request[v1.SaveSessionWorldRequest]) (*connect.Response[v1.SaveSessionWorldResponse], error)
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
+	AllowUserToJoin(context.Context, *connect.Request[v1.AllowUserToJoinRequest]) (*connect.Response[v1.AllowUserToJoinResponse], error)
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	UpdateSessionParameters(context.Context, *connect.Request[v1.UpdateSessionParametersRequest]) (*connect.Response[v1.UpdateSessionParametersResponse], error)
 	ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error)
@@ -582,6 +599,12 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 		HeadlessControlServiceInviteUserProcedure,
 		svc.InviteUser,
 		connect.WithSchema(headlessControlServiceMethods.ByName("InviteUser")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceAllowUserToJoinHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceAllowUserToJoinProcedure,
+		svc.AllowUserToJoin,
+		connect.WithSchema(headlessControlServiceMethods.ByName("AllowUserToJoin")),
 		connect.WithHandlerOptions(opts...),
 	)
 	headlessControlServiceUpdateUserRoleHandler := connect.NewUnaryHandler(
@@ -712,6 +735,8 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 			headlessControlServiceSaveSessionWorldHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceInviteUserProcedure:
 			headlessControlServiceInviteUserHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceAllowUserToJoinProcedure:
+			headlessControlServiceAllowUserToJoinHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceUpdateUserRoleProcedure:
 			headlessControlServiceUpdateUserRoleHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceUpdateSessionParametersProcedure:
@@ -791,6 +816,10 @@ func (UnimplementedHeadlessControlServiceHandler) SaveSessionWorld(context.Conte
 
 func (UnimplementedHeadlessControlServiceHandler) InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.InviteUser is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) AllowUserToJoin(context.Context, *connect.Request[v1.AllowUserToJoinRequest]) (*connect.Response[v1.AllowUserToJoinResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.AllowUserToJoin is not implemented"))
 }
 
 func (UnimplementedHeadlessControlServiceHandler) UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error) {

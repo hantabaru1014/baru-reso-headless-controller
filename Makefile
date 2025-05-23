@@ -1,5 +1,5 @@
 
-BUF_VERSION := v1.35.1
+BUF_VERSION := v1.54.0
 BIN_DIR := $(shell pwd)/bin
 
 # tools
