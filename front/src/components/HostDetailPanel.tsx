@@ -226,6 +226,7 @@ function AutoSpawnItemsDialog({
                 try {
                   await updateHost({
                     hostId,
+                    updateAutoSpawnItems: true,
                     autoSpawnItems: [...items, newItemUri],
                   });
                   setNewItemUri("");
@@ -259,6 +260,7 @@ function AutoSpawnItemsDialog({
                       try {
                         await updateHost({
                           hostId,
+                          updateAutoSpawnItems: true,
                           autoSpawnItems: items.filter((i) => i !== item),
                         });
                         setItems((prev) => prev.filter((i) => i !== item));

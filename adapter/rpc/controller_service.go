@@ -224,6 +224,7 @@ func (c *ControllerService) UpdateHeadlessHostSettings(ctx context.Context, req 
 		hasUpdateReq = true
 	}
 	if req.Msg.UpdateAutoSpawnItems {
+		updateReq.UpdateAutoSpawnItems = true
 		updateReq.AutoSpawnItems = req.Msg.GetAutoSpawnItems()
 		hasUpdateReq = true
 	}
