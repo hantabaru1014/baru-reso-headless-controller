@@ -169,7 +169,7 @@ func (c *ControllerService) RestartHeadlessHost(ctx context.Context, req *connec
 	} else if req.Msg.GetWithImageTag() != "" {
 		newTag = req.Msg.WithImageTag
 	}
-	timeout := 2 * 60
+	timeout := 10 * 60
 	if req.Msg.TimeoutSeconds != nil {
 		timeout = int(req.Msg.GetTimeoutSeconds())
 	}
