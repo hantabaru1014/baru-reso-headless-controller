@@ -132,7 +132,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 	}
 
 	var tagToUse *string
-	if newTag != nil && *newTag == "" {
+	if newTag != nil && *newTag != "" {
 		if *newTag == "latestRelease" {
 			tags, err := hhuc.hhrepo.ListContainerTags(ctx, nil)
 			if err != nil {
