@@ -2,11 +2,13 @@ package rpc
 
 import (
 	"context"
-	"errors"
 	"net/http"
+
+	"github.com/go-errors/errors"
 
 	"connectrpc.com/connect"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/logging"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
@@ -22,12 +24,12 @@ type UserService struct {
 func (u *UserService) RefreshToken(ctx context.Context, req *connect.Request[hdlctrlv1.RefreshTokenRequest]) (*connect.Response[hdlctrlv1.TokenSetResponse], error) {
 	claims, err := auth.ValidateToken(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 
 	token, refreshToken, err := auth.GenerateTokensWithDefaultTTL(*claims)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 	res := connect.NewResponse(&hdlctrlv1.TokenSetResponse{
 		Token:        token,
@@ -50,7 +52,7 @@ func (u *UserService) GetTokenByPassword(ctx context.Context, req *connect.Reque
 		IconUrl:    user.IconUrl.String,
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 	res := connect.NewResponse(&hdlctrlv1.TokenSetResponse{
 		Token:        token,
@@ -66,5 +68,6 @@ func NewUserService(uu *usecase.UserUsecase) *UserService {
 }
 
 func (u *UserService) NewHandler() (string, http.Handler) {
-	return hdlctrlv1connect.NewUserServiceHandler(u)
+	interceptors := connect.WithInterceptors(logging.NewErrorLogInterceptor())
+	return hdlctrlv1connect.NewUserServiceHandler(u, interceptors)
 }

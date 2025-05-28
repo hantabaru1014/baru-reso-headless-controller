@@ -1,5 +1,7 @@
 package entity
 
+import headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
+
 type HeadlessHostStatus int32
 
 const (
@@ -40,7 +42,6 @@ type HeadlessHost struct {
 	ID                string
 	Name              string
 	Status            HeadlessHostStatus
-	Address           string
 	ResoniteVersion   string
 	AppVersion        string
 	AccountId         string
@@ -48,6 +49,7 @@ type HeadlessHost struct {
 	StorageQuotaBytes int64
 	StorageUsedBytes  int64
 	Fps               float32
+	StartupConfig     *headlessv1.StartupConfig
 }
 
 type HeadlessHostList []*HeadlessHost

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
@@ -25,14 +26,14 @@ func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.Headles
 func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId *string, params *headlessv1.WorldStartupParameters, memo *string) (*entity.Session, error) {
 	client, err := u.hostRepo.GetRpcClient(ctx, hostId)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 
 	resp, err := client.StartWorld(ctx, &headlessv1.StartWorldRequest{
 		Parameters: params,
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 
 	startedAt := resp.OpenedSession.StartedAt.AsTime()
@@ -51,7 +52,7 @@ func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId
 	}
 	err = u.sessionRepo.Upsert(ctx, session)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 
 	return session, nil
@@ -60,16 +61,16 @@ func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId
 func (u *SessionUsecase) StopSession(ctx context.Context, id string) error {
 	s, err := u.sessionRepo.Get(ctx, id)
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
 	client, err := u.hostRepo.GetRpcClient(ctx, s.HostID)
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
 
 	hdlSession, err := client.GetSession(ctx, &headlessv1.GetSessionRequest{SessionId: id})
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
 	if hdlSession.Session.WorldUrl != "" {
 		s.StartupParameters.LoadWorld = &headlessv1.WorldStartupParameters_LoadWorldUrl{
@@ -79,7 +80,7 @@ func (u *SessionUsecase) StopSession(ctx context.Context, id string) error {
 
 	_, err = client.StopSession(ctx, &headlessv1.StopSessionRequest{SessionId: id})
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
 
 	now := time.Now()
@@ -92,7 +93,7 @@ func (u *SessionUsecase) StopSession(ctx context.Context, id string) error {
 func (u *SessionUsecase) GetSession(ctx context.Context, id string) (*entity.Session, error) {
 	dbSession, err := u.sessionRepo.Get(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 	client, err := u.hostRepo.GetRpcClient(ctx, dbSession.HostID)
 	if err != nil {
@@ -117,7 +118,7 @@ func (u *SessionUsecase) GetSession(ctx context.Context, id string) (*entity.Ses
 		dbSession.Status = entity.SessionStatus_RUNNING
 		err = u.sessionRepo.UpdateStatus(ctx, id, dbSession.Status)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, 0)
 		}
 	}
 
@@ -132,11 +133,11 @@ type SearchSessionsFilter struct {
 func (u *SessionUsecase) getHostSessions(ctx context.Context, hostId string) ([]*headlessv1.Session, error) {
 	client, err := u.hostRepo.GetRpcClient(ctx, hostId)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 	resp, err := client.ListSessions(ctx, &headlessv1.ListSessionsRequest{})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 
 	return resp.Sessions, nil
@@ -147,7 +148,7 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 	if filter.Status != nil {
 		s, err := u.sessionRepo.ListByStatus(ctx, *filter.Status)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, 0)
 		}
 		dbSessions = s
 		if *filter.Status != entity.SessionStatus_RUNNING {
@@ -156,7 +157,7 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 	} else {
 		s, err := u.sessionRepo.ListAll(ctx)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, 0)
 		}
 		dbSessions = s
 	}
@@ -184,7 +185,7 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 	} else {
 		hosts, err := u.hostRepo.ListAll(ctx)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, 0)
 		}
 		for _, h := range hosts {
 			ss, err := u.getHostSessions(ctx, h.ID)
@@ -293,22 +294,22 @@ func updateStartupParamsByUpdateRequest(
 func (u *SessionUsecase) UpdateSessionParameters(ctx context.Context, id string, params *headlessv1.UpdateSessionParametersRequest) error {
 	s, err := u.sessionRepo.Get(ctx, id)
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
 	client, err := u.hostRepo.GetRpcClient(ctx, s.HostID)
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
 	_, err = client.UpdateSessionParameters(ctx, params)
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
 	newSession, err := client.GetSession(ctx, &headlessv1.GetSessionRequest{SessionId: id})
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
 	if err := updateStartupParamsByUpdateRequest(s.StartupParameters, params); err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
 	s.CurrentState = newSession.Session
 	s.Name = newSession.Session.Name

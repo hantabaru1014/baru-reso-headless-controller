@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 
+	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -21,7 +22,7 @@ func NewUserUsecase(queries *db.Queries) *UserUsecase {
 func (u *UserUsecase) CreateUser(ctx context.Context, id, password, resoniteId string) error {
 	passwordHash, err := auth.HashPassword(password)
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
 	return u.queries.CreateUser(ctx, db.CreateUserParams{
 		ID:         id,
@@ -34,11 +35,11 @@ func (u *UserUsecase) CreateUser(ctx context.Context, id, password, resoniteId s
 func (u *UserUsecase) GetUserWithPassword(ctx context.Context, id, password string) (*db.User, error) {
 	user, err := u.queries.GetUser(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 	err = auth.ComparePasswordAndHash(password, user.Password)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 
 	return &user, nil

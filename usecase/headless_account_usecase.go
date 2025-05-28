@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 
+	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
@@ -22,7 +23,7 @@ func NewHeadlessAccountUsecase(queries *db.Queries) *HeadlessAccountUsecase {
 func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, resoniteID, credential, password string) error {
 	userInfo, err := skyfrost.FetchUserInfo(ctx, resoniteID)
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
 	return u.queries.CreateHeadlessAccount(ctx, db.CreateHeadlessAccountParams{
 		ResoniteID:      resoniteID,
@@ -35,7 +36,7 @@ func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, reso
 func (u *HeadlessAccountUsecase) ListHeadlessAccounts(ctx context.Context) ([]*entity.HeadlessAccount, error) {
 	list, err := u.queries.ListHeadlessAccounts(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 
 	res := make([]*entity.HeadlessAccount, 0, len(list))
@@ -60,7 +61,7 @@ func (u *HeadlessAccountUsecase) ListHeadlessAccounts(ctx context.Context) ([]*e
 func (u *HeadlessAccountUsecase) GetHeadlessAccount(ctx context.Context, resoniteID string) (*entity.HeadlessAccount, error) {
 	v, err := u.queries.GetHeadlessAccount(ctx, resoniteID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 
 	e := entity.HeadlessAccount{

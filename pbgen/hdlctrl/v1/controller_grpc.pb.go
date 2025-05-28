@@ -25,7 +25,6 @@ const (
 	ControllerService_GetHeadlessHostLogs_FullMethodName        = "/hdlctrl.v1.ControllerService/GetHeadlessHostLogs"
 	ControllerService_ShutdownHeadlessHost_FullMethodName       = "/hdlctrl.v1.ControllerService/ShutdownHeadlessHost"
 	ControllerService_UpdateHeadlessHostSettings_FullMethodName = "/hdlctrl.v1.ControllerService/UpdateHeadlessHostSettings"
-	ControllerService_PullLatestHostImage_FullMethodName        = "/hdlctrl.v1.ControllerService/PullLatestHostImage"
 	ControllerService_RestartHeadlessHost_FullMethodName        = "/hdlctrl.v1.ControllerService/RestartHeadlessHost"
 	ControllerService_StartHeadlessHost_FullMethodName          = "/hdlctrl.v1.ControllerService/StartHeadlessHost"
 	ControllerService_AllowHostAccess_FullMethodName            = "/hdlctrl.v1.ControllerService/AllowHostAccess"
@@ -62,7 +61,6 @@ type ControllerServiceClient interface {
 	GetHeadlessHostLogs(ctx context.Context, in *GetHeadlessHostLogsRequest, opts ...grpc.CallOption) (*GetHeadlessHostLogsResponse, error)
 	ShutdownHeadlessHost(ctx context.Context, in *ShutdownHeadlessHostRequest, opts ...grpc.CallOption) (*ShutdownHeadlessHostResponse, error)
 	UpdateHeadlessHostSettings(ctx context.Context, in *UpdateHeadlessHostSettingsRequest, opts ...grpc.CallOption) (*UpdateHeadlessHostSettingsResponse, error)
-	PullLatestHostImage(ctx context.Context, in *PullLatestHostImageRequest, opts ...grpc.CallOption) (*PullLatestHostImageResponse, error)
 	RestartHeadlessHost(ctx context.Context, in *RestartHeadlessHostRequest, opts ...grpc.CallOption) (*RestartHeadlessHostResponse, error)
 	StartHeadlessHost(ctx context.Context, in *StartHeadlessHostRequest, opts ...grpc.CallOption) (*StartHeadlessHostResponse, error)
 	AllowHostAccess(ctx context.Context, in *AllowHostAccessRequest, opts ...grpc.CallOption) (*AllowHostAccessResponse, error)
@@ -144,16 +142,6 @@ func (c *controllerServiceClient) UpdateHeadlessHostSettings(ctx context.Context
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UpdateHeadlessHostSettingsResponse)
 	err := c.cc.Invoke(ctx, ControllerService_UpdateHeadlessHostSettings_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *controllerServiceClient) PullLatestHostImage(ctx context.Context, in *PullLatestHostImageRequest, opts ...grpc.CallOption) (*PullLatestHostImageResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(PullLatestHostImageResponse)
-	err := c.cc.Invoke(ctx, ControllerService_PullLatestHostImage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -410,7 +398,6 @@ type ControllerServiceServer interface {
 	GetHeadlessHostLogs(context.Context, *GetHeadlessHostLogsRequest) (*GetHeadlessHostLogsResponse, error)
 	ShutdownHeadlessHost(context.Context, *ShutdownHeadlessHostRequest) (*ShutdownHeadlessHostResponse, error)
 	UpdateHeadlessHostSettings(context.Context, *UpdateHeadlessHostSettingsRequest) (*UpdateHeadlessHostSettingsResponse, error)
-	PullLatestHostImage(context.Context, *PullLatestHostImageRequest) (*PullLatestHostImageResponse, error)
 	RestartHeadlessHost(context.Context, *RestartHeadlessHostRequest) (*RestartHeadlessHostResponse, error)
 	StartHeadlessHost(context.Context, *StartHeadlessHostRequest) (*StartHeadlessHostResponse, error)
 	AllowHostAccess(context.Context, *AllowHostAccessRequest) (*AllowHostAccessResponse, error)
@@ -462,9 +449,6 @@ func (UnimplementedControllerServiceServer) ShutdownHeadlessHost(context.Context
 }
 func (UnimplementedControllerServiceServer) UpdateHeadlessHostSettings(context.Context, *UpdateHeadlessHostSettingsRequest) (*UpdateHeadlessHostSettingsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateHeadlessHostSettings not implemented")
-}
-func (UnimplementedControllerServiceServer) PullLatestHostImage(context.Context, *PullLatestHostImageRequest) (*PullLatestHostImageResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PullLatestHostImage not implemented")
 }
 func (UnimplementedControllerServiceServer) RestartHeadlessHost(context.Context, *RestartHeadlessHostRequest) (*RestartHeadlessHostResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RestartHeadlessHost not implemented")
@@ -645,24 +629,6 @@ func _ControllerService_UpdateHeadlessHostSettings_Handler(srv interface{}, ctx 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).UpdateHeadlessHostSettings(ctx, req.(*UpdateHeadlessHostSettingsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ControllerService_PullLatestHostImage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PullLatestHostImageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ControllerServiceServer).PullLatestHostImage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ControllerService_PullLatestHostImage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ControllerServiceServer).PullLatestHostImage(ctx, req.(*PullLatestHostImageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1125,10 +1091,6 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateHeadlessHostSettings",
 			Handler:    _ControllerService_UpdateHeadlessHostSettings_Handler,
-		},
-		{
-			MethodName: "PullLatestHostImage",
-			Handler:    _ControllerService_PullLatestHostImage_Handler,
 		},
 		{
 			MethodName: "RestartHeadlessHost",

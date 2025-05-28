@@ -10,6 +10,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/converter"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/logging"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
@@ -39,7 +40,7 @@ func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.Session
 }
 
 func (c *ControllerService) NewHandler() (string, http.Handler) {
-	interceptors := connect.WithInterceptors(auth.NewAuthInterceptor())
+	interceptors := connect.WithInterceptors(logging.NewErrorLogInterceptor(), auth.NewAuthInterceptor())
 	return hdlctrlv1connect.NewControllerServiceHandler(c, interceptors)
 }
 
@@ -67,18 +68,21 @@ func (c *ControllerService) ListHeadlessHostImageTags(ctx context.Context, req *
 
 // StartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) StartHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.StartHeadlessHostRequest]) (*connect.Response[hdlctrlv1.StartHeadlessHostResponse], error) {
+	claims, err := auth.GetAuthClaimsFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
 	account, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.HeadlessAccountId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	hostId, err := c.hhuc.HeadlessHostStart(ctx, port.HeadlessHostStartParams{
-		Name:                      req.Msg.Name,
-		HeadlessAccountCredential: account.Credential,
-		HeadlessAccountPassword:   account.Password,
-		ContainerImageTag:         req.Msg.ImageTag,
-		StartupConfig:             req.Msg.StartupConfig,
-	})
+		Name:              req.Msg.Name,
+		HeadlessAccount:   *account,
+		ContainerImageTag: req.Msg.GetImageTag(),
+		StartupConfig:     req.Msg.StartupConfig,
+	}, &claims.UserID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -161,7 +165,6 @@ func (c *ControllerService) GetFriendRequests(ctx context.Context, req *connect.
 
 // RestartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) RestartHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.RestartHeadlessHostRequest]) (*connect.Response[hdlctrlv1.RestartHeadlessHostResponse], error) {
-	// TODO: うまい具合に非同期化する
 	var newTag *string
 	if req.Msg.WithUpdate {
 		str := "latestRelease"
@@ -173,26 +176,13 @@ func (c *ControllerService) RestartHeadlessHost(ctx context.Context, req *connec
 	if req.Msg.TimeoutSeconds != nil {
 		timeout = int(req.Msg.GetTimeoutSeconds())
 	}
-	newId, err := c.hhuc.HeadlessHostRestart(ctx, req.Msg.HostId, newTag, req.Msg.WithWorldRestart, timeout)
+	err := c.hhuc.HeadlessHostRestart(ctx, req.Msg.HostId, newTag, req.Msg.WithWorldRestart, timeout)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	res := connect.NewResponse(&hdlctrlv1.RestartHeadlessHostResponse{
-		NewHostId: &newId,
-	})
-	return res, nil
-}
-
-// PullLatestHostImage implements hdlctrlv1connect.ControllerServiceHandler.
-func (c *ControllerService) PullLatestHostImage(ctx context.Context, req *connect.Request[hdlctrlv1.PullLatestHostImageRequest]) (*connect.Response[hdlctrlv1.PullLatestHostImageResponse], error) {
-	logs, err := c.hhuc.PullLatestHostImage(ctx)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	res := connect.NewResponse(&hdlctrlv1.PullLatestHostImageResponse{
-		Logs: logs,
+		NewHostId: &req.Msg.HostId,
 	})
 	return res, nil
 }

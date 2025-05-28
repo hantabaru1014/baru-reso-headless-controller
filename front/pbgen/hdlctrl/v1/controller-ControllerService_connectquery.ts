@@ -32,11 +32,6 @@ export const shutdownHeadlessHost = ControllerService.method.shutdownHeadlessHos
 export const updateHeadlessHostSettings = ControllerService.method.updateHeadlessHostSettings;
 
 /**
- * @generated from rpc hdlctrl.v1.ControllerService.PullLatestHostImage
- */
-export const pullLatestHostImage = ControllerService.method.pullLatestHostImage;
-
-/**
  * @generated from rpc hdlctrl.v1.ControllerService.RestartHeadlessHost
  */
 export const restartHeadlessHost = ControllerService.method.restartHeadlessHost;
