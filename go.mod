@@ -10,8 +10,10 @@ require (
 )
 
 require (
+	github.com/dchest/uniuri v1.2.0
 	github.com/docker/docker v27.5.0+incompatible
 	github.com/go-co-op/gocron v1.37.0
+	github.com/go-errors/errors v1.5.1
 	github.com/golang-migrate/migrate/v4 v4.18.2
 	github.com/gorilla/mux v1.8.1
 	github.com/jackc/pgx/v5 v5.7.2

@@ -8,6 +8,7 @@ package app
 
 import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter"
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
@@ -24,13 +25,14 @@ func InitializeServer() *Server {
 	queries := db.NewQueries()
 	userUsecase := usecase.NewUserUsecase(queries)
 	userService := rpc.NewUserService(userUsecase)
-	headlessHostRepository := adapter.NewHeadlessHostRepository()
+	dockerHostConnector := hostconnector.NewDockerHostConnector()
+	headlessHostRepository := adapter.NewHeadlessHostRepository(queries, dockerHostConnector)
 	sessionRepository := adapter.NewSessionRepository(queries)
 	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository)
-	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase)
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries)
+	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
 	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase)
-	imageChecker := worker.NewImageChecker(headlessHostRepository, sessionUsecase)
+	imageChecker := worker.NewImageChecker(dockerHostConnector, sessionUsecase)
 	server := NewServer(userService, controllerService, imageChecker)
 	return server
 }

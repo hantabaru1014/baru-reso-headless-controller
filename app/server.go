@@ -7,6 +7,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 
+	"github.com/go-errors/errors"
 	"github.com/gorilla/mux"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
 	"github.com/hantabaru1014/baru-reso-headless-controller/front"
@@ -67,7 +68,7 @@ func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 	if len(frontUrl) > 0 {
 		rpURL, err := url.Parse(frontUrl)
 		if err != nil {
-			return err
+			return errors.Wrap(err, 0)
 		}
 		proxy := httputil.NewSingleHostReverseProxy(rpURL)
 		router.NotFoundHandler = proxy

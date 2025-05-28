@@ -8,19 +8,20 @@ import (
 	"time"
 
 	"github.com/go-co-op/gocron"
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
 
 type ImageChecker struct {
 	scheduler *gocron.Scheduler
-	hhrepo    port.HeadlessHostRepository
+	dc        *hostconnector.DockerHostConnector
 	suc       *usecase.SessionUsecase
 	interval  time.Duration
 	lastTag   *port.ContainerImage
 }
 
-func NewImageChecker(hhrepo port.HeadlessHostRepository, suc *usecase.SessionUsecase) *ImageChecker {
+func NewImageChecker(dc *hostconnector.DockerHostConnector, suc *usecase.SessionUsecase) *ImageChecker {
 	// 環境変数から設定を読み込む (秒単位)
 	interval := 15 * time.Second // デフォルトは15秒に1回
 	if envInterval := os.Getenv("IMAGE_CHECK_INTERVAL_SEC"); envInterval != "" {
@@ -31,7 +32,7 @@ func NewImageChecker(hhrepo port.HeadlessHostRepository, suc *usecase.SessionUse
 
 	return &ImageChecker{
 		scheduler: gocron.NewScheduler(time.UTC),
-		hhrepo:    hhrepo,
+		dc:        dc,
 		suc:       suc,
 		interval:  interval,
 		lastTag:   nil,
@@ -67,7 +68,7 @@ func (ic *ImageChecker) checkNewImages() {
 	if ic.lastTag != nil {
 		lastTag = &ic.lastTag.Tag
 	}
-	tags, err := ic.hhrepo.ListContainerTags(ctx, lastTag)
+	tags, err := ic.dc.ListContainerTags(ctx, lastTag)
 	if err != nil {
 		slog.Error("Failed to list container tags", "error", err)
 		return
@@ -89,7 +90,7 @@ func (ic *ImageChecker) checkNewImages() {
 		// 必要に応じて新しいイメージをプル
 		if os.Getenv("AUTO_PULL_NEW_IMAGE") == "true" {
 			slog.Info("Pulling latest container image", "tag", newestTag)
-			if _, err := ic.hhrepo.PullContainerImage(ctx, newestTag.Tag); err != nil {
+			if _, err := ic.dc.PullContainerImage(ctx, newestTag.Tag); err != nil {
 				slog.Error("Failed to pull container image", "tag", newestTag, "error", err)
 			} else {
 				slog.Info("Successfully pulled container image", "tag", newestTag)

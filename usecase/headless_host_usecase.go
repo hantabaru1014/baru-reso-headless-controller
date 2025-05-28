@@ -2,10 +2,10 @@ package usecase
 
 import (
 	"context"
-	"errors"
-	"os"
 	"slices"
 	"time"
+
+	"github.com/go-errors/errors"
 
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
@@ -16,42 +16,26 @@ type HeadlessHostUsecase struct {
 	hhrepo port.HeadlessHostRepository
 	srepo  port.SessionRepository
 	huc    *SessionUsecase
+	hauc   *HeadlessAccountUsecase
 }
 
-func NewHeadlessHostUsecase(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, huc *SessionUsecase) *HeadlessHostUsecase {
+func NewHeadlessHostUsecase(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, huc *SessionUsecase, hauc *HeadlessAccountUsecase) *HeadlessHostUsecase {
 	return &HeadlessHostUsecase{
 		hhrepo: hhrepo,
 		srepo:  srepo,
 		huc:    huc,
+		hauc:   hauc,
 	}
 }
 
-func (hhuc *HeadlessHostUsecase) HeadlessHostStart(ctx context.Context, params port.HeadlessHostStartParams) (string, error) {
-	if params.ContainerImageTag == nil {
-		tags, err := hhuc.hhrepo.ListContainerTags(ctx, nil)
-		if err != nil {
-			return "", err
-		}
-		var latestReleaseTag *string
-		for _, tag := range slices.Backward(tags) {
-			if !tag.IsPreRelease {
-				latestReleaseTag = &tag.Tag
-				break
-			}
-		}
-		if latestReleaseTag == nil {
-			return "", errors.New("no available container image tags (release version)")
-		}
-		params.ContainerImageTag = latestReleaseTag
-	}
-
-	return hhuc.hhrepo.Start(ctx, params)
+func (hhuc *HeadlessHostUsecase) HeadlessHostStart(ctx context.Context, params port.HeadlessHostStartParams, userId *string) (string, error) {
+	return hhuc.hhrepo.Start(ctx, port.HostConnectorType_DOCKER, params, userId)
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostList(ctx context.Context) (entity.HeadlessHostList, error) {
 	hosts, err := hhuc.hhrepo.ListAll(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 	return hosts, nil
 }
@@ -59,7 +43,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostList(ctx context.Context) (entity.H
 func (hhuc *HeadlessHostUsecase) HeadlessHostGet(ctx context.Context, id string) (*entity.HeadlessHost, error) {
 	host, err := hhuc.hhrepo.Find(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 	return host, nil
 }
@@ -67,11 +51,11 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostGet(ctx context.Context, id string)
 func (hhuc *HeadlessHostUsecase) HeadlessHostGetSettings(ctx context.Context, id string) (*entity.HeadlessHostSettings, error) {
 	cli, err := hhuc.hhrepo.GetRpcClient(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 	resp, err := cli.GetHostSettings(ctx, &headlessv1.GetHostSettingsRequest{})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 	settings := &entity.HeadlessHostSettings{
 		UniverseID:                  resp.UniverseId,
@@ -109,7 +93,7 @@ func (hhuc *HeadlessHostUsecase) markSessionsAsEnded(ctx context.Context, sessio
 		}
 		err := hhuc.srepo.Upsert(ctx, s)
 		if err != nil {
-			return err
+			return errors.Wrap(err, 0)
 		}
 	}
 	return nil
@@ -117,81 +101,67 @@ func (hhuc *HeadlessHostUsecase) markSessionsAsEnded(ctx context.Context, sessio
 
 // HeadlessHostRestart restarts the headless host with the specified ID.
 // If newTag is "latestRelease", it will use the latest release tag.
-func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id string, newTag *string, withWorldRestart bool, timeoutSeconds int) (string, error) {
+func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id string, newTag *string, withWorldRestart bool, timeoutSeconds int) error {
 	host, err := hhuc.hhrepo.Find(ctx, id)
 	if err != nil {
-		return "", err
+		return errors.Wrap(err, 0)
 	}
+
+	tagToUse := ""
+	if newTag == nil || *newTag == "" || *newTag == "latestRelease" {
+		tags, err := hhuc.hhrepo.ListContainerTags(ctx, nil)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+		if len(tags) == 0 {
+			return errors.New("no available container image tags")
+		}
+		for _, tag := range slices.Backward(tags) {
+			if !tag.IsPreRelease {
+				tagToUse = tag.Tag
+				break
+			}
+		}
+		if tagToUse == "" {
+			return errors.New("no available container image tags")
+		}
+	} else {
+		tagToUse = *newTag
+	}
+
+	account, err := hhuc.hauc.GetHeadlessAccount(ctx, host.AccountId)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
 	status := entity.SessionStatus_RUNNING
 	sessions, err := hhuc.huc.SearchSessions(ctx, SearchSessionsFilter{
 		HostID: &host.ID,
 		Status: &status,
 	})
 	if err != nil {
-		return "", err
+		return errors.Wrap(err, 0)
 	}
-
-	var tagToUse *string
-	if newTag != nil && *newTag != "" {
-		if *newTag == "latestRelease" {
-			tags, err := hhuc.hhrepo.ListContainerTags(ctx, nil)
-			if err != nil {
-				return "", err
-			}
-			if len(tags) == 0 {
-				return "", errors.New("no available container image tags")
-			}
-			for _, tag := range slices.Backward(tags) {
-				if !tag.IsPreRelease {
-					tagToUse = &tag.Tag
-					break
-				}
-			}
-			if tagToUse == nil {
-				return "", errors.New("no available container image tags")
-			}
-		} else {
-			tagToUse = newTag
-		}
-	}
-
 	err = hhuc.markSessionsAsEnded(ctx, sessions)
 	if err != nil {
-		return "", err
+		return errors.Wrap(err, 0)
 	}
 
-	if host.Status == entity.HeadlessHostStatus_RUNNING {
-		startupConfig, err := hhuc.hhrepo.GetStartParams(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		startupConfig.ContainerImageTag = tagToUse
-		if !withWorldRestart && startupConfig.StartupConfig != nil {
-			startupConfig.StartupConfig.StartWorlds = nil
-		}
-		err = hhuc.hhrepo.Stop(ctx, id, timeoutSeconds)
-		if err != nil {
-			return "", err
-		}
-		newId, err := hhuc.hhrepo.Start(ctx, *startupConfig)
-		if err != nil {
-			return "", err
-		}
-
-		return newId, nil
-	} else {
-		var newImage *string
-		if tagToUse != nil {
-			str := os.Getenv("HEADLESS_IMAGE_NAME") + ":" + *tagToUse
-			newImage = &str
-		}
-		newId, err := hhuc.hhrepo.Restart(ctx, host, newImage)
-		if err != nil {
-			return "", err
-		}
-
-		return newId, nil
+	startupConfig := port.HeadlessHostStartParams{
+		Name:              host.Name,
+		ContainerImageTag: tagToUse,
+		StartupConfig:     host.StartupConfig,
+		HeadlessAccount:   *account,
 	}
+	if !withWorldRestart && startupConfig.StartupConfig != nil {
+		startupConfig.StartupConfig.StartWorlds = nil
+	}
+	err = hhuc.hhrepo.Restart(ctx, host.ID, startupConfig, timeoutSeconds)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	return nil
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostGetLogs(ctx context.Context, id, until, since string, limit int32) (port.LogLineList, error) {
@@ -199,69 +169,24 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostGetLogs(ctx context.Context, id, un
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostShutdown(ctx context.Context, id string) error {
-	conn, err := hhuc.hhrepo.GetRpcClient(ctx, id)
-	if err != nil {
-		return err
-	}
 	status := entity.SessionStatus_RUNNING
 	sessions, err := hhuc.huc.SearchSessions(ctx, SearchSessionsFilter{
 		HostID: &id,
 		Status: &status,
 	})
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
-
-	_, err = conn.Shutdown(ctx, &headlessv1.ShutdownRequest{})
-	if err != nil {
-		return err
-	}
-
 	err = hhuc.markSessionsAsEnded(ctx, sessions)
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
+	}
+
+	// TODO: さすがにタイムアウト設定すべき？
+	err = hhuc.hhrepo.Stop(context.Background(), id, -1)
+	if err != nil {
+		return errors.Wrap(err, 0)
 	}
 
 	return nil
-}
-
-func (hhuc *HeadlessHostUsecase) PullLatestHostImage(ctx context.Context) (string, error) {
-	localTags, err := hhuc.hhrepo.ListLocalAvailableContainerTags(ctx)
-	if err != nil {
-		return "", err
-	}
-	filteredTags := make(port.ContainerImageList, 0, len(localTags))
-	for _, tag := range localTags {
-		if !tag.IsPreRelease {
-			filteredTags = append(filteredTags, tag)
-		}
-	}
-
-	var latestLocalTag *string
-	if len(filteredTags) > 0 {
-		latestLocalTag = &filteredTags[len(filteredTags)-1].Tag
-	}
-	remoteTags, err := hhuc.hhrepo.ListContainerTags(ctx, latestLocalTag)
-	if err != nil {
-		return "", err
-	}
-	if latestLocalTag == nil && len(remoteTags) == 0 {
-		return "", errors.New("no available container image tags")
-	}
-	filteredRemoteTags := make(port.ContainerImageList, 0, len(remoteTags))
-	for _, tag := range remoteTags {
-		if !tag.IsPreRelease {
-			filteredRemoteTags = append(filteredRemoteTags, tag)
-		}
-	}
-	if len(filteredRemoteTags) == 0 {
-		return "Already up to date", nil
-	}
-
-	logs, err := hhuc.hhrepo.PullContainerImage(ctx, filteredRemoteTags[len(filteredRemoteTags)-1].Tag)
-	if err != nil {
-		return "", err
-	}
-
-	return logs, nil
 }

@@ -12,7 +12,6 @@ service ControllerService {
   rpc GetHeadlessHostLogs(GetHeadlessHostLogsRequest) returns (GetHeadlessHostLogsResponse);
   rpc ShutdownHeadlessHost(ShutdownHeadlessHostRequest) returns (ShutdownHeadlessHostResponse);
   rpc UpdateHeadlessHostSettings(UpdateHeadlessHostSettingsRequest) returns (UpdateHeadlessHostSettingsResponse);
-  rpc PullLatestHostImage(PullLatestHostImageRequest) returns (PullLatestHostImageResponse);
   rpc RestartHeadlessHost(RestartHeadlessHostRequest) returns (RestartHeadlessHostResponse);
   rpc StartHeadlessHost(StartHeadlessHostRequest) returns (StartHeadlessHostResponse);
   rpc AllowHostAccess(AllowHostAccessRequest) returns (AllowHostAccessResponse);
@@ -117,12 +116,6 @@ message RestartHeadlessHostRequest {
 
 message RestartHeadlessHostResponse {
   optional string new_host_id = 1;
-}
-
-message PullLatestHostImageRequest {}
-
-message PullLatestHostImageResponse {
-  string logs = 1;
 }
 
 message UpdateHeadlessHostSettingsRequest {
@@ -339,7 +332,6 @@ message HeadlessHostSettings {
 message HeadlessHost {
   string id = 1;
   string name = 2;
-  string address = 3;
   string resonite_version = 4;
   string app_version = 11;
   string account_id = 5;

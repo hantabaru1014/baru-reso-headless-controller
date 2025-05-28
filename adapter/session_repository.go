@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
@@ -29,7 +30,7 @@ func (r *SessionRepository) Upsert(ctx context.Context, session *entity.Session)
 	if session.StartupParameters != nil {
 		startupParams, err = protojson.Marshal(session.StartupParameters)
 		if err != nil {
-			return err
+			return errors.Wrap(err, 0)
 		}
 	}
 
@@ -71,7 +72,11 @@ func (r *SessionRepository) Upsert(ctx context.Context, session *entity.Session)
 		AutoUpgrade:                    session.AutoUpgrade,
 		Memo:                           memo,
 	})
-	return err
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	return nil
 }
 
 func (r *SessionRepository) UpdateStatus(ctx context.Context, id string, status entity.SessionStatus) error {
@@ -84,7 +89,7 @@ func (r *SessionRepository) UpdateStatus(ctx context.Context, id string, status 
 func (r *SessionRepository) Get(ctx context.Context, id string) (*entity.Session, error) {
 	s, err := r.q.GetSession(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 	return sessionToEntity(s)
 }
@@ -92,13 +97,13 @@ func (r *SessionRepository) Get(ctx context.Context, id string) (*entity.Session
 func (r *SessionRepository) ListAll(ctx context.Context) (entity.SessionList, error) {
 	sessions, err := r.q.ListSessions(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 	result := make(entity.SessionList, 0, len(sessions))
 	for _, s := range sessions {
 		entity, err := sessionToEntity(s)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, 0)
 		}
 		result = append(result, entity)
 	}
@@ -108,13 +113,13 @@ func (r *SessionRepository) ListAll(ctx context.Context) (entity.SessionList, er
 func (r *SessionRepository) ListByStatus(ctx context.Context, status entity.SessionStatus) (entity.SessionList, error) {
 	sessions, err := r.q.ListSessionsByStatus(ctx, int32(status))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 	result := make(entity.SessionList, 0, len(sessions))
 	for _, s := range sessions {
 		entity, err := sessionToEntity(s)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, 0)
 		}
 		result = append(result, entity)
 	}
@@ -132,7 +137,7 @@ func sessionToEntity(s db.Session) (*entity.Session, error) {
 	}
 	startupParams := headlessv1.WorldStartupParameters{}
 	if err := protojson.Unmarshal(s.StartupParameters, &startupParams); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 	var ownerId *string
 	if s.OwnerID.Valid {

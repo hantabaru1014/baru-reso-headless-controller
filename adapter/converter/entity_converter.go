@@ -11,7 +11,6 @@ func HeadlessHostEntityToProto(e *entity.HeadlessHost) *hdlctrlv1.HeadlessHost {
 	return &hdlctrlv1.HeadlessHost{
 		Id:                e.ID,
 		Name:              e.Name,
-		Address:           e.Address,
 		ResoniteVersion:   e.ResoniteVersion,
 		AppVersion:        e.AppVersion,
 		AccountId:         e.AccountId,

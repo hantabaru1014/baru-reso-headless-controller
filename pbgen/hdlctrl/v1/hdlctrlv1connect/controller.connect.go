@@ -49,9 +49,6 @@ const (
 	// ControllerServiceUpdateHeadlessHostSettingsProcedure is the fully-qualified name of the
 	// ControllerService's UpdateHeadlessHostSettings RPC.
 	ControllerServiceUpdateHeadlessHostSettingsProcedure = "/hdlctrl.v1.ControllerService/UpdateHeadlessHostSettings"
-	// ControllerServicePullLatestHostImageProcedure is the fully-qualified name of the
-	// ControllerService's PullLatestHostImage RPC.
-	ControllerServicePullLatestHostImageProcedure = "/hdlctrl.v1.ControllerService/PullLatestHostImage"
 	// ControllerServiceRestartHeadlessHostProcedure is the fully-qualified name of the
 	// ControllerService's RestartHeadlessHost RPC.
 	ControllerServiceRestartHeadlessHostProcedure = "/hdlctrl.v1.ControllerService/RestartHeadlessHost"
@@ -134,7 +131,6 @@ type ControllerServiceClient interface {
 	GetHeadlessHostLogs(context.Context, *connect.Request[v1.GetHeadlessHostLogsRequest]) (*connect.Response[v1.GetHeadlessHostLogsResponse], error)
 	ShutdownHeadlessHost(context.Context, *connect.Request[v1.ShutdownHeadlessHostRequest]) (*connect.Response[v1.ShutdownHeadlessHostResponse], error)
 	UpdateHeadlessHostSettings(context.Context, *connect.Request[v1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[v1.UpdateHeadlessHostSettingsResponse], error)
-	PullLatestHostImage(context.Context, *connect.Request[v1.PullLatestHostImageRequest]) (*connect.Response[v1.PullLatestHostImageResponse], error)
 	RestartHeadlessHost(context.Context, *connect.Request[v1.RestartHeadlessHostRequest]) (*connect.Response[v1.RestartHeadlessHostResponse], error)
 	StartHeadlessHost(context.Context, *connect.Request[v1.StartHeadlessHostRequest]) (*connect.Response[v1.StartHeadlessHostResponse], error)
 	AllowHostAccess(context.Context, *connect.Request[v1.AllowHostAccessRequest]) (*connect.Response[v1.AllowHostAccessResponse], error)
@@ -203,12 +199,6 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+ControllerServiceUpdateHeadlessHostSettingsProcedure,
 			connect.WithSchema(controllerServiceMethods.ByName("UpdateHeadlessHostSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		pullLatestHostImage: connect.NewClient[v1.PullLatestHostImageRequest, v1.PullLatestHostImageResponse](
-			httpClient,
-			baseURL+ControllerServicePullLatestHostImageProcedure,
-			connect.WithSchema(controllerServiceMethods.ByName("PullLatestHostImage")),
 			connect.WithClientOptions(opts...),
 		),
 		restartHeadlessHost: connect.NewClient[v1.RestartHeadlessHostRequest, v1.RestartHeadlessHostResponse](
@@ -365,7 +355,6 @@ type controllerServiceClient struct {
 	getHeadlessHostLogs        *connect.Client[v1.GetHeadlessHostLogsRequest, v1.GetHeadlessHostLogsResponse]
 	shutdownHeadlessHost       *connect.Client[v1.ShutdownHeadlessHostRequest, v1.ShutdownHeadlessHostResponse]
 	updateHeadlessHostSettings *connect.Client[v1.UpdateHeadlessHostSettingsRequest, v1.UpdateHeadlessHostSettingsResponse]
-	pullLatestHostImage        *connect.Client[v1.PullLatestHostImageRequest, v1.PullLatestHostImageResponse]
 	restartHeadlessHost        *connect.Client[v1.RestartHeadlessHostRequest, v1.RestartHeadlessHostResponse]
 	startHeadlessHost          *connect.Client[v1.StartHeadlessHostRequest, v1.StartHeadlessHostResponse]
 	allowHostAccess            *connect.Client[v1.AllowHostAccessRequest, v1.AllowHostAccessResponse]
@@ -415,11 +404,6 @@ func (c *controllerServiceClient) ShutdownHeadlessHost(ctx context.Context, req 
 // UpdateHeadlessHostSettings calls hdlctrl.v1.ControllerService.UpdateHeadlessHostSettings.
 func (c *controllerServiceClient) UpdateHeadlessHostSettings(ctx context.Context, req *connect.Request[v1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[v1.UpdateHeadlessHostSettingsResponse], error) {
 	return c.updateHeadlessHostSettings.CallUnary(ctx, req)
-}
-
-// PullLatestHostImage calls hdlctrl.v1.ControllerService.PullLatestHostImage.
-func (c *controllerServiceClient) PullLatestHostImage(ctx context.Context, req *connect.Request[v1.PullLatestHostImageRequest]) (*connect.Response[v1.PullLatestHostImageResponse], error) {
-	return c.pullLatestHostImage.CallUnary(ctx, req)
 }
 
 // RestartHeadlessHost calls hdlctrl.v1.ControllerService.RestartHeadlessHost.
@@ -550,7 +534,6 @@ type ControllerServiceHandler interface {
 	GetHeadlessHostLogs(context.Context, *connect.Request[v1.GetHeadlessHostLogsRequest]) (*connect.Response[v1.GetHeadlessHostLogsResponse], error)
 	ShutdownHeadlessHost(context.Context, *connect.Request[v1.ShutdownHeadlessHostRequest]) (*connect.Response[v1.ShutdownHeadlessHostResponse], error)
 	UpdateHeadlessHostSettings(context.Context, *connect.Request[v1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[v1.UpdateHeadlessHostSettingsResponse], error)
-	PullLatestHostImage(context.Context, *connect.Request[v1.PullLatestHostImageRequest]) (*connect.Response[v1.PullLatestHostImageResponse], error)
 	RestartHeadlessHost(context.Context, *connect.Request[v1.RestartHeadlessHostRequest]) (*connect.Response[v1.RestartHeadlessHostResponse], error)
 	StartHeadlessHost(context.Context, *connect.Request[v1.StartHeadlessHostRequest]) (*connect.Response[v1.StartHeadlessHostResponse], error)
 	AllowHostAccess(context.Context, *connect.Request[v1.AllowHostAccessRequest]) (*connect.Response[v1.AllowHostAccessResponse], error)
@@ -615,12 +598,6 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		ControllerServiceUpdateHeadlessHostSettingsProcedure,
 		svc.UpdateHeadlessHostSettings,
 		connect.WithSchema(controllerServiceMethods.ByName("UpdateHeadlessHostSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	controllerServicePullLatestHostImageHandler := connect.NewUnaryHandler(
-		ControllerServicePullLatestHostImageProcedure,
-		svc.PullLatestHostImage,
-		connect.WithSchema(controllerServiceMethods.ByName("PullLatestHostImage")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceRestartHeadlessHostHandler := connect.NewUnaryHandler(
@@ -779,8 +756,6 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceShutdownHeadlessHostHandler.ServeHTTP(w, r)
 		case ControllerServiceUpdateHeadlessHostSettingsProcedure:
 			controllerServiceUpdateHeadlessHostSettingsHandler.ServeHTTP(w, r)
-		case ControllerServicePullLatestHostImageProcedure:
-			controllerServicePullLatestHostImageHandler.ServeHTTP(w, r)
 		case ControllerServiceRestartHeadlessHostProcedure:
 			controllerServiceRestartHeadlessHostHandler.ServeHTTP(w, r)
 		case ControllerServiceStartHeadlessHostProcedure:
@@ -856,10 +831,6 @@ func (UnimplementedControllerServiceHandler) ShutdownHeadlessHost(context.Contex
 
 func (UnimplementedControllerServiceHandler) UpdateHeadlessHostSettings(context.Context, *connect.Request[v1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[v1.UpdateHeadlessHostSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.UpdateHeadlessHostSettings is not implemented"))
-}
-
-func (UnimplementedControllerServiceHandler) PullLatestHostImage(context.Context, *connect.Request[v1.PullLatestHostImageRequest]) (*connect.Response[v1.PullLatestHostImageResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.PullLatestHostImage is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) RestartHeadlessHost(context.Context, *connect.Request[v1.RestartHeadlessHostRequest]) (*connect.Response[v1.RestartHeadlessHostResponse], error) {
