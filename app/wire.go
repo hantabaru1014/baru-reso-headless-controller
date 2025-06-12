@@ -51,8 +51,20 @@ func InitializeCli() *Cli {
 		// db
 		db.NewQueries,
 
+		// host connector
+		hostconnector.NewDockerHostConnector,
+
+		// repository
+		wire.Bind(new(port.HeadlessHostRepository), new(*adapter.HeadlessHostRepository)),
+		adapter.NewHeadlessHostRepository,
+		wire.Bind(new(port.SessionRepository), new(*adapter.SessionRepository)),
+		adapter.NewSessionRepository,
+
 		// usecase
 		usecase.NewUserUsecase,
+		usecase.NewHeadlessAccountUsecase,
+		usecase.NewSessionUsecase,
+		usecase.NewHeadlessHostUsecase,
 
 		NewCli,
 	)

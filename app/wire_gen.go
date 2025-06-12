@@ -40,6 +40,12 @@ func InitializeServer() *Server {
 func InitializeCli() *Cli {
 	queries := db.NewQueries()
 	userUsecase := usecase.NewUserUsecase(queries)
-	cli := NewCli(userUsecase)
+	dockerHostConnector := hostconnector.NewDockerHostConnector()
+	headlessHostRepository := adapter.NewHeadlessHostRepository(queries, dockerHostConnector)
+	sessionRepository := adapter.NewSessionRepository(queries)
+	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository)
+	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries)
+	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
+	cli := NewCli(userUsecase, headlessHostUsecase)
 	return cli
 }
