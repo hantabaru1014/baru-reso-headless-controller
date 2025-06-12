@@ -1,4 +1,4 @@
-FROM node:23-slim AS front-build
+FROM node:24-slim AS front-build
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
@@ -7,7 +7,7 @@ WORKDIR /app
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 RUN pnpm run build
 
-FROM --platform=$BUILDPLATFORM golang:1.23 AS build
+FROM --platform=$BUILDPLATFORM golang:1.24 AS build
 ARG TARGETARCH
 
 WORKDIR /go/src/app
