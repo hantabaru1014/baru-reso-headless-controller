@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
@@ -32,8 +31,7 @@ import (
 )
 
 var (
-	imageName    = os.Getenv("HEADLESS_IMAGE_NAME")
-	portLabelKey = "dev.baru.brhdl.rpc-port"
+	imageName = os.Getenv("HEADLESS_IMAGE_NAME")
 )
 
 var _ HostConnector = (*DockerHostConnector)(nil)
@@ -138,7 +136,11 @@ func (d *DockerHostConnector) GetLogs(ctx context.Context, connect_string HostCo
 
 // GetRpcClient implements HostConnector.
 func (d *DockerHostConnector) GetRpcClient(ctx context.Context, connect_string HostConnectString) (headlessv1.HeadlessControlServiceClient, error) {
-	container, err := d.getContainer(ctx, string(connect_string))
+	splitted := strings.Split(string(connect_string), ":")
+	if len(splitted) != 2 {
+		return nil, errors.Errorf("invalid connect string format: %s", connect_string)
+	}
+	container, err := d.getContainer(ctx, splitted[0])
 	if err != nil {
 		return nil, errors.Errorf("failed to get container: %w", err)
 	}
@@ -148,13 +150,9 @@ func (d *DockerHostConnector) GetRpcClient(ctx context.Context, connect_string H
 	if container.Labels == nil {
 		return nil, errors.Errorf("container labels are nil")
 	}
-	portStr, ok := container.Labels[portLabelKey]
-	if !ok {
-		return nil, errors.Errorf("container does not have port label: %s", portLabelKey)
-	}
-	port, err := strconv.Atoi(portStr)
+	port, err := strconv.Atoi(splitted[1])
 	if err != nil {
-		return nil, errors.Errorf("invalid port format: %s", portStr)
+		return nil, errors.Errorf("invalid port format: %s", splitted[1])
 	}
 	address := fmt.Sprintf("localhost:%d", port)
 	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -283,9 +281,6 @@ func (d *DockerHostConnector) Start(ctx context.Context, params port.HeadlessHos
 	config := container.Config{
 		Env:   envs,
 		Image: fmt.Sprintf("%s:%s", imageName, imageTag),
-		Labels: map[string]string{
-			portLabelKey: fmt.Sprintf("%d", port),
-		},
 	}
 	hostConfig := container.HostConfig{
 		NetworkMode: "host",
@@ -299,7 +294,7 @@ func (d *DockerHostConnector) Start(ctx context.Context, params port.HeadlessHos
 		return "", errors.Errorf("failed to start container: %w", err)
 	}
 
-	return HostConnectString(createResp.ID), nil
+	return HostConnectString(createResp.ID + fmt.Sprintf(":%d", port)), nil
 }
 
 // Stop implements HostConnector.
@@ -422,14 +417,14 @@ func (d *DockerHostConnector) newDockerClient() (*client.Client, error) {
 	return cli, nil
 }
 
-func (d *DockerHostConnector) getContainer(ctx context.Context, container_id string) (*types.Container, error) {
+func (d *DockerHostConnector) getContainer(ctx context.Context, container_id string) (*container.Summary, error) {
 	cli, err := d.newDockerClient()
 	if err != nil {
 		return nil, errors.New(err)
 	}
 	containers, err := cli.ContainerList(ctx, container.ListOptions{
 		All:     true,
-		Filters: filters.NewArgs(filters.Arg("label", portLabelKey), filters.Arg("id", container_id)),
+		Filters: filters.NewArgs(filters.Arg("id", container_id)),
 	})
 	if err != nil {
 		return nil, errors.New(err)
