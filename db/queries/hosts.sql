@@ -19,9 +19,10 @@ INSERT INTO hosts (
     connector_type,
     connect_string,
     started_at,
+    auto_update_policy,
     memo
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 ) RETURNING *;
 
 -- name: UpdateHostStatus :exec
@@ -38,6 +39,9 @@ UPDATE hosts SET started_at = $2 WHERE id = $1;
 
 -- name: UpdateHostMemo :exec
 UPDATE hosts SET memo = $2 WHERE id = $1;
+
+-- name: UpdateHostAutoUpdatePolicy :exec
+UPDATE hosts SET auto_update_policy = $2 WHERE id = $1;
 
 -- name: UpdateHostConnectString :exec
 UPDATE hosts SET connect_string = $2 WHERE id = $1;

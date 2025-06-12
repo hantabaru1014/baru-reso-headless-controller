@@ -20,6 +20,8 @@ type HeadlessHostStartParams struct {
 	ContainerImageTag string
 	HeadlessAccount   entity.HeadlessAccount
 	StartupConfig     *headlessv1.StartupConfig
+	AutoUpdatePolicy  entity.HostAutoUpdatePolicy
+	Memo              string
 }
 
 type ContainerImage struct {

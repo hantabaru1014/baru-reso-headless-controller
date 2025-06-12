@@ -19,6 +19,8 @@ func HeadlessHostEntityToProto(e *entity.HeadlessHost) *hdlctrlv1.HeadlessHost {
 		StorageUsedBytes:  e.StorageUsedBytes,
 		Fps:               e.Fps,
 		Status:            hdlctrlv1.HeadlessHostStatus(e.Status),
+		AutoUpdatePolicy:  hdlctrlv1.HeadlessHostAutoUpdatePolicy(e.AutoUpdatePolicy),
+		Memo:              e.Memo,
 	}
 }
 

@@ -77,12 +77,19 @@ func (c *ControllerService) StartHeadlessHost(ctx context.Context, req *connect.
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	hostId, err := c.hhuc.HeadlessHostStart(ctx, port.HeadlessHostStartParams{
+	params := port.HeadlessHostStartParams{
 		Name:              req.Msg.Name,
 		HeadlessAccount:   *account,
 		ContainerImageTag: req.Msg.GetImageTag(),
 		StartupConfig:     req.Msg.StartupConfig,
-	}, &claims.UserID)
+	}
+	if req.Msg.AutoUpdatePolicy != nil && req.Msg.GetAutoUpdatePolicy() != hdlctrlv1.HeadlessHostAutoUpdatePolicy_HEADLESS_HOST_AUTO_UPDATE_POLICY_UNKNOWN {
+		params.AutoUpdatePolicy = entity.HostAutoUpdatePolicy(req.Msg.GetAutoUpdatePolicy())
+	}
+	if req.Msg.Memo != nil {
+		params.Memo = req.Msg.GetMemo()
+	}
+	hostId, err := c.hhuc.HeadlessHostStart(ctx, params, &claims.UserID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

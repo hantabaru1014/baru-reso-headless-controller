@@ -23,6 +23,14 @@ const (
 	HostAllowedAccessType_OSC_SENDING   HostAllowedAccessType = 4
 )
 
+type HostAutoUpdatePolicy int32
+
+const (
+	HostAutoUpdatePolicy_UNSPECIFIED HostAutoUpdatePolicy = 0
+	HostAutoUpdatePolicy_NEVER       HostAutoUpdatePolicy = 1
+	HostAutoUpdatePolicy_USERS_EMPTY HostAutoUpdatePolicy = 2
+)
+
 type HostAllowedAccessEntry struct {
 	Host        string
 	Ports       []int32
@@ -50,6 +58,8 @@ type HeadlessHost struct {
 	StorageUsedBytes  int64
 	Fps               float32
 	StartupConfig     *headlessv1.StartupConfig
+	AutoUpdatePolicy  HostAutoUpdatePolicy
+	Memo              string
 }
 
 type HeadlessHostList []*HeadlessHost

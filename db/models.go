@@ -30,6 +30,7 @@ type Host struct {
 	ConnectString                  string
 	StartedAt                      pgtype.Timestamptz
 	Memo                           pgtype.Text
+	AutoUpdatePolicy               int32
 	CreatedAt                      pgtype.Timestamptz
 	UpdatedAt                      pgtype.Timestamptz
 }

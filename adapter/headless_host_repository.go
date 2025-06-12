@@ -112,6 +112,23 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 			return errors.Wrap(err, 0)
 		}
 	}
+	err = h.q.UpdateHostMemo(ctx, db.UpdateHostMemoParams{
+		ID: id,
+		Memo: pgtype.Text{
+			Valid:  true,
+			String: newStartupConfig.Memo,
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	err = h.q.UpdateHostAutoUpdatePolicy(ctx, db.UpdateHostAutoUpdatePolicyParams{
+		ID:               id,
+		AutoUpdatePolicy: int32(newStartupConfig.AutoUpdatePolicy),
+	})
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
 	_ = h.q.UpdateHostStatus(ctx, db.UpdateHostStatusParams{
 		ID:     id,
 		Status: int32(entity.HeadlessHostStatus_STARTING),
@@ -177,6 +194,11 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, connector port.HostC
 		LastStartupConfigSchemaVersion: 1,
 		ConnectorType:                  string(connector),
 		ConnectString:                  string(newConnectStr),
+		AutoUpdatePolicy:               int32(params.AutoUpdatePolicy),
+		Memo: pgtype.Text{
+			Valid:  true,
+			String: params.Memo,
+		},
 		StartedAt: pgtype.Timestamptz{
 			Valid: true,
 			Time:  time.Now(),
@@ -288,10 +310,14 @@ func (h *HeadlessHostRepository) dbToEntity(ctx context.Context, dbHost *db.Host
 	}
 	status := connector.GetStatus(ctx, hostconnector.HostConnectString(dbHost.ConnectString))
 	host := &entity.HeadlessHost{
-		ID:        dbHost.ID,
-		Name:      dbHost.Name,
-		AccountId: dbHost.AccountID,
-		Status:    entity.HeadlessHostStatus(dbHost.Status),
+		ID:               dbHost.ID,
+		Name:             dbHost.Name,
+		AccountId:        dbHost.AccountID,
+		Status:           entity.HeadlessHostStatus(dbHost.Status),
+		AutoUpdatePolicy: entity.HostAutoUpdatePolicy(dbHost.AutoUpdatePolicy),
+	}
+	if dbHost.Memo.Valid {
+		host.Memo = dbHost.Memo.String
 	}
 	if status == entity.HeadlessHostStatus_RUNNING {
 		conn, err := connector.GetRpcClient(ctx, hostconnector.HostConnectString(dbHost.ConnectString))

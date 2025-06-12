@@ -23,10 +23,11 @@ INSERT INTO hosts (
     connector_type,
     connect_string,
     started_at,
+    auto_update_policy,
     memo
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
-) RETURNING id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, created_at, updated_at
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+) RETURNING id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at
 `
 
 type CreateHostParams struct {
@@ -40,6 +41,7 @@ type CreateHostParams struct {
 	ConnectorType                  string
 	ConnectString                  string
 	StartedAt                      pgtype.Timestamptz
+	AutoUpdatePolicy               int32
 	Memo                           pgtype.Text
 }
 
@@ -55,6 +57,7 @@ func (q *Queries) CreateHost(ctx context.Context, arg CreateHostParams) (Host, e
 		arg.ConnectorType,
 		arg.ConnectString,
 		arg.StartedAt,
+		arg.AutoUpdatePolicy,
 		arg.Memo,
 	)
 	var i Host
@@ -70,6 +73,7 @@ func (q *Queries) CreateHost(ctx context.Context, arg CreateHostParams) (Host, e
 		&i.ConnectString,
 		&i.StartedAt,
 		&i.Memo,
+		&i.AutoUpdatePolicy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -86,7 +90,7 @@ func (q *Queries) DeleteHost(ctx context.Context, id string) error {
 }
 
 const getHost = `-- name: GetHost :one
-SELECT id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, created_at, updated_at FROM hosts WHERE id = $1 LIMIT 1
+SELECT id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at FROM hosts WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetHost(ctx context.Context, id string) (Host, error) {
@@ -104,6 +108,7 @@ func (q *Queries) GetHost(ctx context.Context, id string) (Host, error) {
 		&i.ConnectString,
 		&i.StartedAt,
 		&i.Memo,
+		&i.AutoUpdatePolicy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -111,7 +116,7 @@ func (q *Queries) GetHost(ctx context.Context, id string) (Host, error) {
 }
 
 const listHosts = `-- name: ListHosts :many
-SELECT id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, created_at, updated_at FROM hosts ORDER BY started_at DESC
+SELECT id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at FROM hosts ORDER BY started_at DESC
 `
 
 func (q *Queries) ListHosts(ctx context.Context) ([]Host, error) {
@@ -135,6 +140,7 @@ func (q *Queries) ListHosts(ctx context.Context) ([]Host, error) {
 			&i.ConnectString,
 			&i.StartedAt,
 			&i.Memo,
+			&i.AutoUpdatePolicy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -149,7 +155,7 @@ func (q *Queries) ListHosts(ctx context.Context) ([]Host, error) {
 }
 
 const listHostsByStatus = `-- name: ListHostsByStatus :many
-SELECT id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, created_at, updated_at FROM hosts WHERE status = $1 ORDER BY started_at DESC
+SELECT id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at FROM hosts WHERE status = $1 ORDER BY started_at DESC
 `
 
 func (q *Queries) ListHostsByStatus(ctx context.Context, status int32) ([]Host, error) {
@@ -173,6 +179,7 @@ func (q *Queries) ListHostsByStatus(ctx context.Context, status int32) ([]Host, 
 			&i.ConnectString,
 			&i.StartedAt,
 			&i.Memo,
+			&i.AutoUpdatePolicy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -184,6 +191,20 @@ func (q *Queries) ListHostsByStatus(ctx context.Context, status int32) ([]Host, 
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateHostAutoUpdatePolicy = `-- name: UpdateHostAutoUpdatePolicy :exec
+UPDATE hosts SET auto_update_policy = $2 WHERE id = $1
+`
+
+type UpdateHostAutoUpdatePolicyParams struct {
+	ID               string
+	AutoUpdatePolicy int32
+}
+
+func (q *Queries) UpdateHostAutoUpdatePolicy(ctx context.Context, arg UpdateHostAutoUpdatePolicyParams) error {
+	_, err := q.db.Exec(ctx, updateHostAutoUpdatePolicy, arg.ID, arg.AutoUpdatePolicy)
+	return err
 }
 
 const updateHostConnectString = `-- name: UpdateHostConnectString :exec

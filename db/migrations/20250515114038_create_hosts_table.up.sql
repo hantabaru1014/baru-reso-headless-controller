@@ -10,6 +10,7 @@ CREATE TABLE hosts (
     connect_string TEXT NOT NULL,
     started_at TIMESTAMP WITH TIME ZONE,
     memo TEXT,
+    auto_update_policy INTEGER NOT NULL, -- domain/entity/headless_host.go のenum
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
