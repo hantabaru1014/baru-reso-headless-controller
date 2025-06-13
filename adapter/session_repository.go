@@ -89,7 +89,7 @@ func (r *SessionRepository) UpdateStatus(ctx context.Context, id string, status 
 func (r *SessionRepository) Get(ctx context.Context, id string) (*entity.Session, error) {
 	s, err := r.q.GetSession(ctx, id)
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return nil, errors.WrapPrefix(convertDBErr(err), "session", 0)
 	}
 	return sessionToEntity(s)
 }
@@ -97,7 +97,7 @@ func (r *SessionRepository) Get(ctx context.Context, id string) (*entity.Session
 func (r *SessionRepository) ListAll(ctx context.Context) (entity.SessionList, error) {
 	sessions, err := r.q.ListSessions(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return nil, errors.WrapPrefix(convertDBErr(err), "session", 0)
 	}
 	result := make(entity.SessionList, 0, len(sessions))
 	for _, s := range sessions {
@@ -113,7 +113,7 @@ func (r *SessionRepository) ListAll(ctx context.Context) (entity.SessionList, er
 func (r *SessionRepository) ListByStatus(ctx context.Context, status entity.SessionStatus) (entity.SessionList, error) {
 	sessions, err := r.q.ListSessionsByStatus(ctx, int32(status))
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return nil, errors.WrapPrefix(convertDBErr(err), "session", 0)
 	}
 	result := make(entity.SessionList, 0, len(sessions))
 	for _, s := range sessions {

@@ -27,7 +27,7 @@ type HeadlessHostRepository struct {
 func (h *HeadlessHostRepository) Find(ctx context.Context, id string) (*entity.HeadlessHost, error) {
 	host, err := h.q.GetHost(ctx, id)
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 	return h.dbToEntity(ctx, &host)
 }
@@ -36,7 +36,7 @@ func (h *HeadlessHostRepository) Find(ctx context.Context, id string) (*entity.H
 func (h *HeadlessHostRepository) GetLogs(ctx context.Context, id string, limit int32, until string, since string) (port.LogLineList, error) {
 	host, err := h.q.GetHost(ctx, id)
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 	connector, err := h.getConnector(host.ConnectorType)
 	if err != nil {
@@ -49,7 +49,7 @@ func (h *HeadlessHostRepository) GetLogs(ctx context.Context, id string, limit i
 func (h *HeadlessHostRepository) GetRpcClient(ctx context.Context, id string) (headlessv1.HeadlessControlServiceClient, error) {
 	host, err := h.q.GetHost(ctx, id)
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 	connector, err := h.getConnector(host.ConnectorType)
 	if err != nil {
@@ -62,7 +62,7 @@ func (h *HeadlessHostRepository) GetRpcClient(ctx context.Context, id string) (h
 func (h *HeadlessHostRepository) ListAll(ctx context.Context) (entity.HeadlessHostList, error) {
 	hosts, err := h.q.ListHosts(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 	var result entity.HeadlessHostList
 	for _, host := range hosts {
@@ -94,7 +94,7 @@ func (h *HeadlessHostRepository) Rename(ctx context.Context, id string, newName 
 func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStartupConfig port.HeadlessHostStartParams, timeoutSeconds int) error {
 	dbHost, err := h.q.GetHost(ctx, id)
 	if err != nil {
-		return errors.Wrap(err, 0)
+		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 	connector, err := h.getConnector(dbHost.ConnectorType)
 	if err != nil {
@@ -120,14 +120,14 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 		},
 	})
 	if err != nil {
-		return errors.Wrap(err, 0)
+		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 	err = h.q.UpdateHostAutoUpdatePolicy(ctx, db.UpdateHostAutoUpdatePolicyParams{
 		ID:               id,
 		AutoUpdatePolicy: int32(newStartupConfig.AutoUpdatePolicy),
 	})
 	if err != nil {
-		return errors.Wrap(err, 0)
+		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 	_ = h.q.UpdateHostStatus(ctx, db.UpdateHostStatusParams{
 		ID:     id,
@@ -142,7 +142,7 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 		ConnectString: string(newConnectStr),
 	})
 	if err != nil {
-		return errors.Wrap(err, 0)
+		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 	_ = h.q.UpdateHostStatus(ctx, db.UpdateHostStatusParams{
 		ID:     id,
@@ -157,7 +157,7 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 		LastStartupConfig: json,
 	})
 	if err != nil {
-		return errors.Wrap(err, 0)
+		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 
 	return nil
@@ -205,7 +205,7 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, connector port.HostC
 		},
 	})
 	if err != nil {
-		return "", errors.Wrap(err, 0)
+		return "", errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 
 	return dbHost.ID, nil
@@ -215,7 +215,7 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, connector port.HostC
 func (h *HeadlessHostRepository) Stop(ctx context.Context, id string, timeoutSeconds int) error {
 	dbHost, err := h.q.GetHost(ctx, id)
 	if err != nil {
-		return errors.Wrap(err, 0)
+		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 	connector, err := h.getConnector(dbHost.ConnectorType)
 	if err != nil {
@@ -244,7 +244,7 @@ func (h *HeadlessHostRepository) Stop(ctx context.Context, id string, timeoutSec
 		LastStartupConfig: json,
 	})
 	if err != nil {
-		return errors.Wrap(err, 0)
+		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 
 	err = connector.Stop(ctx, hostconnector.HostConnectString(dbHost.ConnectString), timeoutSeconds)
