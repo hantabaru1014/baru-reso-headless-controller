@@ -20,6 +20,7 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
+          context: .
           push: false
           tags: ghcr.io/${{ env.IMAGE_NAME }}:test
           cache-from: type=gha
