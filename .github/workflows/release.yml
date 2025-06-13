@@ -13,16 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: '.node-version'
-          cache: 'pnpm'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          run_install: true
+      - name: Setup pnpm and install dependencies
+        uses: ./.github/actions/setup-front-deps
 
       - name: Build frontend
         run: pnpm run build
