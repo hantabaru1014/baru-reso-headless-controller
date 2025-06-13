@@ -31,7 +31,8 @@ import (
 )
 
 var (
-	imageName = os.Getenv("HEADLESS_IMAGE_NAME")
+	imageName              = os.Getenv("HEADLESS_IMAGE_NAME")
+	containerNotFoundError = errors.New("container not found")
 )
 
 var _ HostConnector = (*DockerHostConnector)(nil)
@@ -41,7 +42,11 @@ type DockerHostConnector struct {
 
 // GetStatus implements HostConnector.
 func (d *DockerHostConnector) GetStatus(ctx context.Context, connect_string HostConnectString) entity.HeadlessHostStatus {
-	container, err := d.getContainer(ctx, string(connect_string))
+	id, _, err := parseConnectString(connect_string)
+	if err != nil {
+		return entity.HeadlessHostStatus_UNKNOWN
+	}
+	container, err := d.getContainer(ctx, id)
 	if err != nil {
 		return entity.HeadlessHostStatus_UNKNOWN
 	}
@@ -50,6 +55,10 @@ func (d *DockerHostConnector) GetStatus(ctx context.Context, connect_string Host
 
 // GetLogs implements HostConnector.
 func (d *DockerHostConnector) GetLogs(ctx context.Context, connect_string HostConnectString, limit int32, until string, since string) (port.LogLineList, error) {
+	id, _, err := parseConnectString(connect_string)
+	if err != nil {
+		return nil, err
+	}
 	cli, err := d.newDockerClient()
 	if err != nil {
 		return nil, errors.New(err)
@@ -58,7 +67,7 @@ func (d *DockerHostConnector) GetLogs(ctx context.Context, connect_string HostCo
 	if limit <= 0 {
 		tail = "all"
 	}
-	r, err := cli.ContainerLogs(ctx, string(connect_string), container.LogsOptions{
+	r, err := cli.ContainerLogs(ctx, id, container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Timestamps: true,
@@ -136,11 +145,11 @@ func (d *DockerHostConnector) GetLogs(ctx context.Context, connect_string HostCo
 
 // GetRpcClient implements HostConnector.
 func (d *DockerHostConnector) GetRpcClient(ctx context.Context, connect_string HostConnectString) (headlessv1.HeadlessControlServiceClient, error) {
-	splitted := strings.Split(string(connect_string), ":")
-	if len(splitted) != 2 {
-		return nil, errors.Errorf("invalid connect string format: %s", connect_string)
+	id, port, err := parseConnectString(connect_string)
+	if err != nil {
+		return nil, err
 	}
-	container, err := d.getContainer(ctx, splitted[0])
+	container, err := d.getContainer(ctx, id)
 	if err != nil {
 		return nil, errors.Errorf("failed to get container: %w", err)
 	}
@@ -149,10 +158,6 @@ func (d *DockerHostConnector) GetRpcClient(ctx context.Context, connect_string H
 	}
 	if container.Labels == nil {
 		return nil, errors.Errorf("container labels are nil")
-	}
-	port, err := strconv.Atoi(splitted[1])
-	if err != nil {
-		return nil, errors.Errorf("invalid port format: %s", splitted[1])
 	}
 	address := fmt.Sprintf("localhost:%d", port)
 	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -299,11 +304,15 @@ func (d *DockerHostConnector) Start(ctx context.Context, params port.HeadlessHos
 
 // Stop implements HostConnector.
 func (d *DockerHostConnector) Stop(ctx context.Context, connect_string HostConnectString, timeoutSeconds int) error {
+	id, _, err := parseConnectString(connect_string)
+	if err != nil {
+		return err
+	}
 	cli, err := d.newDockerClient()
 	if err != nil {
 		return errors.Errorf("failed to create docker client: %w", err)
 	}
-	err = cli.ContainerStop(ctx, string(connect_string), container.StopOptions{
+	err = cli.ContainerStop(ctx, id, container.StopOptions{
 		Timeout: &timeoutSeconds,
 	})
 	if err != nil {
@@ -315,6 +324,18 @@ func (d *DockerHostConnector) Stop(ctx context.Context, connect_string HostConne
 
 func NewDockerHostConnector() *DockerHostConnector {
 	return &DockerHostConnector{}
+}
+
+func parseConnectString(connect_string HostConnectString) (string, int, error) {
+	splitted := strings.Split(string(connect_string), ":")
+	if len(splitted) != 2 {
+		return "", 0, errors.Errorf("invalid connect string format: %s", connect_string)
+	}
+	port, err := strconv.Atoi(splitted[1])
+	if err != nil {
+		return "", 0, errors.Errorf("invalid port format: %s", splitted[1])
+	}
+	return splitted[0], port, nil
 }
 
 type TagInfo struct {
@@ -430,7 +451,7 @@ func (d *DockerHostConnector) getContainer(ctx context.Context, container_id str
 		return nil, errors.New(err)
 	}
 	if len(containers) == 0 {
-		return nil, errors.Errorf("container not found")
+		return nil, containerNotFoundError
 	}
 	if len(containers) > 1 {
 		return nil, errors.Errorf("found several containers")
