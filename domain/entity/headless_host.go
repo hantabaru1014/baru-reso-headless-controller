@@ -1,5 +1,7 @@
 package entity
 
+import headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
+
 type HeadlessHostStatus int32
 
 const (
@@ -21,6 +23,14 @@ const (
 	HostAllowedAccessType_OSC_SENDING   HostAllowedAccessType = 4
 )
 
+type HostAutoUpdatePolicy int32
+
+const (
+	HostAutoUpdatePolicy_UNSPECIFIED HostAutoUpdatePolicy = 0
+	HostAutoUpdatePolicy_NEVER       HostAutoUpdatePolicy = 1
+	HostAutoUpdatePolicy_USERS_EMPTY HostAutoUpdatePolicy = 2
+)
+
 type HostAllowedAccessEntry struct {
 	Host        string
 	Ports       []int32
@@ -40,7 +50,6 @@ type HeadlessHost struct {
 	ID                string
 	Name              string
 	Status            HeadlessHostStatus
-	Address           string
 	ResoniteVersion   string
 	AppVersion        string
 	AccountId         string
@@ -48,6 +57,9 @@ type HeadlessHost struct {
 	StorageQuotaBytes int64
 	StorageUsedBytes  int64
 	Fps               float32
+	StartupConfig     *headlessv1.StartupConfig
+	AutoUpdatePolicy  HostAutoUpdatePolicy
+	Memo              string
 }
 
 type HeadlessHostList []*HeadlessHost

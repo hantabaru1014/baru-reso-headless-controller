@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/app"
 )
 
@@ -43,7 +44,7 @@ func main() {
 	go func() {
 		slog.Info("Starting server", "address", *hostAddress)
 		if err := s.ListenAndServe(*hostAddress, frontURL); err != nil {
-			errCh <- err
+			errCh <- errors.Wrap(err, 0)
 		}
 	}()
 

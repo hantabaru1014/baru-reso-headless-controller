@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package hdlctrl.v1;
 
-import "headless/v1/headless.proto";
 import "google/protobuf/timestamp.proto";
+import "headless/v1/headless.proto";
 
 service ControllerService {
   // ホスト系
@@ -12,7 +12,6 @@ service ControllerService {
   rpc GetHeadlessHostLogs(GetHeadlessHostLogsRequest) returns (GetHeadlessHostLogsResponse);
   rpc ShutdownHeadlessHost(ShutdownHeadlessHostRequest) returns (ShutdownHeadlessHostResponse);
   rpc UpdateHeadlessHostSettings(UpdateHeadlessHostSettingsRequest) returns (UpdateHeadlessHostSettingsResponse);
-  rpc PullLatestHostImage(PullLatestHostImageRequest) returns (PullLatestHostImageResponse);
   rpc RestartHeadlessHost(RestartHeadlessHostRequest) returns (RestartHeadlessHostResponse);
   rpc StartHeadlessHost(StartHeadlessHostRequest) returns (StartHeadlessHostResponse);
   rpc AllowHostAccess(AllowHostAccessRequest) returns (AllowHostAccessResponse);
@@ -64,6 +63,8 @@ message StartHeadlessHostRequest {
   string headless_account_id = 2;
   optional string image_tag = 3;
   optional headless.v1.StartupConfig startup_config = 4;
+  optional HeadlessHostAutoUpdatePolicy auto_update_policy = 5;
+  optional string memo = 6;
 }
 
 message StartHeadlessHostResponse {
@@ -117,12 +118,6 @@ message RestartHeadlessHostRequest {
 
 message RestartHeadlessHostResponse {
   optional string new_host_id = 1;
-}
-
-message PullLatestHostImageRequest {}
-
-message PullLatestHostImageResponse {
-  string logs = 1;
 }
 
 message UpdateHeadlessHostSettingsRequest {
@@ -327,6 +322,12 @@ enum SessionStatus {
   SESSION_STATUS_CRASHED = 4;
 }
 
+enum HeadlessHostAutoUpdatePolicy {
+  HEADLESS_HOST_AUTO_UPDATE_POLICY_UNKNOWN = 0;
+  HEADLESS_HOST_AUTO_UPDATE_POLICY_NEVER = 1; // 自動更新しない
+  HEADLESS_HOST_AUTO_UPDATE_POLICY_USERS_EMPTY = 2; // ユーザがいない場合のみ自動更新する
+}
+
 message HeadlessHostSettings {
   optional string universe_id = 1;
   float tick_rate = 2;
@@ -339,7 +340,6 @@ message HeadlessHostSettings {
 message HeadlessHost {
   string id = 1;
   string name = 2;
-  string address = 3;
   string resonite_version = 4;
   string app_version = 11;
   string account_id = 5;
@@ -348,6 +348,8 @@ message HeadlessHost {
   int64 storage_quota_bytes = 8;
   int64 storage_used_bytes = 9;
   HeadlessHostStatus status = 10;
+  HeadlessHostAutoUpdatePolicy auto_update_policy = 12;
+  string memo = 13;
 }
 
 message Session {

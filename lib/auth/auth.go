@@ -2,9 +2,10 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"os"
 	"time"
+
+	"github.com/go-errors/errors"
 
 	"connectrpc.com/connect"
 	"github.com/golang-jwt/jwt/v5"
@@ -28,8 +29,11 @@ func GenerateToken(claims AuthClaims, tokenTTL time.Duration) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	ss, err := token.SignedString([]byte(secretKey))
+	if err != nil {
+		return "", errors.Wrap(err, 0)
+	}
 
-	return ss, err
+	return ss, nil
 }
 
 // GenerateTokensWithDefaultTTL generates a token and a refreshToken with default TTLs.
@@ -37,11 +41,11 @@ func GenerateToken(claims AuthClaims, tokenTTL time.Duration) (string, error) {
 func GenerateTokensWithDefaultTTL(claims AuthClaims) (string, string, error) {
 	token, err := GenerateToken(claims, 30*time.Minute)
 	if err != nil {
-		return "", "", err
+		return "", "", errors.Wrap(err, 0)
 	}
 	refreshToken, err := GenerateToken(claims, 3*24*time.Hour)
 	if err != nil {
-		return "", "", err
+		return "", "", errors.Wrap(err, 0)
 	}
 
 	return token, refreshToken, nil
@@ -58,7 +62,7 @@ func ParseToken(tokenString string) (*AuthClaims, error) {
 		jwt.WithExpirationRequired(),
 	)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 	claims, ok := token.Claims.(*AuthClaims)
 	if !ok {
@@ -116,7 +120,10 @@ func NewAuthInterceptor() connect.UnaryInterceptorFunc {
 
 func HashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	return string(hash), err
+	if err != nil {
+		return "", errors.Wrap(err, 0)
+	}
+	return string(hash), nil
 }
 
 func ComparePasswordAndHash(password, hash string) error {
