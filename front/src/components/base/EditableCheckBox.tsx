@@ -1,11 +1,8 @@
 import React, { useState } from "react";
 import EditableFieldBase from "./EditableFieldBase";
-import {
-  Checkbox,
-  FormControlLabel,
-  FormHelperText,
-  TextField,
-} from "@mui/material";
+import { Checkbox } from "./checkbox";
+import { Input } from "./input";
+import { Label } from "./label";
 
 export default function EditableCheckBox({
   label,
@@ -63,34 +60,36 @@ export default function EditableCheckBox({
       isLoading={isLoading}
     >
       {isEditing ? (
-        <div>
-          <FormControlLabel
-            label={label}
-            control={
-              <Checkbox
-                checked={editingValue}
-                onChange={(e) => setEditingValue(e.target.checked)}
-              />
-            }
-            disabled={disabled}
-          />
-          <FormHelperText error={errorMessage == null}>
-            {errorMessage ?? helperText}
-          </FormHelperText>
+        <div className="space-y-2">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="editable-checkbox"
+              checked={editingValue}
+              onCheckedChange={(checked) => setEditingValue(checked === true)}
+              disabled={disabled}
+            />
+            <Label htmlFor="editable-checkbox">{label}</Label>
+          </div>
+          {(errorMessage || helperText) && (
+            <p
+              className={`text-sm ${errorMessage ? "text-destructive" : "text-muted-foreground"}`}
+            >
+              {errorMessage ?? helperText}
+            </p>
+          )}
         </div>
       ) : (
-        <TextField
-          label={label}
-          fullWidth
-          variant="standard"
-          value={checked ? trueValueText : falseValueText}
-          slotProps={{
-            input: {
-              readOnly: true,
-            },
-          }}
-          helperText={helperText}
-        />
+        <div className="space-y-2">
+          {label && <Label>{label}</Label>}
+          <Input
+            value={String(checked ? trueValueText : falseValueText)}
+            readOnly
+            className="bg-muted"
+          />
+          {helperText && (
+            <p className="text-sm text-muted-foreground">{helperText}</p>
+          )}
+        </div>
       )}
     </EditableFieldBase>
   );

@@ -6,24 +6,8 @@ export default function ScrollBase({
   children: React.ReactNode;
 }) {
   return (
-    <div
-      style={{
-        position: "relative",
-        height,
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          right: 0,
-          bottom: 0,
-          left: 0,
-          overflowY: "scroll",
-        }}
-      >
-        {children}
-      </div>
+    <div className="relative" style={{ height }}>
+      <div className="absolute inset-0 overflow-y-auto">{children}</div>
     </div>
   );
 }

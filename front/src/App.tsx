@@ -1,45 +1,16 @@
 import * as React from "react";
-import DashboardIcon from "@mui/icons-material/Dashboard";
 import { Outlet } from "react-router";
-import { ReactRouterAppProvider } from "@toolpad/core/react-router";
-import type { Navigation } from "@toolpad/core/AppProvider";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { TransportProvider } from "@connectrpc/connect-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useAtom } from "jotai";
-import { sessionAtom } from "./atoms/sessionAtom";
 import { useAuth } from "./hooks/useAuth";
-import { DialogsProvider } from "@toolpad/core/useDialogs";
-
-const NAVIGATION: Navigation = [
-  {
-    title: "Dashboard",
-    icon: <DashboardIcon />,
-  },
-  {
-    segment: "headlessAccounts",
-    title: "Headless Accounts",
-  },
-  {
-    segment: "hosts",
-    title: "Hosts",
-  },
-  {
-    segment: "sessions",
-    title: "Sessions",
-  },
-];
-
-const BRANDING = {
-  title: "BRHDL",
-};
+import { Toaster } from "./components/base";
+import { ThemeProvider } from "./components/ThemeProvider";
 
 const queryClient = new QueryClient();
 
 export default function App() {
-  const [session] = useAtom(sessionAtom);
-
-  const { configuredFetch, signOut } = useAuth("/");
+  const { configuredFetch } = useAuth("/");
   const finalTransport = React.useMemo(
     () =>
       createConnectTransport({
@@ -50,22 +21,13 @@ export default function App() {
   );
 
   return (
-    <ReactRouterAppProvider
-      navigation={NAVIGATION}
-      branding={BRANDING}
-      session={session}
-      authentication={{
-        signIn: () => {},
-        signOut,
-      }}
-    >
+    <ThemeProvider>
       <TransportProvider transport={finalTransport}>
         <QueryClientProvider client={queryClient}>
-          <DialogsProvider>
-            <Outlet />
-          </DialogsProvider>
+          <Outlet />
+          <Toaster position="top-center" />
         </QueryClientProvider>
       </TransportProvider>
-    </ReactRouterAppProvider>
+    </ThemeProvider>
   );
 }

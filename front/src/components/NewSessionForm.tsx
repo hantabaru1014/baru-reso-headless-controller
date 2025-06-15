@@ -4,19 +4,12 @@ import {
   listHeadlessHost,
   startWorld,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import { useNotifications } from "@toolpad/core/useNotifications";
-import {
-  Button,
-  Checkbox,
-  FormControl,
-  FormControlLabel,
-  FormLabel,
-  Grid2,
-  Radio,
-  RadioGroup,
-  Stack,
-  TextField,
-} from "@mui/material";
+import { Button } from "./base/button";
+import { Checkbox } from "./base/checkbox";
+import { Label } from "./base/label";
+import { Input } from "./base/input";
+import { Textarea } from "./base/textarea";
+import { RadioGroup, RadioGroupItem } from "./base/radio-group";
 import SelectField from "./base/SelectField";
 import { useNavigate } from "react-router";
 import { AccessLevels } from "../constants";
@@ -24,6 +17,7 @@ import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { z } from "zod";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 
 const sessionFormSchema = z
   .object({
@@ -120,7 +114,6 @@ const processRecordId = (
 
 export default function NewSessionForm() {
   const navigate = useNavigate();
-  const notifications = useNotifications();
   const { mutateAsync: mutateStart } = useMutation(startWorld);
   const { mutateAsync: mutateFetchInfo, isPending: isPendingFetchInfo } =
     useMutation(fetchWorldInfo);
@@ -177,7 +170,9 @@ export default function NewSessionForm() {
       setValue("name", data.name);
       setValue("description", data.description || "");
     } catch (e) {
-      console.error(e);
+      toast.error(
+        e instanceof Error ? e.message : "ワールド情報の取得に失敗しました",
+      );
     }
   };
 
@@ -226,27 +221,15 @@ export default function NewSessionForm() {
           autoInviteMessage: data.autoInviteMessage,
         },
       });
-      notifications.show("セッションを開始しました", {
-        severity: "success",
-        autoHideDuration: 3000,
-      });
+      toast.success("セッションを開始しました");
       navigate("/sessions");
     } catch (e) {
-      notifications.show(`エラー: ${e instanceof Error ? e.message : e}`, {
-        severity: "error",
-        autoHideDuration: 3000,
-      });
+      toast.error(`エラー: ${e instanceof Error ? e.message : e}`);
     }
   };
 
   return (
-    <Stack
-      component="form"
-      noValidate
-      autoComplete="off"
-      spacing={2}
-      onSubmit={handleSubmit(onSubmit)}
-    >
+    <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
       <Controller
         name="hostId"
         control={control}
@@ -274,57 +257,59 @@ export default function NewSessionForm() {
         name="worldSource"
         control={control}
         render={({ field }) => (
-          <FormControl>
-            <FormLabel id="session-form-use-world-url">
-              ワールド指定方法
-            </FormLabel>
+          <div className="space-y-2">
+            <Label htmlFor="session-form-use-world-url">ワールド指定方法</Label>
             <RadioGroup
-              aria-labelledby="session-form-use-world-url"
-              row
-              {...field}
+              value={field.value}
+              onValueChange={field.onChange}
+              className="flex flex-row space-x-4"
             >
-              <FormControlLabel
-                value="url"
-                control={<Radio />}
-                label="レコードURLを指定"
-              />
-              <FormControlLabel
-                value="template"
-                control={<Radio />}
-                label="テンプレートを指定"
-              />
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="url" id="url" />
+                <Label htmlFor="url">レコードURLを指定</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="template" id="template" />
+                <Label htmlFor="template">テンプレートを指定</Label>
+              </div>
             </RadioGroup>
-          </FormControl>
+          </div>
         )}
       />
       {worldSource === "url" ? (
-        <Grid2 container spacing={2}>
-          <Grid2 size={10}>
+        <div className="grid grid-cols-12 gap-2">
+          <div className="col-span-10">
             <Controller
               name="worldUrl"
               control={control}
               render={({ field }) => (
-                <TextField
-                  label="レコードURL"
-                  fullWidth
-                  {...field}
-                  error={!!errors.worldUrl}
-                  helperText={errors.worldUrl?.message}
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="worldUrl">レコードURL</Label>
+                  <Input
+                    id="worldUrl"
+                    {...field}
+                    className={errors.worldUrl ? "border-red-500" : ""}
+                  />
+                  {errors.worldUrl && (
+                    <p className="text-sm text-red-500">
+                      {errors.worldUrl.message}
+                    </p>
+                  )}
+                </div>
               )}
             />
-          </Grid2>
-          <Grid2 size={2} sx={{ alignItems: "center" }} container>
+          </div>
+          <div className="col-span-2 flex items-end">
             <Button
-              variant="outlined"
-              size="large"
+              variant="outline"
+              size="lg"
               onClick={handleFetchInfo}
               disabled={isPendingFetchInfo || !hostId || !worldUrl}
             >
               情報取得
             </Button>
-          </Grid2>
-        </Grid2>
+          </div>
+        </div>
       ) : (
         <Controller
           name="worldTemplate"
@@ -349,61 +334,82 @@ export default function NewSessionForm() {
         name="name"
         control={control}
         render={({ field }) => (
-          <TextField
-            label="セッション名"
-            fullWidth
-            {...field}
-            error={!!errors.name}
-            helperText={errors.name?.message}
-          />
+          <div className="space-y-2">
+            <Label htmlFor="name">セッション名</Label>
+            <Input
+              id="name"
+              {...field}
+              className={errors.name ? "border-red-500" : ""}
+            />
+            {errors.name && (
+              <p className="text-sm text-red-500">{errors.name.message}</p>
+            )}
+          </div>
         )}
       />
       <Controller
         name="description"
         control={control}
         render={({ field }) => (
-          <TextField
-            label="説明"
-            multiline
-            fullWidth
-            {...field}
-            error={!!errors.description}
-            helperText={errors.description?.message}
-          />
+          <div className="space-y-2">
+            <Label htmlFor="description">説明</Label>
+            <Textarea
+              id="description"
+              {...field}
+              className={errors.description ? "border-red-500" : ""}
+            />
+            {errors.description && (
+              <p className="text-sm text-red-500">
+                {errors.description.message}
+              </p>
+            )}
+          </div>
         )}
       />
       <Controller
         name="tags"
         control={control}
         render={({ field }) => (
-          <TextField
-            label="タグ"
-            fullWidth
-            {...field}
-            error={!!errors.tags}
-            helperText={
-              errors.tags?.message || "カンマ区切りで入力してください"
-            }
-          />
+          <div className="space-y-2">
+            <Label htmlFor="tags">タグ</Label>
+            <Input
+              id="tags"
+              {...field}
+              className={errors.tags ? "border-red-500" : ""}
+            />
+            {errors.tags && (
+              <p className="text-sm text-red-500">{errors.tags.message}</p>
+            )}
+            <p className="text-sm text-gray-500">
+              カンマ区切りで入力してください
+            </p>
+          </div>
         )}
       />
-      <Stack direction="row" spacing={2}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Controller
           name="maxUsers"
           control={control}
           render={({ field }) => (
-            <TextField
-              label="最大ユーザー数"
-              type="number"
-              {...field}
-              onChange={(e) => {
-                const value =
-                  e.target.value === "" ? "" : parseInt(e.target.value);
-                field.onChange(value);
-              }}
-              error={!!errors.maxUsers}
-              helperText={errors.maxUsers?.message}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="maxUsers">最大ユーザー数</Label>
+              <Input
+                id="maxUsers"
+                type="number"
+                {...field}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value =
+                    e.target.value === "" ? "" : parseInt(e.target.value);
+                  field.onChange(value);
+                }}
+                className={errors.maxUsers ? "border-red-500" : ""}
+              />
+              {errors.maxUsers && (
+                <p className="text-sm text-red-500">
+                  {errors.maxUsers.message}
+                </p>
+              )}
+            </div>
           )}
         />
 
@@ -426,29 +432,36 @@ export default function NewSessionForm() {
           name="hideFromPublicListing"
           control={control}
           render={({ field }) => (
-            <FormControlLabel
-              label="セッションリストから隠す"
-              control={
-                <Checkbox
-                  checked={field.value}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                />
-              }
-            />
+            <div className="flex items-center space-x-2 pt-6">
+              <Checkbox
+                id="hideFromPublicListing"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+              <Label htmlFor="hideFromPublicListing">
+                セッションリストから隠す
+              </Label>
+            </div>
           )}
         />
-      </Stack>
+      </div>
       <Controller
         name="customSessionId"
         control={control}
         render={({ field }) => (
-          <TextField
-            label="カスタムセッションID"
-            fullWidth
-            {...field}
-            error={!!errors.customSessionId}
-            helperText={errors.customSessionId?.message}
-          />
+          <div className="space-y-2">
+            <Label htmlFor="customSessionId">カスタムセッションID</Label>
+            <Input
+              id="customSessionId"
+              {...field}
+              className={errors.customSessionId ? "border-red-500" : ""}
+            />
+            {errors.customSessionId && (
+              <p className="text-sm text-red-500">
+                {errors.customSessionId.message}
+              </p>
+            )}
+          </div>
         )}
       />
 
@@ -456,16 +469,22 @@ export default function NewSessionForm() {
         name="parentSessionIds"
         control={control}
         render={({ field }) => (
-          <TextField
-            label="parentSessionIds"
-            fullWidth
-            {...field}
-            error={!!errors.parentSessionIds}
-            helperText={
-              errors.parentSessionIds?.message ||
-              "カンマ区切りで入力してください"
-            }
-          />
+          <div className="space-y-2">
+            <Label htmlFor="parentSessionIds">parentSessionIds</Label>
+            <Input
+              id="parentSessionIds"
+              {...field}
+              className={errors.parentSessionIds ? "border-red-500" : ""}
+            />
+            {errors.parentSessionIds && (
+              <p className="text-sm text-red-500">
+                {errors.parentSessionIds.message}
+              </p>
+            )}
+            <p className="text-sm text-gray-500">
+              カンマ区切りで入力してください
+            </p>
+          </div>
         )}
       />
 
@@ -473,16 +492,26 @@ export default function NewSessionForm() {
         name="overrideCorrespondingWorldId"
         control={control}
         render={({ field }) => (
-          <TextField
-            label="overrideCorrespondingWorldId"
-            fullWidth
-            {...field}
-            error={!!errors.overrideCorrespondingWorldId}
-            helperText={
-              errors.overrideCorrespondingWorldId?.message ||
-              "ownerId/id の形式で入力してください"
-            }
-          />
+          <div className="space-y-2">
+            <Label htmlFor="overrideCorrespondingWorldId">
+              overrideCorrespondingWorldId
+            </Label>
+            <Input
+              id="overrideCorrespondingWorldId"
+              {...field}
+              className={
+                errors.overrideCorrespondingWorldId ? "border-red-500" : ""
+              }
+            />
+            {errors.overrideCorrespondingWorldId && (
+              <p className="text-sm text-red-500">
+                {errors.overrideCorrespondingWorldId.message}
+              </p>
+            )}
+            <p className="text-sm text-gray-500">
+              ownerId/id の形式で入力してください
+            </p>
+          </div>
         )}
       />
 
@@ -490,37 +519,55 @@ export default function NewSessionForm() {
         name="awayKickMinutes"
         control={control}
         render={({ field }) => (
-          <TextField
-            label="AFKキック時間(分)"
-            type="number"
-            {...field}
-            onChange={(e) => {
-              const value =
-                e.target.value === "" ? "" : parseFloat(e.target.value);
-              field.onChange(value);
-            }}
-            error={!!errors.awayKickMinutes}
-            helperText={errors.awayKickMinutes?.message || "-1で無効"}
-          />
+          <div className="space-y-2">
+            <Label htmlFor="awayKickMinutes">AFKキック時間(分)</Label>
+            <Input
+              id="awayKickMinutes"
+              type="number"
+              {...field}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const value =
+                  e.target.value === "" ? "" : parseFloat(e.target.value);
+                field.onChange(value);
+              }}
+              className={errors.awayKickMinutes ? "border-red-500" : ""}
+            />
+            {errors.awayKickMinutes && (
+              <p className="text-sm text-red-500">
+                {errors.awayKickMinutes.message}
+              </p>
+            )}
+            <p className="text-sm text-gray-500">-1で無効</p>
+          </div>
         )}
       />
-      <Stack direction="row" spacing={2}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Controller
           name="autoSaveIntervalSeconds"
           control={control}
           render={({ field }) => (
-            <TextField
-              label="自動保存間隔(秒)"
-              type="number"
-              {...field}
-              onChange={(e) => {
-                const value =
-                  e.target.value === "" ? "" : parseInt(e.target.value);
-                field.onChange(value);
-              }}
-              error={!!errors.autoSaveIntervalSeconds}
-              helperText={errors.autoSaveIntervalSeconds?.message || "-1で無効"}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="autoSaveIntervalSeconds">自動保存間隔(秒)</Label>
+              <Input
+                id="autoSaveIntervalSeconds"
+                type="number"
+                {...field}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value =
+                    e.target.value === "" ? "" : parseInt(e.target.value);
+                  field.onChange(value);
+                }}
+                className={
+                  errors.autoSaveIntervalSeconds ? "border-red-500" : ""
+                }
+              />
+              {errors.autoSaveIntervalSeconds && (
+                <p className="text-sm text-red-500">
+                  {errors.autoSaveIntervalSeconds.message}
+                </p>
+              )}
+              <p className="text-sm text-gray-500">-1で無効</p>
+            </div>
           )}
         />
 
@@ -528,37 +575,46 @@ export default function NewSessionForm() {
           name="saveOnExit"
           control={control}
           render={({ field }) => (
-            <FormControlLabel
-              label="セッション終了時に保存"
-              control={
-                <Checkbox
-                  checked={field.value}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                />
-              }
-            />
+            <div className="flex items-center space-x-2 pt-6">
+              <Checkbox
+                id="saveOnExit"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+              <Label htmlFor="saveOnExit">セッション終了時に保存</Label>
+            </div>
           )}
         />
-      </Stack>
-      <Stack direction="row" spacing={2}>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Controller
           name="idleRestartIntervalSeconds"
           control={control}
           render={({ field }) => (
-            <TextField
-              label="アイドル時の自動再起動間隔(秒)"
-              type="number"
-              {...field}
-              onChange={(e) => {
-                const value =
-                  e.target.value === "" ? "" : parseInt(e.target.value);
-                field.onChange(value);
-              }}
-              error={!!errors.idleRestartIntervalSeconds}
-              helperText={
-                errors.idleRestartIntervalSeconds?.message || "-1で無効"
-              }
-            />
+            <div className="space-y-2">
+              <Label htmlFor="idleRestartIntervalSeconds">
+                アイドル時の自動再起動間隔(秒)
+              </Label>
+              <Input
+                id="idleRestartIntervalSeconds"
+                type="number"
+                {...field}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value =
+                    e.target.value === "" ? "" : parseInt(e.target.value);
+                  field.onChange(value);
+                }}
+                className={
+                  errors.idleRestartIntervalSeconds ? "border-red-500" : ""
+                }
+              />
+              {errors.idleRestartIntervalSeconds && (
+                <p className="text-sm text-red-500">
+                  {errors.idleRestartIntervalSeconds.message}
+                </p>
+              )}
+              <p className="text-sm text-gray-500">-1で無効</p>
+            </div>
           )}
         />
 
@@ -566,20 +622,30 @@ export default function NewSessionForm() {
           name="forcedRestartIntervalSeconds"
           control={control}
           render={({ field }) => (
-            <TextField
-              label="forcedRestartInterval(秒)"
-              type="number"
-              {...field}
-              onChange={(e) => {
-                const value =
-                  e.target.value === "" ? "" : parseInt(e.target.value);
-                field.onChange(value);
-              }}
-              error={!!errors.forcedRestartIntervalSeconds}
-              helperText={
-                errors.forcedRestartIntervalSeconds?.message || "-1で無効"
-              }
-            />
+            <div className="space-y-2">
+              <Label htmlFor="forcedRestartIntervalSeconds">
+                forcedRestartInterval(秒)
+              </Label>
+              <Input
+                id="forcedRestartIntervalSeconds"
+                type="number"
+                {...field}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value =
+                    e.target.value === "" ? "" : parseInt(e.target.value);
+                  field.onChange(value);
+                }}
+                className={
+                  errors.forcedRestartIntervalSeconds ? "border-red-500" : ""
+                }
+              />
+              {errors.forcedRestartIntervalSeconds && (
+                <p className="text-sm text-red-500">
+                  {errors.forcedRestartIntervalSeconds.message}
+                </p>
+              )}
+              <p className="text-sm text-gray-500">-1で無効</p>
+            </div>
           )}
         />
 
@@ -587,15 +653,14 @@ export default function NewSessionForm() {
           name="autoSleep"
           control={control}
           render={({ field }) => (
-            <FormControlLabel
-              label="自動スリープ"
-              control={
-                <Checkbox
-                  checked={field.value}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                />
-              }
-            />
+            <div className="flex items-center space-x-2 pt-6">
+              <Checkbox
+                id="autoSleep"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+              <Label htmlFor="autoSleep">自動スリープ</Label>
+            </div>
           )}
         />
 
@@ -603,35 +668,42 @@ export default function NewSessionForm() {
           name="autoRecover"
           control={control}
           render={({ field }) => (
-            <FormControlLabel
-              label="autoRecover"
-              control={
-                <Checkbox
-                  checked={field.value}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                />
-              }
-            />
+            <div className="flex items-center space-x-2 pt-6">
+              <Checkbox
+                id="autoRecover"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+              <Label htmlFor="autoRecover">autoRecover</Label>
+            </div>
           )}
         />
-      </Stack>
-      <Stack direction="row" spacing={2}>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Controller
           name="forcePort"
           control={control}
           render={({ field }) => (
-            <TextField
-              label="forcePort"
-              type="number"
-              {...field}
-              onChange={(e) => {
-                const value =
-                  e.target.value === "" ? "" : parseInt(e.target.value);
-                field.onChange(value);
-              }}
-              error={!!errors.forcePort}
-              helperText={errors.forcePort?.message}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="forcePort">forcePort</Label>
+              <Input
+                id="forcePort"
+                type="number"
+                {...field}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value =
+                    e.target.value === "" ? "" : parseInt(e.target.value);
+                  field.onChange(value);
+                }}
+                className={errors.forcePort ? "border-red-500" : ""}
+              />
+              {errors.forcePort && (
+                <p className="text-sm text-red-500">
+                  {errors.forcePort.message}
+                </p>
+              )}
+            </div>
           )}
         />
 
@@ -639,32 +711,31 @@ export default function NewSessionForm() {
           name="mobileFriendly"
           control={control}
           render={({ field }) => (
-            <FormControlLabel
-              label="mobileFriendly"
-              control={
-                <Checkbox
-                  checked={field.value}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                />
-              }
-            />
+            <div className="flex items-center space-x-2 pt-6">
+              <Checkbox
+                id="mobileFriendly"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+              <Label htmlFor="mobileFriendly">mobileFriendly</Label>
+            </div>
           )}
         />
-      </Stack>
-      <Stack direction="row" spacing={2}>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Controller
           name="keepOriginalRoles"
           control={control}
           render={({ field }) => (
-            <FormControlLabel
-              label="keepOriginalRoles"
-              control={
-                <Checkbox
-                  checked={field.value}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                />
-              }
-            />
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="keepOriginalRoles"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+              <Label htmlFor="keepOriginalRoles">keepOriginalRoles</Label>
+            </div>
           )}
         />
 
@@ -672,34 +743,40 @@ export default function NewSessionForm() {
           name="useCustomJoinVerifier"
           control={control}
           render={({ field }) => (
-            <FormControlLabel
-              label="useCustomJoinVerifier"
-              control={
-                <Checkbox
-                  checked={field.value}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                />
-              }
-            />
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="useCustomJoinVerifier"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+              <Label htmlFor="useCustomJoinVerifier">
+                useCustomJoinVerifier
+              </Label>
+            </div>
           )}
         />
-      </Stack>
-      <Stack direction="row" spacing={2}>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Controller
           name="autoInviteUsernames"
           control={control}
           render={({ field }) => (
-            <TextField
-              label="自動招待ユーザ"
-              multiline
-              fullWidth
-              {...field}
-              error={!!errors.autoInviteUsernames}
-              helperText={
-                errors.autoInviteUsernames?.message ||
-                "カンマ区切りで入力してください"
-              }
-            />
+            <div className="space-y-2">
+              <Label htmlFor="autoInviteUsernames">自動招待ユーザ</Label>
+              <Textarea
+                id="autoInviteUsernames"
+                {...field}
+                className={errors.autoInviteUsernames ? "border-red-500" : ""}
+              />
+              {errors.autoInviteUsernames && (
+                <p className="text-sm text-red-500">
+                  {errors.autoInviteUsernames.message}
+                </p>
+              )}
+              <p className="text-sm text-gray-500">
+                カンマ区切りで入力してください
+              </p>
+            </div>
           )}
         />
 
@@ -707,42 +784,65 @@ export default function NewSessionForm() {
           name="autoInviteMessage"
           control={control}
           render={({ field }) => (
-            <TextField
-              label="招待メッセージ"
-              multiline
-              fullWidth
-              {...field}
-              error={!!errors.autoInviteMessage}
-              helperText={errors.autoInviteMessage?.message}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="autoInviteMessage">招待メッセージ</Label>
+              <Textarea
+                id="autoInviteMessage"
+                {...field}
+                className={errors.autoInviteMessage ? "border-red-500" : ""}
+              />
+              {errors.autoInviteMessage && (
+                <p className="text-sm text-red-500">
+                  {errors.autoInviteMessage.message}
+                </p>
+              )}
+            </div>
           )}
         />
-      </Stack>
+      </div>
+
       <Controller
         name="roleCloudVariable"
         control={control}
         render={({ field }) => (
-          <TextField
-            label="roleCloudVariable"
-            fullWidth
-            {...field}
-            error={!!errors.roleCloudVariable}
-            helperText={errors.roleCloudVariable?.message}
-          />
+          <div className="space-y-2">
+            <Label htmlFor="roleCloudVariable">roleCloudVariable</Label>
+            <Input
+              id="roleCloudVariable"
+              {...field}
+              className={errors.roleCloudVariable ? "border-red-500" : ""}
+            />
+            {errors.roleCloudVariable && (
+              <p className="text-sm text-red-500">
+                {errors.roleCloudVariable.message}
+              </p>
+            )}
+          </div>
         )}
       />
-      <Stack direction="row" spacing={2}>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Controller
           name="allowUserCloudVariable"
           control={control}
           render={({ field }) => (
-            <TextField
-              label="allowUserCloudVariable"
-              fullWidth
-              {...field}
-              error={!!errors.allowUserCloudVariable}
-              helperText={errors.allowUserCloudVariable?.message}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="allowUserCloudVariable">
+                allowUserCloudVariable
+              </Label>
+              <Input
+                id="allowUserCloudVariable"
+                {...field}
+                className={
+                  errors.allowUserCloudVariable ? "border-red-500" : ""
+                }
+              />
+              {errors.allowUserCloudVariable && (
+                <p className="text-sm text-red-500">
+                  {errors.allowUserCloudVariable.message}
+                </p>
+              )}
+            </div>
           )}
         />
 
@@ -750,28 +850,47 @@ export default function NewSessionForm() {
           name="denyUserCloudVariable"
           control={control}
           render={({ field }) => (
-            <TextField
-              label="denyUserCloudVariable"
-              fullWidth
-              {...field}
-              error={!!errors.denyUserCloudVariable}
-              helperText={errors.denyUserCloudVariable?.message}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="denyUserCloudVariable">
+                denyUserCloudVariable
+              </Label>
+              <Input
+                id="denyUserCloudVariable"
+                {...field}
+                className={errors.denyUserCloudVariable ? "border-red-500" : ""}
+              />
+              {errors.denyUserCloudVariable && (
+                <p className="text-sm text-red-500">
+                  {errors.denyUserCloudVariable.message}
+                </p>
+              )}
+            </div>
           )}
         />
-      </Stack>
-      <Stack direction="row" spacing={2}>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Controller
           name="requiredUserJoinCloudVariable"
           control={control}
           render={({ field }) => (
-            <TextField
-              label="requiredUserJoinCloudVariable"
-              fullWidth
-              {...field}
-              error={!!errors.requiredUserJoinCloudVariable}
-              helperText={errors.requiredUserJoinCloudVariable?.message}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="requiredUserJoinCloudVariable">
+                requiredUserJoinCloudVariable
+              </Label>
+              <Input
+                id="requiredUserJoinCloudVariable"
+                {...field}
+                className={
+                  errors.requiredUserJoinCloudVariable ? "border-red-500" : ""
+                }
+              />
+              {errors.requiredUserJoinCloudVariable && (
+                <p className="text-sm text-red-500">
+                  {errors.requiredUserJoinCloudVariable.message}
+                </p>
+              )}
+            </div>
           )}
         />
 
@@ -779,26 +898,32 @@ export default function NewSessionForm() {
           name="requiredUserJoinCloudVariableDenyMessage"
           control={control}
           render={({ field }) => (
-            <TextField
-              label="requiredUserJoinCloudVariableDenyMessage"
-              fullWidth
-              {...field}
-              error={!!errors.requiredUserJoinCloudVariableDenyMessage}
-              helperText={
-                errors.requiredUserJoinCloudVariableDenyMessage?.message
-              }
-            />
+            <div className="space-y-2">
+              <Label htmlFor="requiredUserJoinCloudVariableDenyMessage">
+                requiredUserJoinCloudVariableDenyMessage
+              </Label>
+              <Input
+                id="requiredUserJoinCloudVariableDenyMessage"
+                {...field}
+                className={
+                  errors.requiredUserJoinCloudVariableDenyMessage
+                    ? "border-red-500"
+                    : ""
+                }
+              />
+              {errors.requiredUserJoinCloudVariableDenyMessage && (
+                <p className="text-sm text-red-500">
+                  {errors.requiredUserJoinCloudVariableDenyMessage.message}
+                </p>
+              )}
+            </div>
           )}
         />
-      </Stack>
+      </div>
 
-      <Button
-        variant="contained"
-        type="submit"
-        disabled={Object.keys(errors).length > 0}
-      >
+      <Button type="submit" disabled={Object.keys(errors).length > 0}>
         セッション開始
       </Button>
-    </Stack>
+    </form>
   );
 }

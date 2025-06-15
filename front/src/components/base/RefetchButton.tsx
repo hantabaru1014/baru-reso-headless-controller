@@ -1,5 +1,5 @@
-import { Refresh } from "@mui/icons-material";
-import { IconButton } from "@mui/material";
+import { RefreshCw } from "lucide-react";
+import { Button } from "./button";
 import { useState } from "react";
 
 export default function RefetchButton({
@@ -12,7 +12,9 @@ export default function RefetchButton({
   const [isLoading, setIsLoading] = useState(false);
 
   return (
-    <IconButton
+    <Button
+      size="icon"
+      variant="ghost"
       aria-label="再読み込み"
       onClick={async () => {
         setIsLoading(true);
@@ -21,7 +23,7 @@ export default function RefetchButton({
       }}
       disabled={disabled || isLoading}
     >
-      <Refresh />
-    </IconButton>
+      <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+    </Button>
   );
 }

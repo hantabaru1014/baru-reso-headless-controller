@@ -1,4 +1,5 @@
-import { TextField } from "@mui/material";
+import { Input } from "./input";
+import { Label } from "./label";
 import EditableFieldBase from "./EditableFieldBase";
 import { ComponentProps, useState } from "react";
 import SelectField, { type SelectFieldOption } from "./SelectField";
@@ -57,18 +58,17 @@ export default function EditableSelectField<V>(
           helperText={errorMessage ?? props.helperText}
         />
       ) : (
-        <TextField
-          label={props.label}
-          fullWidth
-          variant="standard"
-          value={selectedOption?.label || ""}
-          slotProps={{
-            input: {
-              readOnly: true,
-            },
-          }}
-          helperText={props.helperText}
-        />
+        <div className="space-y-2">
+          {props.label && <Label>{props.label}</Label>}
+          <Input
+            value={selectedOption?.label?.toString() || ""}
+            readOnly
+            className="bg-muted"
+          />
+          {props.helperText && (
+            <p className="text-sm text-muted-foreground">{props.helperText}</p>
+          )}
+        </div>
       )}
     </EditableFieldBase>
   );

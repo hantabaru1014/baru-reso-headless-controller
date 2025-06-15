@@ -1,4 +1,3 @@
-import { Grid2, Typography } from "@mui/material";
 import { useParams } from "react-router";
 import SessionForm from "../../components/SessionForm";
 import SessionUserList from "../../components/SessionUserList";
@@ -13,23 +12,25 @@ export default function SessionDetail() {
   });
 
   return (
-    <Grid2 container spacing={2}>
+    <div className="container mx-auto p-4 space-y-4">
       {id ? (
         <>
-          <Grid2 size={12}>
+          <div className="w-full">
             <SessionForm sessionId={id} />
-          </Grid2>
+          </div>
           {data?.session?.status === SessionStatus.RUNNING && (
-            <Grid2 size={12}>
+            <div className="w-full">
               <SessionUserList sessionId={id} />
-            </Grid2>
+            </div>
           )}
         </>
       ) : (
-        <Grid2 size={12}>
-          <Typography>NotFound: セッションが見つかりませんでした</Typography>
-        </Grid2>
+        <div className="w-full">
+          <p className="text-destructive">
+            NotFound: セッションが見つかりませんでした
+          </p>
+        </div>
       )}
-    </Grid2>
+    </div>
   );
 }

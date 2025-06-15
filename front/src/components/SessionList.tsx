@@ -1,14 +1,4 @@
-import {
-  Button,
-  Skeleton,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-} from "@mui/material";
+import { Button } from "./base/button";
 import { useQuery } from "@connectrpc/connect-query";
 import {
   listHeadlessHost,
@@ -19,8 +9,10 @@ import { AccessLevels } from "../constants";
 import RefetchButton from "./base/RefetchButton";
 import { sessionStatusToLabel } from "../libs/sessionUtils";
 import SelectField from "./base/SelectField";
-import { ReactNode, useState } from "react";
-import { SessionStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
+import { ReactNode, useMemo, useState } from "react";
+import { Session, SessionStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
+import { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "./base";
 
 export default function SessionList() {
   const [filterState, setFilterState] = useState<{
@@ -34,7 +26,7 @@ export default function SessionList() {
   });
   const [filterHostId, setFilterHostId] = useState("ALL");
   const { data: hosts } = useQuery(listHeadlessHost);
-  const { data, status, refetch } = useQuery(searchSessions, {
+  const { data, isPending, refetch } = useQuery(searchSessions, {
     parameters: {
       status: filterState.value,
       hostId: filterHostId === "ALL" ? undefined : filterHostId,
@@ -42,23 +34,66 @@ export default function SessionList() {
   });
   const navigate = useNavigate();
 
-  const hostNameMap =
-    hosts?.hosts.reduce(
-      (acc, host) => {
-        acc[host.id] = host.name;
-        return acc;
+  const columns: ColumnDef<Session>[] = useMemo(() => {
+    const hostNameMap =
+      hosts?.hosts.reduce(
+        (acc, host) => {
+          acc[host.id] = host.name;
+          return acc;
+        },
+        {} as Record<string, string>,
+      ) || {};
+
+    return [
+      {
+        accessorKey: "name",
+        header: "セッション名",
       },
-      {} as Record<string, string>,
-    ) || {};
+      {
+        accessorKey: "hostId",
+        header: "ホスト名",
+        cell: ({ cell }) => hostNameMap[cell.getValue<string>()] || "不明",
+      },
+      {
+        accessorKey: "status",
+        header: "状態",
+        cell: ({ cell }) =>
+          sessionStatusToLabel(cell.getValue<SessionStatus>()),
+      },
+      {
+        accessorKey: "currentState.accessLevel",
+        header: "アクセスレベル",
+        cell: ({ cell }) => {
+          const accessLevel = cell.getValue<number>();
+          const paramAccessLevel = cell.row.original.startupParameters
+            ?.accessLevel as number;
+          return (
+            AccessLevels[accessLevel - 1]?.label ||
+            AccessLevels[paramAccessLevel - 1]?.label ||
+            "不明"
+          );
+        },
+      },
+      {
+        accessorKey: "currentState.usersCount",
+        header: "ユーザー数",
+        cell: ({ row }) => {
+          const currentState = row.original.currentState;
+          const paramMaxUsers = row.original.startupParameters?.maxUsers;
+          return currentState
+            ? `${currentState.usersCount}/${currentState.maxUsers}`
+            : paramMaxUsers
+              ? `0/${paramMaxUsers || 0}`
+              : "不明";
+        },
+      },
+    ];
+  }, [hosts?.hosts]);
 
   return (
-    <Stack spacing={2}>
-      <Stack
-        direction="row"
-        spacing={2}
-        sx={{ justifyContent: "space-between" }}
-      >
-        <Stack direction="row" spacing={1}>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div className="flex gap-2">
           <SelectField
             label="状態"
             options={[
@@ -86,94 +121,20 @@ export default function SessionList() {
             onChange={(o) => setFilterHostId(o.id)}
             selectedId={filterHostId}
           />
-        </Stack>
-        <div>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => navigate("/sessions/new")}
-          >
+        </div>
+        <div className="flex gap-2">
+          <RefetchButton refetch={refetch} />
+          <Button onClick={() => navigate("/sessions/new")}>
             新規セッション
           </Button>
-          <RefetchButton refetch={refetch} />
         </div>
-      </Stack>
-      <TableContainer>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>セッション名</TableCell>
-              <TableCell>ホスト名</TableCell>
-              <TableCell>状態</TableCell>
-              <TableCell>アクセスレベル</TableCell>
-              <TableCell>ユーザー数</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {data?.sessions.map((session) => (
-              <TableRow
-                key={session.id}
-                onClick={() => navigate(`/sessions/${session.id}`)}
-                hover
-                sx={{ cursor: "pointer" }}
-              >
-                <TableCell>{session.name}</TableCell>
-                <TableCell>{hostNameMap[session.hostId]}</TableCell>
-                <TableCell>{sessionStatusToLabel(session.status)}</TableCell>
-                <TableCell>
-                  {session.currentState
-                    ? AccessLevels[session.currentState.accessLevel - 1].label
-                    : ""}
-                </TableCell>
-                <TableCell>
-                  {session.currentState
-                    ? session.currentState.usersCount +
-                      "/" +
-                      session.currentState.maxUsers
-                    : ""}
-                </TableCell>
-              </TableRow>
-            ))}
-            {status === "pending" && (
-              <>
-                <TableRow>
-                  <TableCell>
-                    <Skeleton variant="rectangular" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton variant="rectangular" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton variant="rectangular" />
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>
-                    <Skeleton variant="rectangular" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton variant="rectangular" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton variant="rectangular" />
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>
-                    <Skeleton variant="rectangular" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton variant="rectangular" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton variant="rectangular" />
-                  </TableCell>
-                </TableRow>
-              </>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Stack>
+      </div>
+      <DataTable
+        columns={columns}
+        data={data?.sessions || []}
+        isLoading={isPending}
+        onClickRow={(row) => navigate(`/sessions/${row.id}`)}
+      />
+    </div>
   );
 }

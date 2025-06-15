@@ -3,7 +3,8 @@ import {
   acceptFriendRequests,
   getFriendRequests,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import { Button, Card, CardContent, CardHeader } from "@mui/material";
+import { Button } from "./base/button";
+import { Card, CardContent, CardHeader } from "./base/card";
 import RefetchButton from "./base/RefetchButton";
 import UserList from "./base/UserList";
 import ScrollBase from "./base/ScrollBase";
@@ -20,11 +21,13 @@ export default function FriendRequestList({
     useMutation(acceptFriendRequests);
 
   return (
-    <Card variant="outlined">
-      <CardHeader
-        title="フレンドリクエスト"
-        action={<RefetchButton refetch={refetch} />}
-      />
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">フレンドリクエスト</h3>
+          <RefetchButton refetch={refetch} />
+        </div>
+      </CardHeader>
       <CardContent>
         <ScrollBase height={scrollHeight}>
           <UserList
@@ -32,8 +35,6 @@ export default function FriendRequestList({
             isLoading={isPending}
             renderActions={(user) => (
               <Button
-                variant="contained"
-                color="primary"
                 onClick={() => {
                   mutateAcceptFriendRequest({ hostId, userIds: [user.id] });
                 }}
