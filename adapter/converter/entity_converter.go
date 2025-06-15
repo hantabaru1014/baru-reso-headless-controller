@@ -11,7 +11,6 @@ func HeadlessHostEntityToProto(e *entity.HeadlessHost) *hdlctrlv1.HeadlessHost {
 	return &hdlctrlv1.HeadlessHost{
 		Id:                e.ID,
 		Name:              e.Name,
-		Address:           e.Address,
 		ResoniteVersion:   e.ResoniteVersion,
 		AppVersion:        e.AppVersion,
 		AccountId:         e.AccountId,
@@ -20,6 +19,8 @@ func HeadlessHostEntityToProto(e *entity.HeadlessHost) *hdlctrlv1.HeadlessHost {
 		StorageUsedBytes:  e.StorageUsedBytes,
 		Fps:               e.Fps,
 		Status:            hdlctrlv1.HeadlessHostStatus(e.Status),
+		AutoUpdatePolicy:  hdlctrlv1.HeadlessHostAutoUpdatePolicy(e.AutoUpdatePolicy),
+		Memo:              e.Memo,
 	}
 }
 

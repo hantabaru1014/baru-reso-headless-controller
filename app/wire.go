@@ -6,6 +6,7 @@ package app
 import (
 	"github.com/google/wire"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter"
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
@@ -17,6 +18,9 @@ func InitializeServer() *Server {
 	wire.Build(
 		// db
 		db.NewQueries,
+
+		// host connector
+		hostconnector.NewDockerHostConnector,
 
 		// repository
 		wire.Bind(new(port.HeadlessHostRepository), new(*adapter.HeadlessHostRepository)),
@@ -47,8 +51,20 @@ func InitializeCli() *Cli {
 		// db
 		db.NewQueries,
 
+		// host connector
+		hostconnector.NewDockerHostConnector,
+
+		// repository
+		wire.Bind(new(port.HeadlessHostRepository), new(*adapter.HeadlessHostRepository)),
+		adapter.NewHeadlessHostRepository,
+		wire.Bind(new(port.SessionRepository), new(*adapter.SessionRepository)),
+		adapter.NewSessionRepository,
+
 		// usecase
 		usecase.NewUserUsecase,
+		usecase.NewHeadlessAccountUsecase,
+		usecase.NewSessionUsecase,
+		usecase.NewHeadlessHostUsecase,
 
 		NewCli,
 	)

@@ -16,11 +16,16 @@ type LogLine struct {
 type LogLineList []*LogLine
 
 type HeadlessHostStartParams struct {
-	Name                      string
-	ContainerImageTag         *string
-	HeadlessAccountCredential string
-	HeadlessAccountPassword   string
-	StartupConfig             *headlessv1.StartupConfig
+	Name              string
+	ContainerImageTag string
+	HeadlessAccount   entity.HeadlessAccount
+	StartupConfig     *headlessv1.StartupConfig
+	AutoUpdatePolicy  entity.HostAutoUpdatePolicy
+	Memo              string
+}
+
+type HeadlessHostFetchOptions struct {
+	IncludeStartWorlds bool
 }
 
 type ContainerImage struct {
@@ -32,20 +37,20 @@ type ContainerImage struct {
 
 type ContainerImageList []*ContainerImage
 
+type HostConnectorType string
+
+const HostConnectorType_DOCKER HostConnectorType = "docker"
+
 type HeadlessHostRepository interface {
-	ListAll(ctx context.Context) (entity.HeadlessHostList, error)
-	Find(ctx context.Context, id string) (*entity.HeadlessHost, error)
+	ListAll(ctx context.Context, fetchOptions HeadlessHostFetchOptions) (entity.HeadlessHostList, error)
+	Find(ctx context.Context, id string, fetchOptions HeadlessHostFetchOptions) (*entity.HeadlessHost, error)
 	GetRpcClient(ctx context.Context, id string) (headlessv1.HeadlessControlServiceClient, error)
 	GetLogs(ctx context.Context, id string, limit int32, until, since string) (LogLineList, error)
 	Rename(ctx context.Context, id, newName string) error
-	PullContainerImage(ctx context.Context, tag string) (string, error)
 	// コンテナイメージのタグ一覧をリモートから取得する。一番新しいタグが最後。
 	ListContainerTags(ctx context.Context, lastTag *string) (ContainerImageList, error)
-	// ローカルにあるコンテナイメージのタグ一覧を取得する。一番新しいタグが最後。
-	ListLocalAvailableContainerTags(ctx context.Context) (ContainerImageList, error)
-	Restart(ctx context.Context, host *entity.HeadlessHost, newImage *string) (string, error)
-	Start(ctx context.Context, params HeadlessHostStartParams) (string, error)
-	GetStartParams(ctx context.Context, id string) (*HeadlessHostStartParams, error)
+	Restart(ctx context.Context, id string, newStartupConfig HeadlessHostStartParams, timeoutSeconds int) error
+	Start(ctx context.Context, connector HostConnectorType, params HeadlessHostStartParams, userId *string) (id string, err error)
 	// コンテナを終了する
 	// timeoutSeconds:
 	// - Use '-1' to wait indefinitely.
