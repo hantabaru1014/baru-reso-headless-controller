@@ -183,7 +183,7 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 			sessionHostIdMap[s.Id] = *filter.HostID
 		}
 	} else {
-		hosts, err := u.hostRepo.ListAll(ctx)
+		hosts, err := u.hostRepo.ListAll(ctx, port.HeadlessHostFetchOptions{})
 		if err != nil {
 			return nil, errors.Wrap(err, 0)
 		}

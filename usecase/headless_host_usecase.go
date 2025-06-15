@@ -33,7 +33,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostStart(ctx context.Context, params p
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostList(ctx context.Context) (entity.HeadlessHostList, error) {
-	hosts, err := hhuc.hhrepo.ListAll(ctx)
+	hosts, err := hhuc.hhrepo.ListAll(ctx, port.HeadlessHostFetchOptions{})
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
@@ -41,7 +41,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostList(ctx context.Context) (entity.H
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostGet(ctx context.Context, id string) (*entity.HeadlessHost, error) {
-	host, err := hhuc.hhrepo.Find(ctx, id)
+	host, err := hhuc.hhrepo.Find(ctx, id, port.HeadlessHostFetchOptions{})
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
@@ -102,7 +102,9 @@ func (hhuc *HeadlessHostUsecase) markSessionsAsEnded(ctx context.Context, sessio
 // HeadlessHostRestart restarts the headless host with the specified ID.
 // If newTag is "latestRelease", it will use the latest release tag.
 func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id string, newTag *string, withWorldRestart bool, timeoutSeconds int) error {
-	host, err := hhuc.hhrepo.Find(ctx, id)
+	host, err := hhuc.hhrepo.Find(ctx, id, port.HeadlessHostFetchOptions{
+		IncludeStartWorlds: withWorldRestart,
+	})
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -152,9 +154,6 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 		ContainerImageTag: tagToUse,
 		StartupConfig:     host.StartupConfig,
 		HeadlessAccount:   *account,
-	}
-	if !withWorldRestart && startupConfig.StartupConfig != nil {
-		startupConfig.StartupConfig.StartWorlds = nil
 	}
 	err = hhuc.hhrepo.Restart(ctx, host.ID, startupConfig, timeoutSeconds)
 	if err != nil {

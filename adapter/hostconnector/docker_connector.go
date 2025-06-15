@@ -21,6 +21,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-errors/errors"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
@@ -151,13 +152,13 @@ func (d *DockerHostConnector) GetRpcClient(ctx context.Context, connect_string H
 	}
 	container, err := d.getContainer(ctx, id)
 	if err != nil {
+		if errors.Is(err, containerNotFoundError) {
+			return nil, errors.WrapPrefix(domain.ErrNotFound, "grpc client (docker container)", 0)
+		}
 		return nil, errors.Errorf("failed to get container: %w", err)
 	}
 	if container.State != "running" {
 		return nil, errors.Errorf("specific container is not running")
-	}
-	if container.Labels == nil {
-		return nil, errors.Errorf("container labels are nil")
 	}
 	address := fmt.Sprintf("localhost:%d", port)
 	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))

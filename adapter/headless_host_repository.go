@@ -24,12 +24,12 @@ type HeadlessHostRepository struct {
 }
 
 // Find implements port.HeadlessHostRepository.
-func (h *HeadlessHostRepository) Find(ctx context.Context, id string) (*entity.HeadlessHost, error) {
+func (h *HeadlessHostRepository) Find(ctx context.Context, id string, fetchOptions port.HeadlessHostFetchOptions) (*entity.HeadlessHost, error) {
 	host, err := h.q.GetHost(ctx, id)
 	if err != nil {
 		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
-	return h.dbToEntity(ctx, &host)
+	return h.dbToEntity(ctx, &host, fetchOptions)
 }
 
 // GetLogs implements port.HeadlessHostRepository.
@@ -59,7 +59,7 @@ func (h *HeadlessHostRepository) GetRpcClient(ctx context.Context, id string) (h
 }
 
 // ListAll implements port.HeadlessHostRepository.
-func (h *HeadlessHostRepository) ListAll(ctx context.Context) (entity.HeadlessHostList, error) {
+func (h *HeadlessHostRepository) ListAll(ctx context.Context, fetchOptions port.HeadlessHostFetchOptions) (entity.HeadlessHostList, error) {
 	hosts, err := h.q.ListHosts(ctx)
 	if err != nil {
 		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
@@ -67,7 +67,7 @@ func (h *HeadlessHostRepository) ListAll(ctx context.Context) (entity.HeadlessHo
 	var result entity.HeadlessHostList
 	for _, host := range hosts {
 		// TODO: getContainerが毎回Listしているので呼び出しを最適化したい
-		entityHost, err := h.dbToEntity(ctx, &host)
+		entityHost, err := h.dbToEntity(ctx, &host, fetchOptions)
 		if err != nil {
 			return nil, errors.Wrap(err, 0)
 		}
@@ -303,7 +303,7 @@ func (h *HeadlessHostRepository) fetchHostInfo(ctx context.Context, host *entity
 	return nil
 }
 
-func (h *HeadlessHostRepository) dbToEntity(ctx context.Context, dbHost *db.Host) (*entity.HeadlessHost, error) {
+func (h *HeadlessHostRepository) dbToEntity(ctx context.Context, dbHost *db.Host, fetchOptions port.HeadlessHostFetchOptions) (*entity.HeadlessHost, error) {
 	connector, err := h.getConnector(dbHost.ConnectorType)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
@@ -327,7 +327,7 @@ func (h *HeadlessHostRepository) dbToEntity(ctx context.Context, dbHost *db.Host
 		err = h.fetchHostInfo(ctx, host, conn)
 		if err == nil {
 			startupConfig, err := conn.GetStartupConfigToRestore(ctx, &headlessv1.GetStartupConfigToRestoreRequest{
-				IncludeStartWorlds: false,
+				IncludeStartWorlds: fetchOptions.IncludeStartWorlds,
 			})
 			if err == nil {
 				host.StartupConfig = startupConfig.StartupConfig

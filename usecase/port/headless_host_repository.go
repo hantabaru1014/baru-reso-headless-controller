@@ -24,6 +24,10 @@ type HeadlessHostStartParams struct {
 	Memo              string
 }
 
+type HeadlessHostFetchOptions struct {
+	IncludeStartWorlds bool
+}
+
 type ContainerImage struct {
 	Tag             string
 	ResoniteVersion string
@@ -38,8 +42,8 @@ type HostConnectorType string
 const HostConnectorType_DOCKER HostConnectorType = "docker"
 
 type HeadlessHostRepository interface {
-	ListAll(ctx context.Context) (entity.HeadlessHostList, error)
-	Find(ctx context.Context, id string) (*entity.HeadlessHost, error)
+	ListAll(ctx context.Context, fetchOptions HeadlessHostFetchOptions) (entity.HeadlessHostList, error)
+	Find(ctx context.Context, id string, fetchOptions HeadlessHostFetchOptions) (*entity.HeadlessHost, error)
 	GetRpcClient(ctx context.Context, id string) (headlessv1.HeadlessControlServiceClient, error)
 	GetLogs(ctx context.Context, id string, limit int32, until, since string) (LogLineList, error)
 	Rename(ctx context.Context, id, newName string) error
