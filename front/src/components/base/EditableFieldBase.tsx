@@ -1,9 +1,6 @@
-import { ButtonGroup, IconButton, Skeleton, Stack } from "@mui/material";
-import {
-  EditOutlined,
-  CheckOutlined,
-  CloseOutlined,
-} from "@mui/icons-material";
+import { Button } from "./button";
+import { Skeleton } from "./skeleton";
+import { Edit, Check, X } from "lucide-react";
 
 export default function EditableFieldBase({
   editing,
@@ -23,29 +20,44 @@ export default function EditableFieldBase({
   children: React.ReactNode;
 }) {
   return (
-    <Stack direction="row">
+    <div className="flex items-start gap-2">
       {isLoading ? (
-        <Skeleton variant="rectangular" />
+        <Skeleton className="h-9 w-full" />
       ) : (
         <>
-          <div style={{ flexGrow: 1 }}>{children}</div>
+          <div className="flex-1">{children}</div>
           {!readonly &&
             (editing ? (
-              <ButtonGroup>
-                <IconButton aria-label="保存" onClick={onSave}>
-                  <CheckOutlined />
-                </IconButton>
-                <IconButton aria-label="キャンセル" onClick={onCancel}>
-                  <CloseOutlined />
-                </IconButton>
-              </ButtonGroup>
+              <div className="flex gap-1">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={onSave}
+                  aria-label="保存"
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={onCancel}
+                  aria-label="キャンセル"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             ) : (
-              <IconButton aria-label="編集" onClick={onEditStart}>
-                <EditOutlined />
-              </IconButton>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={onEditStart}
+                aria-label="編集"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
             ))}
         </>
       )}
-    </Stack>
+    </div>
   );
 }

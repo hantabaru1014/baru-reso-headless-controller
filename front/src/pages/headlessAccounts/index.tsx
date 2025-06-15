@@ -1,12 +1,11 @@
-import { Grid2 } from "@mui/material";
 import HeadlessAccountList from "../../components/HeadlessAccountList";
 
 export default function HeadlessAccounts() {
   return (
-    <Grid2 container spacing={2}>
-      <Grid2 size={12}>
+    <div className="container mx-auto p-4">
+      <div className="w-full">
         <HeadlessAccountList />
-      </Grid2>
-    </Grid2>
+      </div>
+    </div>
   );
 }

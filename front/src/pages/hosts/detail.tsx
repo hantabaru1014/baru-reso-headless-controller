@@ -1,4 +1,3 @@
-import { Grid2, Typography } from "@mui/material";
 import HostLogViewer from "../../components/HostLogViewer";
 import { useParams } from "react-router";
 import HostDetailPanel from "../../components/HostDetailPanel";
@@ -7,21 +6,23 @@ export default function HostDetail() {
   const { id } = useParams();
 
   return (
-    <Grid2 container spacing={2}>
+    <div className="container mx-auto p-4 space-y-4">
       {id ? (
         <>
-          <Grid2 size={12}>
+          <div className="w-full">
             <HostDetailPanel hostId={id} />
-          </Grid2>
-          <Grid2 size={12}>
+          </div>
+          <div className="w-full">
             <HostLogViewer hostId={id} />
-          </Grid2>
+          </div>
         </>
       ) : (
-        <Grid2 size={12}>
-          <Typography>NotFound: ホストが見つかりませんでした</Typography>
-        </Grid2>
+        <div className="w-full">
+          <p className="text-destructive">
+            NotFound: ホストが見つかりませんでした
+          </p>
+        </div>
       )}
-    </Grid2>
+    </div>
   );
 }

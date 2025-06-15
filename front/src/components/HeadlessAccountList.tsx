@@ -1,16 +1,14 @@
 import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
   Dialog,
-  DialogActions,
   DialogContent,
+  DialogHeader,
   DialogTitle,
-  Stack,
-  TextField,
-} from "@mui/material";
-import { useDialogs, DialogProps } from "@toolpad/core/useDialogs";
+  DialogFooter,
+} from "./base/dialog";
+import { Button } from "./base/button";
+import { Card, CardContent, CardHeader } from "./base/card";
+import { Input } from "./base/input";
+import { Label } from "./base/label";
 import UserList from "./base/UserList";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
@@ -19,16 +17,21 @@ import {
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import RefetchButton from "./base/RefetchButton";
 import { useEffect, useState } from "react";
-import { useNotifications } from "@toolpad/core/useNotifications";
+import { toast } from "sonner";
 
-function NewAccountDialog({ open, onClose }: DialogProps) {
+function NewAccountDialog({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
   const { mutateAsync: mutateCreateAccount, isPending } = useMutation(
     createHeadlessAccount,
   );
   const [userId, setUserId] = useState("U-");
   const [credential, setCredential] = useState("");
   const [password, setPassword] = useState("");
-  const notifications = useNotifications();
 
   useEffect(() => {
     if (open) {
@@ -39,95 +42,110 @@ function NewAccountDialog({ open, onClose }: DialogProps) {
   }, [open]);
 
   return (
-    <Dialog open={open} onClose={() => onClose()} fullWidth maxWidth="md">
-      <DialogTitle>ヘッドレスアカウントを追加</DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={2}>
-          <TextField
-            label="User ID"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-          />
-          <TextField
-            label="Credential"
-            value={credential}
-            onChange={(e) => setCredential(e.target.value)}
-          />
-          <TextField
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </Stack>
+    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>ヘッドレスアカウントを追加</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="userId">User ID</Label>
+            <Input
+              id="userId"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="credential">Credential</Label>
+            <Input
+              id="credential"
+              value={credential}
+              onChange={(e) => setCredential(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            onClick={async () => {
+              try {
+                await mutateCreateAccount({
+                  resoniteUserId: userId,
+                  credential,
+                  password,
+                });
+                toast.success("アカウントを追加しました");
+              } catch (e) {
+                toast.error(
+                  e instanceof Error
+                    ? e.message
+                    : "アカウントの追加に失敗しました",
+                );
+                return;
+              }
+              onClose();
+            }}
+            disabled={isPending}
+          >
+            追加
+          </Button>
+          <Button variant="outline" onClick={() => onClose()}>
+            キャンセル
+          </Button>
+        </DialogFooter>
       </DialogContent>
-      <DialogActions>
-        <Button
-          onClick={async () => {
-            try {
-              await mutateCreateAccount({
-                resoniteUserId: userId,
-                credential,
-                password,
-              });
-            } catch (e) {
-              notifications.show(e instanceof Error ? e.message : `${e}`, {
-                severity: "error",
-              });
-              return;
-            }
-            onClose();
-          }}
-          loading={isPending}
-          variant="contained"
-          color="primary"
-        >
-          追加
-        </Button>
-        <Button onClick={() => onClose()}>キャンセル</Button>
-      </DialogActions>
     </Dialog>
   );
 }
 
 export default function HeadlessAccountList() {
   const { data, isPending, refetch } = useQuery(listHeadlessAccounts);
-  const dialogs = useDialogs();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const handleNewAccount = async () => {
-    await dialogs.open(NewAccountDialog);
+  const handleNewAccount = () => {
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
     refetch();
   };
 
   return (
-    <Card variant="outlined">
-      <CardHeader
-        title="ヘッドレスアカウント"
-        action={
-          <Stack spacing={2} direction="row">
-            <RefetchButton refetch={refetch} />
-            <Button
-              onClick={handleNewAccount}
-              variant="contained"
-              color="primary"
-            >
-              追加
-            </Button>
-          </Stack>
-        }
-      />
-      <CardContent>
-        <UserList
-          data={
-            data?.accounts.map((account) => ({
-              id: account.userId,
-              name: account.userName,
-              iconUrl: account.iconUrl,
-            })) ?? []
-          }
-          isLoading={isPending}
-        />
-      </CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">ヘッドレスアカウント</h3>
+            <div className="flex gap-2">
+              <RefetchButton refetch={refetch} />
+              <Button onClick={handleNewAccount}>追加</Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <UserList
+            data={
+              data?.accounts.map((account) => ({
+                id: account.userId,
+                name: account.userName,
+                iconUrl: account.iconUrl,
+              })) ?? []
+            }
+            isLoading={isPending}
+          />
+        </CardContent>
+      </Card>
+      <NewAccountDialog open={isDialogOpen} onClose={handleCloseDialog} />
+    </>
   );
 }

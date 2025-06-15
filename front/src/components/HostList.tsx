@@ -5,49 +5,50 @@ import {
   listHeadlessHostImageTags,
   startHeadlessHost,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
+import { ColumnDef } from "@tanstack/react-table";
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
-  Avatar,
-  Button,
   Dialog,
-  DialogActions,
   DialogContent,
+  DialogHeader,
   DialogTitle,
-  Grid2,
-  Skeleton,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-} from "@mui/material";
+  DialogFooter,
+} from "./base/dialog";
+import { Button } from "./base/button";
+import { Input } from "./base/input";
+import { Label } from "./base/label";
+import { Avatar, AvatarImage, AvatarFallback } from "./base/avatar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "./base/collapsible";
+import { ChevronDown } from "lucide-react";
 import prettyBytes from "../libs/prettyBytes";
 import { useNavigate } from "react-router";
 import { hostStatusToLabel } from "../libs/hostUtils";
 import RefetchButton from "./base/RefetchButton";
-import { DialogProps, useDialogs } from "@toolpad/core/useDialogs";
 import UserList, { UserInfo } from "./base/UserList";
 import { useEffect, useMemo, useState } from "react";
-import { useNotifications } from "@toolpad/core/useNotifications";
 import SelectField from "./base/SelectField";
-import { ArrowDropDown } from "@mui/icons-material";
+import { HeadlessHost } from "front/pbgen/hdlctrl/v1/controller_pb";
+import { DataTable } from "./base/DataTable";
+import { toast } from "sonner";
 
 function SelectHeadlessAccountDialog({
   open,
   onClose,
-}: DialogProps<undefined, UserInfo | null>) {
+}: {
+  open: boolean;
+  onClose: (result: UserInfo | null) => void;
+}) {
   const { data, isPending } = useQuery(listHeadlessAccounts);
 
   return (
-    <Dialog open={open} onClose={() => onClose(null)} fullWidth maxWidth="sm">
-      <DialogTitle>ヘッドレスアカウントを選択</DialogTitle>
-      <DialogContent dividers>
+    <Dialog open={open} onOpenChange={(open) => !open && onClose(null)}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>ヘッドレスアカウントを選択</DialogTitle>
+        </DialogHeader>
         <UserList
           data={
             data?.accounts.map((account) => ({
@@ -61,15 +62,23 @@ function SelectHeadlessAccountDialog({
             <Button onClick={() => onClose(account)}>選択</Button>
           )}
         />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onClose(null)}>
+            キャンセル
+          </Button>
+        </DialogFooter>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={() => onClose(null)}>キャンセル</Button>
-      </DialogActions>
     </Dialog>
   );
 }
 
-function NewHostDialog({ open, onClose }: DialogProps) {
+function NewHostDialog({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
   const { data: tags } = useQuery(listHeadlessHostImageTags);
   const { mutateAsync: mutateStartHost, isPending } =
     useMutation(startHeadlessHost);
@@ -78,8 +87,8 @@ function NewHostDialog({ open, onClose }: DialogProps) {
   const [usernameOverride, setUsernameOverride] = useState("");
   const [tag, setTag] = useState("");
   const [account, setAccount] = useState<UserInfo | null>(null);
-  const notifications = useNotifications();
-  const dialogs = useDialogs();
+  const [isAccountDialogOpen, setIsAccountDialogOpen] = useState(false);
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -103,166 +112,182 @@ function NewHostDialog({ open, onClose }: DialogProps) {
     const releaseTags =
       tags?.tags.filter((t) => !t.isPrerelease).map((t) => t.tag) ?? [];
     if (!tag && releaseTags.length > 0) {
-      setTag(releaseTags.at(-1) ?? "");
+      setTag(releaseTags[releaseTags.length - 1] ?? "");
     }
   }, [tags]);
 
   return (
-    <Dialog open={open} onClose={() => onClose()} fullWidth maxWidth="md">
-      <DialogTitle>ヘッドレスを開始</DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={2}>
-          <TextField
-            label="ホスト名"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <SelectField
-            label="バージョン"
-            options={tagOptions}
-            selectedId={tag}
-            onChange={(option) => setTag(option.id)}
-          />
-          {account ? (
-            <Stack spacing={2} direction="row" alignItems="center">
-              <Avatar src={account.iconUrl} />
-              <Typography>{account.name}</Typography>
-            </Stack>
-          ) : (
+    <>
+      <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>ヘッドレスを開始</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="hostName">ホスト名</Label>
+              <Input
+                id="hostName"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <SelectField
+              label="バージョン"
+              options={tagOptions}
+              selectedId={tag}
+              onChange={(option) => setTag(option.id)}
+            />
+            {account ? (
+              <div className="flex items-center gap-2">
+                <Avatar>
+                  <AvatarImage src={account.iconUrl} alt={account.name} />
+                  <AvatarFallback>{account.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium">{account.name}</span>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={() => setIsAccountDialogOpen(true)}
+              >
+                ホストユーザを選択
+              </Button>
+            )}
+            <Collapsible open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
+              <CollapsibleTrigger className="flex w-full items-center justify-between py-2">
+                <span className="text-sm font-medium">詳細設定(任意)</span>
+                <ChevronDown className="h-4 w-4" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-2">
+                <div>
+                  <Label htmlFor="universeId">Universe ID</Label>
+                  <Input
+                    id="universeId"
+                    value={universeId}
+                    onChange={(e) => setUniverseId(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="usernameOverride">Username Override</Label>
+                  <Input
+                    id="usernameOverride"
+                    value={usernameOverride}
+                    onChange={(e) => setUsernameOverride(e.target.value)}
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+          <DialogFooter>
             <Button
               onClick={async () => {
-                const result = await dialogs.open(SelectHeadlessAccountDialog);
-                if (result) {
-                  setAccount(result);
+                try {
+                  await mutateStartHost({
+                    name,
+                    headlessAccountId: account?.id ?? "",
+                    imageTag: tag,
+                    startupConfig: {
+                      universeId: universeId ? universeId : undefined,
+                      usernameOverride: usernameOverride
+                        ? usernameOverride
+                        : undefined,
+                    },
+                  });
+                  onClose();
+                } catch (e) {
+                  toast.error(
+                    e instanceof Error
+                      ? e.message
+                      : "ホストの開始に失敗しました",
+                  );
                 }
               }}
+              disabled={isPending || !account || !name || !tag}
             >
-              ホストユーザを選択
+              開始
             </Button>
-          )}
-          <Accordion>
-            <AccordionSummary expandIcon={<ArrowDropDown />}>
-              詳細設定(任意)
-            </AccordionSummary>
-            <AccordionDetails>
-              <Stack spacing={2}>
-                <TextField
-                  label="Universe ID"
-                  value={universeId}
-                  onChange={(e) => setUniverseId(e.target.value)}
-                />
-                <TextField
-                  label="Username Override"
-                  value={usernameOverride}
-                  onChange={(e) => setUsernameOverride(e.target.value)}
-                />
-              </Stack>
-            </AccordionDetails>
-          </Accordion>
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button
-          onClick={async () => {
-            try {
-              await mutateStartHost({
-                name,
-                headlessAccountId: account?.id ?? "",
-                imageTag: tag,
-                startupConfig: {
-                  universeId: universeId ? universeId : undefined,
-                  usernameOverride: usernameOverride
-                    ? usernameOverride
-                    : undefined,
-                },
-              });
-              onClose();
-            } catch (e) {
-              notifications.show(e instanceof Error ? e.message : `${e}`, {
-                severity: "error",
-              });
-            }
-          }}
-          disabled={isPending || !account || !name || !tag}
-        >
-          開始
-        </Button>
-        <Button onClick={() => onClose()}>キャンセル</Button>
-      </DialogActions>
-    </Dialog>
+            <Button variant="outline" onClick={() => onClose()}>
+              キャンセル
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <SelectHeadlessAccountDialog
+        open={isAccountDialogOpen}
+        onClose={(result) => {
+          setIsAccountDialogOpen(false);
+          if (result) {
+            setAccount(result);
+          }
+        }}
+      />
+    </>
   );
 }
+
+const columns: ColumnDef<HeadlessHost>[] = [
+  {
+    accessorKey: "id",
+    header: "ID",
+  },
+  {
+    accessorKey: "name",
+    header: "名前",
+  },
+  {
+    accessorKey: "status",
+    header: "ステータス",
+    cell: ({ row }) => hostStatusToLabel(row.original.status),
+  },
+  {
+    accessorKey: "resoniteVersion",
+    header: "Resonite Ver",
+  },
+  {
+    accessorKey: "fps",
+    header: "fps",
+  },
+  {
+    accessorKey: "accountName",
+    header: "アカウント名",
+  },
+  {
+    accessorKey: "storageUsedBytes",
+    header: "ストレージ",
+    cell: ({ row }) =>
+      `${prettyBytes(Number(row.original.storageUsedBytes))}/${prettyBytes(
+        Number(row.original.storageQuotaBytes),
+      )}`,
+  },
+];
 
 export default function HostList() {
   const { data, isPending, refetch } = useQuery(listHeadlessHost);
   const navigate = useNavigate();
-  const dialogs = useDialogs();
+  const [isNewHostDialogOpen, setIsNewHostDialogOpen] = useState(false);
 
   return (
-    <Grid2 container>
-      <Grid2 size={12}>
-        <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end" }}>
-          <RefetchButton refetch={refetch} />
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={async () => {
-              await dialogs.open(NewHostDialog);
-              refetch();
-            }}
-          >
-            ヘッドレスを開始
-          </Button>
-        </Stack>
-      </Grid2>
-      <Grid2 size={12}>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>ID</TableCell>
-                <TableCell>名前</TableCell>
-                <TableCell>ステータス</TableCell>
-                <TableCell>Resoniteバージョン</TableCell>
-                <TableCell>fps</TableCell>
-                <TableCell>アカウント名</TableCell>
-                <TableCell>ストレージ</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {data?.hosts.map((host) => (
-                <TableRow
-                  key={host.id}
-                  onClick={() => navigate(`/hosts/${host.id}`)}
-                  hover
-                  sx={{ cursor: "pointer" }}
-                >
-                  <TableCell>{host.id.substring(0, 12)}</TableCell>
-                  <TableCell>{host.name}</TableCell>
-                  <TableCell>{hostStatusToLabel(host.status)}</TableCell>
-                  <TableCell>{host.resoniteVersion}</TableCell>
-                  <TableCell>{host.fps}</TableCell>
-                  <TableCell>{host.accountName}</TableCell>
-                  <TableCell>{`${prettyBytes(Number(host.storageUsedBytes))}/${prettyBytes(Number(host.storageQuotaBytes))}`}</TableCell>
-                </TableRow>
-              ))}
-              {isPending && (
-                <>
-                  <TableRow>
-                    <Skeleton variant="rectangular" />
-                  </TableRow>
-                  <TableRow>
-                    <Skeleton variant="rectangular" />
-                  </TableRow>
-                  <TableRow>
-                    <Skeleton variant="rectangular" />
-                  </TableRow>
-                </>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Grid2>
-    </Grid2>
+    <div className="space-y-4">
+      <div className="flex justify-end gap-2">
+        <RefetchButton refetch={refetch} />
+        <Button onClick={() => setIsNewHostDialogOpen(true)}>
+          ヘッドレスを開始
+        </Button>
+      </div>
+      <DataTable
+        columns={columns}
+        data={data?.hosts ?? []}
+        isLoading={isPending}
+        onClickRow={(row) => navigate(`/hosts/${row.id}`)}
+      />
+      <NewHostDialog
+        open={isNewHostDialogOpen}
+        onClose={() => {
+          setIsNewHostDialogOpen(false);
+          refetch();
+        }}
+      />
+    </div>
   );
 }

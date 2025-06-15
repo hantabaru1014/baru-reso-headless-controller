@@ -1,10 +1,11 @@
 import {
-  FormControl,
-  InputLabel,
   Select,
-  MenuItem,
-  FormHelperText,
-} from "@mui/material";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./select";
+import { Label } from "./label";
 import { ReactNode, useId } from "react";
 
 export type SelectFieldOption<V> = {
@@ -35,26 +36,38 @@ export default function SelectField<V>({
   const id = useId();
 
   return (
-    <FormControl variant="filled" error={error}>
-      <InputLabel id={id}>{label}</InputLabel>
+    <div className="space-y-2">
+      {label && <Label htmlFor={id}>{label}</Label>}
       <Select
-        labelId={id}
         value={selectedId}
-        readOnly={readOnly}
-        autoWidth
-        sx={{ minWidth }}
+        onValueChange={(value) => {
+          const option = options.find((o) => o.id === value);
+          if (option) onChange(option);
+        }}
+        disabled={readOnly}
       >
-        {options.map((option) => (
-          <MenuItem
-            key={option.id}
-            value={option.id}
-            onClick={() => onChange(option)}
-          >
-            {option.label}
-          </MenuItem>
-        ))}
+        <SelectTrigger
+          id={id}
+          style={{ minWidth }}
+          className={error ? "border-destructive" : ""}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.id} value={option.id}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
       </Select>
-      <FormHelperText error={error}>{helperText}</FormHelperText>
-    </FormControl>
+      {helperText && (
+        <p
+          className={`text-sm ${error ? "text-destructive" : "text-muted-foreground"}`}
+        >
+          {helperText}
+        </p>
+      )}
+    </div>
   );
 }

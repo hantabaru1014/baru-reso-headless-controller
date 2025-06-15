@@ -1,11 +1,14 @@
-import { TextField } from "@mui/material";
+import { Input } from "./input";
+import { Label } from "./label";
 import EditableFieldBase from "./EditableFieldBase";
 import { ComponentProps, useState } from "react";
 
 export default function EditableTextField(
-  props: ComponentProps<typeof TextField> & {
+  props: Omit<ComponentProps<typeof Input>, "onSave" | "onChange"> & {
+    label?: string;
     readonly?: boolean;
     isLoading?: boolean;
+    helperText?: string;
     onSave: (value: string) => Promise<{ ok: boolean; error?: string }>;
   },
 ) {
@@ -43,20 +46,23 @@ export default function EditableTextField(
       readonly={props.readonly}
       isLoading={props.isLoading}
     >
-      <TextField
-        {...props}
-        fullWidth
-        variant={isEditing ? "filled" : "standard"}
-        value={isEditing ? editingValue : props.value}
-        onChange={(e) => setEditingValue(e.target.value)}
-        slotProps={{
-          input: {
-            readOnly: props.readonly || !isEditing,
-          },
-        }}
-        error={!!errorMessage}
-        helperText={errorMessage ?? props.helperText}
-      />
+      <div className="space-y-2">
+        {props.label && <Label>{props.label}</Label>}
+        <Input
+          {...props}
+          value={isEditing ? editingValue : props.value}
+          onChange={(e) => setEditingValue(e.target.value)}
+          readOnly={props.readonly || !isEditing}
+          className={`${errorMessage ? "border-destructive" : ""} ${!isEditing ? "bg-muted" : ""}`}
+        />
+        {(errorMessage || props.helperText) && (
+          <p
+            className={`text-sm ${errorMessage ? "text-destructive" : "text-muted-foreground"}`}
+          >
+            {errorMessage ?? props.helperText}
+          </p>
+        )}
+      </div>
     </EditableFieldBase>
   );
 }

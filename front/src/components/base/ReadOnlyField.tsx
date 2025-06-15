@@ -1,4 +1,5 @@
-import { TextField } from "@mui/material";
+import { Input } from "./input";
+import { Label } from "./label";
 import EditableFieldBase from "./EditableFieldBase";
 import React from "react";
 
@@ -15,18 +16,13 @@ export default function ReadOnlyField({
 }) {
   return (
     <EditableFieldBase editing={false} isLoading={isLoading} readonly>
-      <TextField
-        label={label}
-        fullWidth
-        variant="standard"
-        value={value}
-        slotProps={{
-          input: {
-            readOnly: true,
-          },
-        }}
-        helperText={helperText}
-      />
+      <div className="space-y-2">
+        <Label>{label}</Label>
+        <Input value={value || ""} readOnly className="bg-muted" />
+        {helperText && (
+          <p className="text-sm text-muted-foreground">{helperText}</p>
+        )}
+      </div>
     </EditableFieldBase>
   );
 }
