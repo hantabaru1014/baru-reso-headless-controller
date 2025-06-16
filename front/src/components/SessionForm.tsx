@@ -7,15 +7,15 @@ import {
   updateSessionExtraSettings,
   updateSessionParameters,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import { Button } from "./base/button";
-import { Card, CardContent } from "./base/card";
+import { Button } from "./ui/button";
+import { Card, CardContent } from "./ui/card";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "./base/dialog";
+} from "./ui/dialog";
 import Loading from "./base/Loading";
 import EditableTextField from "./base/EditableTextField";
 import EditableSelectField from "./base/EditableSelectField";

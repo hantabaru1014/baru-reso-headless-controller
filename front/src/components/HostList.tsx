@@ -12,16 +12,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "./base/dialog";
-import { Button } from "./base/button";
-import { Input } from "./base/input";
-import { Label } from "./base/label";
-import { Avatar, AvatarImage, AvatarFallback } from "./base/avatar";
+} from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "./base/collapsible";
+} from "./ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import prettyBytes from "../libs/prettyBytes";
 import { useNavigate } from "react-router";

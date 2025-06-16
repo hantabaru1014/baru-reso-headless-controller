@@ -4,7 +4,7 @@ import { createConnectTransport } from "@connectrpc/connect-web";
 import { TransportProvider } from "@connectrpc/connect-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "./hooks/useAuth";
-import { Toaster } from "./components/base";
+import { Toaster } from "./components/ui";
 import { ThemeProvider } from "./components/ThemeProvider";
 
 const queryClient = new QueryClient();

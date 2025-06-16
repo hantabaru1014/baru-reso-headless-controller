@@ -12,7 +12,7 @@ import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from "@/components/base";
+} from "@/components/ui";
 import { ImperativePanelHandle } from "react-resizable-panels";
 import { ThemeToggle } from "@/components/ThemeToggle";
 

@@ -1,4 +1,4 @@
-import { Button } from "./base/button";
+import { Button } from "./ui/button";
 import { useNavigate } from "react-router";
 import {
   saveSessionWorld,

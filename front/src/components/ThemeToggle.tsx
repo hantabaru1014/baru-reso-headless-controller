@@ -5,7 +5,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "./base";
+} from "./ui";
 import { useTheme } from "./ThemeProvider";
 
 export function ThemeToggle() {

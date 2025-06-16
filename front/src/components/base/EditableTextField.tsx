@@ -1,5 +1,4 @@
-import { Input } from "./input";
-import { Label } from "./label";
+import { Input, Label } from "../ui";
 import EditableFieldBase from "./EditableFieldBase";
 import { ComponentProps, useState } from "react";
 

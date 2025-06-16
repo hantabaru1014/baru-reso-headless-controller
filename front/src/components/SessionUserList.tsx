@@ -4,9 +4,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "./base/dialog";
-import { Button } from "./base/button";
-import { Input } from "./base/input";
+} from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 import { Search, Check } from "lucide-react";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {

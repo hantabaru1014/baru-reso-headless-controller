@@ -4,12 +4,15 @@ import {
   listHeadlessHost,
   startWorld,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import { Button } from "./base/button";
-import { Checkbox } from "./base/checkbox";
-import { Label } from "./base/label";
-import { Input } from "./base/input";
-import { Textarea } from "./base/textarea";
-import { RadioGroup, RadioGroupItem } from "./base/radio-group";
+import {
+  Button,
+  Checkbox,
+  Label,
+  Input,
+  Textarea,
+  RadioGroup,
+  RadioGroupItem,
+} from "./ui";
 import SelectField from "./base/SelectField";
 import { useNavigate } from "react-router";
 import { AccessLevels } from "../constants";

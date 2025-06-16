@@ -13,10 +13,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "./base/dialog";
-import { Button } from "./base/button";
-import { Input } from "./base/input";
-import { Label } from "./base/label";
+} from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 import EditableTextField from "./base/EditableTextField";
 import ReadOnlyField from "./base/ReadOnlyField";
 import prettyBytes from "../libs/prettyBytes";

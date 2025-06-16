@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import EditableFieldBase from "./EditableFieldBase";
-import { Checkbox } from "./checkbox";
-import { Input } from "./input";
-import { Label } from "./label";
+import { Checkbox, Input, Label } from "../ui";
 
 export default function EditableCheckBox({
   label,

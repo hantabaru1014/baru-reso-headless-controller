@@ -1,5 +1,5 @@
 import { RefreshCw } from "lucide-react";
-import { Button } from "./button";
+import { Button } from "../ui";
 import { useState } from "react";
 
 export default function RefetchButton({

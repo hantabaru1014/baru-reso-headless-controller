@@ -1,5 +1,4 @@
-import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
-import { Skeleton } from "./skeleton";
+import { Avatar, AvatarFallback, AvatarImage, Skeleton } from "../ui";
 
 export type UserInfo = {
   id: string;

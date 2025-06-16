@@ -1,5 +1,4 @@
-import { Button } from "./button";
-import { Skeleton } from "./skeleton";
+import { Button, Skeleton } from "../ui";
 import { Edit, Check, X } from "lucide-react";
 
 export default function EditableFieldBase({

@@ -3,8 +3,8 @@ import {
   acceptFriendRequests,
   getFriendRequests,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import { Button } from "./base/button";
-import { Card, CardContent, CardHeader } from "./base/card";
+import { Button } from "./ui/button";
+import { Card, CardContent, CardHeader } from "./ui/card";
 import RefetchButton from "./base/RefetchButton";
 import UserList from "./base/UserList";
 import ScrollBase from "./base/ScrollBase";

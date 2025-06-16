@@ -4,8 +4,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./select";
-import { Label } from "./label";
+  Label,
+} from "../ui";
 import { ReactNode, useId } from "react";
 
 export type SelectFieldOption<V> = {

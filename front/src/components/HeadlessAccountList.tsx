@@ -4,11 +4,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "./base/dialog";
-import { Button } from "./base/button";
-import { Card, CardContent, CardHeader } from "./base/card";
-import { Input } from "./base/input";
-import { Label } from "./base/label";
+} from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Card, CardContent, CardHeader } from "./ui/card";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 import UserList from "./base/UserList";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {

@@ -15,7 +15,7 @@ import {
   CardTitle,
   Alert,
   AlertDescription,
-} from "@/components/base";
+} from "@/components/ui";
 import { Loader2 } from "lucide-react";
 
 interface SignInForm {

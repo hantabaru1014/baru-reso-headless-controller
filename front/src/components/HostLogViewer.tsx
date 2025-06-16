@@ -1,8 +1,8 @@
 import { useMutation } from "@connectrpc/connect-query";
-import { Button } from "./base/button";
-import { Card, CardContent, CardHeader } from "./base/card";
-import { Checkbox } from "./base/checkbox";
-import { Label } from "./base/label";
+import { Button } from "./ui/button";
+import { Card, CardContent, CardHeader } from "./ui/card";
+import { Checkbox } from "./ui/checkbox";
+import { Label } from "./ui/label";
 import { getHeadlessHostLogs } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
