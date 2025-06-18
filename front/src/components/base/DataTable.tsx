@@ -5,6 +5,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import {
+  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -56,7 +57,17 @@ export function DataTable<TData, TValue>({
           ))}
         </TableHeader>
         <TableBody>
-          {table.getRowModel().rows?.length ? (
+          {isLoading ? (
+            Array.from({ length: loadingSkeletonCount }).map((_, index) => (
+              <TableRow key={`skeleton-${index}`}>
+                {columns.map((_, colIndex) => (
+                  <TableCell key={`skeleton-cell-${index}-${colIndex}`}>
+                    <Skeleton className="h-4 rounded" />
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+          ) : table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
               <TableRow
                 key={row.id}
@@ -67,16 +78,6 @@ export function DataTable<TData, TValue>({
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))
-          ) : isLoading ? (
-            Array.from({ length: loadingSkeletonCount }).map((_, index) => (
-              <TableRow key={`skeleton-${index}`}>
-                {columns.map((_, colIndex) => (
-                  <TableCell key={`skeleton-cell-${index}-${colIndex}`}>
-                    <div className="h-4 bg-gray-200 rounded animate-pulse" />
                   </TableCell>
                 ))}
               </TableRow>
