@@ -13,7 +13,7 @@ import {
   RadioGroup,
   RadioGroupItem,
 } from "./ui";
-import SelectField from "./base/SelectField";
+import { SelectField } from "./base/SelectField";
 import { useNavigate } from "react-router";
 import { AccessLevels } from "../constants";
 import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
@@ -251,8 +251,7 @@ export default function NewSessionForm() {
             selectedId={field.value || ""}
             onChange={(option) => field.onChange(option.value?.id ?? "")}
             minWidth="7rem"
-            error={!!errors.hostId}
-            helperText={errors.hostId?.message}
+            error={errors.hostId?.message}
           />
         )}
       />
@@ -327,8 +326,7 @@ export default function NewSessionForm() {
               ]}
               selectedId={field.value}
               onChange={(option) => field.onChange(option.id)}
-              error={!!errors.worldTemplate}
-              helperText={errors.worldTemplate?.message}
+              error={errors.worldTemplate?.message}
             />
           )}
         />
@@ -425,8 +423,7 @@ export default function NewSessionForm() {
               options={AccessLevels.map((l) => l)}
               selectedId={`${field.value}`}
               onChange={(option) => field.onChange(option.value as number)}
-              error={!!errors.accessLevel}
-              helperText={errors.accessLevel?.message}
+              error={errors.accessLevel?.message}
             />
           )}
         />

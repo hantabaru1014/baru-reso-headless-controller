@@ -16,23 +16,28 @@ import {
   DialogTitle,
   DialogFooter,
 } from "./ui/dialog";
-import Loading from "./base/Loading";
-import EditableTextField from "./base/EditableTextField";
-import EditableSelectField from "./base/EditableSelectField";
+import { Loading } from "./base/Loading";
+import { EditableTextField } from "./base/EditableTextField";
+import { EditableSelectField } from "./base/EditableSelectField";
 import { AccessLevels } from "../constants";
 import SessionControlButtons from "./SessionControlButtons";
 import { ImageOff } from "lucide-react";
-import RefetchButton from "./base/RefetchButton";
-import EditableCheckBox from "./base/EditableCheckBox";
+import { RefetchButton } from "./base/RefetchButton";
 import {
   HeadlessHostStatus,
   SessionStatus,
 } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { useState } from "react";
-import SelectField from "./base/SelectField";
+import { SelectField } from "./base/SelectField";
 import { useNavigate } from "react-router";
 import { formatTimestamp } from "../libs/datetimeUtils";
 import { toast } from "sonner";
+import { EditableTextArea } from "./base";
+
+const BOOL_SELECT_OPTIONS = [
+  { id: "true", label: "はい", value: true },
+  { id: "false", label: "いいえ", value: false },
+];
 
 function SelectHostDialog({
   isOpen,
@@ -259,7 +264,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
               onSave={(v) => handleSave("name", v)}
               readonly={!isRunning}
             />
-            <EditableTextField
+            <EditableTextArea
               label="説明"
               value={
                 sessionState?.description || startupParams?.description || ""
@@ -298,7 +303,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                   "1"
                 }
                 onSave={(v) => handleSave("accessLevel", v)}
-                readOnly={!isRunning}
+                readonly={!isRunning}
               />
             </div>
           </div>
@@ -325,7 +330,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
               onSave={(v) => handleSaveExtra("autoUpgrade", v)}
               helperText="新しいバージョンが出た場合にユーザがいなければ自動で新しいバージョンのホストに移行します"
             /> */}
-            <EditableTextField
+            <EditableTextArea
               label="管理者メモ"
               value={data?.session?.memo || ""}
               onSave={(v) => handleSaveExtra("memo", v)}
@@ -347,22 +352,26 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                 helperText="-1で無効"
                 readonly={!isRunning}
               />
-              <EditableCheckBox
+              <EditableSelectField
                 label="セッションリストから隠す"
-                checked={
-                  sessionState?.hideFromPublicListing ||
-                  startupParams?.hideFromPublicListing ||
-                  false
+                options={BOOL_SELECT_OPTIONS}
+                selectedId={
+                  `${sessionState?.hideFromPublicListing}` ||
+                  `${startupParams?.hideFromPublicListing}` ||
+                  "false"
                 }
                 onSave={(v) => handleSave("hideFromPublicListing", v)}
                 readonly={!isRunning}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <EditableCheckBox
+              <EditableSelectField
                 label="セッション終了時に保存"
-                checked={
-                  sessionState?.saveOnExit || startupParams?.saveOnExit || false
+                options={BOOL_SELECT_OPTIONS}
+                selectedId={
+                  `${sessionState?.saveOnExit}` ||
+                  `${startupParams?.saveOnExit}` ||
+                  "false"
                 }
                 onSave={(v) => handleSave("saveOnExit", v)}
                 readonly={!isRunning}

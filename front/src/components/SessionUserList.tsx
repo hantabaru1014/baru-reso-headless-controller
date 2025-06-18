@@ -19,11 +19,11 @@ import {
   updateUserRole,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { UserRoles } from "../constants";
-import EditableSelectField from "./base/EditableSelectField";
+import { EditableSelectField } from "./base/EditableSelectField";
 import { useState } from "react";
-import UserList from "./base/UserList";
-import RefetchButton from "./base/RefetchButton";
-import ScrollBase from "./base/ScrollBase";
+import { UserList } from "./base/UserList";
+import { RefetchButton } from "./base/RefetchButton";
+import { ScrollBase } from "./base/ScrollBase";
 import { ColumnDef } from "@tanstack/react-table";
 import { UserInSession } from "front/pbgen/headless/v1/headless_pb";
 import { DataTable } from "./base";

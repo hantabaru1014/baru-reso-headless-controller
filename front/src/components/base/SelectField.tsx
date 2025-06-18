@@ -4,9 +4,11 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Label,
 } from "../ui";
 import { ReactNode, useId } from "react";
+import { FieldHeader } from "./FieldHeader";
+import { FieldFooter } from "./FieldFooter";
+import { cn } from "@/libs/cssUtils";
 
 export type SelectFieldOption<V> = {
   id: string;
@@ -14,7 +16,8 @@ export type SelectFieldOption<V> = {
   label: ReactNode;
 };
 
-export default function SelectField<V>({
+export function SelectField<V>({
+  id,
   label,
   options,
   selectedId,
@@ -23,21 +26,26 @@ export default function SelectField<V>({
   error,
   helperText,
   minWidth,
+  className,
 }: {
+  id?: string;
   label?: string;
   options: SelectFieldOption<V>[];
   selectedId: string;
   onChange: (option: SelectFieldOption<V>) => void;
   readOnly?: boolean;
-  error?: boolean;
+  error?: string;
   helperText?: ReactNode;
   minWidth?: string;
+  className?: string;
 }) {
-  const id = useId();
+  const formId = id ?? useId();
 
   return (
-    <div className="space-y-2">
-      {label && <Label htmlFor={id}>{label}</Label>}
+    <div className={className}>
+      {label && (
+        <FieldHeader formId={formId} label={label} helperText={helperText} />
+      )}
       <Select
         value={selectedId}
         onValueChange={(value) => {
@@ -47,9 +55,9 @@ export default function SelectField<V>({
         disabled={readOnly}
       >
         <SelectTrigger
-          id={id}
+          id={formId}
           style={{ minWidth }}
-          className={error ? "border-destructive" : ""}
+          className={cn("w-full", error && "border-destructive")}
         >
           <SelectValue />
         </SelectTrigger>
@@ -61,13 +69,7 @@ export default function SelectField<V>({
           ))}
         </SelectContent>
       </Select>
-      {helperText && (
-        <p
-          className={`text-sm ${error ? "text-destructive" : "text-muted-foreground"}`}
-        >
-          {helperText}
-        </p>
-      )}
+      <FieldFooter error={error} />
     </div>
   );
 }

@@ -1,10 +1,10 @@
 import { cn } from "@/libs/cssUtils";
-import { Input } from "../ui";
+import { Textarea } from "../ui";
 import { EditableFieldBase, EditableFieldBaseProps } from "./EditableFieldBase";
 import { ComponentProps, useId, useState } from "react";
 
-export function EditableTextField(
-  props: Omit<ComponentProps<typeof Input>, "onChange" | "readOnly"> &
+export function EditableTextArea(
+  props: Omit<ComponentProps<typeof Textarea>, "onChange" | "readOnly"> &
     Pick<
       EditableFieldBaseProps,
       "label" | "readonly" | "isLoading" | "helperText"
@@ -53,7 +53,7 @@ export function EditableTextField(
       error={error}
     >
       {isEditing ? (
-        <Input
+        <Textarea
           {...props}
           id={id}
           value={isEditing ? editingValue : props.value}
@@ -62,7 +62,9 @@ export function EditableTextField(
           className={cn(error && "border-destructive")}
         />
       ) : (
-        <span>{props.value}</span>
+        <div className="flex field-sizing-content min-h-16 whitespace-pre">
+          {props.value}
+        </div>
       )}
     </EditableFieldBase>
   );

@@ -1,8 +1,7 @@
-import { Input, Label } from "../ui";
-import EditableFieldBase from "./EditableFieldBase";
+import { EditableFieldBase } from "./EditableFieldBase";
 import React from "react";
 
-export default function ReadOnlyField({
+export function ReadOnlyField({
   label,
   value,
   isLoading,
@@ -14,14 +13,14 @@ export default function ReadOnlyField({
   helperText?: React.ReactNode;
 }) {
   return (
-    <EditableFieldBase editing={false} isLoading={isLoading} readonly>
-      <div className="space-y-2">
-        <Label>{label}</Label>
-        <Input value={value || ""} readOnly className="bg-muted" />
-        {helperText && (
-          <p className="text-sm text-muted-foreground">{helperText}</p>
-        )}
-      </div>
+    <EditableFieldBase
+      label={label}
+      editing={false}
+      isLoading={isLoading}
+      readonly
+      helperText={helperText}
+    >
+      {value}
     </EditableFieldBase>
   );
 }

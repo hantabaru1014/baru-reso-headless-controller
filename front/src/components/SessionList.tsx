@@ -6,9 +6,9 @@ import {
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { useNavigate } from "react-router";
 import { AccessLevels } from "../constants";
-import RefetchButton from "./base/RefetchButton";
+import { RefetchButton } from "./base/RefetchButton";
 import { sessionStatusToLabel } from "../libs/sessionUtils";
-import SelectField from "./base/SelectField";
+import { SelectField } from "./base/SelectField";
 import { ReactNode, useMemo, useState } from "react";
 import { Session, SessionStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { ColumnDef } from "@tanstack/react-table";

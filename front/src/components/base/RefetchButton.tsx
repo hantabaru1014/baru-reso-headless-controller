@@ -1,21 +1,23 @@
 import { RefreshCw } from "lucide-react";
 import { Button } from "../ui";
-import { useState } from "react";
+import { ComponentProps, useState } from "react";
+import { cn } from "@/libs/cssUtils";
 
-export default function RefetchButton({
+export function RefetchButton({
   refetch,
   disabled,
+  size = "icon",
 }: {
   refetch: () => Promise<unknown>;
   disabled?: boolean;
-}) {
+} & Pick<ComponentProps<typeof Button>, "size">) {
   const [isLoading, setIsLoading] = useState(false);
 
   return (
     <Button
-      size="icon"
+      size={size}
       variant="ghost"
-      aria-label="再読み込み"
+      title="再読み込み"
       onClick={async () => {
         setIsLoading(true);
         await refetch();
@@ -23,7 +25,7 @@ export default function RefetchButton({
       }}
       disabled={disabled || isLoading}
     >
-      <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+      <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
     </Button>
   );
 }

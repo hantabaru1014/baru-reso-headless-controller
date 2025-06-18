@@ -6,7 +6,7 @@ export type UserInfo = {
   iconUrl: string;
 };
 
-export default function UserList({
+export function UserList({
   data,
   isLoading,
   renderActions,

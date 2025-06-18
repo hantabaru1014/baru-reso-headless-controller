@@ -1,4 +1,4 @@
-export default function ScrollBase({
+export function ScrollBase({
   height,
   children,
 }: {

@@ -17,8 +17,8 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import EditableTextField from "./base/EditableTextField";
-import ReadOnlyField from "./base/ReadOnlyField";
+import { EditableTextField } from "./base/EditableTextField";
+import { ReadOnlyField } from "./base/ReadOnlyField";
 import prettyBytes from "../libs/prettyBytes";
 import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { hostStatusToLabel } from "../libs/hostUtils";
@@ -26,8 +26,8 @@ import { useNavigate } from "react-router";
 import FriendRequestList from "./FriendRequestList";
 import { AllowedAccessEntry_AccessType } from "../../pbgen/headless/v1/headless_pb";
 import { useState } from "react";
-import ScrollBase from "./base/ScrollBase";
-import SelectField from "./base/SelectField";
+import { ScrollBase } from "./base/ScrollBase";
+import { SelectField } from "./base/SelectField";
 import { toast } from "sonner";
 
 type AllowedAccessEntryType = {
