@@ -4,16 +4,7 @@ import {
   listHeadlessHost,
   startWorld,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import {
-  Button,
-  Checkbox,
-  Label,
-  Input,
-  Textarea,
-  RadioGroup,
-  RadioGroupItem,
-} from "./ui";
-import { SelectField } from "./base/SelectField";
+import { Button } from "./ui";
 import { useNavigate } from "react-router";
 import { AccessLevels } from "../constants";
 import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
@@ -21,6 +12,13 @@ import { z } from "zod";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import {
+  CheckboxField,
+  RadioGroupField,
+  TextareaField,
+  TextField,
+  SelectField,
+} from "./base";
 
 const sessionFormSchema = z
   .object({
@@ -259,23 +257,17 @@ export default function NewSessionForm() {
         name="worldSource"
         control={control}
         render={({ field }) => (
-          <div className="space-y-2">
-            <Label htmlFor="session-form-use-world-url">ワールド指定方法</Label>
-            <RadioGroup
-              value={field.value}
-              onValueChange={field.onChange}
-              className="flex flex-row space-x-4"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="url" id="url" />
-                <Label htmlFor="url">レコードURLを指定</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="template" id="template" />
-                <Label htmlFor="template">テンプレートを指定</Label>
-              </div>
-            </RadioGroup>
-          </div>
+          <RadioGroupField
+            label="ワールド指定方法"
+            options={[
+              { label: "レコードURLを指定", value: "url" },
+              { label: "テンプレートを指定", value: "template" },
+            ]}
+            value={field.value}
+            onValueChange={field.onChange}
+            error={errors.worldSource?.message}
+            className="flex flex-row space-x-4"
+          />
         )}
       />
       {worldSource === "url" ? (
@@ -285,19 +277,11 @@ export default function NewSessionForm() {
               name="worldUrl"
               control={control}
               render={({ field }) => (
-                <div className="space-y-2">
-                  <Label htmlFor="worldUrl">レコードURL</Label>
-                  <Input
-                    id="worldUrl"
-                    {...field}
-                    className={errors.worldUrl ? "border-red-500" : ""}
-                  />
-                  {errors.worldUrl && (
-                    <p className="text-sm text-red-500">
-                      {errors.worldUrl.message}
-                    </p>
-                  )}
-                </div>
+                <TextField
+                  label="レコードURL"
+                  error={errors.worldUrl?.message}
+                  {...field}
+                />
               )}
             />
           </div>
@@ -335,56 +319,34 @@ export default function NewSessionForm() {
         name="name"
         control={control}
         render={({ field }) => (
-          <div className="space-y-2">
-            <Label htmlFor="name">セッション名</Label>
-            <Input
-              id="name"
-              {...field}
-              className={errors.name ? "border-red-500" : ""}
-            />
-            {errors.name && (
-              <p className="text-sm text-red-500">{errors.name.message}</p>
-            )}
-          </div>
+          <TextField
+            label="セッション名"
+            error={errors.name?.message}
+            {...field}
+          />
         )}
       />
       <Controller
         name="description"
         control={control}
         render={({ field }) => (
-          <div className="space-y-2">
-            <Label htmlFor="description">説明</Label>
-            <Textarea
-              id="description"
-              {...field}
-              className={errors.description ? "border-red-500" : ""}
-            />
-            {errors.description && (
-              <p className="text-sm text-red-500">
-                {errors.description.message}
-              </p>
-            )}
-          </div>
+          <TextareaField
+            label="説明"
+            error={errors.description?.message}
+            {...field}
+          />
         )}
       />
       <Controller
         name="tags"
         control={control}
         render={({ field }) => (
-          <div className="space-y-2">
-            <Label htmlFor="tags">タグ</Label>
-            <Input
-              id="tags"
-              {...field}
-              className={errors.tags ? "border-red-500" : ""}
-            />
-            {errors.tags && (
-              <p className="text-sm text-red-500">{errors.tags.message}</p>
-            )}
-            <p className="text-sm text-gray-500">
-              カンマ区切りで入力してください
-            </p>
-          </div>
+          <TextField
+            label="タグ"
+            error={errors.tags?.message}
+            {...field}
+            helperText="カンマ区切りで入力してください"
+          />
         )}
       />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -392,25 +354,17 @@ export default function NewSessionForm() {
           name="maxUsers"
           control={control}
           render={({ field }) => (
-            <div className="space-y-2">
-              <Label htmlFor="maxUsers">最大ユーザー数</Label>
-              <Input
-                id="maxUsers"
-                type="number"
-                {...field}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  const value =
-                    e.target.value === "" ? "" : parseInt(e.target.value);
-                  field.onChange(value);
-                }}
-                className={errors.maxUsers ? "border-red-500" : ""}
-              />
-              {errors.maxUsers && (
-                <p className="text-sm text-red-500">
-                  {errors.maxUsers.message}
-                </p>
-              )}
-            </div>
+            <TextField
+              label="最大ユーザー数"
+              type="number"
+              error={errors.maxUsers?.message}
+              {...field}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const value =
+                  e.target.value === "" ? "" : parseInt(e.target.value);
+                field.onChange(value);
+              }}
+            />
           )}
         />
 
@@ -432,16 +386,11 @@ export default function NewSessionForm() {
           name="hideFromPublicListing"
           control={control}
           render={({ field }) => (
-            <div className="flex items-center space-x-2 pt-6">
-              <Checkbox
-                id="hideFromPublicListing"
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-              <Label htmlFor="hideFromPublicListing">
-                セッションリストから隠す
-              </Label>
-            </div>
+            <CheckboxField
+              label="セッションリストから隠す"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+            />
           )}
         />
       </div>
@@ -449,19 +398,11 @@ export default function NewSessionForm() {
         name="customSessionId"
         control={control}
         render={({ field }) => (
-          <div className="space-y-2">
-            <Label htmlFor="customSessionId">カスタムセッションID</Label>
-            <Input
-              id="customSessionId"
-              {...field}
-              className={errors.customSessionId ? "border-red-500" : ""}
-            />
-            {errors.customSessionId && (
-              <p className="text-sm text-red-500">
-                {errors.customSessionId.message}
-              </p>
-            )}
-          </div>
+          <TextField
+            label="カスタムセッションID"
+            error={errors.customSessionId?.message}
+            {...field}
+          />
         )}
       />
 
@@ -469,22 +410,12 @@ export default function NewSessionForm() {
         name="parentSessionIds"
         control={control}
         render={({ field }) => (
-          <div className="space-y-2">
-            <Label htmlFor="parentSessionIds">parentSessionIds</Label>
-            <Input
-              id="parentSessionIds"
-              {...field}
-              className={errors.parentSessionIds ? "border-red-500" : ""}
-            />
-            {errors.parentSessionIds && (
-              <p className="text-sm text-red-500">
-                {errors.parentSessionIds.message}
-              </p>
-            )}
-            <p className="text-sm text-gray-500">
-              カンマ区切りで入力してください
-            </p>
-          </div>
+          <TextField
+            label="parentSessionIds"
+            error={errors.parentSessionIds?.message}
+            helperText="カンマ区切りで入力してください"
+            {...field}
+          />
         )}
       />
 
@@ -492,26 +423,12 @@ export default function NewSessionForm() {
         name="overrideCorrespondingWorldId"
         control={control}
         render={({ field }) => (
-          <div className="space-y-2">
-            <Label htmlFor="overrideCorrespondingWorldId">
-              overrideCorrespondingWorldId
-            </Label>
-            <Input
-              id="overrideCorrespondingWorldId"
-              {...field}
-              className={
-                errors.overrideCorrespondingWorldId ? "border-red-500" : ""
-              }
-            />
-            {errors.overrideCorrespondingWorldId && (
-              <p className="text-sm text-red-500">
-                {errors.overrideCorrespondingWorldId.message}
-              </p>
-            )}
-            <p className="text-sm text-gray-500">
-              ownerId/id の形式で入力してください
-            </p>
-          </div>
+          <TextField
+            label="overrideCorrespondingWorldId"
+            error={errors.overrideCorrespondingWorldId?.message}
+            helperText="ownerId/id の形式で入力してください"
+            {...field}
+          />
         )}
       />
 
@@ -519,26 +436,18 @@ export default function NewSessionForm() {
         name="awayKickMinutes"
         control={control}
         render={({ field }) => (
-          <div className="space-y-2">
-            <Label htmlFor="awayKickMinutes">AFKキック時間(分)</Label>
-            <Input
-              id="awayKickMinutes"
-              type="number"
-              {...field}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const value =
-                  e.target.value === "" ? "" : parseFloat(e.target.value);
-                field.onChange(value);
-              }}
-              className={errors.awayKickMinutes ? "border-red-500" : ""}
-            />
-            {errors.awayKickMinutes && (
-              <p className="text-sm text-red-500">
-                {errors.awayKickMinutes.message}
-              </p>
-            )}
-            <p className="text-sm text-gray-500">-1で無効</p>
-          </div>
+          <TextField
+            label="AFKキック時間(分)"
+            type="number"
+            error={errors.awayKickMinutes?.message}
+            helperText="-1で無効"
+            {...field}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              const value =
+                e.target.value === "" ? "" : parseFloat(e.target.value);
+              field.onChange(value);
+            }}
+          />
         )}
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -546,28 +455,18 @@ export default function NewSessionForm() {
           name="autoSaveIntervalSeconds"
           control={control}
           render={({ field }) => (
-            <div className="space-y-2">
-              <Label htmlFor="autoSaveIntervalSeconds">自動保存間隔(秒)</Label>
-              <Input
-                id="autoSaveIntervalSeconds"
-                type="number"
-                {...field}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  const value =
-                    e.target.value === "" ? "" : parseInt(e.target.value);
-                  field.onChange(value);
-                }}
-                className={
-                  errors.autoSaveIntervalSeconds ? "border-red-500" : ""
-                }
-              />
-              {errors.autoSaveIntervalSeconds && (
-                <p className="text-sm text-red-500">
-                  {errors.autoSaveIntervalSeconds.message}
-                </p>
-              )}
-              <p className="text-sm text-gray-500">-1で無効</p>
-            </div>
+            <TextField
+              label="自動保存間隔(秒)"
+              type="number"
+              error={errors.autoSaveIntervalSeconds?.message}
+              helperText="-1で無効"
+              {...field}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const value =
+                  e.target.value === "" ? "" : parseInt(e.target.value);
+                field.onChange(value);
+              }}
+            />
           )}
         />
 
@@ -575,107 +474,72 @@ export default function NewSessionForm() {
           name="saveOnExit"
           control={control}
           render={({ field }) => (
-            <div className="flex items-center space-x-2 pt-6">
-              <Checkbox
-                id="saveOnExit"
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-              <Label htmlFor="saveOnExit">セッション終了時に保存</Label>
-            </div>
+            <CheckboxField
+              label="セッション終了時に保存"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+            />
           )}
         />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {" "}
         <Controller
           name="idleRestartIntervalSeconds"
           control={control}
           render={({ field }) => (
-            <div className="space-y-2">
-              <Label htmlFor="idleRestartIntervalSeconds">
-                アイドル時の自動再起動間隔(秒)
-              </Label>
-              <Input
-                id="idleRestartIntervalSeconds"
-                type="number"
-                {...field}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  const value =
-                    e.target.value === "" ? "" : parseInt(e.target.value);
-                  field.onChange(value);
-                }}
-                className={
-                  errors.idleRestartIntervalSeconds ? "border-red-500" : ""
-                }
-              />
-              {errors.idleRestartIntervalSeconds && (
-                <p className="text-sm text-red-500">
-                  {errors.idleRestartIntervalSeconds.message}
-                </p>
-              )}
-              <p className="text-sm text-gray-500">-1で無効</p>
-            </div>
+            <TextField
+              label="アイドル時の自動再起動間隔(秒)"
+              type="number"
+              error={errors.idleRestartIntervalSeconds?.message}
+              helperText="-1で無効"
+              {...field}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const value =
+                  e.target.value === "" ? "" : parseInt(e.target.value);
+                field.onChange(value);
+              }}
+            />
           )}
         />
-
         <Controller
           name="forcedRestartIntervalSeconds"
           control={control}
           render={({ field }) => (
-            <div className="space-y-2">
-              <Label htmlFor="forcedRestartIntervalSeconds">
-                forcedRestartInterval(秒)
-              </Label>
-              <Input
-                id="forcedRestartIntervalSeconds"
-                type="number"
-                {...field}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  const value =
-                    e.target.value === "" ? "" : parseInt(e.target.value);
-                  field.onChange(value);
-                }}
-                className={
-                  errors.forcedRestartIntervalSeconds ? "border-red-500" : ""
-                }
-              />
-              {errors.forcedRestartIntervalSeconds && (
-                <p className="text-sm text-red-500">
-                  {errors.forcedRestartIntervalSeconds.message}
-                </p>
-              )}
-              <p className="text-sm text-gray-500">-1で無効</p>
-            </div>
+            <TextField
+              label="forcedRestartInterval(秒)"
+              type="number"
+              error={errors.forcedRestartIntervalSeconds?.message}
+              helperText="-1で無効"
+              {...field}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const value =
+                  e.target.value === "" ? "" : parseInt(e.target.value);
+                field.onChange(value);
+              }}
+            />
           )}
         />
-
         <Controller
           name="autoSleep"
           control={control}
           render={({ field }) => (
-            <div className="flex items-center space-x-2 pt-6">
-              <Checkbox
-                id="autoSleep"
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-              <Label htmlFor="autoSleep">自動スリープ</Label>
-            </div>
+            <CheckboxField
+              label="自動スリープ"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+            />
           )}
         />
-
         <Controller
           name="autoRecover"
           control={control}
           render={({ field }) => (
-            <div className="flex items-center space-x-2 pt-6">
-              <Checkbox
-                id="autoRecover"
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-              <Label htmlFor="autoRecover">autoRecover</Label>
-            </div>
+            <CheckboxField
+              label="autoRecover"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+            />
           )}
         />
       </div>
@@ -685,25 +549,17 @@ export default function NewSessionForm() {
           name="forcePort"
           control={control}
           render={({ field }) => (
-            <div className="space-y-2">
-              <Label htmlFor="forcePort">forcePort</Label>
-              <Input
-                id="forcePort"
-                type="number"
-                {...field}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  const value =
-                    e.target.value === "" ? "" : parseInt(e.target.value);
-                  field.onChange(value);
-                }}
-                className={errors.forcePort ? "border-red-500" : ""}
-              />
-              {errors.forcePort && (
-                <p className="text-sm text-red-500">
-                  {errors.forcePort.message}
-                </p>
-              )}
-            </div>
+            <TextField
+              label="forcePort"
+              type="number"
+              error={errors.forcePort?.message}
+              {...field}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const value =
+                  e.target.value === "" ? "" : parseInt(e.target.value);
+                field.onChange(value);
+              }}
+            />
           )}
         />
 
@@ -711,14 +567,11 @@ export default function NewSessionForm() {
           name="mobileFriendly"
           control={control}
           render={({ field }) => (
-            <div className="flex items-center space-x-2 pt-6">
-              <Checkbox
-                id="mobileFriendly"
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-              <Label htmlFor="mobileFriendly">mobileFriendly</Label>
-            </div>
+            <CheckboxField
+              label="mobileFriendly"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+            />
           )}
         />
       </div>
@@ -728,14 +581,11 @@ export default function NewSessionForm() {
           name="keepOriginalRoles"
           control={control}
           render={({ field }) => (
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="keepOriginalRoles"
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-              <Label htmlFor="keepOriginalRoles">keepOriginalRoles</Label>
-            </div>
+            <CheckboxField
+              label="keepOriginalRoles"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+            />
           )}
         />
 
@@ -743,16 +593,11 @@ export default function NewSessionForm() {
           name="useCustomJoinVerifier"
           control={control}
           render={({ field }) => (
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="useCustomJoinVerifier"
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-              <Label htmlFor="useCustomJoinVerifier">
-                useCustomJoinVerifier
-              </Label>
-            </div>
+            <CheckboxField
+              label="useCustomJoinVerifier"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+            />
           )}
         />
       </div>
@@ -761,22 +606,12 @@ export default function NewSessionForm() {
           name="autoInviteUsernames"
           control={control}
           render={({ field }) => (
-            <div className="space-y-2">
-              <Label htmlFor="autoInviteUsernames">自動招待ユーザ</Label>
-              <Textarea
-                id="autoInviteUsernames"
-                {...field}
-                className={errors.autoInviteUsernames ? "border-red-500" : ""}
-              />
-              {errors.autoInviteUsernames && (
-                <p className="text-sm text-red-500">
-                  {errors.autoInviteUsernames.message}
-                </p>
-              )}
-              <p className="text-sm text-gray-500">
-                カンマ区切りで入力してください
-              </p>
-            </div>
+            <TextareaField
+              label="自動招待ユーザ"
+              error={errors.autoInviteUsernames?.message}
+              helperText="カンマ区切りで入力してください"
+              {...field}
+            />
           )}
         />
 
@@ -784,19 +619,11 @@ export default function NewSessionForm() {
           name="autoInviteMessage"
           control={control}
           render={({ field }) => (
-            <div className="space-y-2">
-              <Label htmlFor="autoInviteMessage">招待メッセージ</Label>
-              <Textarea
-                id="autoInviteMessage"
-                {...field}
-                className={errors.autoInviteMessage ? "border-red-500" : ""}
-              />
-              {errors.autoInviteMessage && (
-                <p className="text-sm text-red-500">
-                  {errors.autoInviteMessage.message}
-                </p>
-              )}
-            </div>
+            <TextareaField
+              label="招待メッセージ"
+              error={errors.autoInviteMessage?.message}
+              {...field}
+            />
           )}
         />
       </div>
@@ -805,19 +632,11 @@ export default function NewSessionForm() {
         name="roleCloudVariable"
         control={control}
         render={({ field }) => (
-          <div className="space-y-2">
-            <Label htmlFor="roleCloudVariable">roleCloudVariable</Label>
-            <Input
-              id="roleCloudVariable"
-              {...field}
-              className={errors.roleCloudVariable ? "border-red-500" : ""}
-            />
-            {errors.roleCloudVariable && (
-              <p className="text-sm text-red-500">
-                {errors.roleCloudVariable.message}
-              </p>
-            )}
-          </div>
+          <TextField
+            label="roleCloudVariable"
+            error={errors.roleCloudVariable?.message}
+            {...field}
+          />
         )}
       />
 
@@ -826,23 +645,11 @@ export default function NewSessionForm() {
           name="allowUserCloudVariable"
           control={control}
           render={({ field }) => (
-            <div className="space-y-2">
-              <Label htmlFor="allowUserCloudVariable">
-                allowUserCloudVariable
-              </Label>
-              <Input
-                id="allowUserCloudVariable"
-                {...field}
-                className={
-                  errors.allowUserCloudVariable ? "border-red-500" : ""
-                }
-              />
-              {errors.allowUserCloudVariable && (
-                <p className="text-sm text-red-500">
-                  {errors.allowUserCloudVariable.message}
-                </p>
-              )}
-            </div>
+            <TextField
+              label="allowUserCloudVariable"
+              error={errors.allowUserCloudVariable?.message}
+              {...field}
+            />
           )}
         />
 
@@ -850,21 +657,11 @@ export default function NewSessionForm() {
           name="denyUserCloudVariable"
           control={control}
           render={({ field }) => (
-            <div className="space-y-2">
-              <Label htmlFor="denyUserCloudVariable">
-                denyUserCloudVariable
-              </Label>
-              <Input
-                id="denyUserCloudVariable"
-                {...field}
-                className={errors.denyUserCloudVariable ? "border-red-500" : ""}
-              />
-              {errors.denyUserCloudVariable && (
-                <p className="text-sm text-red-500">
-                  {errors.denyUserCloudVariable.message}
-                </p>
-              )}
-            </div>
+            <TextField
+              label="denyUserCloudVariable"
+              error={errors.denyUserCloudVariable?.message}
+              {...field}
+            />
           )}
         />
       </div>
@@ -874,23 +671,11 @@ export default function NewSessionForm() {
           name="requiredUserJoinCloudVariable"
           control={control}
           render={({ field }) => (
-            <div className="space-y-2">
-              <Label htmlFor="requiredUserJoinCloudVariable">
-                requiredUserJoinCloudVariable
-              </Label>
-              <Input
-                id="requiredUserJoinCloudVariable"
-                {...field}
-                className={
-                  errors.requiredUserJoinCloudVariable ? "border-red-500" : ""
-                }
-              />
-              {errors.requiredUserJoinCloudVariable && (
-                <p className="text-sm text-red-500">
-                  {errors.requiredUserJoinCloudVariable.message}
-                </p>
-              )}
-            </div>
+            <TextField
+              label="requiredUserJoinCloudVariable"
+              error={errors.requiredUserJoinCloudVariable?.message}
+              {...field}
+            />
           )}
         />
 
@@ -898,25 +683,11 @@ export default function NewSessionForm() {
           name="requiredUserJoinCloudVariableDenyMessage"
           control={control}
           render={({ field }) => (
-            <div className="space-y-2">
-              <Label htmlFor="requiredUserJoinCloudVariableDenyMessage">
-                requiredUserJoinCloudVariableDenyMessage
-              </Label>
-              <Input
-                id="requiredUserJoinCloudVariableDenyMessage"
-                {...field}
-                className={
-                  errors.requiredUserJoinCloudVariableDenyMessage
-                    ? "border-red-500"
-                    : ""
-                }
-              />
-              {errors.requiredUserJoinCloudVariableDenyMessage && (
-                <p className="text-sm text-red-500">
-                  {errors.requiredUserJoinCloudVariableDenyMessage.message}
-                </p>
-              )}
-            </div>
+            <TextField
+              label="requiredUserJoinCloudVariableDenyMessage"
+              error={errors.requiredUserJoinCloudVariableDenyMessage?.message}
+              {...field}
+            />
           )}
         />
       </div>
