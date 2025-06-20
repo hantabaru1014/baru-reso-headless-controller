@@ -7,8 +7,6 @@ import { sessionAtom } from "../atoms/sessionAtom";
 import { useAuth } from "../hooks/useAuth";
 import {
   Button,
-  Input,
-  Label,
   Card,
   CardContent,
   CardHeader,
@@ -17,6 +15,7 @@ import {
   AlertDescription,
 } from "@/components/ui";
 import { Loader2 } from "lucide-react";
+import { TextField } from "@/components/base";
 
 interface SignInForm {
   email: string;
@@ -66,40 +65,20 @@ export default function SignIn() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">ID</Label>
-              <Input
-                id="email"
-                type="email"
-                {...register("email", {
-                  required: "IDは必須です",
-                })}
-                disabled={isLoading}
-                className={errors.email ? "border-destructive" : ""}
-              />
-              {errors.email && (
-                <p className="text-sm text-destructive">
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">パスワード</Label>
-              <Input
-                id="password"
-                type="password"
-                {...register("password", {
-                  required: "パスワードは必須です",
-                })}
-                disabled={isLoading}
-                className={errors.password ? "border-destructive" : ""}
-              />
-              {errors.password && (
-                <p className="text-sm text-destructive">
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
+            <TextField
+              label="ID"
+              type="email"
+              {...register("email", { required: "IDは必須です" })}
+              disabled={isLoading}
+              error={errors.email?.message}
+            />
+            <TextField
+              label="パスワード"
+              type="password"
+              {...register("password", { required: "パスワードは必須です" })}
+              disabled={isLoading}
+              error={errors.password?.message}
+            />
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>

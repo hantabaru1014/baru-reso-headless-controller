@@ -1,8 +1,6 @@
 import { useMutation } from "@connectrpc/connect-query";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader } from "./ui/card";
-import { Checkbox } from "./ui/checkbox";
-import { Label } from "./ui/label";
 import { getHeadlessHostLogs } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -10,6 +8,7 @@ import {
   GetHeadlessHostLogsResponse_Log,
 } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { toast } from "sonner";
+import { CheckboxField } from "./base";
 
 export default function HostLogViewer({
   hostId,
@@ -126,14 +125,11 @@ export default function HostLogViewer({
       <CardHeader>
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Logs</h3>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="tail-logs"
-              checked={isTailing}
-              onCheckedChange={(checked) => setIsTailing(checked === true)}
-            />
-            <Label htmlFor="tail-logs">tail</Label>
-          </div>
+          <CheckboxField
+            label="tail"
+            checked={isTailing}
+            onCheckedChange={(checked) => setIsTailing(checked === true)}
+          />
         </div>
       </CardHeader>
       <CardContent className="relative" style={{ height }}>

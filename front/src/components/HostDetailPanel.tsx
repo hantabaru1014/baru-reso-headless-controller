@@ -15,8 +15,6 @@ import {
   DialogFooter,
 } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
 import { EditableTextField } from "./base/EditableTextField";
 import { ReadOnlyField } from "./base/ReadOnlyField";
 import prettyBytes from "../libs/prettyBytes";
@@ -29,6 +27,7 @@ import { useState } from "react";
 import { ScrollBase } from "./base/ScrollBase";
 import { SelectField } from "./base/SelectField";
 import { toast } from "sonner";
+import { TextField } from "./base";
 
 type AllowedAccessEntryType = {
   host: string;
@@ -65,23 +64,17 @@ function AllowedUrlHostsDialog({
         </DialogHeader>
         <div className="space-y-4">
           <div className="flex gap-2">
-            <div className="flex-1">
-              <Label htmlFor="host">Host</Label>
-              <Input
-                id="host"
-                value={newUrl}
-                onChange={(e) => setNewUrl(e.target.value)}
-              />
-            </div>
-            <div className="w-24">
-              <Label htmlFor="port">Port</Label>
-              <Input
-                id="port"
-                type="number"
-                value={newPort}
-                onChange={(e) => setNewPort(e.target.value)}
-              />
-            </div>
+            <TextField
+              label="Host"
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+            />
+            <TextField
+              label="Port"
+              type="number"
+              value={newPort}
+              onChange={(e) => setNewPort(e.target.value)}
+            />
             <div className="w-40">
               <SelectField
                 label="Access Type"
@@ -232,14 +225,11 @@ function AutoSpawnItemsDialog({
         </DialogHeader>
         <div className="space-y-4">
           <div className="flex gap-2">
-            <div className="flex-1">
-              <Label htmlFor="itemUri">Item URI</Label>
-              <Input
-                id="itemUri"
-                value={newItemUri}
-                onChange={(e) => setNewItemUri(e.target.value)}
-              />
-            </div>
+            <TextField
+              label="Item URI"
+              value={newItemUri}
+              onChange={(e) => setNewItemUri(e.target.value)}
+            />
             <div className="self-end">
               <Button
                 onClick={async () => {

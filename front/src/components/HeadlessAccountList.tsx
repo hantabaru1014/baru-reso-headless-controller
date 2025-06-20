@@ -4,12 +4,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "./ui/dialog";
-import { Button } from "./ui/button";
-import { Card, CardContent, CardHeader } from "./ui/card";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { UserList } from "./base/UserList";
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+} from "./ui";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
   createHeadlessAccount,
@@ -18,6 +17,7 @@ import {
 import { RefetchButton } from "./base/RefetchButton";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { TextField, UserList } from "./base";
 
 function NewAccountDialog({
   open,
@@ -48,31 +48,22 @@ function NewAccountDialog({
           <DialogTitle>ヘッドレスアカウントを追加</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="userId">User ID</Label>
-            <Input
-              id="userId"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="credential">Credential</Label>
-            <Input
-              id="credential"
-              value={credential}
-              onChange={(e) => setCredential(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+          <TextField
+            label="User ID"
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+          />
+          <TextField
+            label="Credential"
+            value={credential}
+            onChange={(e) => setCredential(e.target.value)}
+          />
+          <TextField
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </div>
         <DialogFooter>
           <Button

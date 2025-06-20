@@ -14,8 +14,6 @@ import {
   DialogFooter,
 } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import {
   Collapsible,
@@ -33,6 +31,7 @@ import { SelectField } from "./base/SelectField";
 import { HeadlessHost } from "front/pbgen/hdlctrl/v1/controller_pb";
 import { DataTable } from "./base/DataTable";
 import { toast } from "sonner";
+import { TextField } from "./base";
 
 function SelectHeadlessAccountDialog({
   open,
@@ -124,14 +123,11 @@ function NewHostDialog({
             <DialogTitle>ヘッドレスを開始</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="hostName">ホスト名</Label>
-              <Input
-                id="hostName"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
+            <TextField
+              label="ホスト名"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
             <SelectField
               label="バージョン"
               options={tagOptions}
@@ -160,22 +156,16 @@ function NewHostDialog({
                 <ChevronDown className="h-4 w-4" />
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-2">
-                <div>
-                  <Label htmlFor="universeId">Universe ID</Label>
-                  <Input
-                    id="universeId"
-                    value={universeId}
-                    onChange={(e) => setUniverseId(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="usernameOverride">Username Override</Label>
-                  <Input
-                    id="usernameOverride"
-                    value={usernameOverride}
-                    onChange={(e) => setUsernameOverride(e.target.value)}
-                  />
-                </div>
+                <TextField
+                  label="Universe ID"
+                  value={universeId}
+                  onChange={(e) => setUniverseId(e.target.value)}
+                />
+                <TextField
+                  label="Username Override"
+                  value={usernameOverride}
+                  onChange={(e) => setUsernameOverride(e.target.value)}
+                />
               </CollapsibleContent>
             </Collapsible>
           </div>
