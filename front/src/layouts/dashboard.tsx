@@ -1,13 +1,9 @@
 import { Outlet, Navigate, useLocation, Link } from "react-router";
-import { Home, Users, Server, Earth, LogOut } from "lucide-react";
+import { Home, Users, Server, Earth } from "lucide-react";
 import { useAtom } from "jotai";
 import { sessionAtom, Session } from "../atoms/sessionAtom";
 import { useAuth } from "../hooks/useAuth";
 import {
-  Button,
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
   SidebarProvider,
   Sidebar,
   SidebarContent,
@@ -20,6 +16,8 @@ import {
 } from "@/components/ui";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/libs/cssUtils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { UserMenuDropdown } from "@/components/UserMenuDropdown";
 
 const navigation = [
   {
@@ -98,29 +96,7 @@ function Header({
       <div className="flex-1" />
 
       <ThemeToggle />
-      {/* User Account */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={session?.user?.image} alt={session?.user?.name} />
-            <AvatarFallback>
-              {session?.user?.name?.charAt(0) || "U"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="hidden md:block text-sm">
-            <div className="font-medium">{session?.user?.name}</div>
-            <div className="text-muted-foreground">{session?.user?.email}</div>
-          </div>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={signOut}
-          title="サインアウト"
-        >
-          <LogOut className="h-4 w-4" />
-        </Button>
-      </div>
+      <UserMenuDropdown user={session?.user} signOut={signOut} />
     </header>
   );
 }
@@ -129,6 +105,7 @@ export default function Layout() {
   const [session] = useAtom(sessionAtom);
   const location = useLocation();
   const { signOut } = useAuth("/");
+  const isMobile = useIsMobile();
 
   if (!session) {
     const redirectTo = `/sign-in?callbackUrl=${encodeURIComponent(location.pathname)}`;
@@ -146,7 +123,7 @@ export default function Layout() {
         )}
       >
         <Header session={session} signOut={signOut} />
-        <main className="p-6">
+        <main className={cn(isMobile ? "p-1" : "p-6")}>
           <Outlet />
         </main>
       </div>
