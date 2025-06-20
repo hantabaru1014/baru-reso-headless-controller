@@ -692,9 +692,11 @@ export default function NewSessionForm() {
         />
       </div>
 
-      <Button type="submit" disabled={Object.keys(errors).length > 0}>
-        セッション開始
-      </Button>
+      <div className="sticky bottom-0 border-t p-4 mt-8 bg-background">
+        <Button type="submit" disabled={Object.keys(errors).length > 0}>
+          セッション開始
+        </Button>
+      </div>
     </form>
   );
 }
