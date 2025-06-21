@@ -1,20 +1,13 @@
 import {
-  Button,
   Dialog,
-  DialogActions,
   DialogContent,
+  DialogHeader,
   DialogTitle,
-  InputAdornment,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-} from "@mui/material";
-import { CheckOutlined, SearchOutlined } from "@mui/icons-material";
+  DialogFooter,
+} from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Search, Check } from "lucide-react";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
   banUser,
@@ -25,22 +18,28 @@ import {
   searchUserInfo,
   updateUserRole,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import Loading from "./base/Loading";
 import { UserRoles } from "../constants";
-import EditableSelectField from "./base/EditableSelectField";
+import { EditableSelectField } from "./base/EditableSelectField";
 import { useState } from "react";
-import { useNotifications } from "@toolpad/core/useNotifications";
-import { useDialogs, DialogProps } from "@toolpad/core/useDialogs";
-import UserList from "./base/UserList";
-import RefetchButton from "./base/RefetchButton";
-import ScrollBase from "./base/ScrollBase";
+import { UserList } from "./base/UserList";
+import { RefetchButton } from "./base/RefetchButton";
+import { ScrollBase } from "./base/ScrollBase";
+import { ColumnDef } from "@tanstack/react-table";
+import { UserInSession } from "front/pbgen/headless/v1/headless_pb";
+import { DataTable } from "./base";
+import { toast } from "sonner";
 
 function UserInviteDialog({
-  open,
+  isOpen: open,
   onClose,
-  payload: { hostId, sessionId },
-}: DialogProps<{ hostId: string; sessionId: string }>) {
-  const notifications = useNotifications();
+  hostId,
+  sessionId,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  hostId?: string;
+  sessionId?: string;
+}) {
   const [query, setQuery] = useState("");
   const {
     data: searchResult,
@@ -76,38 +75,28 @@ function UserInviteDialog({
           value: userId,
         },
       });
-      notifications.show("ユーザーを招待しました", {
-        severity: "success",
-        autoHideDuration: 1500,
-      });
+      toast.success("ユーザーを招待しました");
     } catch (e) {
-      notifications.show(`ユーザーの招待に失敗しました: ${e}`, {
-        severity: "error",
-        autoHideDuration: 1500,
-      });
+      toast.error(`ユーザーの招待に失敗しました: ${e}`);
     }
   };
 
   return (
-    <Dialog open={open} onClose={() => onClose()} fullWidth maxWidth="md">
-      <DialogTitle>ユーザーを招待</DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={2}>
-          <TextField
-            variant="filled"
-            label="ユーザーID/名"
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchOutlined />
-                  </InputAdornment>
-                ),
-              },
-            }}
-            value={query}
-            onChange={handleQueryChange}
-          />
+    <Dialog open={open} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>ユーザーを招待</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="ユーザーID/名"
+              value={query}
+              onChange={handleQueryChange}
+              className="pl-10"
+            />
+          </div>
           <ScrollBase height="60vh">
             <UserList
               data={searchResult?.users || []}
@@ -117,28 +106,30 @@ function UserInviteDialog({
               )}
             />
           </ScrollBase>
-        </Stack>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onClose()}>
+            閉じる
+          </Button>
+        </DialogFooter>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={() => onClose()}>閉じる</Button>
-      </DialogActions>
     </Dialog>
   );
 }
 
 export default function SessionUserList({ sessionId }: { sessionId: string }) {
-  const dialogs = useDialogs();
   const { data: sessionDetail } = useQuery(getSessionDetails, {
     sessionId,
   });
   const hostId = sessionDetail?.session?.hostId;
-  const { data, status, refetch } = useQuery(listUsersInSession, {
+  const { data, isPending, refetch } = useQuery(listUsersInSession, {
     hostId,
     sessionId,
   });
   const { mutateAsync: mutateUpdateRole } = useMutation(updateUserRole);
   const { mutateAsync: mutateKickUser } = useMutation(kickUser);
   const { mutateAsync: mutateBanUser } = useMutation(banUser);
+  const [isOpenInviteDialog, setIsOpenInviteDialog] = useState(false);
 
   const handleUpdateRole = async (userId: string, role: string) => {
     try {
@@ -204,58 +195,76 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
     }
   };
 
-  const handleOpenInviteDialog = async () => {
-    await dialogs.open(UserInviteDialog, { hostId: hostId ?? "", sessionId });
-    refetch();
-  };
+  const columns: ColumnDef<UserInSession>[] = [
+    {
+      accessorKey: "name",
+      header: "ユーザー名",
+    },
+    {
+      accessorKey: "role",
+      header: "権限",
+      cell: ({ row }) => (
+        <EditableSelectField<string>
+          selectedId={row.original.role}
+          options={UserRoles.map((r) => r)}
+          onSave={(v) => handleUpdateRole(row.original.id, v)}
+        />
+      ),
+    },
+    {
+      accessorKey: "isPresent",
+      header: "離席中",
+      cell: ({ cell }) =>
+        !cell.getValue<boolean>() ? <Check className="h-4 w-4" /> : null,
+    },
+    {
+      id: "actions",
+      header: "操作",
+      cell: ({ row }) => (
+        <div className="space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleKickUser(row.original.id)}
+          >
+            Kick
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => handleBanUser(row.original.id)}
+          >
+            Ban
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <Stack spacing={2}>
-      <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end" }}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleOpenInviteDialog}
-        >
-          ユーザー招待
-        </Button>
-        <RefetchButton refetch={refetch} />
-      </Stack>
-      <Loading loading={status === "pending"}>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>ユーザー名</TableCell>
-                <TableCell>権限</TableCell>
-                <TableCell>離席中</TableCell>
-                <TableCell>操作</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {data?.users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>{user.name}</TableCell>
-                  <TableCell>
-                    <EditableSelectField<string>
-                      selectedId={user.role}
-                      options={UserRoles.map((r) => r)}
-                      onSave={(v) => handleUpdateRole(user.id, v)}
-                    />
-                  </TableCell>
-                  <TableCell>{!user.isPresent && <CheckOutlined />}</TableCell>
-                  <TableCell>
-                    <Button onClick={() => handleKickUser(user.id)}>
-                      Kick
-                    </Button>
-                    <Button onClick={() => handleBanUser(user.id)}>Ban</Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Loading>
-    </Stack>
+    <>
+      <div className="space-y-4">
+        <div className="flex justify-end space-x-2">
+          <Button onClick={() => setIsOpenInviteDialog(true)}>
+            ユーザー招待
+          </Button>
+          <RefetchButton refetch={refetch} />
+        </div>
+        <DataTable
+          columns={columns}
+          data={data?.users || []}
+          isLoading={isPending}
+        />
+      </div>
+      <UserInviteDialog
+        isOpen={isOpenInviteDialog}
+        onClose={() => {
+          setIsOpenInviteDialog(false);
+          refetch();
+        }}
+        hostId={hostId}
+        sessionId={sessionId}
+      />
+    </>
   );
 }

@@ -1,11 +1,14 @@
 import {
-  FormControl,
-  InputLabel,
   Select,
-  MenuItem,
-  FormHelperText,
-} from "@mui/material";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui";
 import { ReactNode, useId } from "react";
+import { FieldHeader } from "./FieldHeader";
+import { FieldFooter } from "./FieldFooter";
+import { cn } from "@/libs/cssUtils";
 
 export type SelectFieldOption<V> = {
   id: string;
@@ -13,7 +16,8 @@ export type SelectFieldOption<V> = {
   label: ReactNode;
 };
 
-export default function SelectField<V>({
+export function SelectField<V>({
+  id,
   label,
   options,
   selectedId,
@@ -22,39 +26,50 @@ export default function SelectField<V>({
   error,
   helperText,
   minWidth,
+  className,
 }: {
+  id?: string;
   label?: string;
   options: SelectFieldOption<V>[];
   selectedId: string;
   onChange: (option: SelectFieldOption<V>) => void;
   readOnly?: boolean;
-  error?: boolean;
+  error?: string;
   helperText?: ReactNode;
   minWidth?: string;
+  className?: string;
 }) {
-  const id = useId();
+  const formId = id ?? useId();
 
   return (
-    <FormControl variant="filled" error={error}>
-      <InputLabel id={id}>{label}</InputLabel>
+    <div className={className}>
+      {label && (
+        <FieldHeader formId={formId} label={label} helperText={helperText} />
+      )}
       <Select
-        labelId={id}
         value={selectedId}
-        readOnly={readOnly}
-        autoWidth
-        sx={{ minWidth }}
+        onValueChange={(value) => {
+          const option = options.find((o) => o.id === value);
+          if (option) onChange(option);
+        }}
+        disabled={readOnly}
       >
-        {options.map((option) => (
-          <MenuItem
-            key={option.id}
-            value={option.id}
-            onClick={() => onChange(option)}
-          >
-            {option.label}
-          </MenuItem>
-        ))}
+        <SelectTrigger
+          id={formId}
+          style={{ minWidth }}
+          className={cn("w-full", error && "border-destructive")}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.id} value={option.id}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
       </Select>
-      <FormHelperText error={error}>{helperText}</FormHelperText>
-    </FormControl>
+      <FieldFooter error={error} />
+    </div>
   );
 }

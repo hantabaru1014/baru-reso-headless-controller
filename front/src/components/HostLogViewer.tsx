@@ -1,21 +1,14 @@
 import { useMutation } from "@connectrpc/connect-query";
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  Checkbox,
-  FormControlLabel,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Button } from "./ui/button";
+import { Card, CardContent, CardHeader } from "./ui/card";
 import { getHeadlessHostLogs } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   GetHeadlessHostLogsRequest,
   GetHeadlessHostLogsResponse_Log,
 } from "../../pbgen/hdlctrl/v1/controller_pb";
-import { useNotifications } from "@toolpad/core/useNotifications";
+import { toast } from "sonner";
+import { CheckboxField } from "./base";
 
 export default function HostLogViewer({
   hostId,
@@ -29,7 +22,6 @@ export default function HostLogViewer({
   const [isFetchedUntilLogs, setIsFetchedUntilLogs] = useState(false);
   const [isTailing, setIsTailing] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const notifications = useNotifications();
 
   const fetchLogs = useCallback(
     async (mode: "init" | "until" | "since") => {
@@ -96,9 +88,7 @@ export default function HostLogViewer({
           }
         }, 10);
       } catch (e) {
-        notifications.show(
-          `ログ取得エラー: ${e instanceof Error ? e.message : e}`,
-        );
+        toast.error(`ログ取得エラー: ${e instanceof Error ? e.message : e}`);
       }
     },
     [
@@ -131,54 +121,37 @@ export default function HostLogViewer({
   }, [isTailing, fetchLogs]);
 
   return (
-    <Card variant="outlined">
-      <CardHeader
-        title="Logs"
-        action={
-          <Stack direction="row">
-            <FormControlLabel
-              label="tail"
-              control={
-                <Checkbox
-                  checked={isTailing}
-                  onChange={(e) => setIsTailing(e.target.checked)}
-                />
-              }
-            />
-          </Stack>
-        }
-      />
-      <CardContent sx={{ position: "relative", height }}>
-        <div
-          ref={scrollAreaRef}
-          style={{
-            position: "absolute",
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: 0,
-            overflowY: "scroll",
-          }}
-        >
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Logs</h3>
+          <CheckboxField
+            label="tail"
+            checked={isTailing}
+            onCheckedChange={(checked) => setIsTailing(checked === true)}
+          />
+        </div>
+      </CardHeader>
+      <CardContent className="relative" style={{ height }}>
+        <div ref={scrollAreaRef} className="absolute inset-0 overflow-y-auto">
           {!isFetchedUntilLogs && logs.length > 0 && (
-            <Stack justifyContent="center">
-              <Button onClick={() => fetchLogs("until")} variant="text">
+            <div className="flex justify-center mb-2">
+              <Button onClick={() => fetchLogs("until")} variant="ghost">
                 以前のログを取得
               </Button>
-            </Stack>
+            </div>
           )}
           {logs.length === 0 && (
-            <Stack justifyContent="center">
-              <Button onClick={() => fetchLogs("init")} variant="text">
+            <div className="flex justify-center">
+              <Button onClick={() => fetchLogs("init")} variant="ghost">
                 ログを取得
               </Button>
-            </Stack>
+            </div>
           )}
           {logs.map((log, i) => (
-            <Stack key={i} direction="row">
-              <Typography
-                component="span"
-                color={log.isError ? "error" : "textPrimary"}
+            <div key={i} className="font-mono text-sm">
+              <span
+                className={log.isError ? "text-destructive" : "text-foreground"}
               >
                 {log.timestamp
                   ? new Date(
@@ -186,8 +159,8 @@ export default function HostLogViewer({
                     ).toLocaleTimeString("ja-JP") + " "
                   : ""}
                 {log.body}
-              </Typography>
-            </Stack>
+              </span>
+            </div>
           ))}
         </div>
       </CardContent>

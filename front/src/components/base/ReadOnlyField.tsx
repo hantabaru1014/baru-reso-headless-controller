@@ -1,8 +1,7 @@
-import { TextField } from "@mui/material";
-import EditableFieldBase from "./EditableFieldBase";
+import { EditableFieldBase } from "./EditableFieldBase";
 import React from "react";
 
-export default function ReadOnlyField({
+export function ReadOnlyField({
   label,
   value,
   isLoading,
@@ -14,19 +13,14 @@ export default function ReadOnlyField({
   helperText?: React.ReactNode;
 }) {
   return (
-    <EditableFieldBase editing={false} isLoading={isLoading} readonly>
-      <TextField
-        label={label}
-        fullWidth
-        variant="standard"
-        value={value}
-        slotProps={{
-          input: {
-            readOnly: true,
-          },
-        }}
-        helperText={helperText}
-      />
+    <EditableFieldBase
+      label={label}
+      editing={false}
+      isLoading={isLoading}
+      readonly
+      helperText={helperText}
+    >
+      {value}
     </EditableFieldBase>
   );
 }

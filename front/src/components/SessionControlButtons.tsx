@@ -1,11 +1,11 @@
-import { Stack, Button } from "@mui/material";
-import { useNotifications } from "@toolpad/core/useNotifications";
+import { Button } from "./ui/button";
 import { useNavigate } from "react-router";
 import {
   saveSessionWorld,
   stopSession,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { useMutation } from "@connectrpc/connect-query";
+import { toast } from "sonner";
 
 export default function SessionControlButtons({
   hostId,
@@ -19,7 +19,6 @@ export default function SessionControlButtons({
   additionalButtons?: React.ReactNode;
 }) {
   const navigate = useNavigate();
-  const notifications = useNotifications();
   const { mutateAsync: mutateSave, isPending: isPendingSave } =
     useMutation(saveSessionWorld);
   const { mutateAsync: mutateStop, isPending: isPendingStop } =
@@ -31,15 +30,9 @@ export default function SessionControlButtons({
         hostId,
         sessionId,
       });
-      notifications.show("ワールドを保存しました", {
-        severity: "success",
-        autoHideDuration: 3000,
-      });
+      toast.success("ワールドを保存しました");
     } catch (e) {
-      notifications.show(`セッションの保存に失敗しました: ${e}`, {
-        severity: "error",
-        autoHideDuration: 3000,
-      });
+      toast.error(`セッションの保存に失敗しました: ${e}`);
     }
   };
 
@@ -49,38 +42,30 @@ export default function SessionControlButtons({
         hostId,
         sessionId,
       });
-      notifications.show("セッションを停止しました", {
-        severity: "success",
-        autoHideDuration: 3000,
-      });
+      toast.success("セッションを停止しました");
       navigate("/sessions");
     } catch (e) {
-      notifications.show(`セッションの停止に失敗しました: ${e}`, {
-        severity: "error",
-        autoHideDuration: 3000,
-      });
+      toast.error(`セッションの停止に失敗しました: ${e}`);
     }
   };
 
   return (
-    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+    <div className="flex items-center gap-2">
       <Button
-        variant="contained"
-        loading={isPendingSave}
+        variant="outline"
+        disabled={isPendingSave || !canSave}
         onClick={handleSave}
-        disabled={!canSave}
       >
         ワールド保存
       </Button>
       <Button
-        variant="contained"
-        color="warning"
-        loading={isPendingStop}
+        variant="destructive"
+        disabled={isPendingStop}
         onClick={handleStop}
       >
         停止
       </Button>
       {additionalButtons}
-    </Stack>
+    </div>
   );
 }

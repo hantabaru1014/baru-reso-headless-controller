@@ -1,25 +1,29 @@
-import { TextField } from "@mui/material";
-import EditableFieldBase from "./EditableFieldBase";
-import { ComponentProps, useState } from "react";
+import { cn } from "@/libs/cssUtils";
+import { Input } from "../ui";
+import { EditableFieldBase, EditableFieldBaseProps } from "./EditableFieldBase";
+import { ComponentProps, useId, useState } from "react";
 
-export default function EditableTextField(
-  props: ComponentProps<typeof TextField> & {
-    readonly?: boolean;
-    isLoading?: boolean;
-    onSave: (value: string) => Promise<{ ok: boolean; error?: string }>;
-  },
+export function EditableTextField(
+  props: Omit<ComponentProps<typeof Input>, "onChange" | "readOnly"> &
+    Pick<
+      EditableFieldBaseProps,
+      "label" | "readonly" | "isLoading" | "helperText"
+    > & {
+      onSave: (value: string) => Promise<{ ok: boolean; error?: string }>;
+    },
 ) {
   const [isEditing, setIsEditing] = useState(false);
   const [editingValue, setEditingValue] = useState("");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined>(undefined);
+  const id = useId();
 
   const handleSave = async () => {
-    setErrorMessage(null);
-    const { ok, error } = await props.onSave(editingValue);
+    setError(undefined);
+    const { ok, error: returnedErr } = await props.onSave(editingValue);
     if (ok) {
       setIsEditing(false);
     } else {
-      setErrorMessage(error ?? null);
+      setError(returnedErr);
     }
   };
 
@@ -31,32 +35,35 @@ export default function EditableTextField(
   const handleCancel = () => {
     setIsEditing(false);
     setEditingValue((props.value as string) || "");
-    setErrorMessage(null);
+    setError(undefined);
   };
 
   return (
     <EditableFieldBase
+      label={props.label}
+      formId={id}
       editing={isEditing}
       onEditStart={handleEditStart}
       onSave={handleSave}
       onCancel={handleCancel}
       readonly={props.readonly}
       isLoading={props.isLoading}
+      helperText={props.helperText}
+      disabled={props.disabled}
+      error={error}
     >
-      <TextField
-        {...props}
-        fullWidth
-        variant={isEditing ? "filled" : "standard"}
-        value={isEditing ? editingValue : props.value}
-        onChange={(e) => setEditingValue(e.target.value)}
-        slotProps={{
-          input: {
-            readOnly: props.readonly || !isEditing,
-          },
-        }}
-        error={!!errorMessage}
-        helperText={errorMessage ?? props.helperText}
-      />
+      {isEditing ? (
+        <Input
+          {...props}
+          id={id}
+          value={isEditing ? editingValue : props.value}
+          onChange={(e) => setEditingValue(e.target.value)}
+          readOnly={props.readonly || !isEditing}
+          className={cn(error && "border-destructive")}
+        />
+      ) : (
+        <span>{props.value}</span>
+      )}
     </EditableFieldBase>
   );
 }

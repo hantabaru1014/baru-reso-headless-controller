@@ -1,34 +1,37 @@
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
   Button,
   Card,
   CardContent,
   CardHeader,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Stack,
-  TextField,
-} from "@mui/material";
-import { useDialogs, DialogProps } from "@toolpad/core/useDialogs";
-import UserList from "./base/UserList";
+} from "./ui";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
   createHeadlessAccount,
   listHeadlessAccounts,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import RefetchButton from "./base/RefetchButton";
+import { RefetchButton } from "./base/RefetchButton";
 import { useEffect, useState } from "react";
-import { useNotifications } from "@toolpad/core/useNotifications";
+import { toast } from "sonner";
+import { TextField, UserList } from "./base";
 
-function NewAccountDialog({ open, onClose }: DialogProps) {
+function NewAccountDialog({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
   const { mutateAsync: mutateCreateAccount, isPending } = useMutation(
     createHeadlessAccount,
   );
   const [userId, setUserId] = useState("U-");
   const [credential, setCredential] = useState("");
   const [password, setPassword] = useState("");
-  const notifications = useNotifications();
 
   useEffect(() => {
     if (open) {
@@ -39,10 +42,12 @@ function NewAccountDialog({ open, onClose }: DialogProps) {
   }, [open]);
 
   return (
-    <Dialog open={open} onClose={() => onClose()} fullWidth maxWidth="md">
-      <DialogTitle>ヘッドレスアカウントを追加</DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={2}>
+    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>ヘッドレスアカウントを追加</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
           <TextField
             label="User ID"
             value={userId}
@@ -59,75 +64,79 @@ function NewAccountDialog({ open, onClose }: DialogProps) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-        </Stack>
+        </div>
+        <DialogFooter>
+          <Button
+            onClick={async () => {
+              try {
+                await mutateCreateAccount({
+                  resoniteUserId: userId,
+                  credential,
+                  password,
+                });
+                toast.success("アカウントを追加しました");
+              } catch (e) {
+                toast.error(
+                  e instanceof Error
+                    ? e.message
+                    : "アカウントの追加に失敗しました",
+                );
+                return;
+              }
+              onClose();
+            }}
+            disabled={isPending}
+          >
+            追加
+          </Button>
+          <Button variant="outline" onClick={() => onClose()}>
+            キャンセル
+          </Button>
+        </DialogFooter>
       </DialogContent>
-      <DialogActions>
-        <Button
-          onClick={async () => {
-            try {
-              await mutateCreateAccount({
-                resoniteUserId: userId,
-                credential,
-                password,
-              });
-            } catch (e) {
-              notifications.show(e instanceof Error ? e.message : `${e}`, {
-                severity: "error",
-              });
-              return;
-            }
-            onClose();
-          }}
-          loading={isPending}
-          variant="contained"
-          color="primary"
-        >
-          追加
-        </Button>
-        <Button onClick={() => onClose()}>キャンセル</Button>
-      </DialogActions>
     </Dialog>
   );
 }
 
 export default function HeadlessAccountList() {
   const { data, isPending, refetch } = useQuery(listHeadlessAccounts);
-  const dialogs = useDialogs();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const handleNewAccount = async () => {
-    await dialogs.open(NewAccountDialog);
+  const handleNewAccount = () => {
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
     refetch();
   };
 
   return (
-    <Card variant="outlined">
-      <CardHeader
-        title="ヘッドレスアカウント"
-        action={
-          <Stack spacing={2} direction="row">
-            <RefetchButton refetch={refetch} />
-            <Button
-              onClick={handleNewAccount}
-              variant="contained"
-              color="primary"
-            >
-              追加
-            </Button>
-          </Stack>
-        }
-      />
-      <CardContent>
-        <UserList
-          data={
-            data?.accounts.map((account) => ({
-              id: account.userId,
-              name: account.userName,
-              iconUrl: account.iconUrl,
-            })) ?? []
-          }
-          isLoading={isPending}
-        />
-      </CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">ヘッドレスアカウント</h3>
+            <div className="flex gap-2">
+              <RefetchButton refetch={refetch} />
+              <Button onClick={handleNewAccount}>追加</Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <UserList
+            data={
+              data?.accounts.map((account) => ({
+                id: account.userId,
+                name: account.userName,
+                iconUrl: account.iconUrl,
+              })) ?? []
+            }
+            isLoading={isPending}
+          />
+        </CardContent>
+      </Card>
+      <NewAccountDialog open={isDialogOpen} onClose={handleCloseDialog} />
+    </>
   );
 }

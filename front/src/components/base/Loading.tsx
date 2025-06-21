@@ -1,7 +1,7 @@
-import { Box, CircularProgress } from "@mui/material";
+import { Loader2 } from "lucide-react";
 import React from "react";
 
-export default function Loading({
+export function Loading({
   children,
   loading,
 }: {
@@ -9,20 +9,13 @@ export default function Loading({
   loading: boolean;
 }) {
   return (
-    <Box sx={{ position: "relative" }}>
+    <div className="relative">
       {children}
       {loading && (
-        <CircularProgress
-          size={24}
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            marginTop: "-12px",
-            marginLeft: "-12px",
-          }}
-        />
+        <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
       )}
-    </Box>
+    </div>
   );
 }

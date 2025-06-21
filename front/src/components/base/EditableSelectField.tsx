@@ -1,29 +1,40 @@
-import { TextField } from "@mui/material";
-import EditableFieldBase from "./EditableFieldBase";
-import { ComponentProps, useState } from "react";
-import SelectField, { type SelectFieldOption } from "./SelectField";
+import { EditableFieldBase, EditableFieldBaseProps } from "./EditableFieldBase";
+import { ComponentProps, useId, useState } from "react";
+import { SelectField, type SelectFieldOption } from "./SelectField";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui";
+import { cn } from "@/libs/cssUtils";
 
-export default function EditableSelectField<V>(
-  props: Omit<ComponentProps<typeof SelectField<V>>, "onChange"> & {
-    onSave: (value: V) => Promise<{ ok: boolean; error?: string }>;
-    isLoading?: boolean;
-  },
+export function EditableSelectField<V>(
+  props: Omit<ComponentProps<typeof SelectField<V>>, "onChange" | "readOnly"> &
+    Pick<
+      EditableFieldBaseProps,
+      "label" | "readonly" | "isLoading" | "helperText" | "disabled"
+    > & {
+      onSave: (value: V) => Promise<{ ok: boolean; error?: string }>;
+    },
 ) {
   const [isEditing, setIsEditing] = useState(false);
   const [editingValue, setEditingValue] = useState<SelectFieldOption<V>>();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined>(undefined);
+  const id = useId();
 
   const selectedOption = props.options.find((o) => o.id === props.selectedId);
 
   const handleSave = async () => {
-    setErrorMessage(null);
-    const { ok, error } = await props.onSave(
+    setError(undefined);
+    const { ok, error: returnedErr } = await props.onSave(
       (editingValue?.value ?? editingValue?.id) as V,
     );
     if (ok) {
       setIsEditing(false);
     } else {
-      setErrorMessage(error ?? null);
+      setError(returnedErr);
     }
   };
 
@@ -35,40 +46,48 @@ export default function EditableSelectField<V>(
   const handleCancel = () => {
     setIsEditing(false);
     setEditingValue(selectedOption);
-    setErrorMessage(null);
+    setError(undefined);
   };
 
   return (
     <EditableFieldBase
+      label={props.label}
+      formId={id}
       editing={isEditing}
       onEditStart={handleEditStart}
       onSave={handleSave}
       onCancel={handleCancel}
-      readonly={props.readOnly}
+      readonly={props.readonly}
       isLoading={props.isLoading}
+      helperText={props.helperText}
+      disabled={props.disabled}
+      error={error}
     >
       {isEditing ? (
-        <SelectField
-          {...props}
-          selectedId={isEditing ? editingValue?.id || "" : props.selectedId}
-          onChange={(option) => setEditingValue(option)}
-          readOnly={props.readOnly || !isEditing}
-          error={!!errorMessage}
-          helperText={errorMessage ?? props.helperText}
-        />
-      ) : (
-        <TextField
-          label={props.label}
-          fullWidth
-          variant="standard"
-          value={selectedOption?.label || ""}
-          slotProps={{
-            input: {
-              readOnly: true,
-            },
+        <Select
+          value={isEditing ? editingValue?.id || "" : props.selectedId}
+          onValueChange={(value) => {
+            const option = props.options.find((o) => o.id === value);
+            if (option) setEditingValue(option);
           }}
-          helperText={props.helperText}
-        />
+          disabled={props.readonly || !isEditing}
+        >
+          <SelectTrigger
+            id={id}
+            className={cn("w-full", error && "border-destructive")}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {props.options.map((option) => (
+              <SelectItem key={option.id} value={option.id}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        <span>{selectedOption?.label?.toString() || ""}</span>
       )}
     </EditableFieldBase>
   );

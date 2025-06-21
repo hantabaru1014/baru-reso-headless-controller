@@ -1,12 +1,11 @@
-import { Grid2 } from "@mui/material";
 import HostList from "../../components/HostList";
 
 export default function Hosts() {
   return (
-    <Grid2 container spacing={2}>
-      <Grid2 size={12}>
+    <div className="container mx-auto p-4">
+      <div className="w-full">
         <HostList />
-      </Grid2>
-    </Grid2>
+      </div>
+    </div>
   );
 }
