@@ -393,6 +393,7 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
               シャットダウン
             </Button>
             <Button
+              variant="outline"
               onClick={handleRestart}
               disabled={isPending || isPendingRestart}
             >

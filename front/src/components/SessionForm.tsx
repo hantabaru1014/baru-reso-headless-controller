@@ -233,9 +233,11 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                 canSave={sessionState?.canSave}
                 additionalButtons={
                   <>
-                    <Button onClick={handleCopyUrl}>URLをコピー</Button>
+                    <Button variant="outline" onClick={handleCopyUrl}>
+                      URLをコピー
+                    </Button>
                     {sessionState?.worldUrl && (
-                      <Button onClick={handleCopyWorldUrl}>
+                      <Button variant="outline" onClick={handleCopyWorldUrl}>
                         ワールドURLをコピー
                       </Button>
                     )}

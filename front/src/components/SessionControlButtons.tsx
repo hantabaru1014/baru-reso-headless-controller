@@ -51,10 +51,18 @@ export default function SessionControlButtons({
 
   return (
     <div className="flex items-center gap-2">
-      <Button disabled={isPendingSave || !canSave} onClick={handleSave}>
+      <Button
+        variant="outline"
+        disabled={isPendingSave || !canSave}
+        onClick={handleSave}
+      >
         ワールド保存
       </Button>
-      <Button variant="outline" disabled={isPendingStop} onClick={handleStop}>
+      <Button
+        variant="destructive"
+        disabled={isPendingStop}
+        onClick={handleStop}
+      >
         停止
       </Button>
       {additionalButtons}
