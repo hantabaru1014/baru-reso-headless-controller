@@ -229,21 +229,27 @@ const columns: ColumnDef<HeadlessHost>[] = [
     header: "名前",
   },
   {
+    accessorKey: "accountName",
+    header: "アカウント名",
+  },
+  {
     accessorKey: "status",
     header: "ステータス",
     cell: ({ row }) => hostStatusToLabel(row.original.status),
   },
   {
     accessorKey: "resoniteVersion",
-    header: "Resonite Ver",
+    header: "バージョン",
+    cell: ({ row }) =>
+      row.original.resoniteVersion
+        ? `${row.original.resoniteVersion} (v${row.original.appVersion})`
+        : "不明",
   },
   {
     accessorKey: "fps",
     header: "fps",
-  },
-  {
-    accessorKey: "accountName",
-    header: "アカウント名",
+    cell: ({ row }) =>
+      row.original.fps ? Math.floor(row.original.fps * 10) / 10 : "N/A",
   },
 ];
 
