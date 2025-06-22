@@ -9,18 +9,16 @@ import (
 
 func HeadlessHostEntityToProto(e *entity.HeadlessHost) *hdlctrlv1.HeadlessHost {
 	return &hdlctrlv1.HeadlessHost{
-		Id:                e.ID,
-		Name:              e.Name,
-		ResoniteVersion:   e.ResoniteVersion,
-		AppVersion:        e.AppVersion,
-		AccountId:         e.AccountId,
-		AccountName:       e.AccountName,
-		StorageQuotaBytes: e.StorageQuotaBytes,
-		StorageUsedBytes:  e.StorageUsedBytes,
-		Fps:               e.Fps,
-		Status:            hdlctrlv1.HeadlessHostStatus(e.Status),
-		AutoUpdatePolicy:  hdlctrlv1.HeadlessHostAutoUpdatePolicy(e.AutoUpdatePolicy),
-		Memo:              e.Memo,
+		Id:               e.ID,
+		Name:             e.Name,
+		ResoniteVersion:  e.ResoniteVersion,
+		AppVersion:       e.AppVersion,
+		AccountId:        e.AccountId,
+		AccountName:      e.AccountName,
+		Fps:              e.Fps,
+		Status:           hdlctrlv1.HeadlessHostStatus(e.Status),
+		AutoUpdatePolicy: hdlctrlv1.HeadlessHostAutoUpdatePolicy(e.AutoUpdatePolicy),
+		Memo:             e.Memo,
 	}
 }
 

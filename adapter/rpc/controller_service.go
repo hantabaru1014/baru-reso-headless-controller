@@ -13,6 +13,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/logging"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
@@ -104,7 +105,7 @@ func (c *ControllerService) StartHeadlessHost(ctx context.Context, req *connect.
 
 // CreateHeadlessAccount implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) CreateHeadlessAccount(ctx context.Context, req *connect.Request[hdlctrlv1.CreateHeadlessAccountRequest]) (*connect.Response[hdlctrlv1.CreateHeadlessAccountResponse], error) {
-	err := c.hauc.CreateHeadlessAccount(ctx, req.Msg.ResoniteUserId, req.Msg.Credential, req.Msg.Password)
+	err := c.hauc.CreateHeadlessAccount(ctx, req.Msg.Credential, req.Msg.Password)
 	if err != nil {
 		return nil, convertErr(err)
 	}
@@ -134,6 +135,17 @@ func (c *ControllerService) ListHeadlessAccounts(ctx context.Context, req *conne
 		} else {
 			a.IconUrl = ""
 		}
+		userSession, err := skyfrost.UserLogin(ctx, account.Credential, account.Password)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to login to user %s: %w", account.ResoniteID, err))
+		}
+		storageInfo, err := userSession.GetStorage(ctx, account.ResoniteID)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to get storage info for user %s: %w", account.ResoniteID, err))
+		}
+		a.StorageQuotaBytes = storageInfo.QuotaBytes
+		a.StorageUsedBytes = storageInfo.UsedBytes
+
 		protoAccounts = append(protoAccounts, a)
 	}
 

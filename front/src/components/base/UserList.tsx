@@ -1,3 +1,4 @@
+import { resolveUrl } from "@/libs/skyfrostUtils";
 import { Avatar, AvatarFallback, AvatarImage, Skeleton } from "../ui";
 
 export type UserInfo = {
@@ -32,7 +33,7 @@ export function UserList({
               <div className="flex items-center space-x-3">
                 <Avatar>
                   <AvatarImage
-                    src={user.iconUrl}
+                    src={resolveUrl(user.iconUrl)}
                     alt={`${user.name}のアイコン`}
                   />
                   <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>

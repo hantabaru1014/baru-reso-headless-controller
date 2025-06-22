@@ -290,8 +290,6 @@ func (h *HeadlessHostRepository) fetchHostInfo(ctx context.Context, host *entity
 	}
 	host.AccountId = accountInfo.UserId
 	host.AccountName = accountInfo.DisplayName
-	host.StorageQuotaBytes = accountInfo.StorageQuotaBytes
-	host.StorageUsedBytes = accountInfo.StorageUsedBytes
 
 	// TODO: ライフタイムが全く別物なのでentityから外す
 	status, err := client.GetStatus(ctx, &headlessv1.GetStatusRequest{})

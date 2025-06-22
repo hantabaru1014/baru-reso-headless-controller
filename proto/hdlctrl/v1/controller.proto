@@ -72,7 +72,7 @@ message StartHeadlessHostResponse {
 }
 
 message CreateHeadlessAccountRequest {
-  string resonite_user_id = 1;
+  reserved 1; // 廃止したプロパティ
   string credential = 2;
   string password = 3;
 }
@@ -338,6 +338,7 @@ message HeadlessHostSettings {
 }
 
 message HeadlessHost {
+  reserved 8, 9; // 廃止したプロパティ
   string id = 1;
   string name = 2;
   string resonite_version = 4;
@@ -345,8 +346,6 @@ message HeadlessHost {
   string account_id = 5;
   string account_name = 6;
   float fps = 7;
-  int64 storage_quota_bytes = 8;
-  int64 storage_used_bytes = 9;
   HeadlessHostStatus status = 10;
   HeadlessHostAutoUpdatePolicy auto_update_policy = 12;
   string memo = 13;
@@ -370,4 +369,6 @@ message HeadlessAccount {
   string user_id = 1;
   string user_name = 2;
   string icon_url = 3;
+  int64 storage_quota_bytes = 4;
+  int64 storage_used_bytes = 5;
 }

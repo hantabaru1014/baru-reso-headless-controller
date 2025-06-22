@@ -20,16 +20,21 @@ func NewHeadlessAccountUsecase(queries *db.Queries) *HeadlessAccountUsecase {
 	}
 }
 
-func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, resoniteID, credential, password string) error {
-	userInfo, err := skyfrost.FetchUserInfo(ctx, resoniteID)
+func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, credential, password string) error {
+	userSession, err := skyfrost.UserLogin(ctx, credential, password)
+	if err != nil {
+		return errors.Errorf("failed to login: %s", err)
+	}
+	userInfo, err := skyfrost.FetchUserInfo(ctx, userSession.UserId)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
 	return u.queries.CreateHeadlessAccount(ctx, db.CreateHeadlessAccountParams{
-		ResoniteID:      resoniteID,
+		ResoniteID:      userSession.UserId,
 		Credential:      credential,
 		Password:        password,
 		LastDisplayName: pgtype.Text{String: userInfo.UserName, Valid: true},
+		LastIconUrl:     pgtype.Text{String: userInfo.IconUrl, Valid: true},
 	})
 }
 

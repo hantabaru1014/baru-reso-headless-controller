@@ -21,7 +21,6 @@ import {
   CollapsibleTrigger,
 } from "./ui/collapsible";
 import { ChevronDown } from "lucide-react";
-import prettyBytes from "../libs/prettyBytes";
 import { useNavigate } from "react-router";
 import { hostStatusToLabel } from "../libs/hostUtils";
 import { RefetchButton } from "./base/RefetchButton";
@@ -32,6 +31,7 @@ import { HeadlessHost } from "front/pbgen/hdlctrl/v1/controller_pb";
 import { DataTable } from "./base/DataTable";
 import { toast } from "sonner";
 import { TextField } from "./base";
+import { resolveUrl } from "@/libs/skyfrostUtils";
 
 function SelectHeadlessAccountDialog({
   open,
@@ -137,7 +137,10 @@ function NewHostDialog({
             {account ? (
               <div className="flex items-center gap-2">
                 <Avatar>
-                  <AvatarImage src={account.iconUrl} alt={account.name} />
+                  <AvatarImage
+                    src={resolveUrl(account.iconUrl)}
+                    alt={account.name}
+                  />
                   <AvatarFallback>{account.name.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <span className="text-sm font-medium">{account.name}</span>
@@ -241,14 +244,6 @@ const columns: ColumnDef<HeadlessHost>[] = [
   {
     accessorKey: "accountName",
     header: "アカウント名",
-  },
-  {
-    accessorKey: "storageUsedBytes",
-    header: "ストレージ",
-    cell: ({ row }) =>
-      `${prettyBytes(Number(row.original.storageUsedBytes))}/${prettyBytes(
-        Number(row.original.storageQuotaBytes),
-      )}`,
   },
 ];
 

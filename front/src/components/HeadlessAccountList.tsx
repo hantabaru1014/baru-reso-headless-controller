@@ -5,9 +5,9 @@ import {
   DialogTitle,
   DialogFooter,
   Button,
-  Card,
-  CardContent,
-  CardHeader,
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
 } from "./ui";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
@@ -17,7 +17,11 @@ import {
 import { RefetchButton } from "./base/RefetchButton";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { TextField, UserList } from "./base";
+import { DataTable, TextField } from "./base";
+import { ColumnDef } from "@tanstack/react-table";
+import { HeadlessAccount } from "front/pbgen/hdlctrl/v1/controller_pb";
+import prettyBytes from "@/libs/prettyBytes";
+import { resolveUrl } from "@/libs/skyfrostUtils";
 
 function NewAccountDialog({
   open,
@@ -29,13 +33,11 @@ function NewAccountDialog({
   const { mutateAsync: mutateCreateAccount, isPending } = useMutation(
     createHeadlessAccount,
   );
-  const [userId, setUserId] = useState("U-");
   const [credential, setCredential] = useState("");
   const [password, setPassword] = useState("");
 
   useEffect(() => {
     if (open) {
-      setUserId("U-");
       setCredential("");
       setPassword("");
     }
@@ -48,11 +50,6 @@ function NewAccountDialog({
           <DialogTitle>ヘッドレスアカウントを追加</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <TextField
-            label="User ID"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-          />
           <TextField
             label="Credential"
             value={credential}
@@ -70,7 +67,6 @@ function NewAccountDialog({
             onClick={async () => {
               try {
                 await mutateCreateAccount({
-                  resoniteUserId: userId,
                   credential,
                   password,
                 });
@@ -98,6 +94,37 @@ function NewAccountDialog({
   );
 }
 
+const columns: ColumnDef<HeadlessAccount>[] = [
+  {
+    accessorKey: "iconUrl",
+    header: "アイコン",
+    cell: ({ row }) => {
+      return (
+        <Avatar>
+          <AvatarImage
+            src={resolveUrl(row.original.iconUrl)}
+            alt={`${row.original.userName}のアイコン`}
+          />
+          <AvatarFallback>{row.original.userName.charAt(0)}</AvatarFallback>
+        </Avatar>
+      );
+    },
+  },
+  {
+    accessorKey: "userName",
+    header: "ユーザ名",
+  },
+  {
+    header: "ストレージ",
+    cell: ({ row }) => (
+      <span>
+        {prettyBytes(Number(row.original.storageUsedBytes))}/
+        {prettyBytes(Number(row.original.storageQuotaBytes))}
+      </span>
+    ),
+  },
+];
+
 export default function HeadlessAccountList() {
   const { data, isPending, refetch } = useQuery(listHeadlessAccounts);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -112,31 +139,17 @@ export default function HeadlessAccountList() {
   };
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">ヘッドレスアカウント</h3>
-            <div className="flex gap-2">
-              <RefetchButton refetch={refetch} />
-              <Button onClick={handleNewAccount}>追加</Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <UserList
-            data={
-              data?.accounts.map((account) => ({
-                id: account.userId,
-                name: account.userName,
-                iconUrl: account.iconUrl,
-              })) ?? []
-            }
-            isLoading={isPending}
-          />
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      <div className="flex justify-end gap-2">
+        <RefetchButton refetch={refetch} />
+        <Button onClick={handleNewAccount}>追加</Button>
+      </div>
+      <DataTable
+        columns={columns}
+        data={data?.accounts || []}
+        isLoading={isPending}
+      />
       <NewAccountDialog open={isDialogOpen} onClose={handleCloseDialog} />
-    </>
+    </div>
   );
 }

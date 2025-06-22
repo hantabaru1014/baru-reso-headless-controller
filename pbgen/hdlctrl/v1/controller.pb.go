@@ -490,12 +490,11 @@ func (x *StartHeadlessHostResponse) GetHostId() string {
 }
 
 type CreateHeadlessAccountRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	ResoniteUserId string                 `protobuf:"bytes,1,opt,name=resonite_user_id,json=resoniteUserId,proto3" json:"resonite_user_id,omitempty"`
-	Credential     string                 `protobuf:"bytes,2,opt,name=credential,proto3" json:"credential,omitempty"`
-	Password       string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Credential    string                 `protobuf:"bytes,2,opt,name=credential,proto3" json:"credential,omitempty"`
+	Password      string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateHeadlessAccountRequest) Reset() {
@@ -526,13 +525,6 @@ func (x *CreateHeadlessAccountRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use CreateHeadlessAccountRequest.ProtoReflect.Descriptor instead.
 func (*CreateHeadlessAccountRequest) Descriptor() ([]byte, []int) {
 	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *CreateHeadlessAccountRequest) GetResoniteUserId() string {
-	if x != nil {
-		return x.ResoniteUserId
-	}
-	return ""
 }
 
 func (x *CreateHeadlessAccountRequest) GetCredential() string {
@@ -3052,21 +3044,19 @@ func (x *HeadlessHostSettings) GetAutoSpawnItems() []string {
 }
 
 type HeadlessHost struct {
-	state             protoimpl.MessageState       `protogen:"open.v1"`
-	Id                string                       `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name              string                       `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	ResoniteVersion   string                       `protobuf:"bytes,4,opt,name=resonite_version,json=resoniteVersion,proto3" json:"resonite_version,omitempty"`
-	AppVersion        string                       `protobuf:"bytes,11,opt,name=app_version,json=appVersion,proto3" json:"app_version,omitempty"`
-	AccountId         string                       `protobuf:"bytes,5,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	AccountName       string                       `protobuf:"bytes,6,opt,name=account_name,json=accountName,proto3" json:"account_name,omitempty"`
-	Fps               float32                      `protobuf:"fixed32,7,opt,name=fps,proto3" json:"fps,omitempty"`
-	StorageQuotaBytes int64                        `protobuf:"varint,8,opt,name=storage_quota_bytes,json=storageQuotaBytes,proto3" json:"storage_quota_bytes,omitempty"`
-	StorageUsedBytes  int64                        `protobuf:"varint,9,opt,name=storage_used_bytes,json=storageUsedBytes,proto3" json:"storage_used_bytes,omitempty"`
-	Status            HeadlessHostStatus           `protobuf:"varint,10,opt,name=status,proto3,enum=hdlctrl.v1.HeadlessHostStatus" json:"status,omitempty"`
-	AutoUpdatePolicy  HeadlessHostAutoUpdatePolicy `protobuf:"varint,12,opt,name=auto_update_policy,json=autoUpdatePolicy,proto3,enum=hdlctrl.v1.HeadlessHostAutoUpdatePolicy" json:"auto_update_policy,omitempty"`
-	Memo              string                       `protobuf:"bytes,13,opt,name=memo,proto3" json:"memo,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state            protoimpl.MessageState       `protogen:"open.v1"`
+	Id               string                       `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name             string                       `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	ResoniteVersion  string                       `protobuf:"bytes,4,opt,name=resonite_version,json=resoniteVersion,proto3" json:"resonite_version,omitempty"`
+	AppVersion       string                       `protobuf:"bytes,11,opt,name=app_version,json=appVersion,proto3" json:"app_version,omitempty"`
+	AccountId        string                       `protobuf:"bytes,5,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	AccountName      string                       `protobuf:"bytes,6,opt,name=account_name,json=accountName,proto3" json:"account_name,omitempty"`
+	Fps              float32                      `protobuf:"fixed32,7,opt,name=fps,proto3" json:"fps,omitempty"`
+	Status           HeadlessHostStatus           `protobuf:"varint,10,opt,name=status,proto3,enum=hdlctrl.v1.HeadlessHostStatus" json:"status,omitempty"`
+	AutoUpdatePolicy HeadlessHostAutoUpdatePolicy `protobuf:"varint,12,opt,name=auto_update_policy,json=autoUpdatePolicy,proto3,enum=hdlctrl.v1.HeadlessHostAutoUpdatePolicy" json:"auto_update_policy,omitempty"`
+	Memo             string                       `protobuf:"bytes,13,opt,name=memo,proto3" json:"memo,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *HeadlessHost) Reset() {
@@ -3144,20 +3134,6 @@ func (x *HeadlessHost) GetAccountName() string {
 func (x *HeadlessHost) GetFps() float32 {
 	if x != nil {
 		return x.Fps
-	}
-	return 0
-}
-
-func (x *HeadlessHost) GetStorageQuotaBytes() int64 {
-	if x != nil {
-		return x.StorageQuotaBytes
-	}
-	return 0
-}
-
-func (x *HeadlessHost) GetStorageUsedBytes() int64 {
-	if x != nil {
-		return x.StorageUsedBytes
 	}
 	return 0
 }
@@ -3308,12 +3284,14 @@ func (x *Session) GetMemo() string {
 }
 
 type HeadlessAccount struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	UserName      string                 `protobuf:"bytes,2,opt,name=user_name,json=userName,proto3" json:"user_name,omitempty"`
-	IconUrl       string                 `protobuf:"bytes,3,opt,name=icon_url,json=iconUrl,proto3" json:"icon_url,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	UserId            string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserName          string                 `protobuf:"bytes,2,opt,name=user_name,json=userName,proto3" json:"user_name,omitempty"`
+	IconUrl           string                 `protobuf:"bytes,3,opt,name=icon_url,json=iconUrl,proto3" json:"icon_url,omitempty"`
+	StorageQuotaBytes int64                  `protobuf:"varint,4,opt,name=storage_quota_bytes,json=storageQuotaBytes,proto3" json:"storage_quota_bytes,omitempty"`
+	StorageUsedBytes  int64                  `protobuf:"varint,5,opt,name=storage_used_bytes,json=storageUsedBytes,proto3" json:"storage_used_bytes,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *HeadlessAccount) Reset() {
@@ -3365,6 +3343,20 @@ func (x *HeadlessAccount) GetIconUrl() string {
 		return x.IconUrl
 	}
 	return ""
+}
+
+func (x *HeadlessAccount) GetStorageQuotaBytes() int64 {
+	if x != nil {
+		return x.StorageQuotaBytes
+	}
+	return 0
+}
+
+func (x *HeadlessAccount) GetStorageUsedBytes() int64 {
+	if x != nil {
+		return x.StorageUsedBytes
+	}
+	return 0
 }
 
 type ListHeadlessHostImageTagsResponse_ContainerImage struct {
@@ -3574,13 +3566,12 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x13_auto_update_policyB\a\n" +
 	"\x05_memo\"4\n" +
 	"\x19StartHeadlessHostResponse\x12\x17\n" +
-	"\ahost_id\x18\x01 \x01(\tR\x06hostId\"\x84\x01\n" +
-	"\x1cCreateHeadlessAccountRequest\x12(\n" +
-	"\x10resonite_user_id\x18\x01 \x01(\tR\x0eresoniteUserId\x12\x1e\n" +
+	"\ahost_id\x18\x01 \x01(\tR\x06hostId\"`\n" +
+	"\x1cCreateHeadlessAccountRequest\x12\x1e\n" +
 	"\n" +
 	"credential\x18\x02 \x01(\tR\n" +
 	"credential\x12\x1a\n" +
-	"\bpassword\x18\x03 \x01(\tR\bpassword\"\x1f\n" +
+	"\bpassword\x18\x03 \x01(\tR\bpasswordJ\x04\b\x01\x10\x02\"\x1f\n" +
 	"\x1dCreateHeadlessAccountResponse\"\x1d\n" +
 	"\x1bListHeadlessAccountsRequest\"W\n" +
 	"\x1cListHeadlessAccountsResponse\x127\n" +
@@ -3758,7 +3749,7 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x11allowed_url_hosts\x18\x05 \x03(\v2\x1f.headless.v1.AllowedAccessEntryR\x0fallowedUrlHosts\x12(\n" +
 	"\x10auto_spawn_items\x18\x06 \x03(\tR\x0eautoSpawnItemsB\x0e\n" +
 	"\f_universe_idB\x14\n" +
-	"\x12_username_override\"\xd4\x03\n" +
+	"\x12_username_override\"\x82\x03\n" +
 	"\fHeadlessHost\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12)\n" +
@@ -3768,13 +3759,12 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\n" +
 	"account_id\x18\x05 \x01(\tR\taccountId\x12!\n" +
 	"\faccount_name\x18\x06 \x01(\tR\vaccountName\x12\x10\n" +
-	"\x03fps\x18\a \x01(\x02R\x03fps\x12.\n" +
-	"\x13storage_quota_bytes\x18\b \x01(\x03R\x11storageQuotaBytes\x12,\n" +
-	"\x12storage_used_bytes\x18\t \x01(\x03R\x10storageUsedBytes\x126\n" +
+	"\x03fps\x18\a \x01(\x02R\x03fps\x126\n" +
 	"\x06status\x18\n" +
 	" \x01(\x0e2\x1e.hdlctrl.v1.HeadlessHostStatusR\x06status\x12V\n" +
 	"\x12auto_update_policy\x18\f \x01(\x0e2(.hdlctrl.v1.HeadlessHostAutoUpdatePolicyR\x10autoUpdatePolicy\x12\x12\n" +
-	"\x04memo\x18\r \x01(\tR\x04memo\"\x87\x04\n" +
+	"\x04memo\x18\r \x01(\tR\x04memoJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
+	"\"\x87\x04\n" +
 	"\aSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -3791,11 +3781,13 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x04memo\x18\v \x01(\tR\x04memoB\v\n" +
 	"\t_ended_atB\x10\n" +
 	"\x0e_current_stateB\v\n" +
-	"\t_owner_id\"b\n" +
+	"\t_owner_id\"\xc0\x01\n" +
 	"\x0fHeadlessAccount\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
 	"\tuser_name\x18\x02 \x01(\tR\buserName\x12\x19\n" +
-	"\bicon_url\x18\x03 \x01(\tR\aiconUrl*\xe1\x01\n" +
+	"\bicon_url\x18\x03 \x01(\tR\aiconUrl\x12.\n" +
+	"\x13storage_quota_bytes\x18\x04 \x01(\x03R\x11storageQuotaBytes\x12,\n" +
+	"\x12storage_used_bytes\x18\x05 \x01(\x03R\x10storageUsedBytes*\xe1\x01\n" +
 	"\x12HeadlessHostStatus\x12 \n" +
 	"\x1cHEADLESS_HOST_STATUS_UNKNOWN\x10\x00\x12!\n" +
 	"\x1dHEADLESS_HOST_STATUS_STARTING\x10\x01\x12 \n" +
