@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -137,14 +138,18 @@ func (c *ControllerService) ListHeadlessAccounts(ctx context.Context, req *conne
 		}
 		userSession, err := skyfrost.UserLogin(ctx, account.Credential, account.Password)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to login to user %s: %w", account.ResoniteID, err))
+			slog.Error("failed to login to user", "resoniteId", account.ResoniteID, "error", err)
+		} else {
+			storageInfo, err := userSession.GetStorage(ctx, account.ResoniteID)
+			if err != nil {
+				slog.Error("failed to get storage info for user", "resoniteId", account.ResoniteID, "error", err)
+				a.StorageQuotaBytes = -1
+				a.StorageUsedBytes = -1
+			} else {
+				a.StorageQuotaBytes = storageInfo.QuotaBytes
+				a.StorageUsedBytes = storageInfo.UsedBytes
+			}
 		}
-		storageInfo, err := userSession.GetStorage(ctx, account.ResoniteID)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to get storage info for user %s: %w", account.ResoniteID, err))
-		}
-		a.StorageQuotaBytes = storageInfo.QuotaBytes
-		a.StorageUsedBytes = storageInfo.UsedBytes
 
 		protoAccounts = append(protoAccounts, a)
 	}
