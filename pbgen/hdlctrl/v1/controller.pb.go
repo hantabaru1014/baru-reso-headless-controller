@@ -491,7 +491,7 @@ func (x *StartHeadlessHostResponse) GetHostId() string {
 
 type CreateHeadlessAccountRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Credential    string                 `protobuf:"bytes,2,opt,name=credential,proto3" json:"credential,omitempty"`
+	Credential    string                 `protobuf:"bytes,2,opt,name=credential,proto3" json:"credential,omitempty"` // email or userId
 	Password      string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

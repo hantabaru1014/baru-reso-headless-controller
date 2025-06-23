@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/go-errors/errors"
 	"github.com/google/uuid"
@@ -80,7 +81,7 @@ type UserSession struct {
 	token  string
 }
 
-func UserLogin(ctx context.Context, email, password string) (*UserSession, error) {
+func UserLogin(ctx context.Context, credential, password string) (*UserSession, error) {
 	reqUrl, err := url.JoinPath(API_BASE_URL, "userSessions")
 	if err != nil {
 		return nil, errors.Errorf("failed to make request URL: %s", err)
@@ -89,15 +90,20 @@ func UserLogin(ctx context.Context, email, password string) (*UserSession, error
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
-	reqBody, err := json.Marshal(map[string]interface{}{
-		"email": email,
+	reqObj := map[string]interface{}{
 		"authentication": map[string]interface{}{
 			"$type":    "password",
 			"password": password,
 		},
 		"secretMachineId": secretMachineId.String(),
 		"rememberMe":      false,
-	})
+	}
+	if strings.HasPrefix(credential, "U-") {
+		reqObj["ownerId"] = credential
+	} else {
+		reqObj["email"] = credential
+	}
+	reqBody, err := json.Marshal(reqObj)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}

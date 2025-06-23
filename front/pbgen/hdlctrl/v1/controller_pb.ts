@@ -150,6 +150,8 @@ export const StartHeadlessHostResponseSchema: GenMessage<StartHeadlessHostRespon
  */
 export type CreateHeadlessAccountRequest = Message<"hdlctrl.v1.CreateHeadlessAccountRequest"> & {
   /**
+   * email or userId
+   *
    * @generated from field: string credential = 2;
    */
   credential: string;

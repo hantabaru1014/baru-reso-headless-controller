@@ -73,7 +73,7 @@ message StartHeadlessHostResponse {
 
 message CreateHeadlessAccountRequest {
   reserved 1; // 廃止したプロパティ
-  string credential = 2;
+  string credential = 2; // email or userId
   string password = 3;
 }
 

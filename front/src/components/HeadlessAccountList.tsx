@@ -51,7 +51,7 @@ function NewAccountDialog({
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <TextField
-            label="Credential"
+            label="Email or UserID"
             value={credential}
             onChange={(e) => setCredential(e.target.value)}
           />
@@ -97,7 +97,8 @@ function NewAccountDialog({
 const columns: ColumnDef<HeadlessAccount>[] = [
   {
     accessorKey: "iconUrl",
-    header: "アイコン",
+    header: "アイコン2",
+    maxSize: 15,
     cell: ({ row }) => {
       return (
         <Avatar>
