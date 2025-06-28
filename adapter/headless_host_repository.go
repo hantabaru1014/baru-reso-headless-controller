@@ -76,6 +76,34 @@ func (h *HeadlessHostRepository) ListAll(ctx context.Context, fetchOptions port.
 	return result, nil
 }
 
+// ListRunningByAccount implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) ListRunningByAccount(ctx context.Context, accountId string) (entity.HeadlessHostList, error) {
+	hosts, err := h.q.ListRunningHostsByAccount(ctx, accountId)
+	if err != nil {
+		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
+	}
+	var result entity.HeadlessHostList
+	for _, host := range hosts {
+		connector, err := h.getConnector(host.ConnectorType)
+		if err != nil {
+			return nil, errors.Wrap(err, 0)
+		}
+		status := connector.GetStatus(ctx, hostconnector.HostConnectString(host.ConnectString))
+		host := &entity.HeadlessHost{
+			ID:               host.ID,
+			Name:             host.Name,
+			AccountId:        host.AccountID,
+			Status:           status,
+			AutoUpdatePolicy: entity.HostAutoUpdatePolicy(host.AutoUpdatePolicy),
+		}
+		if status == entity.HeadlessHostStatus_RUNNING {
+			result = append(result, host)
+		}
+	}
+
+	return result, nil
+}
+
 // ListContainerTags implements port.HeadlessHostRepository.
 func (h *HeadlessHostRepository) ListContainerTags(ctx context.Context, lastTag *string) (port.ContainerImageList, error) {
 	// TODO: こっちに実装を持ってくる
@@ -258,6 +286,11 @@ func (h *HeadlessHostRepository) Stop(ctx context.Context, id string, timeoutSec
 	})
 
 	return nil
+}
+
+// Delete implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) Delete(ctx context.Context, id string) error {
+	return h.q.DeleteHost(ctx, id)
 }
 
 func NewHeadlessHostRepository(q *db.Queries, dc *hostconnector.DockerHostConnector) *HeadlessHostRepository {

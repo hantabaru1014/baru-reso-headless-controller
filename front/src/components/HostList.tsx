@@ -149,6 +149,7 @@ function NewHostDialog({
               <Button
                 variant="outline"
                 onClick={() => setIsAccountDialogOpen(true)}
+                className="w-full"
               >
                 ホストユーザを選択
               </Button>

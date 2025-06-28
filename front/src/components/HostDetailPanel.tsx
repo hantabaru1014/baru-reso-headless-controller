@@ -1,9 +1,8 @@
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
-  acceptFriendRequests,
   allowHostAccess,
+  deleteHeadlessHost,
   denyHostAccess,
-  getFriendRequests,
   getHeadlessHost,
   restartHeadlessHost,
   shutdownHeadlessHost,
@@ -18,27 +17,18 @@ import {
   DialogFooter,
   DialogTrigger,
   DialogClose,
-  Badge,
-  Avatar,
-  AvatarImage,
-  AvatarFallback,
 } from "./ui";
 import { EditableTextField } from "./base/EditableTextField";
 import { ReadOnlyField } from "./base/ReadOnlyField";
 import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { hostStatusToLabel } from "../libs/hostUtils";
 import { useNavigate } from "react-router";
-import {
-  AllowedAccessEntry_AccessType,
-  UserInfo,
-} from "../../pbgen/headless/v1/headless_pb";
+import { AllowedAccessEntry_AccessType } from "../../pbgen/headless/v1/headless_pb";
 import { useState } from "react";
 import { ScrollBase } from "./base/ScrollBase";
 import { SelectField } from "./base/SelectField";
 import { toast } from "sonner";
-import { DataTable, RefetchButton, TextField } from "./base";
-import { ColumnDef } from "@tanstack/react-table";
-import { resolveUrl } from "@/libs/skyfrostUtils";
+import { TextField } from "./base";
 
 type AllowedAccessEntryType = {
   host: string;
@@ -315,89 +305,6 @@ function AutoSpawnItemsDialog({
   );
 }
 
-function FriendRequestsDialog({
-  onClose,
-  hostId,
-}: {
-  onClose?: () => void;
-  hostId: string;
-}) {
-  const { data, isPending, refetch } = useQuery(getFriendRequests, { hostId });
-  const { mutateAsync: mutateAcceptFriendRequest } =
-    useMutation(acceptFriendRequests);
-
-  const columns: ColumnDef<UserInfo>[] = [
-    {
-      accessorKey: "iconUrl",
-      header: "アイコン",
-      cell: ({ row }) => (
-        <Avatar>
-          <AvatarImage
-            src={resolveUrl(row.original.iconUrl)}
-            alt={`${row.original.name}のアイコン`}
-          />
-          <AvatarFallback>{row.original.name.charAt(0)}</AvatarFallback>
-        </Avatar>
-      ),
-    },
-    {
-      accessorKey: "name",
-      header: "名前",
-    },
-    {
-      id: "actions",
-      header: "アクション",
-      cell: ({ row }) => (
-        <Button
-          onClick={async () => {
-            await mutateAcceptFriendRequest({
-              hostId,
-              userIds: [row.original.id],
-            });
-            refetch();
-          }}
-          className="w-full"
-        >
-          承認
-        </Button>
-      ),
-    },
-  ];
-
-  return (
-    <Dialog onOpenChange={(open) => !open && onClose?.()}>
-      <DialogTrigger asChild>
-        <Button variant="outline">
-          フレンドリクエスト
-          {(data?.users.length ?? 0) > 0 && (
-            <Badge variant="default">{data?.users.length ?? 0}</Badge>
-          )}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader className="flex justify-between">
-          <DialogTitle>フレンドリクエスト</DialogTitle>
-        </DialogHeader>
-        <div>
-          <div className="flex justify-end mb-2">
-            <RefetchButton refetch={refetch} />
-          </div>
-          <DataTable
-            columns={columns}
-            data={data?.users ?? []}
-            isLoading={isPending}
-          />
-        </div>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">閉じる</Button>
-          </DialogClose>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function HostDetailPanel({ hostId }: { hostId: string }) {
   const navigate = useNavigate();
   const { data, isPending, refetch } = useQuery(getHeadlessHost, { hostId });
@@ -407,6 +314,8 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
   const { mutateAsync: updateHost } = useMutation(updateHeadlessHostSettings);
   const { mutateAsync: restartHost, isPending: isPendingRestart } =
     useMutation(restartHeadlessHost);
+  const { mutateAsync: deleteHost, isPending: isPendingDelete } =
+    useMutation(deleteHeadlessHost);
 
   const settings = data?.settings;
 
@@ -457,6 +366,18 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      await deleteHost({ hostId });
+      toast.success("ホストを削除しました");
+      navigate("/hosts");
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "ホストの削除に失敗しました",
+      );
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="col-span-12">
@@ -492,6 +413,15 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
             >
               再起動
             </Button>
+            {data?.host?.status !== HeadlessHostStatus.RUNNING && (
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={isPendingDelete}
+              >
+                削除
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -513,7 +443,6 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
               value={data?.host?.fps?.toString()}
               isLoading={isPending}
             />
-            <FriendRequestsDialog hostId={hostId} />
           </div>
           {settings && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

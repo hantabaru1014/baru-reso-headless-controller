@@ -38,6 +38,25 @@ func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, cred
 	})
 }
 
+func (u *HeadlessAccountUsecase) UpdateHeadlessAccountCredentials(ctx context.Context, resoniteID, credential, password string) error {
+	userSession, err := skyfrost.UserLogin(ctx, credential, password)
+	if err != nil {
+		return errors.Errorf("failed to login: %s", err)
+	}
+	userInfo, err := skyfrost.FetchUserInfo(ctx, userSession.UserId)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	if resoniteID != userInfo.ID {
+		return errors.New("does not match resonite ID")
+	}
+	return u.queries.UpdateHeadlessAccountCredentials(ctx, db.UpdateHeadlessAccountCredentialsParams{
+		ResoniteID: resoniteID,
+		Credential: credential,
+		Password:   password,
+	})
+}
+
 func (u *HeadlessAccountUsecase) ListHeadlessAccounts(ctx context.Context) ([]*entity.HeadlessAccount, error) {
 	list, err := u.queries.ListHeadlessAccounts(ctx)
 	if err != nil {

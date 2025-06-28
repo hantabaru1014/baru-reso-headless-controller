@@ -20,35 +20,38 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ControllerService_ListHeadlessHost_FullMethodName           = "/hdlctrl.v1.ControllerService/ListHeadlessHost"
-	ControllerService_GetHeadlessHost_FullMethodName            = "/hdlctrl.v1.ControllerService/GetHeadlessHost"
-	ControllerService_GetHeadlessHostLogs_FullMethodName        = "/hdlctrl.v1.ControllerService/GetHeadlessHostLogs"
-	ControllerService_ShutdownHeadlessHost_FullMethodName       = "/hdlctrl.v1.ControllerService/ShutdownHeadlessHost"
-	ControllerService_UpdateHeadlessHostSettings_FullMethodName = "/hdlctrl.v1.ControllerService/UpdateHeadlessHostSettings"
-	ControllerService_RestartHeadlessHost_FullMethodName        = "/hdlctrl.v1.ControllerService/RestartHeadlessHost"
-	ControllerService_StartHeadlessHost_FullMethodName          = "/hdlctrl.v1.ControllerService/StartHeadlessHost"
-	ControllerService_AllowHostAccess_FullMethodName            = "/hdlctrl.v1.ControllerService/AllowHostAccess"
-	ControllerService_DenyHostAccess_FullMethodName             = "/hdlctrl.v1.ControllerService/DenyHostAccess"
-	ControllerService_CreateHeadlessAccount_FullMethodName      = "/hdlctrl.v1.ControllerService/CreateHeadlessAccount"
-	ControllerService_ListHeadlessAccounts_FullMethodName       = "/hdlctrl.v1.ControllerService/ListHeadlessAccounts"
-	ControllerService_ListHeadlessHostImageTags_FullMethodName  = "/hdlctrl.v1.ControllerService/ListHeadlessHostImageTags"
-	ControllerService_FetchWorldInfo_FullMethodName             = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
-	ControllerService_SearchUserInfo_FullMethodName             = "/hdlctrl.v1.ControllerService/SearchUserInfo"
-	ControllerService_GetFriendRequests_FullMethodName          = "/hdlctrl.v1.ControllerService/GetFriendRequests"
-	ControllerService_AcceptFriendRequests_FullMethodName       = "/hdlctrl.v1.ControllerService/AcceptFriendRequests"
-	ControllerService_SearchSessions_FullMethodName             = "/hdlctrl.v1.ControllerService/SearchSessions"
-	ControllerService_GetSessionDetails_FullMethodName          = "/hdlctrl.v1.ControllerService/GetSessionDetails"
-	ControllerService_StartWorld_FullMethodName                 = "/hdlctrl.v1.ControllerService/StartWorld"
-	ControllerService_StopSession_FullMethodName                = "/hdlctrl.v1.ControllerService/StopSession"
-	ControllerService_DeleteEndedSession_FullMethodName         = "/hdlctrl.v1.ControllerService/DeleteEndedSession"
-	ControllerService_SaveSessionWorld_FullMethodName           = "/hdlctrl.v1.ControllerService/SaveSessionWorld"
-	ControllerService_InviteUser_FullMethodName                 = "/hdlctrl.v1.ControllerService/InviteUser"
-	ControllerService_UpdateUserRole_FullMethodName             = "/hdlctrl.v1.ControllerService/UpdateUserRole"
-	ControllerService_UpdateSessionParameters_FullMethodName    = "/hdlctrl.v1.ControllerService/UpdateSessionParameters"
-	ControllerService_UpdateSessionExtraSettings_FullMethodName = "/hdlctrl.v1.ControllerService/UpdateSessionExtraSettings"
-	ControllerService_ListUsersInSession_FullMethodName         = "/hdlctrl.v1.ControllerService/ListUsersInSession"
-	ControllerService_KickUser_FullMethodName                   = "/hdlctrl.v1.ControllerService/KickUser"
-	ControllerService_BanUser_FullMethodName                    = "/hdlctrl.v1.ControllerService/BanUser"
+	ControllerService_ListHeadlessHost_FullMethodName                 = "/hdlctrl.v1.ControllerService/ListHeadlessHost"
+	ControllerService_GetHeadlessHost_FullMethodName                  = "/hdlctrl.v1.ControllerService/GetHeadlessHost"
+	ControllerService_GetHeadlessHostLogs_FullMethodName              = "/hdlctrl.v1.ControllerService/GetHeadlessHostLogs"
+	ControllerService_ShutdownHeadlessHost_FullMethodName             = "/hdlctrl.v1.ControllerService/ShutdownHeadlessHost"
+	ControllerService_UpdateHeadlessHostSettings_FullMethodName       = "/hdlctrl.v1.ControllerService/UpdateHeadlessHostSettings"
+	ControllerService_RestartHeadlessHost_FullMethodName              = "/hdlctrl.v1.ControllerService/RestartHeadlessHost"
+	ControllerService_StartHeadlessHost_FullMethodName                = "/hdlctrl.v1.ControllerService/StartHeadlessHost"
+	ControllerService_AllowHostAccess_FullMethodName                  = "/hdlctrl.v1.ControllerService/AllowHostAccess"
+	ControllerService_DenyHostAccess_FullMethodName                   = "/hdlctrl.v1.ControllerService/DenyHostAccess"
+	ControllerService_ListHeadlessHostImageTags_FullMethodName        = "/hdlctrl.v1.ControllerService/ListHeadlessHostImageTags"
+	ControllerService_DeleteHeadlessHost_FullMethodName               = "/hdlctrl.v1.ControllerService/DeleteHeadlessHost"
+	ControllerService_CreateHeadlessAccount_FullMethodName            = "/hdlctrl.v1.ControllerService/CreateHeadlessAccount"
+	ControllerService_ListHeadlessAccounts_FullMethodName             = "/hdlctrl.v1.ControllerService/ListHeadlessAccounts"
+	ControllerService_DeleteHeadlessAccount_FullMethodName            = "/hdlctrl.v1.ControllerService/DeleteHeadlessAccount"
+	ControllerService_UpdateHeadlessAccountCredentials_FullMethodName = "/hdlctrl.v1.ControllerService/UpdateHeadlessAccountCredentials"
+	ControllerService_FetchWorldInfo_FullMethodName                   = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
+	ControllerService_SearchUserInfo_FullMethodName                   = "/hdlctrl.v1.ControllerService/SearchUserInfo"
+	ControllerService_GetFriendRequests_FullMethodName                = "/hdlctrl.v1.ControllerService/GetFriendRequests"
+	ControllerService_AcceptFriendRequests_FullMethodName             = "/hdlctrl.v1.ControllerService/AcceptFriendRequests"
+	ControllerService_SearchSessions_FullMethodName                   = "/hdlctrl.v1.ControllerService/SearchSessions"
+	ControllerService_GetSessionDetails_FullMethodName                = "/hdlctrl.v1.ControllerService/GetSessionDetails"
+	ControllerService_StartWorld_FullMethodName                       = "/hdlctrl.v1.ControllerService/StartWorld"
+	ControllerService_StopSession_FullMethodName                      = "/hdlctrl.v1.ControllerService/StopSession"
+	ControllerService_DeleteEndedSession_FullMethodName               = "/hdlctrl.v1.ControllerService/DeleteEndedSession"
+	ControllerService_SaveSessionWorld_FullMethodName                 = "/hdlctrl.v1.ControllerService/SaveSessionWorld"
+	ControllerService_InviteUser_FullMethodName                       = "/hdlctrl.v1.ControllerService/InviteUser"
+	ControllerService_UpdateUserRole_FullMethodName                   = "/hdlctrl.v1.ControllerService/UpdateUserRole"
+	ControllerService_UpdateSessionParameters_FullMethodName          = "/hdlctrl.v1.ControllerService/UpdateSessionParameters"
+	ControllerService_UpdateSessionExtraSettings_FullMethodName       = "/hdlctrl.v1.ControllerService/UpdateSessionExtraSettings"
+	ControllerService_ListUsersInSession_FullMethodName               = "/hdlctrl.v1.ControllerService/ListUsersInSession"
+	ControllerService_KickUser_FullMethodName                         = "/hdlctrl.v1.ControllerService/KickUser"
+	ControllerService_BanUser_FullMethodName                          = "/hdlctrl.v1.ControllerService/BanUser"
 )
 
 // ControllerServiceClient is the client API for ControllerService service.
@@ -65,14 +68,17 @@ type ControllerServiceClient interface {
 	StartHeadlessHost(ctx context.Context, in *StartHeadlessHostRequest, opts ...grpc.CallOption) (*StartHeadlessHostResponse, error)
 	AllowHostAccess(ctx context.Context, in *AllowHostAccessRequest, opts ...grpc.CallOption) (*AllowHostAccessResponse, error)
 	DenyHostAccess(ctx context.Context, in *DenyHostAccessRequest, opts ...grpc.CallOption) (*DenyHostAccessResponse, error)
+	ListHeadlessHostImageTags(ctx context.Context, in *ListHeadlessHostImageTagsRequest, opts ...grpc.CallOption) (*ListHeadlessHostImageTagsResponse, error)
+	DeleteHeadlessHost(ctx context.Context, in *DeleteHeadlessHostRequest, opts ...grpc.CallOption) (*DeleteHeadlessHostResponse, error)
 	// アカウント系
 	CreateHeadlessAccount(ctx context.Context, in *CreateHeadlessAccountRequest, opts ...grpc.CallOption) (*CreateHeadlessAccountResponse, error)
 	ListHeadlessAccounts(ctx context.Context, in *ListHeadlessAccountsRequest, opts ...grpc.CallOption) (*ListHeadlessAccountsResponse, error)
-	ListHeadlessHostImageTags(ctx context.Context, in *ListHeadlessHostImageTagsRequest, opts ...grpc.CallOption) (*ListHeadlessHostImageTagsResponse, error)
+	DeleteHeadlessAccount(ctx context.Context, in *DeleteHeadlessAccountRequest, opts ...grpc.CallOption) (*DeleteHeadlessAccountResponse, error)
+	UpdateHeadlessAccountCredentials(ctx context.Context, in *UpdateHeadlessAccountCredentialsRequest, opts ...grpc.CallOption) (*UpdateHeadlessAccountCredentialsResponse, error)
 	// Cloud系
 	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(ctx context.Context, in *SearchUserInfoRequest, opts ...grpc.CallOption) (*v1.SearchUserInfoResponse, error)
-	GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*v1.GetFriendRequestsResponse, error)
+	GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*GetFriendRequestsResponse, error)
 	AcceptFriendRequests(ctx context.Context, in *AcceptFriendRequestsRequest, opts ...grpc.CallOption) (*AcceptFriendRequestsResponse, error)
 	// セッション系
 	SearchSessions(ctx context.Context, in *SearchSessionsRequest, opts ...grpc.CallOption) (*SearchSessionsResponse, error)
@@ -188,6 +194,26 @@ func (c *controllerServiceClient) DenyHostAccess(ctx context.Context, in *DenyHo
 	return out, nil
 }
 
+func (c *controllerServiceClient) ListHeadlessHostImageTags(ctx context.Context, in *ListHeadlessHostImageTagsRequest, opts ...grpc.CallOption) (*ListHeadlessHostImageTagsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListHeadlessHostImageTagsResponse)
+	err := c.cc.Invoke(ctx, ControllerService_ListHeadlessHostImageTags_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) DeleteHeadlessHost(ctx context.Context, in *DeleteHeadlessHostRequest, opts ...grpc.CallOption) (*DeleteHeadlessHostResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteHeadlessHostResponse)
+	err := c.cc.Invoke(ctx, ControllerService_DeleteHeadlessHost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *controllerServiceClient) CreateHeadlessAccount(ctx context.Context, in *CreateHeadlessAccountRequest, opts ...grpc.CallOption) (*CreateHeadlessAccountResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateHeadlessAccountResponse)
@@ -208,10 +234,20 @@ func (c *controllerServiceClient) ListHeadlessAccounts(ctx context.Context, in *
 	return out, nil
 }
 
-func (c *controllerServiceClient) ListHeadlessHostImageTags(ctx context.Context, in *ListHeadlessHostImageTagsRequest, opts ...grpc.CallOption) (*ListHeadlessHostImageTagsResponse, error) {
+func (c *controllerServiceClient) DeleteHeadlessAccount(ctx context.Context, in *DeleteHeadlessAccountRequest, opts ...grpc.CallOption) (*DeleteHeadlessAccountResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListHeadlessHostImageTagsResponse)
-	err := c.cc.Invoke(ctx, ControllerService_ListHeadlessHostImageTags_FullMethodName, in, out, cOpts...)
+	out := new(DeleteHeadlessAccountResponse)
+	err := c.cc.Invoke(ctx, ControllerService_DeleteHeadlessAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) UpdateHeadlessAccountCredentials(ctx context.Context, in *UpdateHeadlessAccountCredentialsRequest, opts ...grpc.CallOption) (*UpdateHeadlessAccountCredentialsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateHeadlessAccountCredentialsResponse)
+	err := c.cc.Invoke(ctx, ControllerService_UpdateHeadlessAccountCredentials_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -238,9 +274,9 @@ func (c *controllerServiceClient) SearchUserInfo(ctx context.Context, in *Search
 	return out, nil
 }
 
-func (c *controllerServiceClient) GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*v1.GetFriendRequestsResponse, error) {
+func (c *controllerServiceClient) GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*GetFriendRequestsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(v1.GetFriendRequestsResponse)
+	out := new(GetFriendRequestsResponse)
 	err := c.cc.Invoke(ctx, ControllerService_GetFriendRequests_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -402,14 +438,17 @@ type ControllerServiceServer interface {
 	StartHeadlessHost(context.Context, *StartHeadlessHostRequest) (*StartHeadlessHostResponse, error)
 	AllowHostAccess(context.Context, *AllowHostAccessRequest) (*AllowHostAccessResponse, error)
 	DenyHostAccess(context.Context, *DenyHostAccessRequest) (*DenyHostAccessResponse, error)
+	ListHeadlessHostImageTags(context.Context, *ListHeadlessHostImageTagsRequest) (*ListHeadlessHostImageTagsResponse, error)
+	DeleteHeadlessHost(context.Context, *DeleteHeadlessHostRequest) (*DeleteHeadlessHostResponse, error)
 	// アカウント系
 	CreateHeadlessAccount(context.Context, *CreateHeadlessAccountRequest) (*CreateHeadlessAccountResponse, error)
 	ListHeadlessAccounts(context.Context, *ListHeadlessAccountsRequest) (*ListHeadlessAccountsResponse, error)
-	ListHeadlessHostImageTags(context.Context, *ListHeadlessHostImageTagsRequest) (*ListHeadlessHostImageTagsResponse, error)
+	DeleteHeadlessAccount(context.Context, *DeleteHeadlessAccountRequest) (*DeleteHeadlessAccountResponse, error)
+	UpdateHeadlessAccountCredentials(context.Context, *UpdateHeadlessAccountCredentialsRequest) (*UpdateHeadlessAccountCredentialsResponse, error)
 	// Cloud系
 	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(context.Context, *SearchUserInfoRequest) (*v1.SearchUserInfoResponse, error)
-	GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*v1.GetFriendRequestsResponse, error)
+	GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*GetFriendRequestsResponse, error)
 	AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error)
 	// セッション系
 	SearchSessions(context.Context, *SearchSessionsRequest) (*SearchSessionsResponse, error)
@@ -462,14 +501,23 @@ func (UnimplementedControllerServiceServer) AllowHostAccess(context.Context, *Al
 func (UnimplementedControllerServiceServer) DenyHostAccess(context.Context, *DenyHostAccessRequest) (*DenyHostAccessResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DenyHostAccess not implemented")
 }
+func (UnimplementedControllerServiceServer) ListHeadlessHostImageTags(context.Context, *ListHeadlessHostImageTagsRequest) (*ListHeadlessHostImageTagsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListHeadlessHostImageTags not implemented")
+}
+func (UnimplementedControllerServiceServer) DeleteHeadlessHost(context.Context, *DeleteHeadlessHostRequest) (*DeleteHeadlessHostResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteHeadlessHost not implemented")
+}
 func (UnimplementedControllerServiceServer) CreateHeadlessAccount(context.Context, *CreateHeadlessAccountRequest) (*CreateHeadlessAccountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateHeadlessAccount not implemented")
 }
 func (UnimplementedControllerServiceServer) ListHeadlessAccounts(context.Context, *ListHeadlessAccountsRequest) (*ListHeadlessAccountsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListHeadlessAccounts not implemented")
 }
-func (UnimplementedControllerServiceServer) ListHeadlessHostImageTags(context.Context, *ListHeadlessHostImageTagsRequest) (*ListHeadlessHostImageTagsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListHeadlessHostImageTags not implemented")
+func (UnimplementedControllerServiceServer) DeleteHeadlessAccount(context.Context, *DeleteHeadlessAccountRequest) (*DeleteHeadlessAccountResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteHeadlessAccount not implemented")
+}
+func (UnimplementedControllerServiceServer) UpdateHeadlessAccountCredentials(context.Context, *UpdateHeadlessAccountCredentialsRequest) (*UpdateHeadlessAccountCredentialsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateHeadlessAccountCredentials not implemented")
 }
 func (UnimplementedControllerServiceServer) FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchWorldInfo not implemented")
@@ -477,7 +525,7 @@ func (UnimplementedControllerServiceServer) FetchWorldInfo(context.Context, *Fet
 func (UnimplementedControllerServiceServer) SearchUserInfo(context.Context, *SearchUserInfoRequest) (*v1.SearchUserInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SearchUserInfo not implemented")
 }
-func (UnimplementedControllerServiceServer) GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*v1.GetFriendRequestsResponse, error) {
+func (UnimplementedControllerServiceServer) GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*GetFriendRequestsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFriendRequests not implemented")
 }
 func (UnimplementedControllerServiceServer) AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error) {
@@ -705,6 +753,42 @@ func _ControllerService_DenyHostAccess_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_ListHeadlessHostImageTags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListHeadlessHostImageTagsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).ListHeadlessHostImageTags(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_ListHeadlessHostImageTags_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).ListHeadlessHostImageTags(ctx, req.(*ListHeadlessHostImageTagsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_DeleteHeadlessHost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteHeadlessHostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).DeleteHeadlessHost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_DeleteHeadlessHost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).DeleteHeadlessHost(ctx, req.(*DeleteHeadlessHostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ControllerService_CreateHeadlessAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateHeadlessAccountRequest)
 	if err := dec(in); err != nil {
@@ -741,20 +825,38 @@ func _ControllerService_ListHeadlessAccounts_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ControllerService_ListHeadlessHostImageTags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListHeadlessHostImageTagsRequest)
+func _ControllerService_DeleteHeadlessAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteHeadlessAccountRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ControllerServiceServer).ListHeadlessHostImageTags(ctx, in)
+		return srv.(ControllerServiceServer).DeleteHeadlessAccount(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ControllerService_ListHeadlessHostImageTags_FullMethodName,
+		FullMethod: ControllerService_DeleteHeadlessAccount_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ControllerServiceServer).ListHeadlessHostImageTags(ctx, req.(*ListHeadlessHostImageTagsRequest))
+		return srv.(ControllerServiceServer).DeleteHeadlessAccount(ctx, req.(*DeleteHeadlessAccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_UpdateHeadlessAccountCredentials_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateHeadlessAccountCredentialsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).UpdateHeadlessAccountCredentials(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_UpdateHeadlessAccountCredentials_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).UpdateHeadlessAccountCredentials(ctx, req.(*UpdateHeadlessAccountCredentialsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1109,6 +1211,14 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ControllerService_DenyHostAccess_Handler,
 		},
 		{
+			MethodName: "ListHeadlessHostImageTags",
+			Handler:    _ControllerService_ListHeadlessHostImageTags_Handler,
+		},
+		{
+			MethodName: "DeleteHeadlessHost",
+			Handler:    _ControllerService_DeleteHeadlessHost_Handler,
+		},
+		{
 			MethodName: "CreateHeadlessAccount",
 			Handler:    _ControllerService_CreateHeadlessAccount_Handler,
 		},
@@ -1117,8 +1227,12 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ControllerService_ListHeadlessAccounts_Handler,
 		},
 		{
-			MethodName: "ListHeadlessHostImageTags",
-			Handler:    _ControllerService_ListHeadlessHostImageTags_Handler,
+			MethodName: "DeleteHeadlessAccount",
+			Handler:    _ControllerService_DeleteHeadlessAccount_Handler,
+		},
+		{
+			MethodName: "UpdateHeadlessAccountCredentials",
+			Handler:    _ControllerService_UpdateHeadlessAccountCredentials_Handler,
 		},
 		{
 			MethodName: "FetchWorldInfo",

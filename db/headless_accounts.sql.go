@@ -108,3 +108,18 @@ func (q *Queries) UpdateAccountInfo(ctx context.Context, arg UpdateAccountInfoPa
 	_, err := q.db.Exec(ctx, updateAccountInfo, arg.ResoniteID, arg.LastDisplayName, arg.LastIconUrl)
 	return err
 }
+
+const updateHeadlessAccountCredentials = `-- name: UpdateHeadlessAccountCredentials :exec
+UPDATE headless_accounts SET credential = $2, password = $3 WHERE resonite_id = $1
+`
+
+type UpdateHeadlessAccountCredentialsParams struct {
+	ResoniteID string
+	Credential string
+	Password   string
+}
+
+func (q *Queries) UpdateHeadlessAccountCredentials(ctx context.Context, arg UpdateHeadlessAccountCredentialsParams) error {
+	_, err := q.db.Exec(ctx, updateHeadlessAccountCredentials, arg.ResoniteID, arg.Credential, arg.Password)
+	return err
+}

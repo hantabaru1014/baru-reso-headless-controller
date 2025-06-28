@@ -16,16 +16,19 @@ service ControllerService {
   rpc StartHeadlessHost(StartHeadlessHostRequest) returns (StartHeadlessHostResponse);
   rpc AllowHostAccess(AllowHostAccessRequest) returns (AllowHostAccessResponse);
   rpc DenyHostAccess(DenyHostAccessRequest) returns (DenyHostAccessResponse);
+  rpc ListHeadlessHostImageTags(ListHeadlessHostImageTagsRequest) returns (ListHeadlessHostImageTagsResponse);
+  rpc DeleteHeadlessHost(DeleteHeadlessHostRequest) returns (DeleteHeadlessHostResponse);
 
   // アカウント系
   rpc CreateHeadlessAccount(CreateHeadlessAccountRequest) returns (CreateHeadlessAccountResponse);
   rpc ListHeadlessAccounts(ListHeadlessAccountsRequest) returns (ListHeadlessAccountsResponse);
-  rpc ListHeadlessHostImageTags(ListHeadlessHostImageTagsRequest) returns (ListHeadlessHostImageTagsResponse);
+  rpc DeleteHeadlessAccount(DeleteHeadlessAccountRequest) returns (DeleteHeadlessAccountResponse);
+  rpc UpdateHeadlessAccountCredentials(UpdateHeadlessAccountCredentialsRequest) returns (UpdateHeadlessAccountCredentialsResponse);
 
   // Cloud系
   rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
   rpc SearchUserInfo(SearchUserInfoRequest) returns (headless.v1.SearchUserInfoResponse);
-  rpc GetFriendRequests(GetFriendRequestsRequest) returns (headless.v1.GetFriendRequestsResponse);
+  rpc GetFriendRequests(GetFriendRequestsRequest) returns (GetFriendRequestsResponse);
   rpc AcceptFriendRequests(AcceptFriendRequestsRequest) returns (AcceptFriendRequestsResponse);
 
   // セッション系
@@ -43,6 +46,26 @@ service ControllerService {
   rpc KickUser(KickUserRequest) returns (KickUserResponse);
   rpc BanUser(BanUserRequest) returns (BanUserResponse);
 }
+
+message UpdateHeadlessAccountCredentialsRequest {
+  string account_id = 1;
+  string credential = 2; // email or userId
+  string password = 3;
+}
+
+message UpdateHeadlessAccountCredentialsResponse {}
+
+message DeleteHeadlessAccountRequest {
+  string account_id = 1;
+}
+
+message DeleteHeadlessAccountResponse {}
+
+message DeleteHeadlessHostRequest {
+  string host_id = 1;
+}
+
+message DeleteHeadlessHostResponse {}
 
 message AllowHostAccessRequest {
   string host_id = 1;
@@ -98,14 +121,20 @@ message ListHeadlessHostImageTagsResponse {
 }
 
 message AcceptFriendRequestsRequest {
-  string host_id = 1;
-  repeated string user_ids = 2;
+  reserved 1, 2;
+  string headless_account_id = 3;
+  string target_user_id = 4;
 }
 
 message AcceptFriendRequestsResponse {}
 
 message GetFriendRequestsRequest {
-  string host_id = 1;
+  reserved 1;
+  string headless_account_id = 2;
+}
+
+message GetFriendRequestsResponse {
+  repeated UserInfo requested_contacts = 1;
 }
 
 message RestartHeadlessHostRequest {
@@ -371,4 +400,10 @@ message HeadlessAccount {
   string icon_url = 3;
   int64 storage_quota_bytes = 4;
   int64 storage_used_bytes = 5;
+}
+
+message UserInfo {
+  string id = 1;
+  string name = 2;
+  string icon_url = 3;
 }
