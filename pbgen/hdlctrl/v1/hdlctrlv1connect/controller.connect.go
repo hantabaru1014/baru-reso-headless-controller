@@ -82,6 +82,9 @@ const (
 	// ControllerServiceGetHeadlessAccountStorageInfoProcedure is the fully-qualified name of the
 	// ControllerService's GetHeadlessAccountStorageInfo RPC.
 	ControllerServiceGetHeadlessAccountStorageInfoProcedure = "/hdlctrl.v1.ControllerService/GetHeadlessAccountStorageInfo"
+	// ControllerServiceRefetchHeadlessAccountInfoProcedure is the fully-qualified name of the
+	// ControllerService's RefetchHeadlessAccountInfo RPC.
+	ControllerServiceRefetchHeadlessAccountInfoProcedure = "/hdlctrl.v1.ControllerService/RefetchHeadlessAccountInfo"
 	// ControllerServiceFetchWorldInfoProcedure is the fully-qualified name of the ControllerService's
 	// FetchWorldInfo RPC.
 	ControllerServiceFetchWorldInfoProcedure = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
@@ -155,6 +158,7 @@ type ControllerServiceClient interface {
 	DeleteHeadlessAccount(context.Context, *connect.Request[v1.DeleteHeadlessAccountRequest]) (*connect.Response[v1.DeleteHeadlessAccountResponse], error)
 	UpdateHeadlessAccountCredentials(context.Context, *connect.Request[v1.UpdateHeadlessAccountCredentialsRequest]) (*connect.Response[v1.UpdateHeadlessAccountCredentialsResponse], error)
 	GetHeadlessAccountStorageInfo(context.Context, *connect.Request[v1.GetHeadlessAccountStorageInfoRequest]) (*connect.Response[v1.GetHeadlessAccountStorageInfoResponse], error)
+	RefetchHeadlessAccountInfo(context.Context, *connect.Request[v1.RefetchHeadlessAccountInfoRequest]) (*connect.Response[v1.RefetchHeadlessAccountInfoResponse], error)
 	// Cloud系
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
@@ -283,6 +287,12 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(controllerServiceMethods.ByName("GetHeadlessAccountStorageInfo")),
 			connect.WithClientOptions(opts...),
 		),
+		refetchHeadlessAccountInfo: connect.NewClient[v1.RefetchHeadlessAccountInfoRequest, v1.RefetchHeadlessAccountInfoResponse](
+			httpClient,
+			baseURL+ControllerServiceRefetchHeadlessAccountInfoProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("RefetchHeadlessAccountInfo")),
+			connect.WithClientOptions(opts...),
+		),
 		fetchWorldInfo: connect.NewClient[v1.FetchWorldInfoRequest, v11.FetchWorldInfoResponse](
 			httpClient,
 			baseURL+ControllerServiceFetchWorldInfoProcedure,
@@ -406,6 +416,7 @@ type controllerServiceClient struct {
 	deleteHeadlessAccount            *connect.Client[v1.DeleteHeadlessAccountRequest, v1.DeleteHeadlessAccountResponse]
 	updateHeadlessAccountCredentials *connect.Client[v1.UpdateHeadlessAccountCredentialsRequest, v1.UpdateHeadlessAccountCredentialsResponse]
 	getHeadlessAccountStorageInfo    *connect.Client[v1.GetHeadlessAccountStorageInfoRequest, v1.GetHeadlessAccountStorageInfoResponse]
+	refetchHeadlessAccountInfo       *connect.Client[v1.RefetchHeadlessAccountInfoRequest, v1.RefetchHeadlessAccountInfoResponse]
 	fetchWorldInfo                   *connect.Client[v1.FetchWorldInfoRequest, v11.FetchWorldInfoResponse]
 	searchUserInfo                   *connect.Client[v1.SearchUserInfoRequest, v11.SearchUserInfoResponse]
 	getFriendRequests                *connect.Client[v1.GetFriendRequestsRequest, v1.GetFriendRequestsResponse]
@@ -504,6 +515,11 @@ func (c *controllerServiceClient) UpdateHeadlessAccountCredentials(ctx context.C
 // GetHeadlessAccountStorageInfo calls hdlctrl.v1.ControllerService.GetHeadlessAccountStorageInfo.
 func (c *controllerServiceClient) GetHeadlessAccountStorageInfo(ctx context.Context, req *connect.Request[v1.GetHeadlessAccountStorageInfoRequest]) (*connect.Response[v1.GetHeadlessAccountStorageInfoResponse], error) {
 	return c.getHeadlessAccountStorageInfo.CallUnary(ctx, req)
+}
+
+// RefetchHeadlessAccountInfo calls hdlctrl.v1.ControllerService.RefetchHeadlessAccountInfo.
+func (c *controllerServiceClient) RefetchHeadlessAccountInfo(ctx context.Context, req *connect.Request[v1.RefetchHeadlessAccountInfoRequest]) (*connect.Response[v1.RefetchHeadlessAccountInfoResponse], error) {
+	return c.refetchHeadlessAccountInfo.CallUnary(ctx, req)
 }
 
 // FetchWorldInfo calls hdlctrl.v1.ControllerService.FetchWorldInfo.
@@ -611,6 +627,7 @@ type ControllerServiceHandler interface {
 	DeleteHeadlessAccount(context.Context, *connect.Request[v1.DeleteHeadlessAccountRequest]) (*connect.Response[v1.DeleteHeadlessAccountResponse], error)
 	UpdateHeadlessAccountCredentials(context.Context, *connect.Request[v1.UpdateHeadlessAccountCredentialsRequest]) (*connect.Response[v1.UpdateHeadlessAccountCredentialsResponse], error)
 	GetHeadlessAccountStorageInfo(context.Context, *connect.Request[v1.GetHeadlessAccountStorageInfoRequest]) (*connect.Response[v1.GetHeadlessAccountStorageInfoResponse], error)
+	RefetchHeadlessAccountInfo(context.Context, *connect.Request[v1.RefetchHeadlessAccountInfoRequest]) (*connect.Response[v1.RefetchHeadlessAccountInfoResponse], error)
 	// Cloud系
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
@@ -733,6 +750,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		ControllerServiceGetHeadlessAccountStorageInfoProcedure,
 		svc.GetHeadlessAccountStorageInfo,
 		connect.WithSchema(controllerServiceMethods.ByName("GetHeadlessAccountStorageInfo")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceRefetchHeadlessAccountInfoHandler := connect.NewUnaryHandler(
+		ControllerServiceRefetchHeadlessAccountInfoProcedure,
+		svc.RefetchHeadlessAccountInfo,
+		connect.WithSchema(controllerServiceMethods.ByName("RefetchHeadlessAccountInfo")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceFetchWorldInfoHandler := connect.NewUnaryHandler(
@@ -871,6 +894,8 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceUpdateHeadlessAccountCredentialsHandler.ServeHTTP(w, r)
 		case ControllerServiceGetHeadlessAccountStorageInfoProcedure:
 			controllerServiceGetHeadlessAccountStorageInfoHandler.ServeHTTP(w, r)
+		case ControllerServiceRefetchHeadlessAccountInfoProcedure:
+			controllerServiceRefetchHeadlessAccountInfoHandler.ServeHTTP(w, r)
 		case ControllerServiceFetchWorldInfoProcedure:
 			controllerServiceFetchWorldInfoHandler.ServeHTTP(w, r)
 		case ControllerServiceSearchUserInfoProcedure:
@@ -976,6 +1001,10 @@ func (UnimplementedControllerServiceHandler) UpdateHeadlessAccountCredentials(co
 
 func (UnimplementedControllerServiceHandler) GetHeadlessAccountStorageInfo(context.Context, *connect.Request[v1.GetHeadlessAccountStorageInfoRequest]) (*connect.Response[v1.GetHeadlessAccountStorageInfoResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.GetHeadlessAccountStorageInfo is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) RefetchHeadlessAccountInfo(context.Context, *connect.Request[v1.RefetchHeadlessAccountInfoRequest]) (*connect.Response[v1.RefetchHeadlessAccountInfoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.RefetchHeadlessAccountInfo is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error) {

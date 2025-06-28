@@ -36,6 +36,7 @@ const (
 	ControllerService_DeleteHeadlessAccount_FullMethodName            = "/hdlctrl.v1.ControllerService/DeleteHeadlessAccount"
 	ControllerService_UpdateHeadlessAccountCredentials_FullMethodName = "/hdlctrl.v1.ControllerService/UpdateHeadlessAccountCredentials"
 	ControllerService_GetHeadlessAccountStorageInfo_FullMethodName    = "/hdlctrl.v1.ControllerService/GetHeadlessAccountStorageInfo"
+	ControllerService_RefetchHeadlessAccountInfo_FullMethodName       = "/hdlctrl.v1.ControllerService/RefetchHeadlessAccountInfo"
 	ControllerService_FetchWorldInfo_FullMethodName                   = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
 	ControllerService_SearchUserInfo_FullMethodName                   = "/hdlctrl.v1.ControllerService/SearchUserInfo"
 	ControllerService_GetFriendRequests_FullMethodName                = "/hdlctrl.v1.ControllerService/GetFriendRequests"
@@ -77,6 +78,7 @@ type ControllerServiceClient interface {
 	DeleteHeadlessAccount(ctx context.Context, in *DeleteHeadlessAccountRequest, opts ...grpc.CallOption) (*DeleteHeadlessAccountResponse, error)
 	UpdateHeadlessAccountCredentials(ctx context.Context, in *UpdateHeadlessAccountCredentialsRequest, opts ...grpc.CallOption) (*UpdateHeadlessAccountCredentialsResponse, error)
 	GetHeadlessAccountStorageInfo(ctx context.Context, in *GetHeadlessAccountStorageInfoRequest, opts ...grpc.CallOption) (*GetHeadlessAccountStorageInfoResponse, error)
+	RefetchHeadlessAccountInfo(ctx context.Context, in *RefetchHeadlessAccountInfoRequest, opts ...grpc.CallOption) (*RefetchHeadlessAccountInfoResponse, error)
 	// Cloud系
 	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(ctx context.Context, in *SearchUserInfoRequest, opts ...grpc.CallOption) (*v1.SearchUserInfoResponse, error)
@@ -260,6 +262,16 @@ func (c *controllerServiceClient) GetHeadlessAccountStorageInfo(ctx context.Cont
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetHeadlessAccountStorageInfoResponse)
 	err := c.cc.Invoke(ctx, ControllerService_GetHeadlessAccountStorageInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) RefetchHeadlessAccountInfo(ctx context.Context, in *RefetchHeadlessAccountInfoRequest, opts ...grpc.CallOption) (*RefetchHeadlessAccountInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RefetchHeadlessAccountInfoResponse)
+	err := c.cc.Invoke(ctx, ControllerService_RefetchHeadlessAccountInfo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -458,6 +470,7 @@ type ControllerServiceServer interface {
 	DeleteHeadlessAccount(context.Context, *DeleteHeadlessAccountRequest) (*DeleteHeadlessAccountResponse, error)
 	UpdateHeadlessAccountCredentials(context.Context, *UpdateHeadlessAccountCredentialsRequest) (*UpdateHeadlessAccountCredentialsResponse, error)
 	GetHeadlessAccountStorageInfo(context.Context, *GetHeadlessAccountStorageInfoRequest) (*GetHeadlessAccountStorageInfoResponse, error)
+	RefetchHeadlessAccountInfo(context.Context, *RefetchHeadlessAccountInfoRequest) (*RefetchHeadlessAccountInfoResponse, error)
 	// Cloud系
 	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(context.Context, *SearchUserInfoRequest) (*v1.SearchUserInfoResponse, error)
@@ -534,6 +547,9 @@ func (UnimplementedControllerServiceServer) UpdateHeadlessAccountCredentials(con
 }
 func (UnimplementedControllerServiceServer) GetHeadlessAccountStorageInfo(context.Context, *GetHeadlessAccountStorageInfoRequest) (*GetHeadlessAccountStorageInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHeadlessAccountStorageInfo not implemented")
+}
+func (UnimplementedControllerServiceServer) RefetchHeadlessAccountInfo(context.Context, *RefetchHeadlessAccountInfoRequest) (*RefetchHeadlessAccountInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RefetchHeadlessAccountInfo not implemented")
 }
 func (UnimplementedControllerServiceServer) FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchWorldInfo not implemented")
@@ -891,6 +907,24 @@ func _ControllerService_GetHeadlessAccountStorageInfo_Handler(srv interface{}, c
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).GetHeadlessAccountStorageInfo(ctx, req.(*GetHeadlessAccountStorageInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_RefetchHeadlessAccountInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RefetchHeadlessAccountInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).RefetchHeadlessAccountInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_RefetchHeadlessAccountInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).RefetchHeadlessAccountInfo(ctx, req.(*RefetchHeadlessAccountInfoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1271,6 +1305,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetHeadlessAccountStorageInfo",
 			Handler:    _ControllerService_GetHeadlessAccountStorageInfo_Handler,
+		},
+		{
+			MethodName: "RefetchHeadlessAccountInfo",
+			Handler:    _ControllerService_RefetchHeadlessAccountInfo_Handler,
 		},
 		{
 			MethodName: "FetchWorldInfo",

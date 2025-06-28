@@ -25,10 +25,11 @@ import {
   getFriendRequests,
   getHeadlessAccountStorageInfo,
   listHeadlessAccounts,
+  refetchHeadlessAccountInfo,
   updateHeadlessAccountCredentials,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { RefetchButton } from "./base/RefetchButton";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DataTable, TextField } from "./base";
 import { ColumnDef } from "@tanstack/react-table";
@@ -273,96 +274,128 @@ function UpdateAccountCredentialsDialog({
   );
 }
 
+function StorageInfoTip({ accountId }: { accountId: string }) {
+  const { data, isPending } = useQuery(getHeadlessAccountStorageInfo, {
+    accountId,
+  });
+
+  return isPending ? (
+    <Skeleton className="h-4 w-8 rounded" />
+  ) : (
+    <span>
+      {prettyBytes(Number(data?.storageUsedBytes))}/
+      {prettyBytes(Number(data?.storageQuotaBytes))}
+    </span>
+  );
+}
+
 export default function HeadlessAccountList() {
   const { data, isPending, refetch } = useQuery(listHeadlessAccounts);
   const { mutateAsync: mutateDeleteAccount } = useMutation(
     deleteHeadlessAccount,
   );
+  const { mutateAsync: mutateRefetchAccountInfo } = useMutation(
+    refetchHeadlessAccountInfo,
+  );
   const [updateDialogAccountId, setUpdateDialogAccountId] = useState<string>();
 
-  const columns: ColumnDef<HeadlessAccount>[] = [
-    {
-      accessorKey: "iconUrl",
-      header: "アイコン",
-      cell: ({ row }) => {
-        return (
-          <Avatar>
-            <AvatarImage
-              src={resolveUrl(row.original.iconUrl)}
-              alt={`${row.original.userName}のアイコン`}
-            />
-            <AvatarFallback>{row.original.userName.charAt(0)}</AvatarFallback>
-          </Avatar>
+  const handleRefetchInfo = useCallback(
+    async (accountId: string) => {
+      try {
+        await mutateRefetchAccountInfo({ accountId });
+        toast.success("アカウント情報を再取得しました");
+        refetch();
+      } catch (e) {
+        toast.error(
+          e instanceof Error
+            ? e.message
+            : "アカウント情報の再取得に失敗しました",
         );
-      },
+      }
     },
-    {
-      accessorKey: "userName",
-      header: "ユーザ名",
-    },
-    {
-      header: "ストレージ",
-      cell: ({ row }) => {
-        const { data, isPending } = useQuery(getHeadlessAccountStorageInfo, {
-          accountId: row.original.userId,
-        });
+    [mutateRefetchAccountInfo, refetch],
+  );
 
-        return isPending ? (
-          <Skeleton className="h-4 w-8 rounded" />
-        ) : (
-          <span>
-            {prettyBytes(Number(data?.storageUsedBytes))}/
-            {prettyBytes(Number(data?.storageQuotaBytes))}
-          </span>
+  const handleDeleteAccount = useCallback(
+    async (accountId: string) => {
+      try {
+        await mutateDeleteAccount({ accountId });
+        toast.success("アカウントを削除しました");
+        refetch();
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : "アカウントの削除に失敗しました",
         );
+      }
+    },
+    [mutateDeleteAccount, refetch],
+  );
+
+  const columns: ColumnDef<HeadlessAccount>[] = useMemo(
+    () => [
+      {
+        accessorKey: "iconUrl",
+        header: "アイコン",
+        cell: ({ row }) => {
+          return (
+            <Avatar>
+              <AvatarImage
+                src={resolveUrl(row.original.iconUrl)}
+                alt={`${row.original.userName}のアイコン`}
+              />
+              <AvatarFallback>{row.original.userName.charAt(0)}</AvatarFallback>
+            </Avatar>
+          );
+        },
       },
-    },
-    {
-      id: "friendRequests",
-      header: "フレリク",
-      cell: ({ row }) => (
-        <FriendRequestsDialog accountId={row.original.userId} />
-      ),
-    },
-    {
-      id: "actions",
-      header: "操作",
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost">
-              <MoreVertical />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem
-              onClick={() => setUpdateDialogAccountId(row.original.userId)}
-            >
-              ログイン情報の更新
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                mutateDeleteAccount({ accountId: row.original.userId })
-                  .then(() => {
-                    toast.success("アカウントを削除しました");
-                    refetch();
-                  })
-                  .catch((e) => {
-                    toast.error(
-                      e instanceof Error
-                        ? e.message
-                        : "アカウントの削除に失敗しました",
-                    );
-                  });
-              }}
-            >
-              削除
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-    },
-  ];
+      {
+        accessorKey: "userName",
+        header: "ユーザ名",
+      },
+      {
+        header: "ストレージ",
+        cell: ({ row }) => <StorageInfoTip accountId={row.original.userId} />,
+      },
+      {
+        id: "friendRequests",
+        header: "フレリク",
+        cell: ({ row }) => (
+          <FriendRequestsDialog accountId={row.original.userId} />
+        ),
+      },
+      {
+        id: "actions",
+        header: "操作",
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost">
+                <MoreVertical />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                onClick={() => setUpdateDialogAccountId(row.original.userId)}
+              >
+                ログイン情報の更新
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleRefetchInfo(row.original.userId)}
+              >
+                名前とアイコンの再取得
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleDeleteAccount(row.original.userId)}
+              >
+                削除
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      },
+    ],
+    [setUpdateDialogAccountId, handleRefetchInfo, handleDeleteAccount],
+  );
 
   return (
     <div className="space-y-4">

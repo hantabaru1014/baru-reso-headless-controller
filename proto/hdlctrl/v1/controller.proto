@@ -25,6 +25,7 @@ service ControllerService {
   rpc DeleteHeadlessAccount(DeleteHeadlessAccountRequest) returns (DeleteHeadlessAccountResponse);
   rpc UpdateHeadlessAccountCredentials(UpdateHeadlessAccountCredentialsRequest) returns (UpdateHeadlessAccountCredentialsResponse);
   rpc GetHeadlessAccountStorageInfo(GetHeadlessAccountStorageInfoRequest) returns (GetHeadlessAccountStorageInfoResponse);
+  rpc RefetchHeadlessAccountInfo(RefetchHeadlessAccountInfoRequest) returns (RefetchHeadlessAccountInfoResponse);
 
   // Cloud系
   rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
@@ -47,6 +48,12 @@ service ControllerService {
   rpc KickUser(KickUserRequest) returns (KickUserResponse);
   rpc BanUser(BanUserRequest) returns (BanUserResponse);
 }
+
+message RefetchHeadlessAccountInfoRequest {
+  string account_id = 1;
+}
+
+message RefetchHeadlessAccountInfoResponse {}
 
 message GetHeadlessAccountStorageInfoRequest {
   string account_id = 1;

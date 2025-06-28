@@ -106,3 +106,15 @@ func (u *HeadlessAccountUsecase) GetHeadlessAccount(ctx context.Context, resonit
 func (u *HeadlessAccountUsecase) DeleteHeadlessAccount(ctx context.Context, resoniteID string) error {
 	return u.queries.DeleteHeadlessAccount(ctx, resoniteID)
 }
+
+func (u *HeadlessAccountUsecase) RefetchHeadlessAccountInfo(ctx context.Context, resoniteID string) error {
+	userInfo, err := skyfrost.FetchUserInfo(ctx, resoniteID)
+	if err != nil {
+		return errors.Errorf("failed to fetch user info: %s", err)
+	}
+	return u.queries.UpdateAccountInfo(ctx, db.UpdateAccountInfoParams{
+		ResoniteID:      resoniteID,
+		LastDisplayName: pgtype.Text{String: userInfo.UserName, Valid: true},
+		LastIconUrl:     pgtype.Text{String: userInfo.IconUrl, Valid: true},
+	})
+}

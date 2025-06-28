@@ -185,6 +185,16 @@ func (c *ControllerService) GetHeadlessAccountStorageInfo(ctx context.Context, r
 	return res, nil
 }
 
+// RefetchHeadlessAccountInfo implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) RefetchHeadlessAccountInfo(ctx context.Context, req *connect.Request[hdlctrlv1.RefetchHeadlessAccountInfoRequest]) (*connect.Response[hdlctrlv1.RefetchHeadlessAccountInfoResponse], error) {
+	err := c.hauc.RefetchHeadlessAccountInfo(ctx, req.Msg.AccountId)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.RefetchHeadlessAccountInfoResponse{}), nil
+}
+
 // AcceptFriendRequests implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) AcceptFriendRequests(ctx context.Context, req *connect.Request[hdlctrlv1.AcceptFriendRequestsRequest]) (*connect.Response[hdlctrlv1.AcceptFriendRequestsResponse], error) {
 	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.HeadlessAccountId)
