@@ -23,7 +23,7 @@ func NewHeadlessAccountUsecase(queries *db.Queries) *HeadlessAccountUsecase {
 func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, credential, password string) error {
 	userSession, err := skyfrost.UserLogin(ctx, credential, password)
 	if err != nil {
-		return errors.Errorf("failed to login: %s", err)
+		return errors.Errorf("failed to login: %w", err)
 	}
 	userInfo, err := skyfrost.FetchUserInfo(ctx, userSession.UserId)
 	if err != nil {
