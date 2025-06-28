@@ -15,10 +15,6 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/worker"
 )
 
-import (
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-)
-
 // Injectors from wire.go:
 
 func InitializeServer() *Server {
@@ -46,6 +42,6 @@ func InitializeCli() *Cli {
 	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository)
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
-	cli := NewCli(userUsecase, headlessHostUsecase)
+	cli := NewCli(queries, userUsecase, headlessHostUsecase)
 	return cli
 }
