@@ -416,15 +416,15 @@ func getFreePort() (port int, err error) {
 
 func containerStatusToEntityStatus(state, status string) entity.HeadlessHostStatus {
 	switch state {
-	case "running":
+	case container.StateRunning:
 		return entity.HeadlessHostStatus_RUNNING
-	case "exited":
+	case container.StateExited:
 		if strings.Contains(status, "Exited (0)") {
 			return entity.HeadlessHostStatus_EXITED
 		} else {
 			return entity.HeadlessHostStatus_CRASHED
 		}
-	case "dead":
+	case container.StateDead:
 		return entity.HeadlessHostStatus_CRASHED
 	default:
 		return entity.HeadlessHostStatus_UNKNOWN
