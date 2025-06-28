@@ -32,10 +32,10 @@ func (s *UserSession) GetStorage(ctx context.Context, ownerId string) (*StorageI
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("failed to login: %s", resp.Status)
 	}
-	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
