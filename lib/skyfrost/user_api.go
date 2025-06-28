@@ -30,7 +30,7 @@ type UserInfo struct {
 func FetchUserInfo(ctx context.Context, resoniteID string) (*UserInfo, error) {
 	reqUrl, err := url.JoinPath(API_BASE_URL, "users", resoniteID)
 	if err != nil {
-		return nil, errors.Errorf("failed to make request URL: %s", err)
+		return nil, errors.Errorf("failed to make request URL: %w", err)
 	}
 	resp, err := http.Get(reqUrl)
 	if err != nil {
@@ -84,7 +84,7 @@ type UserSession struct {
 func UserLogin(ctx context.Context, credential, password string) (*UserSession, error) {
 	reqUrl, err := url.JoinPath(API_BASE_URL, "userSessions")
 	if err != nil {
-		return nil, errors.Errorf("failed to make request URL: %s", err)
+		return nil, errors.Errorf("failed to make request URL: %w", err)
 	}
 	secretMachineId, err := uuid.NewRandom()
 	if err != nil {
@@ -116,7 +116,7 @@ func UserLogin(ctx context.Context, credential, password string) (*UserSession, 
 	req.Header.Set("UID", headerUidValue)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, errors.Errorf("failed to login: %s", err)
+		return nil, errors.Errorf("failed to login: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -140,7 +140,7 @@ func UserLogin(ctx context.Context, credential, password string) (*UserSession, 
 	respEntity := &RespJson{}
 	err = json.Unmarshal(respBody, respEntity)
 	if err != nil {
-		return nil, errors.Errorf("failed to parse response: %s", err)
+		return nil, errors.Errorf("failed to parse response: %w", err)
 	}
 
 	newSession := &UserSession{

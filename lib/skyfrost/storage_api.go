@@ -22,7 +22,7 @@ type StorageInfo struct {
 func (s *UserSession) GetStorage(ctx context.Context, ownerId string) (*StorageInfo, error) {
 	reqUrl, err := url.JoinPath(API_BASE_URL, "users", ownerId, "storage")
 	if err != nil {
-		return nil, errors.Errorf("failed to make request URL: %s", err)
+		return nil, errors.Errorf("failed to make request URL: %w", err)
 	}
 	req, err := s.makeApiRequest(ctx, http.MethodGet, reqUrl, nil)
 	if err != nil {
@@ -43,7 +43,7 @@ func (s *UserSession) GetStorage(ctx context.Context, ownerId string) (*StorageI
 	storageInfo := &StorageInfo{}
 	err = json.Unmarshal(respBody, storageInfo)
 	if err != nil {
-		return nil, errors.Errorf("failed to parse storage info: %s", err)
+		return nil, errors.Errorf("failed to parse storage info: %w", err)
 	}
 
 	return storageInfo, nil

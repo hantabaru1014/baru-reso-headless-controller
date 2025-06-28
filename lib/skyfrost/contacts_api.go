@@ -33,7 +33,7 @@ type Contact struct {
 func (s *UserSession) GetContacts(ctx context.Context) ([]Contact, error) {
 	reqUrl, err := url.JoinPath(API_BASE_URL, "users", s.UserId, "contacts")
 	if err != nil {
-		return nil, errors.Errorf("failed to make request URL: %s", err)
+		return nil, errors.Errorf("failed to make request URL: %w", err)
 	}
 	req, err := s.makeApiRequest(ctx, http.MethodGet, reqUrl, nil)
 	if err != nil {
@@ -47,15 +47,13 @@ func (s *UserSession) GetContacts(ctx context.Context) ([]Contact, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("failed to get contacts: %s", resp.Status)
 	}
-
-	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
 	var contacts []Contact
 	if err := json.Unmarshal(respBody, &contacts); err != nil {
-		return nil, errors.Errorf("failed to decode contacts: %s", err)
+		return nil, errors.Errorf("failed to decode contacts: %w", err)
 	}
 
 	return contacts, nil

@@ -41,7 +41,7 @@ func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, cred
 func (u *HeadlessAccountUsecase) UpdateHeadlessAccountCredentials(ctx context.Context, resoniteID, credential, password string) error {
 	userSession, err := skyfrost.UserLogin(ctx, credential, password)
 	if err != nil {
-		return errors.Errorf("failed to login: %s", err)
+		return errors.Errorf("failed to login: %w", err)
 	}
 	userInfo, err := skyfrost.FetchUserInfo(ctx, userSession.UserId)
 	if err != nil {
@@ -110,7 +110,7 @@ func (u *HeadlessAccountUsecase) DeleteHeadlessAccount(ctx context.Context, reso
 func (u *HeadlessAccountUsecase) RefetchHeadlessAccountInfo(ctx context.Context, resoniteID string) error {
 	userInfo, err := skyfrost.FetchUserInfo(ctx, resoniteID)
 	if err != nil {
-		return errors.Errorf("failed to fetch user info: %s", err)
+		return errors.Errorf("failed to fetch user info: %w", err)
 	}
 	return u.queries.UpdateAccountInfo(ctx, db.UpdateAccountInfoParams{
 		ResoniteID:      resoniteID,
