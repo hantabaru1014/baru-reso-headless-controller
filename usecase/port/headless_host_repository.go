@@ -43,6 +43,7 @@ const HostConnectorType_DOCKER HostConnectorType = "docker"
 
 type HeadlessHostRepository interface {
 	ListAll(ctx context.Context, fetchOptions HeadlessHostFetchOptions) (entity.HeadlessHostList, error)
+	ListRunningByAccount(ctx context.Context, accountId string) (entity.HeadlessHostList, error)
 	Find(ctx context.Context, id string, fetchOptions HeadlessHostFetchOptions) (*entity.HeadlessHost, error)
 	GetRpcClient(ctx context.Context, id string) (headlessv1.HeadlessControlServiceClient, error)
 	GetLogs(ctx context.Context, id string, limit int32, until, since string) (LogLineList, error)
@@ -56,4 +57,5 @@ type HeadlessHostRepository interface {
 	// - Use '-1' to wait indefinitely.
 	// - Use '0' to not wait for the container to exit gracefully, and immediately proceeds to forcibly terminating the container.
 	Stop(ctx context.Context, id string, timeoutSeconds int) error
+	Delete(ctx context.Context, id string) error
 }

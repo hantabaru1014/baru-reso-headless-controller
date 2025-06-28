@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui";
 import { UserInfo } from "@/atoms/sessionAtom";
+import { resolveUrl } from "@/libs/skyfrostUtils";
 import { LogOut } from "lucide-react";
 
 export function UserMenuDropdown({
@@ -24,7 +25,7 @@ export function UserMenuDropdown({
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={user?.image} alt={user?.name} />
+            <AvatarImage src={resolveUrl(user?.image)} alt={user?.name} />
             <AvatarFallback>{user?.name?.charAt(0) || "U"}</AvatarFallback>
           </Avatar>
         </Button>

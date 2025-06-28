@@ -21,7 +21,6 @@ import {
   CollapsibleTrigger,
 } from "./ui/collapsible";
 import { ChevronDown } from "lucide-react";
-import prettyBytes from "../libs/prettyBytes";
 import { useNavigate } from "react-router";
 import { hostStatusToLabel } from "../libs/hostUtils";
 import { RefetchButton } from "./base/RefetchButton";
@@ -32,6 +31,7 @@ import { HeadlessHost } from "front/pbgen/hdlctrl/v1/controller_pb";
 import { DataTable } from "./base/DataTable";
 import { toast } from "sonner";
 import { TextField } from "./base";
+import { resolveUrl } from "@/libs/skyfrostUtils";
 
 function SelectHeadlessAccountDialog({
   open,
@@ -137,7 +137,10 @@ function NewHostDialog({
             {account ? (
               <div className="flex items-center gap-2">
                 <Avatar>
-                  <AvatarImage src={account.iconUrl} alt={account.name} />
+                  <AvatarImage
+                    src={resolveUrl(account.iconUrl)}
+                    alt={account.name}
+                  />
                   <AvatarFallback>{account.name.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <span className="text-sm font-medium">{account.name}</span>
@@ -146,6 +149,7 @@ function NewHostDialog({
               <Button
                 variant="outline"
                 onClick={() => setIsAccountDialogOpen(true)}
+                className="w-full"
               >
                 ホストユーザを選択
               </Button>
@@ -226,29 +230,27 @@ const columns: ColumnDef<HeadlessHost>[] = [
     header: "名前",
   },
   {
+    accessorKey: "accountName",
+    header: "アカウント名",
+  },
+  {
     accessorKey: "status",
     header: "ステータス",
     cell: ({ row }) => hostStatusToLabel(row.original.status),
   },
   {
     accessorKey: "resoniteVersion",
-    header: "Resonite Ver",
+    header: "バージョン",
+    cell: ({ row }) =>
+      row.original.resoniteVersion
+        ? `${row.original.resoniteVersion} (v${row.original.appVersion})`
+        : "不明",
   },
   {
     accessorKey: "fps",
     header: "fps",
-  },
-  {
-    accessorKey: "accountName",
-    header: "アカウント名",
-  },
-  {
-    accessorKey: "storageUsedBytes",
-    header: "ストレージ",
     cell: ({ row }) =>
-      `${prettyBytes(Number(row.original.storageUsedBytes))}/${prettyBytes(
-        Number(row.original.storageQuotaBytes),
-      )}`,
+      row.original.fps ? Math.floor(row.original.fps * 10) / 10 : "N/A",
   },
 ];
 

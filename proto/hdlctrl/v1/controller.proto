@@ -16,16 +16,21 @@ service ControllerService {
   rpc StartHeadlessHost(StartHeadlessHostRequest) returns (StartHeadlessHostResponse);
   rpc AllowHostAccess(AllowHostAccessRequest) returns (AllowHostAccessResponse);
   rpc DenyHostAccess(DenyHostAccessRequest) returns (DenyHostAccessResponse);
+  rpc ListHeadlessHostImageTags(ListHeadlessHostImageTagsRequest) returns (ListHeadlessHostImageTagsResponse);
+  rpc DeleteHeadlessHost(DeleteHeadlessHostRequest) returns (DeleteHeadlessHostResponse);
 
   // アカウント系
   rpc CreateHeadlessAccount(CreateHeadlessAccountRequest) returns (CreateHeadlessAccountResponse);
   rpc ListHeadlessAccounts(ListHeadlessAccountsRequest) returns (ListHeadlessAccountsResponse);
-  rpc ListHeadlessHostImageTags(ListHeadlessHostImageTagsRequest) returns (ListHeadlessHostImageTagsResponse);
+  rpc DeleteHeadlessAccount(DeleteHeadlessAccountRequest) returns (DeleteHeadlessAccountResponse);
+  rpc UpdateHeadlessAccountCredentials(UpdateHeadlessAccountCredentialsRequest) returns (UpdateHeadlessAccountCredentialsResponse);
+  rpc GetHeadlessAccountStorageInfo(GetHeadlessAccountStorageInfoRequest) returns (GetHeadlessAccountStorageInfoResponse);
+  rpc RefetchHeadlessAccountInfo(RefetchHeadlessAccountInfoRequest) returns (RefetchHeadlessAccountInfoResponse);
 
   // Cloud系
   rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
   rpc SearchUserInfo(SearchUserInfoRequest) returns (headless.v1.SearchUserInfoResponse);
-  rpc GetFriendRequests(GetFriendRequestsRequest) returns (headless.v1.GetFriendRequestsResponse);
+  rpc GetFriendRequests(GetFriendRequestsRequest) returns (GetFriendRequestsResponse);
   rpc AcceptFriendRequests(AcceptFriendRequestsRequest) returns (AcceptFriendRequestsResponse);
 
   // セッション系
@@ -43,6 +48,41 @@ service ControllerService {
   rpc KickUser(KickUserRequest) returns (KickUserResponse);
   rpc BanUser(BanUserRequest) returns (BanUserResponse);
 }
+
+message RefetchHeadlessAccountInfoRequest {
+  string account_id = 1;
+}
+
+message RefetchHeadlessAccountInfoResponse {}
+
+message GetHeadlessAccountStorageInfoRequest {
+  string account_id = 1;
+}
+
+message GetHeadlessAccountStorageInfoResponse {
+  int64 storage_quota_bytes = 1;
+  int64 storage_used_bytes = 2;
+}
+
+message UpdateHeadlessAccountCredentialsRequest {
+  string account_id = 1;
+  string credential = 2; // email or userId
+  string password = 3;
+}
+
+message UpdateHeadlessAccountCredentialsResponse {}
+
+message DeleteHeadlessAccountRequest {
+  string account_id = 1;
+}
+
+message DeleteHeadlessAccountResponse {}
+
+message DeleteHeadlessHostRequest {
+  string host_id = 1;
+}
+
+message DeleteHeadlessHostResponse {}
 
 message AllowHostAccessRequest {
   string host_id = 1;
@@ -72,8 +112,8 @@ message StartHeadlessHostResponse {
 }
 
 message CreateHeadlessAccountRequest {
-  string resonite_user_id = 1;
-  string credential = 2;
+  reserved 1; // 廃止したプロパティ
+  string credential = 2; // email or userId
   string password = 3;
 }
 
@@ -98,14 +138,20 @@ message ListHeadlessHostImageTagsResponse {
 }
 
 message AcceptFriendRequestsRequest {
-  string host_id = 1;
-  repeated string user_ids = 2;
+  reserved 1, 2;
+  string headless_account_id = 3;
+  string target_user_id = 4;
 }
 
 message AcceptFriendRequestsResponse {}
 
 message GetFriendRequestsRequest {
-  string host_id = 1;
+  reserved 1;
+  string headless_account_id = 2;
+}
+
+message GetFriendRequestsResponse {
+  repeated UserInfo requested_contacts = 1;
 }
 
 message RestartHeadlessHostRequest {
@@ -338,6 +384,7 @@ message HeadlessHostSettings {
 }
 
 message HeadlessHost {
+  reserved 8, 9; // 廃止したプロパティ
   string id = 1;
   string name = 2;
   string resonite_version = 4;
@@ -345,8 +392,6 @@ message HeadlessHost {
   string account_id = 5;
   string account_name = 6;
   float fps = 7;
-  int64 storage_quota_bytes = 8;
-  int64 storage_used_bytes = 9;
   HeadlessHostStatus status = 10;
   HeadlessHostAutoUpdatePolicy auto_update_policy = 12;
   string memo = 13;
@@ -369,5 +414,11 @@ message Session {
 message HeadlessAccount {
   string user_id = 1;
   string user_name = 2;
+  string icon_url = 3;
+}
+
+message UserInfo {
+  string id = 1;
+  string name = 2;
   string icon_url = 3;
 }

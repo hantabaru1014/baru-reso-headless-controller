@@ -80,6 +80,10 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostGetSettings(ctx context.Context, id
 	return settings, nil
 }
 
+func (hhuc *HeadlessHostUsecase) HeadlessHostDelete(ctx context.Context, id string) error {
+	return hhuc.hhrepo.Delete(ctx, id)
+}
+
 func (hhuc *HeadlessHostUsecase) markSessionsAsEnded(ctx context.Context, sessions entity.SessionList) error {
 	// FIXME: 仮の実装. session usecaseにまとめられるようにする
 	now := time.Now()

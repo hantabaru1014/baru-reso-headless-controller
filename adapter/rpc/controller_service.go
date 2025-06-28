@@ -13,6 +13,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/logging"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
@@ -104,7 +105,7 @@ func (c *ControllerService) StartHeadlessHost(ctx context.Context, req *connect.
 
 // CreateHeadlessAccount implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) CreateHeadlessAccount(ctx context.Context, req *connect.Request[hdlctrlv1.CreateHeadlessAccountRequest]) (*connect.Response[hdlctrlv1.CreateHeadlessAccountResponse], error) {
-	err := c.hauc.CreateHeadlessAccount(ctx, req.Msg.ResoniteUserId, req.Msg.Credential, req.Msg.Password)
+	err := c.hauc.CreateHeadlessAccount(ctx, req.Msg.Credential, req.Msg.Password)
 	if err != nil {
 		return nil, convertErr(err)
 	}
@@ -134,6 +135,7 @@ func (c *ControllerService) ListHeadlessAccounts(ctx context.Context, req *conne
 		} else {
 			a.IconUrl = ""
 		}
+
 		protoAccounts = append(protoAccounts, a)
 	}
 
@@ -141,14 +143,76 @@ func (c *ControllerService) ListHeadlessAccounts(ctx context.Context, req *conne
 	return res, nil
 }
 
+// DeleteHeadlessAccount implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) DeleteHeadlessAccount(ctx context.Context, req *connect.Request[hdlctrlv1.DeleteHeadlessAccountRequest]) (*connect.Response[hdlctrlv1.DeleteHeadlessAccountResponse], error) {
+	err := c.hauc.DeleteHeadlessAccount(ctx, req.Msg.AccountId)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.DeleteHeadlessAccountResponse{}), nil
+}
+
+// UpdateHeadlessAccountCredentials implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) UpdateHeadlessAccountCredentials(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateHeadlessAccountCredentialsRequest]) (*connect.Response[hdlctrlv1.UpdateHeadlessAccountCredentialsResponse], error) {
+	err := c.hauc.UpdateHeadlessAccountCredentials(ctx, req.Msg.AccountId, req.Msg.Credential, req.Msg.Password)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.UpdateHeadlessAccountCredentialsResponse{}), nil
+}
+
+// GetHeadlessAccountStorageInfo implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) GetHeadlessAccountStorageInfo(ctx context.Context, req *connect.Request[hdlctrlv1.GetHeadlessAccountStorageInfoRequest]) (*connect.Response[hdlctrlv1.GetHeadlessAccountStorageInfoResponse], error) {
+	account, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.AccountId)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+	userSession, err := skyfrost.UserLogin(ctx, account.Credential, account.Password)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to login to user: %w", err))
+	}
+	storageInfo, err := userSession.GetStorage(ctx, account.ResoniteID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to get storage info for user: %w", err))
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.GetHeadlessAccountStorageInfoResponse{
+		StorageQuotaBytes: storageInfo.QuotaBytes,
+		StorageUsedBytes:  storageInfo.UsedBytes,
+	})
+	return res, nil
+}
+
+// RefetchHeadlessAccountInfo implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) RefetchHeadlessAccountInfo(ctx context.Context, req *connect.Request[hdlctrlv1.RefetchHeadlessAccountInfoRequest]) (*connect.Response[hdlctrlv1.RefetchHeadlessAccountInfoResponse], error) {
+	err := c.hauc.RefetchHeadlessAccountInfo(ctx, req.Msg.AccountId)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.RefetchHeadlessAccountInfoResponse{}), nil
+}
+
 // AcceptFriendRequests implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) AcceptFriendRequests(ctx context.Context, req *connect.Request[hdlctrlv1.AcceptFriendRequestsRequest]) (*connect.Response[hdlctrlv1.AcceptFriendRequestsResponse], error) {
-	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
+	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.HeadlessAccountId)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+	if len(hosts) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("このアカウントで起動中のヘッドレスホストが必要です"))
+	}
+	conn, err := c.hhrepo.GetRpcClient(ctx, hosts[0].ID)
 	if err != nil {
 		return nil, convertRpcClientErr(err)
 	}
+	ids := []string{
+		req.Msg.TargetUserId,
+	}
 	_, err = conn.AcceptFriendRequests(ctx, &headlessv1.AcceptFriendRequestsRequest{
-		UserIds: req.Msg.UserIds,
+		UserIds: ids,
 	})
 	if err != nil {
 		return nil, convertRpcClientErr(err)
@@ -159,17 +223,33 @@ func (c *ControllerService) AcceptFriendRequests(ctx context.Context, req *conne
 }
 
 // GetFriendRequests implements hdlctrlv1connect.ControllerServiceHandler.
-func (c *ControllerService) GetFriendRequests(ctx context.Context, req *connect.Request[hdlctrlv1.GetFriendRequestsRequest]) (*connect.Response[headlessv1.GetFriendRequestsResponse], error) {
-	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
+func (c *ControllerService) GetFriendRequests(ctx context.Context, req *connect.Request[hdlctrlv1.GetFriendRequestsRequest]) (*connect.Response[hdlctrlv1.GetFriendRequestsResponse], error) {
+	account, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.HeadlessAccountId)
 	if err != nil {
-		return nil, convertRpcClientErr(err)
+		return nil, convertErr(err)
 	}
-	headlessRes, err := conn.GetFriendRequests(ctx, &headlessv1.GetFriendRequestsRequest{})
+	userSession, err := skyfrost.UserLogin(ctx, account.Credential, account.Password)
 	if err != nil {
-		return nil, convertRpcClientErr(err)
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to login to user: %w", err))
+	}
+	contacts, err := userSession.GetContacts(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to get friend requests: %w", err))
+	}
+	requestedContacts := make([]*hdlctrlv1.UserInfo, 0)
+	for _, contact := range contacts {
+		if contact.Status == "Requested" {
+			requestedContacts = append(requestedContacts, &hdlctrlv1.UserInfo{
+				Id:      contact.Id,
+				Name:    contact.Username,
+				IconUrl: contact.Profile.IconUrl,
+			})
+		}
 	}
 
-	return connect.NewResponse(headlessRes), nil
+	return connect.NewResponse(&hdlctrlv1.GetFriendRequestsResponse{
+		RequestedContacts: requestedContacts,
+	}), nil
 }
 
 // RestartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
@@ -412,6 +492,16 @@ func (c *ControllerService) ListHeadlessHost(ctx context.Context, req *connect.R
 		Hosts: protoHosts,
 	})
 	return res, nil
+}
+
+// DeleteHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) DeleteHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.DeleteHeadlessHostRequest]) (*connect.Response[hdlctrlv1.DeleteHeadlessHostResponse], error) {
+	err := c.hhuc.HeadlessHostDelete(ctx, req.Msg.HostId)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.DeleteHeadlessHostResponse{}), nil
 }
 
 // GetSessionDetails implements hdlctrlv1connect.ControllerServiceHandler.

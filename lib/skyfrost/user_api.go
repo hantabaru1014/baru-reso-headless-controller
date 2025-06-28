@@ -1,14 +1,24 @@
 package skyfrost
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/go-errors/errors"
+	"github.com/google/uuid"
 	"github.com/tidwall/gjson"
 )
+
+const API_BASE_URL = "https://api.resonite.com"
+
+// Apiリクエスト時にヘッダに付与されるマシン構成のハッシュ。ここではランダムに作ってしまう。
+var headerUidValue = HashIDToToken(uuid.New().String(), "")
 
 type UserInfo struct {
 	ID                 string
@@ -18,8 +28,11 @@ type UserInfo struct {
 }
 
 func FetchUserInfo(ctx context.Context, resoniteID string) (*UserInfo, error) {
-	url := fmt.Sprintf("https://api.resonite.com/users/%s", resoniteID)
-	resp, err := http.Get(url)
+	reqUrl, err := url.JoinPath(API_BASE_URL, "users", resoniteID)
+	if err != nil {
+		return nil, errors.Errorf("failed to make request URL: %w", err)
+	}
+	resp, err := http.Get(reqUrl)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
@@ -61,4 +74,93 @@ func FetchUserInfo(ctx context.Context, resoniteID string) (*UserInfo, error) {
 	}
 
 	return &result, nil
+}
+
+type UserSession struct {
+	UserId string
+	token  string
+}
+
+func UserLogin(ctx context.Context, credential, password string) (*UserSession, error) {
+	reqUrl, err := url.JoinPath(API_BASE_URL, "userSessions")
+	if err != nil {
+		return nil, errors.Errorf("failed to make request URL: %w", err)
+	}
+	secretMachineId, err := uuid.NewRandom()
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	reqObj := map[string]interface{}{
+		"authentication": map[string]interface{}{
+			"$type":    "password",
+			"password": password,
+		},
+		"secretMachineId": secretMachineId.String(),
+		"rememberMe":      false,
+	}
+	if strings.HasPrefix(credential, "U-") {
+		reqObj["ownerId"] = credential
+	} else {
+		reqObj["email"] = credential
+	}
+	reqBody, err := json.Marshal(reqObj)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqUrl, bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("UID", headerUidValue)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, errors.Errorf("failed to login: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return nil, errors.Errorf("failed to login: %s", body)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	type RespEntity struct {
+		UserId string `json:"userId"`
+		Token  string `json:"token"`
+		Expire string `json:"expire"`
+	}
+	type RespJson struct {
+		Entity RespEntity `json:"entity"`
+	}
+	respEntity := &RespJson{}
+	err = json.Unmarshal(respBody, respEntity)
+	if err != nil {
+		return nil, errors.Errorf("failed to parse response: %w", err)
+	}
+
+	newSession := &UserSession{
+		UserId: respEntity.Entity.UserId,
+		token:  respEntity.Entity.Token,
+	}
+	return newSession, nil
+}
+
+func (s *UserSession) makeApiRequest(ctx context.Context, method string, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	req.Header.Set("Accept", "application/json")
+	authToken := fmt.Sprintf("res %s:%s", s.UserId, s.token)
+	req.Header.Set("Authorization", authToken)
+
+	return req, nil
 }

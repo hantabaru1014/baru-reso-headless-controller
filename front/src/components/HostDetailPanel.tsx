@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
   allowHostAccess,
+  deleteHeadlessHost,
   denyHostAccess,
   getHeadlessHost,
   restartHeadlessHost,
@@ -8,20 +9,20 @@ import {
   updateHeadlessHostSettings,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "./ui/dialog";
-import { Button } from "./ui/button";
+  DialogTrigger,
+  DialogClose,
+} from "./ui";
 import { EditableTextField } from "./base/EditableTextField";
 import { ReadOnlyField } from "./base/ReadOnlyField";
-import prettyBytes from "../libs/prettyBytes";
 import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { hostStatusToLabel } from "../libs/hostUtils";
 import { useNavigate } from "react-router";
-import FriendRequestList from "./FriendRequestList";
 import { AllowedAccessEntry_AccessType } from "../../pbgen/headless/v1/headless_pb";
 import { useState } from "react";
 import { ScrollBase } from "./base/ScrollBase";
@@ -36,15 +37,13 @@ type AllowedAccessEntryType = {
 };
 
 function AllowedUrlHostsDialog({
-  open,
-  onClose,
   hostId,
   hosts: initHosts,
+  onClose,
 }: {
-  open: boolean;
-  onClose: () => void;
   hostId: string;
   hosts: AllowedAccessEntryType[];
+  onClose?: () => void;
 }) {
   const { mutateAsync: allow } = useMutation(allowHostAccess);
   const { mutateAsync: deny } = useMutation(denyHostAccess);
@@ -57,7 +56,10 @@ function AllowedUrlHostsDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+    <Dialog onOpenChange={(open) => !open && onClose?.()}>
+      <DialogTrigger asChild>
+        <Button variant="outline">Allowed Url Hosts</Button>
+      </DialogTrigger>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Allowed Url Hosts</DialogTitle>
@@ -192,9 +194,11 @@ function AllowedUrlHostsDialog({
           </ScrollBase>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onClose()}>
-            閉じる
-          </Button>
+          <DialogClose asChild>
+            <Button variant="outline" onClick={() => onClose?.()}>
+              閉じる
+            </Button>
+          </DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -202,15 +206,13 @@ function AllowedUrlHostsDialog({
 }
 
 function AutoSpawnItemsDialog({
-  open,
-  onClose,
   hostId,
   items: initItems,
+  onClose,
 }: {
-  open: boolean;
-  onClose: () => void;
   hostId: string;
   items: string[];
+  onClose?: () => void;
 }) {
   const { mutateAsync: updateHost } = useMutation(updateHeadlessHostSettings);
 
@@ -218,17 +220,21 @@ function AutoSpawnItemsDialog({
   const [newItemUri, setNewItemUri] = useState("");
 
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+    <Dialog onOpenChange={(open) => !open && onClose?.()}>
+      <DialogTrigger asChild>
+        <Button variant="outline">Auto Spawn Items</Button>
+      </DialogTrigger>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Auto Spawn Items</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-end">
             <TextField
               label="Item URI"
               value={newItemUri}
               onChange={(e) => setNewItemUri(e.target.value)}
+              className="flex-1"
             />
             <div className="self-end">
               <Button
@@ -290,9 +296,9 @@ function AutoSpawnItemsDialog({
           </ScrollBase>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onClose()}>
-            閉じる
-          </Button>
+          <DialogClose asChild>
+            <Button variant="outline">閉じる</Button>
+          </DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -302,16 +308,14 @@ function AutoSpawnItemsDialog({
 export default function HostDetailPanel({ hostId }: { hostId: string }) {
   const navigate = useNavigate();
   const { data, isPending, refetch } = useQuery(getHeadlessHost, { hostId });
+
   const { mutateAsync: shutdownHost, isPending: isPendingShutdown } =
     useMutation(shutdownHeadlessHost);
   const { mutateAsync: updateHost } = useMutation(updateHeadlessHostSettings);
   const { mutateAsync: restartHost, isPending: isPendingRestart } =
     useMutation(restartHeadlessHost);
-
-  const [isAllowedUrlHostsDialogOpen, setIsAllowedUrlHostsDialogOpen] =
-    useState(false);
-  const [isAutoSpawnItemsDialogOpen, setIsAutoSpawnItemsDialogOpen] =
-    useState(false);
+  const { mutateAsync: deleteHost, isPending: isPendingDelete } =
+    useMutation(deleteHeadlessHost);
 
   const settings = data?.settings;
 
@@ -362,19 +366,29 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      await deleteHost({ hostId });
+      toast.success("ホストを削除しました");
+      navigate("/hosts");
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "ホストの削除に失敗しました",
+      );
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="col-span-12">
-        <div className="flex justify-between items-start gap-4">
-          <div className="flex-1">
-            <EditableTextField
-              label="Name"
-              value={data?.host?.name}
-              onSave={(v) => handleSave("name", v)}
-              isLoading={isPending}
-            />
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <EditableTextField
+            label="Name"
+            value={data?.host?.name}
+            onSave={(v) => handleSave("name", v)}
+            isLoading={isPending}
+          />
+          <div className="flex items-center gap-2 justify-end">
             <span className="text-sm">
               ステータス:{" "}
               {data?.host?.status
@@ -399,128 +413,96 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
             >
               再起動
             </Button>
+            {data?.host?.status !== HeadlessHostStatus.RUNNING && (
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={isPendingDelete}
+              >
+                削除
+              </Button>
+            )}
           </div>
         </div>
       </div>
       {data?.host?.status === HeadlessHostStatus.RUNNING && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <ReadOnlyField
               label="アカウント"
               value={`${data?.host?.accountName} (${data?.host?.accountId})`}
               isLoading={isPending}
             />
-          </div>
-          <div>
             <ReadOnlyField
               label="Resoniteバージョン"
               value={data?.host?.resoniteVersion}
               isLoading={isPending}
             />
-          </div>
-          <div>
-            <ReadOnlyField
-              label="ストレージ"
-              value={`${prettyBytes(Number(data?.host?.storageUsedBytes))}/${prettyBytes(Number(data?.host?.storageQuotaBytes))}`}
-              isLoading={isPending}
-            />
-          </div>
-          <div>
             <ReadOnlyField
               label="FPS (Current)"
               value={data?.host?.fps?.toString()}
               isLoading={isPending}
             />
           </div>
-          <div>
-            <FriendRequestList hostId={hostId} />
-          </div>
           {settings && (
-            <div>
-              <div className="space-y-4">
-                <ReadOnlyField
-                  label="Universe ID"
-                  value={settings.universeId}
-                  isLoading={isPending}
-                />
-                <EditableTextField
-                  label="Username override"
-                  value={settings.usernameOverride}
-                  onSave={(v) => handleSave("usernameOverride", v)}
-                  isLoading={isPending}
-                />
-                <EditableTextField
-                  label="Tick Rate (Target FPS)"
-                  type="number"
-                  value={settings.tickRate}
-                  onSave={(v) => handleSave("tickRate", parseFloat(v))}
-                  isLoading={isPending}
-                />
-                <EditableTextField
-                  label="Max concurrent asset transfers"
-                  type="number"
-                  value={settings.maxConcurrentAssetTransfers}
-                  onSave={(v) =>
-                    handleSave("maxConcurrentAssetTransfers", parseInt(v))
-                  }
-                  isLoading={isPending}
-                />
-                <Button
-                  variant="outline"
-                  onClick={() => setIsAllowedUrlHostsDialogOpen(true)}
-                >
-                  Allowed Url Hosts
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsAutoSpawnItemsDialogOpen(true)}
-                >
-                  Auto Spawn Items
-                </Button>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ReadOnlyField
+                label="Universe ID"
+                value={settings.universeId}
+                isLoading={isPending}
+              />
+              <EditableTextField
+                label="Username override"
+                value={settings.usernameOverride}
+                onSave={(v) => handleSave("usernameOverride", v)}
+                isLoading={isPending}
+              />
+              <EditableTextField
+                label="Tick Rate (Target FPS)"
+                type="number"
+                value={settings.tickRate}
+                onSave={(v) => handleSave("tickRate", parseFloat(v))}
+                isLoading={isPending}
+              />
+              <EditableTextField
+                label="Max concurrent asset transfers"
+                type="number"
+                value={settings.maxConcurrentAssetTransfers}
+                onSave={(v) =>
+                  handleSave("maxConcurrentAssetTransfers", parseInt(v))
+                }
+                isLoading={isPending}
+              />
+              <AllowedUrlHostsDialog
+                onClose={() => refetch()}
+                hostId={hostId}
+                hosts={settings.allowedUrlHosts
+                  .flatMap((e) =>
+                    e.ports.map((p) => ({
+                      host: e.host,
+                      port: p,
+                      accessTypes: e.accessTypes,
+                    })),
+                  )
+                  .flatMap((e) =>
+                    e.accessTypes
+                      .filter(
+                        (a) => a !== AllowedAccessEntry_AccessType.UNSPECIFIED, // TODO
+                      )
+                      .map((a) => ({
+                        host: e.host,
+                        port: e.port,
+                        accessType: a,
+                      })),
+                  )}
+              />
+              <AutoSpawnItemsDialog
+                hostId={hostId}
+                items={settings.autoSpawnItems}
+                onClose={() => refetch()}
+              />
             </div>
           )}
-        </div>
-      )}
-
-      {settings && (
-        <>
-          <AllowedUrlHostsDialog
-            open={isAllowedUrlHostsDialogOpen}
-            onClose={() => {
-              setIsAllowedUrlHostsDialogOpen(false);
-              refetch();
-            }}
-            hostId={hostId}
-            hosts={settings.allowedUrlHosts
-              .flatMap((e) =>
-                e.ports.map((p) => ({
-                  host: e.host,
-                  port: p,
-                  accessTypes: e.accessTypes,
-                })),
-              )
-              .flatMap((e) =>
-                e.accessTypes
-                  .filter(
-                    (a) => a !== AllowedAccessEntry_AccessType.UNSPECIFIED, // TODO
-                  )
-                  .map((a) => ({
-                    host: e.host,
-                    port: e.port,
-                    accessType: a,
-                  })),
-              )}
-          />
-          <AutoSpawnItemsDialog
-            open={isAutoSpawnItemsDialogOpen}
-            onClose={() => {
-              setIsAutoSpawnItemsDialogOpen(false);
-              refetch();
-            }}
-            hostId={hostId}
-            items={settings.autoSpawnItems}
-          />
         </>
       )}
     </div>

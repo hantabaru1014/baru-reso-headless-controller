@@ -193,6 +193,45 @@ func (q *Queries) ListHostsByStatus(ctx context.Context, status int32) ([]Host, 
 	return items, nil
 }
 
+const listRunningHostsByAccount = `-- name: ListRunningHostsByAccount :many
+SELECT id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at FROM hosts WHERE account_id = $1 AND status = 2 ORDER BY started_at DESC
+`
+
+func (q *Queries) ListRunningHostsByAccount(ctx context.Context, accountID string) ([]Host, error) {
+	rows, err := q.db.Query(ctx, listRunningHostsByAccount, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Host
+	for rows.Next() {
+		var i Host
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Status,
+			&i.AccountID,
+			&i.OwnerID,
+			&i.LastStartupConfig,
+			&i.LastStartupConfigSchemaVersion,
+			&i.ConnectorType,
+			&i.ConnectString,
+			&i.StartedAt,
+			&i.Memo,
+			&i.AutoUpdatePolicy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateHostAutoUpdatePolicy = `-- name: UpdateHostAutoUpdatePolicy :exec
 UPDATE hosts SET auto_update_policy = $2 WHERE id = $1
 `

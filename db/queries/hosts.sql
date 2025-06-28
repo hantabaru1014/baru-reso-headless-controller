@@ -4,6 +4,9 @@ SELECT * FROM hosts ORDER BY started_at DESC;
 -- name: ListHostsByStatus :many
 SELECT * FROM hosts WHERE status = $1 ORDER BY started_at DESC;
 
+-- name: ListRunningHostsByAccount :many
+SELECT * FROM hosts WHERE account_id = $1 AND status = 2 ORDER BY started_at DESC;
+
 -- name: GetHost :one
 SELECT * FROM hosts WHERE id = $1 LIMIT 1;
 

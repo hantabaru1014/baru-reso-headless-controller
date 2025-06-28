@@ -47,19 +47,17 @@ type HeadlessHostSettings struct {
 }
 
 type HeadlessHost struct {
-	ID                string
-	Name              string
-	Status            HeadlessHostStatus
-	ResoniteVersion   string
-	AppVersion        string
-	AccountId         string
-	AccountName       string
-	StorageQuotaBytes int64
-	StorageUsedBytes  int64
-	Fps               float32
-	StartupConfig     *headlessv1.StartupConfig
-	AutoUpdatePolicy  HostAutoUpdatePolicy
-	Memo              string
+	ID               string
+	Name             string
+	Status           HeadlessHostStatus
+	ResoniteVersion  string
+	AppVersion       string
+	AccountId        string
+	AccountName      string
+	Fps              float32
+	StartupConfig    *headlessv1.StartupConfig
+	AutoUpdatePolicy HostAutoUpdatePolicy
+	Memo             string
 }
 
 type HeadlessHostList []*HeadlessHost

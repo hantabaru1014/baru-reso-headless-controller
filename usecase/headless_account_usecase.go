@@ -20,16 +20,40 @@ func NewHeadlessAccountUsecase(queries *db.Queries) *HeadlessAccountUsecase {
 	}
 }
 
-func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, resoniteID, credential, password string) error {
-	userInfo, err := skyfrost.FetchUserInfo(ctx, resoniteID)
+func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, credential, password string) error {
+	userSession, err := skyfrost.UserLogin(ctx, credential, password)
+	if err != nil {
+		return errors.Errorf("failed to login: %w", err)
+	}
+	userInfo, err := skyfrost.FetchUserInfo(ctx, userSession.UserId)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
 	return u.queries.CreateHeadlessAccount(ctx, db.CreateHeadlessAccountParams{
-		ResoniteID:      resoniteID,
+		ResoniteID:      userSession.UserId,
 		Credential:      credential,
 		Password:        password,
 		LastDisplayName: pgtype.Text{String: userInfo.UserName, Valid: true},
+		LastIconUrl:     pgtype.Text{String: userInfo.IconUrl, Valid: true},
+	})
+}
+
+func (u *HeadlessAccountUsecase) UpdateHeadlessAccountCredentials(ctx context.Context, resoniteID, credential, password string) error {
+	userSession, err := skyfrost.UserLogin(ctx, credential, password)
+	if err != nil {
+		return errors.Errorf("failed to login: %w", err)
+	}
+	userInfo, err := skyfrost.FetchUserInfo(ctx, userSession.UserId)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	if resoniteID != userInfo.ID {
+		return errors.New("does not match resonite ID")
+	}
+	return u.queries.UpdateHeadlessAccountCredentials(ctx, db.UpdateHeadlessAccountCredentialsParams{
+		ResoniteID: resoniteID,
+		Credential: credential,
+		Password:   password,
 	})
 }
 
@@ -81,4 +105,16 @@ func (u *HeadlessAccountUsecase) GetHeadlessAccount(ctx context.Context, resonit
 
 func (u *HeadlessAccountUsecase) DeleteHeadlessAccount(ctx context.Context, resoniteID string) error {
 	return u.queries.DeleteHeadlessAccount(ctx, resoniteID)
+}
+
+func (u *HeadlessAccountUsecase) RefetchHeadlessAccountInfo(ctx context.Context, resoniteID string) error {
+	userInfo, err := skyfrost.FetchUserInfo(ctx, resoniteID)
+	if err != nil {
+		return errors.Errorf("failed to fetch user info: %w", err)
+	}
+	return u.queries.UpdateAccountInfo(ctx, db.UpdateAccountInfoParams{
+		ResoniteID:      resoniteID,
+		LastDisplayName: pgtype.Text{String: userInfo.UserName, Valid: true},
+		LastIconUrl:     pgtype.Text{String: userInfo.IconUrl, Valid: true},
+	})
 }

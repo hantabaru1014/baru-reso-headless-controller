@@ -52,6 +52,16 @@ export const allowHostAccess = ControllerService.method.allowHostAccess;
 export const denyHostAccess = ControllerService.method.denyHostAccess;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.ListHeadlessHostImageTags
+ */
+export const listHeadlessHostImageTags = ControllerService.method.listHeadlessHostImageTags;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.DeleteHeadlessHost
+ */
+export const deleteHeadlessHost = ControllerService.method.deleteHeadlessHost;
+
+/**
  * アカウント系
  *
  * @generated from rpc hdlctrl.v1.ControllerService.CreateHeadlessAccount
@@ -64,9 +74,24 @@ export const createHeadlessAccount = ControllerService.method.createHeadlessAcco
 export const listHeadlessAccounts = ControllerService.method.listHeadlessAccounts;
 
 /**
- * @generated from rpc hdlctrl.v1.ControllerService.ListHeadlessHostImageTags
+ * @generated from rpc hdlctrl.v1.ControllerService.DeleteHeadlessAccount
  */
-export const listHeadlessHostImageTags = ControllerService.method.listHeadlessHostImageTags;
+export const deleteHeadlessAccount = ControllerService.method.deleteHeadlessAccount;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.UpdateHeadlessAccountCredentials
+ */
+export const updateHeadlessAccountCredentials = ControllerService.method.updateHeadlessAccountCredentials;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.GetHeadlessAccountStorageInfo
+ */
+export const getHeadlessAccountStorageInfo = ControllerService.method.getHeadlessAccountStorageInfo;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.RefetchHeadlessAccountInfo
+ */
+export const refetchHeadlessAccountInfo = ControllerService.method.refetchHeadlessAccountInfo;
 
 /**
  * Cloud系
