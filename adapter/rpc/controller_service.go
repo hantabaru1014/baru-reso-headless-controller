@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -136,20 +135,6 @@ func (c *ControllerService) ListHeadlessAccounts(ctx context.Context, req *conne
 		} else {
 			a.IconUrl = ""
 		}
-		userSession, err := skyfrost.UserLogin(ctx, account.Credential, account.Password)
-		if err != nil {
-			slog.Error("failed to login to user", "resoniteId", account.ResoniteID, "error", err)
-		} else {
-			storageInfo, err := userSession.GetStorage(ctx, account.ResoniteID)
-			if err != nil {
-				slog.Error("failed to get storage info for user", "resoniteId", account.ResoniteID, "error", err)
-				a.StorageQuotaBytes = -1
-				a.StorageUsedBytes = -1
-			} else {
-				a.StorageQuotaBytes = storageInfo.QuotaBytes
-				a.StorageUsedBytes = storageInfo.UsedBytes
-			}
-		}
 
 		protoAccounts = append(protoAccounts, a)
 	}
@@ -176,6 +161,28 @@ func (c *ControllerService) UpdateHeadlessAccountCredentials(ctx context.Context
 	}
 
 	return connect.NewResponse(&hdlctrlv1.UpdateHeadlessAccountCredentialsResponse{}), nil
+}
+
+// GetHeadlessAccountStorageInfo implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) GetHeadlessAccountStorageInfo(ctx context.Context, req *connect.Request[hdlctrlv1.GetHeadlessAccountStorageInfoRequest]) (*connect.Response[hdlctrlv1.GetHeadlessAccountStorageInfoResponse], error) {
+	account, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.AccountId)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+	userSession, err := skyfrost.UserLogin(ctx, account.Credential, account.Password)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to login to user: %w", err))
+	}
+	storageInfo, err := userSession.GetStorage(ctx, account.ResoniteID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to get storage info for user: %w", err))
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.GetHeadlessAccountStorageInfoResponse{
+		StorageQuotaBytes: storageInfo.QuotaBytes,
+		StorageUsedBytes:  storageInfo.UsedBytes,
+	})
+	return res, nil
 }
 
 // AcceptFriendRequests implements hdlctrlv1connect.ControllerServiceHandler.

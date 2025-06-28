@@ -24,6 +24,7 @@ service ControllerService {
   rpc ListHeadlessAccounts(ListHeadlessAccountsRequest) returns (ListHeadlessAccountsResponse);
   rpc DeleteHeadlessAccount(DeleteHeadlessAccountRequest) returns (DeleteHeadlessAccountResponse);
   rpc UpdateHeadlessAccountCredentials(UpdateHeadlessAccountCredentialsRequest) returns (UpdateHeadlessAccountCredentialsResponse);
+  rpc GetHeadlessAccountStorageInfo(GetHeadlessAccountStorageInfoRequest) returns (GetHeadlessAccountStorageInfoResponse);
 
   // Cloud系
   rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
@@ -45,6 +46,15 @@ service ControllerService {
   rpc ListUsersInSession(ListUsersInSessionRequest) returns (ListUsersInSessionResponse);
   rpc KickUser(KickUserRequest) returns (KickUserResponse);
   rpc BanUser(BanUserRequest) returns (BanUserResponse);
+}
+
+message GetHeadlessAccountStorageInfoRequest {
+  string account_id = 1;
+}
+
+message GetHeadlessAccountStorageInfoResponse {
+  int64 storage_quota_bytes = 1;
+  int64 storage_used_bytes = 2;
 }
 
 message UpdateHeadlessAccountCredentialsRequest {
@@ -398,8 +408,6 @@ message HeadlessAccount {
   string user_id = 1;
   string user_name = 2;
   string icon_url = 3;
-  int64 storage_quota_bytes = 4;
-  int64 storage_used_bytes = 5;
 }
 
 message UserInfo {

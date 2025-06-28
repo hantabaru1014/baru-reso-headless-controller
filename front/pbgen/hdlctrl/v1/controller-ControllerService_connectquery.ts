@@ -84,6 +84,11 @@ export const deleteHeadlessAccount = ControllerService.method.deleteHeadlessAcco
 export const updateHeadlessAccountCredentials = ControllerService.method.updateHeadlessAccountCredentials;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.GetHeadlessAccountStorageInfo
+ */
+export const getHeadlessAccountStorageInfo = ControllerService.method.getHeadlessAccountStorageInfo;
+
+/**
  * Cloud系
  *
  * @generated from rpc hdlctrl.v1.ControllerService.FetchWorldInfo

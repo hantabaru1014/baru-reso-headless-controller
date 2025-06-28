@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  Skeleton,
 } from "./ui";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
@@ -22,6 +23,7 @@ import {
   createHeadlessAccount,
   deleteHeadlessAccount,
   getFriendRequests,
+  getHeadlessAccountStorageInfo,
   listHeadlessAccounts,
   updateHeadlessAccountCredentials,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
@@ -300,12 +302,20 @@ export default function HeadlessAccountList() {
     },
     {
       header: "ストレージ",
-      cell: ({ row }) => (
-        <span>
-          {prettyBytes(Number(row.original.storageUsedBytes))}/
-          {prettyBytes(Number(row.original.storageQuotaBytes))}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const { data, isPending } = useQuery(getHeadlessAccountStorageInfo, {
+          accountId: row.original.userId,
+        });
+
+        return isPending ? (
+          <Skeleton className="h-4 w-8 rounded" />
+        ) : (
+          <span>
+            {prettyBytes(Number(data?.storageUsedBytes))}/
+            {prettyBytes(Number(data?.storageQuotaBytes))}
+          </span>
+        );
+      },
     },
     {
       id: "friendRequests",
