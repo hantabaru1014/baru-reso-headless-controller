@@ -1474,6 +1474,7 @@ type UpdateHeadlessHostSettingsRequest struct {
 	UsernameOverride            *string                `protobuf:"bytes,5,opt,name=username_override,json=usernameOverride,proto3,oneof" json:"username_override,omitempty"`
 	UpdateAutoSpawnItems        bool                   `protobuf:"varint,6,opt,name=update_auto_spawn_items,json=updateAutoSpawnItems,proto3" json:"update_auto_spawn_items,omitempty"`
 	AutoSpawnItems              []string               `protobuf:"bytes,7,rep,name=auto_spawn_items,json=autoSpawnItems,proto3" json:"auto_spawn_items,omitempty"`
+	UniverseId                  *string                `protobuf:"bytes,8,opt,name=universe_id,json=universeId,proto3,oneof" json:"universe_id,omitempty"`
 	unknownFields               protoimpl.UnknownFields
 	sizeCache                   protoimpl.SizeCache
 }
@@ -1555,6 +1556,13 @@ func (x *UpdateHeadlessHostSettingsRequest) GetAutoSpawnItems() []string {
 		return x.AutoSpawnItems
 	}
 	return nil
+}
+
+func (x *UpdateHeadlessHostSettingsRequest) GetUniverseId() string {
+	if x != nil && x.UniverseId != nil {
+		return *x.UniverseId
+	}
+	return ""
 }
 
 type UpdateHeadlessHostSettingsResponse struct {
@@ -2234,7 +2242,6 @@ func (x *GetHeadlessHostRequest) GetHostId() string {
 type GetHeadlessHostResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Host          *HeadlessHost          `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
-	Settings      *HeadlessHostSettings  `protobuf:"bytes,2,opt,name=settings,proto3" json:"settings,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2272,13 +2279,6 @@ func (*GetHeadlessHostResponse) Descriptor() ([]byte, []int) {
 func (x *GetHeadlessHostResponse) GetHost() *HeadlessHost {
 	if x != nil {
 		return x.Host
-	}
-	return nil
-}
-
-func (x *GetHeadlessHostResponse) GetSettings() *HeadlessHostSettings {
-	if x != nil {
-		return x.Settings
 	}
 	return nil
 }
@@ -3531,6 +3531,7 @@ type HeadlessHost struct {
 	Status           HeadlessHostStatus           `protobuf:"varint,10,opt,name=status,proto3,enum=hdlctrl.v1.HeadlessHostStatus" json:"status,omitempty"`
 	AutoUpdatePolicy HeadlessHostAutoUpdatePolicy `protobuf:"varint,12,opt,name=auto_update_policy,json=autoUpdatePolicy,proto3,enum=hdlctrl.v1.HeadlessHostAutoUpdatePolicy" json:"auto_update_policy,omitempty"`
 	Memo             string                       `protobuf:"bytes,13,opt,name=memo,proto3" json:"memo,omitempty"`
+	HostSettings     *HeadlessHostSettings        `protobuf:"bytes,14,opt,name=host_settings,json=hostSettings,proto3" json:"host_settings,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -3633,6 +3634,13 @@ func (x *HeadlessHost) GetMemo() string {
 		return x.Memo
 	}
 	return ""
+}
+
+func (x *HeadlessHost) GetHostSettings() *HeadlessHostSettings {
+	if x != nil {
+		return x.HostSettings
+	}
+	return nil
 }
 
 type Session struct {
@@ -4149,7 +4157,7 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x10_timeout_seconds\"R\n" +
 	"\x1bRestartHeadlessHostResponse\x12#\n" +
 	"\vnew_host_id\x18\x01 \x01(\tH\x00R\tnewHostId\x88\x01\x01B\x0e\n" +
-	"\f_new_host_id\"\xa4\x03\n" +
+	"\f_new_host_id\"\xda\x03\n" +
 	"!UpdateHeadlessHostSettingsRequest\x12\x17\n" +
 	"\ahost_id\x18\x01 \x01(\tR\x06hostId\x12\x17\n" +
 	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12 \n" +
@@ -4157,12 +4165,15 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x1emax_concurrent_asset_transfers\x18\x04 \x01(\x05H\x02R\x1bmaxConcurrentAssetTransfers\x88\x01\x01\x120\n" +
 	"\x11username_override\x18\x05 \x01(\tH\x03R\x10usernameOverride\x88\x01\x01\x125\n" +
 	"\x17update_auto_spawn_items\x18\x06 \x01(\bR\x14updateAutoSpawnItems\x12(\n" +
-	"\x10auto_spawn_items\x18\a \x03(\tR\x0eautoSpawnItemsB\a\n" +
+	"\x10auto_spawn_items\x18\a \x03(\tR\x0eautoSpawnItems\x12$\n" +
+	"\vuniverse_id\x18\b \x01(\tH\x04R\n" +
+	"universeId\x88\x01\x01B\a\n" +
 	"\x05_nameB\f\n" +
 	"\n" +
 	"_tick_rateB!\n" +
 	"\x1f_max_concurrent_asset_transfersB\x14\n" +
-	"\x12_username_override\"$\n" +
+	"\x12_username_overrideB\x0e\n" +
+	"\f_universe_id\"$\n" +
 	"\"UpdateHeadlessHostSettingsResponse\"6\n" +
 	"\x1bShutdownHeadlessHostRequest\x12\x17\n" +
 	"\ahost_id\x18\x01 \x01(\tR\x06hostId\"\x1e\n" +
@@ -4203,10 +4214,9 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x18ListHeadlessHostResponse\x12.\n" +
 	"\x05hosts\x18\x01 \x03(\v2\x18.hdlctrl.v1.HeadlessHostR\x05hosts\"1\n" +
 	"\x16GetHeadlessHostRequest\x12\x17\n" +
-	"\ahost_id\x18\x01 \x01(\tR\x06hostId\"\x85\x01\n" +
+	"\ahost_id\x18\x01 \x01(\tR\x06hostId\"M\n" +
 	"\x17GetHeadlessHostResponse\x12,\n" +
-	"\x04host\x18\x01 \x01(\v2\x18.hdlctrl.v1.HeadlessHostR\x04host\x12<\n" +
-	"\bsettings\x18\x02 \x01(\v2 .hdlctrl.v1.HeadlessHostSettingsR\bsettings\"F\n" +
+	"\x04host\x18\x01 \x01(\v2\x18.hdlctrl.v1.HeadlessHostR\x04hostJ\x04\b\x02\x10\x03\"F\n" +
 	"\x16AddHeadlessHostRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\aaddress\x18\x02 \x01(\tR\aaddress\"G\n" +
@@ -4296,7 +4306,7 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x11allowed_url_hosts\x18\x05 \x03(\v2\x1f.headless.v1.AllowedAccessEntryR\x0fallowedUrlHosts\x12(\n" +
 	"\x10auto_spawn_items\x18\x06 \x03(\tR\x0eautoSpawnItemsB\x0e\n" +
 	"\f_universe_idB\x14\n" +
-	"\x12_username_override\"\x82\x03\n" +
+	"\x12_username_override\"\xc9\x03\n" +
 	"\fHeadlessHost\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12)\n" +
@@ -4310,7 +4320,8 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x06status\x18\n" +
 	" \x01(\x0e2\x1e.hdlctrl.v1.HeadlessHostStatusR\x06status\x12V\n" +
 	"\x12auto_update_policy\x18\f \x01(\x0e2(.hdlctrl.v1.HeadlessHostAutoUpdatePolicyR\x10autoUpdatePolicy\x12\x12\n" +
-	"\x04memo\x18\r \x01(\tR\x04memoJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
+	"\x04memo\x18\r \x01(\tR\x04memo\x12E\n" +
+	"\rhost_settings\x18\x0e \x01(\v2 .hdlctrl.v1.HeadlessHostSettingsR\fhostSettingsJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
 	"\"\x87\x04\n" +
 	"\aSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -4521,19 +4532,19 @@ var file_hdlctrl_v1_controller_proto_depIdxs = []int32{
 	85, // 12: hdlctrl.v1.BanUserRequest.parameters:type_name -> headless.v1.BanUserRequest
 	72, // 13: hdlctrl.v1.ListHeadlessHostResponse.hosts:type_name -> hdlctrl.v1.HeadlessHost
 	72, // 14: hdlctrl.v1.GetHeadlessHostResponse.host:type_name -> hdlctrl.v1.HeadlessHost
-	71, // 15: hdlctrl.v1.GetHeadlessHostResponse.settings:type_name -> hdlctrl.v1.HeadlessHostSettings
-	72, // 16: hdlctrl.v1.AddHeadlessHostResponse.host:type_name -> hdlctrl.v1.HeadlessHost
-	78, // 17: hdlctrl.v1.SearchSessionsRequest.parameters:type_name -> hdlctrl.v1.SearchSessionsRequest.SearchParameters
-	73, // 18: hdlctrl.v1.SearchSessionsResponse.sessions:type_name -> hdlctrl.v1.Session
-	73, // 19: hdlctrl.v1.GetSessionDetailsResponse.session:type_name -> hdlctrl.v1.Session
-	86, // 20: hdlctrl.v1.StartWorldRequest.parameters:type_name -> headless.v1.WorldStartupParameters
-	73, // 21: hdlctrl.v1.StartWorldResponse.opened_session:type_name -> hdlctrl.v1.Session
-	87, // 22: hdlctrl.v1.UpdateUserRoleRequest.parameters:type_name -> headless.v1.UpdateUserRoleRequest
-	88, // 23: hdlctrl.v1.UpdateSessionParametersRequest.parameters:type_name -> headless.v1.UpdateSessionParametersRequest
-	89, // 24: hdlctrl.v1.ListUsersInSessionResponse.users:type_name -> headless.v1.UserInSession
-	90, // 25: hdlctrl.v1.HeadlessHostSettings.allowed_url_hosts:type_name -> headless.v1.AllowedAccessEntry
-	0,  // 26: hdlctrl.v1.HeadlessHost.status:type_name -> hdlctrl.v1.HeadlessHostStatus
-	2,  // 27: hdlctrl.v1.HeadlessHost.auto_update_policy:type_name -> hdlctrl.v1.HeadlessHostAutoUpdatePolicy
+	72, // 15: hdlctrl.v1.AddHeadlessHostResponse.host:type_name -> hdlctrl.v1.HeadlessHost
+	78, // 16: hdlctrl.v1.SearchSessionsRequest.parameters:type_name -> hdlctrl.v1.SearchSessionsRequest.SearchParameters
+	73, // 17: hdlctrl.v1.SearchSessionsResponse.sessions:type_name -> hdlctrl.v1.Session
+	73, // 18: hdlctrl.v1.GetSessionDetailsResponse.session:type_name -> hdlctrl.v1.Session
+	86, // 19: hdlctrl.v1.StartWorldRequest.parameters:type_name -> headless.v1.WorldStartupParameters
+	73, // 20: hdlctrl.v1.StartWorldResponse.opened_session:type_name -> hdlctrl.v1.Session
+	87, // 21: hdlctrl.v1.UpdateUserRoleRequest.parameters:type_name -> headless.v1.UpdateUserRoleRequest
+	88, // 22: hdlctrl.v1.UpdateSessionParametersRequest.parameters:type_name -> headless.v1.UpdateSessionParametersRequest
+	89, // 23: hdlctrl.v1.ListUsersInSessionResponse.users:type_name -> headless.v1.UserInSession
+	90, // 24: hdlctrl.v1.HeadlessHostSettings.allowed_url_hosts:type_name -> headless.v1.AllowedAccessEntry
+	0,  // 25: hdlctrl.v1.HeadlessHost.status:type_name -> hdlctrl.v1.HeadlessHostStatus
+	2,  // 26: hdlctrl.v1.HeadlessHost.auto_update_policy:type_name -> hdlctrl.v1.HeadlessHostAutoUpdatePolicy
+	71, // 27: hdlctrl.v1.HeadlessHost.host_settings:type_name -> hdlctrl.v1.HeadlessHostSettings
 	1,  // 28: hdlctrl.v1.Session.status:type_name -> hdlctrl.v1.SessionStatus
 	82, // 29: hdlctrl.v1.Session.started_at:type_name -> google.protobuf.Timestamp
 	82, // 30: hdlctrl.v1.Session.ended_at:type_name -> google.protobuf.Timestamp

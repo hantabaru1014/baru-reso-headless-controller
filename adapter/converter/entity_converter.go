@@ -18,6 +18,7 @@ func HeadlessHostEntityToProto(e *entity.HeadlessHost) *hdlctrlv1.HeadlessHost {
 		Fps:              e.Fps,
 		Status:           hdlctrlv1.HeadlessHostStatus(e.Status),
 		AutoUpdatePolicy: hdlctrlv1.HeadlessHostAutoUpdatePolicy(e.AutoUpdatePolicy),
+		HostSettings:     HeadlessHostSettingsToProto(&e.HostSettings),
 		Memo:             e.Memo,
 	}
 }
@@ -42,6 +43,60 @@ func HeadlessHostSettingsToProto(e *entity.HeadlessHostSettings) *hdlctrlv1.Head
 		UsernameOverride:            e.UsernameOverride,
 		AllowedUrlHosts:             allowedUrlHosts,
 		AutoSpawnItems:              e.AutoSpawnItems,
+	}
+}
+
+func HeadlessHostSettingsToStartupConfigProto(e *entity.HeadlessHostSettings) *headlessv1.StartupConfig {
+	allowedUrlHosts := make([]*headlessv1.AllowedAccessEntry, 0, len(e.AllowedUrlHosts))
+	for _, entry := range e.AllowedUrlHosts {
+		types := make([]headlessv1.AllowedAccessEntry_AccessType, 0, len(entry.AccessTypes))
+		for _, accessType := range entry.AccessTypes {
+			types = append(types, headlessv1.AllowedAccessEntry_AccessType(accessType))
+		}
+		allowedUrlHosts = append(allowedUrlHosts, &headlessv1.AllowedAccessEntry{
+			Host:        entry.Host,
+			Ports:       entry.Ports,
+			AccessTypes: types,
+		})
+	}
+	return &headlessv1.StartupConfig{
+		UniverseId:                  e.UniverseID,
+		TickRate:                    &e.TickRate,
+		MaxConcurrentAssetTransfers: &e.MaxConcurrentAssetTransfers,
+		UsernameOverride:            e.UsernameOverride,
+		AllowedUrlHosts:             allowedUrlHosts,
+		StartWorlds:                 e.StartWorlds,
+	}
+}
+
+func HeadlessHostSettingsProtoToEntity(proto *headlessv1.StartupConfig) *entity.HeadlessHostSettings {
+	allowedUrlHosts := make([]entity.HostAllowedAccessEntry, 0, len(proto.AllowedUrlHosts))
+	for _, entry := range proto.AllowedUrlHosts {
+		types := make([]entity.HostAllowedAccessType, 0, len(entry.AccessTypes))
+		for _, accessType := range entry.AccessTypes {
+			types = append(types, entity.HostAllowedAccessType(accessType))
+		}
+		allowedUrlHosts = append(allowedUrlHosts, entity.HostAllowedAccessEntry{
+			Host:        entry.Host,
+			Ports:       entry.Ports,
+			AccessTypes: types,
+		})
+	}
+	tickRate := float32(0)
+	if proto.TickRate != nil {
+		tickRate = *proto.TickRate
+	}
+	maxConcurrentAssetTransfers := int32(0)
+	if proto.MaxConcurrentAssetTransfers != nil {
+		maxConcurrentAssetTransfers = *proto.MaxConcurrentAssetTransfers
+	}
+	return &entity.HeadlessHostSettings{
+		UniverseID:                  proto.UniverseId,
+		TickRate:                    tickRate,
+		MaxConcurrentAssetTransfers: maxConcurrentAssetTransfers,
+		UsernameOverride:            proto.UsernameOverride,
+		AllowedUrlHosts:             allowedUrlHosts,
+		StartWorlds:                 proto.StartWorlds,
 	}
 }
 
