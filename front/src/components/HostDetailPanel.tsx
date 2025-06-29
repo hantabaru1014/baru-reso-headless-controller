@@ -317,7 +317,7 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
   const { mutateAsync: deleteHost, isPending: isPendingDelete } =
     useMutation(deleteHeadlessHost);
 
-  const settings = data?.settings;
+  const settings = data?.host?.hostSettings;
 
   const handleRestart = async () => {
     try {
@@ -388,7 +388,7 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
             onSave={(v) => handleSave("name", v)}
             isLoading={isPending}
           />
-          <div className="flex items-center gap-2 justify-end">
+          <div className="flex items-center gap-2 justify-end flex-col md:flex-row">
             <span className="text-sm">
               ステータス:{" "}
               {data?.host?.status
@@ -403,6 +403,7 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
                 isPendingShutdown ||
                 data?.host?.status !== HeadlessHostStatus.RUNNING
               }
+              className="w-full md:w-auto"
             >
               シャットダウン
             </Button>
@@ -410,6 +411,7 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
               variant="outline"
               onClick={handleRestart}
               disabled={isPending || isPendingRestart}
+              className="w-full md:w-auto"
             >
               再起動
             </Button>
@@ -418,38 +420,41 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
                 variant="destructive"
                 onClick={handleDelete}
                 disabled={isPendingDelete}
+                className="w-full md:w-auto"
               >
                 削除
               </Button>
             )}
           </div>
-        </div>
-      </div>
-      {data?.host?.status === HeadlessHostStatus.RUNNING && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ReadOnlyField
-              label="アカウント"
-              value={`${data?.host?.accountName} (${data?.host?.accountId})`}
-              isLoading={isPending}
-            />
-            <ReadOnlyField
-              label="Resoniteバージョン"
-              value={data?.host?.resoniteVersion}
-              isLoading={isPending}
-            />
-            <ReadOnlyField
-              label="FPS (Current)"
-              value={data?.host?.fps?.toString()}
-              isLoading={isPending}
-            />
-          </div>
+          <ReadOnlyField
+            label="アカウント"
+            value={`${data?.host?.accountName} (${data?.host?.accountId})`}
+            isLoading={isPending}
+          />
+          <ReadOnlyField
+            label="バージョン"
+            value={
+              data?.host?.resoniteVersion
+                ? `${data?.host?.resoniteVersion} (v${data?.host?.appVersion})`
+                : "不明"
+            }
+            isLoading={isPending}
+          />
+          <ReadOnlyField
+            label="FPS (Current)"
+            value={
+              data?.host?.fps ? Math.floor(data?.host?.fps * 10) / 10 : "N/A"
+            }
+            isLoading={isPending}
+          />
           {settings && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ReadOnlyField
+            <>
+              <EditableTextField
                 label="Universe ID"
                 value={settings.universeId}
+                onSave={(v) => handleSave("universeId", v)}
                 isLoading={isPending}
+                readonly={data.host?.status === HeadlessHostStatus.RUNNING}
               />
               <EditableTextField
                 label="Username override"
@@ -501,10 +506,10 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
                 items={settings.autoSpawnItems}
                 onClose={() => refetch()}
               />
-            </div>
+            </>
           )}
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

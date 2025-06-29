@@ -278,6 +278,11 @@ func (c *ControllerService) RestartHeadlessHost(ctx context.Context, req *connec
 
 // UpdateHeadlessHostSettings implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) UpdateHeadlessHostSettings(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[hdlctrlv1.UpdateHeadlessHostSettingsResponse], error) {
+	host, err := c.hhuc.HeadlessHostGet(ctx, req.Msg.HostId)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
 	if req.Msg.Name != nil {
 		err := c.hhrepo.Rename(ctx, req.Msg.HostId, req.Msg.GetName())
 		if err != nil {
@@ -287,35 +292,62 @@ func (c *ControllerService) UpdateHeadlessHostSettings(ctx context.Context, req 
 
 	hasUpdateReq := false
 	updateReq := &headlessv1.UpdateHostSettingsRequest{}
+	settings := host.HostSettings
 	if req.Msg.TickRate != nil {
+		hasUpdateReq = true
 		tickRate := req.Msg.GetTickRate()
 		updateReq.TickRate = &tickRate
-		hasUpdateReq = true
+		settings.TickRate = tickRate
 	}
 	if req.Msg.MaxConcurrentAssetTransfers != nil {
+		hasUpdateReq = true
 		maxConcurrentAssetTransfers := req.Msg.GetMaxConcurrentAssetTransfers()
 		updateReq.MaxConcurrentAssetTransfers = &maxConcurrentAssetTransfers
-		hasUpdateReq = true
+		settings.MaxConcurrentAssetTransfers = maxConcurrentAssetTransfers
 	}
 	if req.Msg.UsernameOverride != nil {
+		hasUpdateReq = true
 		usernameOverride := req.Msg.GetUsernameOverride()
 		updateReq.UsernameOverride = &usernameOverride
-		hasUpdateReq = true
+		settings.UsernameOverride = &usernameOverride
 	}
 	if req.Msg.UpdateAutoSpawnItems {
+		hasUpdateReq = true
 		updateReq.UpdateAutoSpawnItems = true
 		updateReq.AutoSpawnItems = req.Msg.GetAutoSpawnItems()
+		settings.AutoSpawnItems = req.Msg.AutoSpawnItems
+	}
+	if req.Msg.UniverseId != nil {
 		hasUpdateReq = true
+		// 実行中のホストのUniverseIDの更新は未対応
+		settings.UniverseID = req.Msg.UniverseId
 	}
 
 	if hasUpdateReq {
-		conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
-		if err != nil {
-			return nil, convertRpcClientErr(err)
-		}
-		_, err = conn.UpdateHostSettings(ctx, updateReq)
-		if err != nil {
-			return nil, convertRpcClientErr(err)
+		if host.Status == entity.HeadlessHostStatus_RUNNING {
+			conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
+			if err != nil {
+				return nil, convertRpcClientErr(err)
+			}
+			_, err = conn.UpdateHostSettings(ctx, updateReq)
+			if err != nil {
+				return nil, convertRpcClientErr(err)
+			}
+			updated, err := conn.GetStartupConfigToRestore(ctx, &headlessv1.GetStartupConfigToRestoreRequest{
+				IncludeStartWorlds: false,
+			})
+			if err != nil {
+				return nil, convertRpcClientErr(err)
+			}
+			err = c.hhrepo.UpdateHostSettings(ctx, req.Msg.HostId, converter.HeadlessHostSettingsProtoToEntity(updated.StartupConfig))
+			if err != nil {
+				return nil, convertErr(err)
+			}
+		} else {
+			err = c.hhrepo.UpdateHostSettings(ctx, req.Msg.HostId, &settings)
+			if err != nil {
+				return nil, convertErr(err)
+			}
 		}
 	}
 
@@ -463,16 +495,8 @@ func (c *ControllerService) GetHeadlessHost(ctx context.Context, req *connect.Re
 	if err != nil {
 		return nil, convertErr(err)
 	}
-	settings := &entity.HeadlessHostSettings{}
-	if host.Status == entity.HeadlessHostStatus_RUNNING {
-		settings, err = c.hhuc.HeadlessHostGetSettings(ctx, req.Msg.HostId)
-		if err != nil {
-			return nil, convertErr(err)
-		}
-	}
 	res := connect.NewResponse(&hdlctrlv1.GetHeadlessHostResponse{
-		Host:     converter.HeadlessHostEntityToProto(host),
-		Settings: converter.HeadlessHostSettingsToProto(settings),
+		Host: converter.HeadlessHostEntityToProto(host),
 	})
 
 	return res, nil

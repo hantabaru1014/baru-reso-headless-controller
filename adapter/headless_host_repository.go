@@ -7,6 +7,7 @@ import (
 	"github.com/go-errors/errors"
 
 	"github.com/dchest/uniuri"
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/converter"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
@@ -21,6 +22,18 @@ var _ port.HeadlessHostRepository = (*HeadlessHostRepository)(nil)
 type HeadlessHostRepository struct {
 	q  *db.Queries
 	dc *hostconnector.DockerHostConnector
+}
+
+// UpdateHostSettings implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) UpdateHostSettings(ctx context.Context, id string, settings *entity.HeadlessHostSettings) error {
+	json, err := protojson.Marshal(converter.HeadlessHostSettingsToStartupConfigProto(settings))
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	return h.q.UpdateHostLastStartupConfig(ctx, db.UpdateHostLastStartupConfigParams{
+		ID:                id,
+		LastStartupConfig: json,
+	})
 }
 
 // Find implements port.HeadlessHostRepository.
@@ -361,15 +374,21 @@ func (h *HeadlessHostRepository) dbToEntity(ctx context.Context, dbHost *db.Host
 				IncludeStartWorlds: fetchOptions.IncludeStartWorlds,
 			})
 			if err == nil {
-				host.StartupConfig = startupConfig.StartupConfig
+				host.HostSettings = *converter.HeadlessHostSettingsProtoToEntity(startupConfig.StartupConfig)
 			}
 		}
-	} else if dbHost.LastStartupConfig != nil {
-		parsed := &headlessv1.StartupConfig{}
-		if err := protojson.Unmarshal(dbHost.LastStartupConfig, parsed); err != nil {
-			return nil, errors.Wrap(err, 0)
+	} else {
+		if dbHost.LastStartupConfig != nil {
+			parsed := &headlessv1.StartupConfig{}
+			if err := protojson.Unmarshal(dbHost.LastStartupConfig, parsed); err != nil {
+				return nil, errors.Wrap(err, 0)
+			}
+			host.HostSettings = *converter.HeadlessHostSettingsProtoToEntity(parsed)
 		}
-		host.StartupConfig = parsed
+		account, err := h.q.GetHeadlessAccount(ctx, dbHost.AccountID)
+		if err == nil {
+			host.AccountName = account.LastDisplayName.String
+		}
 	}
 	if status != entity.HeadlessHostStatus_UNKNOWN {
 		host.Status = status

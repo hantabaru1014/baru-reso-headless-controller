@@ -174,6 +174,7 @@ message UpdateHeadlessHostSettingsRequest {
   optional string username_override = 5;
   bool update_auto_spawn_items = 6;
   repeated string auto_spawn_items = 7;
+  optional string universe_id = 8;
 }
 
 message UpdateHeadlessHostSettingsResponse {}
@@ -241,8 +242,8 @@ message GetHeadlessHostRequest {
 }
 
 message GetHeadlessHostResponse {
+  reserved 2; // 廃止したプロパティ
   HeadlessHost host = 1;
-  HeadlessHostSettings settings = 2;
 }
 
 message AddHeadlessHostRequest {
@@ -395,6 +396,7 @@ message HeadlessHost {
   HeadlessHostStatus status = 10;
   HeadlessHostAutoUpdatePolicy auto_update_policy = 12;
   string memo = 13;
+  HeadlessHostSettings host_settings = 14;
 }
 
 message Session {

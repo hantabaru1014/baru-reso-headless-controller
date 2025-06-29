@@ -44,6 +44,7 @@ type HeadlessHostSettings struct {
 	UsernameOverride            *string
 	AllowedUrlHosts             []HostAllowedAccessEntry
 	AutoSpawnItems              []string
+	StartWorlds                 []*headlessv1.WorldStartupParameters
 }
 
 type HeadlessHost struct {
@@ -55,7 +56,7 @@ type HeadlessHost struct {
 	AccountId        string
 	AccountName      string
 	Fps              float32
-	StartupConfig    *headlessv1.StartupConfig
+	HostSettings     HeadlessHostSettings
 	AutoUpdatePolicy HostAutoUpdatePolicy
 	Memo             string
 }

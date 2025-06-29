@@ -16,7 +16,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "./ui/dialog";
-import { Loading } from "./base/Loading";
 import { EditableTextField } from "./base/EditableTextField";
 import { EditableSelectField } from "./base/EditableSelectField";
 import { AccessLevels } from "../constants";
@@ -33,6 +32,7 @@ import { useNavigate } from "react-router";
 import { formatTimestamp } from "../libs/datetimeUtils";
 import { toast } from "sonner";
 import { EditableTextArea } from "./base";
+import { AspectRatio } from "./ui";
 
 const BOOL_SELECT_OPTIONS = [
   { id: "true", label: "はい", value: true },
@@ -88,7 +88,7 @@ function SelectHostDialog({
 }
 
 export default function SessionForm({ sessionId }: { sessionId: string }) {
-  const { data, status, refetch } = useQuery(getSessionDetails, {
+  const { data, refetch, isPending } = useQuery(getSessionDetails, {
     sessionId,
   });
   const { mutateAsync: mutateSave } = useMutation(updateSessionParameters);
@@ -205,11 +205,52 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
   };
 
   return (
-    <Loading loading={status === "pending"}>
-      <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-5">
-          <Card className="h-full">
-            <CardContent className="h-full">
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 col-span-12">
+        <EditableTextField
+          label="セッション名"
+          value={sessionState?.name || startupParams?.name || ""}
+          onSave={(v) => handleSave("name", v)}
+          readonly={!isRunning}
+          isLoading={isPending}
+        />
+        <div className="flex justify-end space-x-2">
+          {isRunning ? (
+            <SessionControlButtons
+              hostId={hostId ?? ""}
+              sessionId={sessionId}
+              canSave={sessionState?.canSave}
+              additionalButtons={
+                <>
+                  <Button variant="outline" onClick={handleCopyUrl}>
+                    URLをコピー
+                  </Button>
+                  {sessionState?.worldUrl && (
+                    <Button variant="outline" onClick={handleCopyWorldUrl}>
+                      ワールドURLをコピー
+                    </Button>
+                  )}
+                  <RefetchButton refetch={refetch} />
+                </>
+              }
+            />
+          ) : (
+            <div className="flex space-x-2">
+              <Button
+                disabled={isPendingStartWorld}
+                onClick={() => setIsOpenSelectHostDialog(true)}
+              >
+                同設定で開始
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteSession}>
+                削除
+              </Button>
+            </div>
+          )}
+        </div>
+        <Card className="h-full">
+          <CardContent className="h-full">
+            <AspectRatio ratio={16 / 9}>
               {sessionState?.thumbnailUrl ? (
                 <img
                   src={sessionState?.thumbnailUrl}
@@ -221,203 +262,148 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                   <ImageOff className="w-8 h-8 text-gray-400" />
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </AspectRatio>
+          </CardContent>
+        </Card>
+        <div className="flex flex-col space-y-2">
+          <span>開始: {formatTimestamp(data?.session?.startedAt)}</span>
+          {data?.session?.ownerId && (
+            <span>オーナー: {data?.session?.ownerId}</span>
+          )}
+          {data?.session?.endedAt && (
+            <span>終了: {formatTimestamp(data?.session?.endedAt)}</span>
+          )}
+          {sessionState?.lastSavedAt && sessionState.canSave && (
+            <span>最終保存: {formatTimestamp(sessionState.lastSavedAt)}</span>
+          )}
+          <EditableTextArea
+            label="管理者メモ"
+            value={data?.session?.memo || ""}
+            onSave={(v) => handleSaveExtra("memo", v)}
+            isLoading={isPending}
+          />
+          <EditableTextArea
+            label="説明"
+            value={
+              sessionState?.description || startupParams?.description || ""
+            }
+            onSave={(v) => handleSave("description", v)}
+            readonly={!isRunning}
+            isLoading={isPending}
+          />
         </div>
-        <div className="col-span-7 flex flex-col space-y-4">
-          <div className="flex justify-end space-x-2">
-            {isRunning ? (
-              <SessionControlButtons
-                hostId={hostId ?? ""}
-                sessionId={sessionId}
-                canSave={sessionState?.canSave}
-                additionalButtons={
-                  <>
-                    <Button variant="outline" onClick={handleCopyUrl}>
-                      URLをコピー
-                    </Button>
-                    {sessionState?.worldUrl && (
-                      <Button variant="outline" onClick={handleCopyWorldUrl}>
-                        ワールドURLをコピー
-                      </Button>
-                    )}
-                    <RefetchButton refetch={refetch} />
-                  </>
-                }
-              />
-            ) : (
-              <div className="flex space-x-2">
-                <Button
-                  disabled={isPendingStartWorld}
-                  onClick={() => setIsOpenSelectHostDialog(true)}
-                >
-                  同設定で開始
-                </Button>
-                <Button variant="destructive" onClick={handleDeleteSession}>
-                  削除
-                </Button>
-              </div>
-            )}
-          </div>
-          <div className="space-y-4">
-            <EditableTextField
-              label="セッション名"
-              value={sessionState?.name || startupParams?.name || ""}
-              onSave={(v) => handleSave("name", v)}
-              readonly={!isRunning}
-            />
-            <EditableTextArea
-              label="説明"
-              value={
-                sessionState?.description || startupParams?.description || ""
-              }
-              onSave={(v) => handleSave("description", v)}
-              readonly={!isRunning}
-            />
-            <EditableTextField
-              label="タグ"
-              value={
-                sessionState?.tags?.join(", ") ||
-                startupParams?.tags?.join(", ") ||
-                ""
-              }
-              onSave={handleSaveTags}
-              readonly={!isRunning}
-              helperText="カンマ区切りで入力してください"
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <EditableTextField
-                label="最大ユーザー数"
-                type="number"
-                value={
-                  sessionState?.maxUsers?.toString() ||
-                  startupParams?.maxUsers?.toString() ||
-                  "0"
-                }
-                onSave={(v) => handleSave("maxUsers", parseInt(v))}
-                readonly={!isRunning}
-              />
-              <EditableSelectField
-                label="アクセスレベル"
-                options={AccessLevels.map((l) => l)}
-                selectedId={
-                  `${sessionState?.accessLevel || startupParams?.accessLevel}` ||
-                  "1"
-                }
-                onSave={(v) => handleSave("accessLevel", v)}
-                readonly={!isRunning}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="col-span-5">
-          <div className="space-y-4">
-            <div className="flex flex-col space-y-2">
-              <span>開始: {formatTimestamp(data?.session?.startedAt)}</span>
-              {data?.session?.ownerId && (
-                <span>オーナー: {data?.session?.ownerId}</span>
-              )}
-              {data?.session?.endedAt && (
-                <span>終了: {formatTimestamp(data?.session?.endedAt)}</span>
-              )}
-              {sessionState?.lastSavedAt && sessionState.canSave && (
-                <span>
-                  最終保存: {formatTimestamp(sessionState.lastSavedAt)}
-                </span>
-              )}
-            </div>
-            {/* <EditableCheckBox
-              label="自動アップデート"
-              checked={data?.session?.autoUpgrade || false}
-              onSave={(v) => handleSaveExtra("autoUpgrade", v)}
-              helperText="新しいバージョンが出た場合にユーザがいなければ自動で新しいバージョンのホストに移行します"
-            /> */}
-            <EditableTextArea
-              label="管理者メモ"
-              value={data?.session?.memo || ""}
-              onSave={(v) => handleSaveExtra("memo", v)}
-            />
-          </div>
-        </div>
-        <div className="col-span-7">
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <EditableTextField
-                label="AFKキック時間(分)"
-                type="number"
-                value={
-                  sessionState?.awayKickMinutes ||
-                  startupParams?.awayKickMinutes ||
-                  -1
-                }
-                onSave={(v) => handleSave("awayKickMinutes", parseFloat(v))}
-                helperText="-1で無効"
-                readonly={!isRunning}
-              />
-              <EditableSelectField
-                label="セッションリストから隠す"
-                options={BOOL_SELECT_OPTIONS}
-                selectedId={
-                  `${sessionState?.hideFromPublicListing}` ||
-                  `${startupParams?.hideFromPublicListing}` ||
-                  "false"
-                }
-                onSave={(v) => handleSave("hideFromPublicListing", v)}
-                readonly={!isRunning}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <EditableSelectField
-                label="セッション終了時に保存"
-                options={BOOL_SELECT_OPTIONS}
-                selectedId={
-                  `${sessionState?.saveOnExit}` ||
-                  `${startupParams?.saveOnExit}` ||
-                  "false"
-                }
-                onSave={(v) => handleSave("saveOnExit", v)}
-                readonly={!isRunning}
-              />
-              <EditableTextField
-                label="自動保存間隔(秒)"
-                type="number"
-                value={
-                  sessionState?.autoSaveIntervalSeconds ||
-                  startupParams?.autoSaveIntervalSeconds ||
-                  -1
-                }
-                onSave={(v) =>
-                  handleSave("autoSaveIntervalSeconds", parseInt(v))
-                }
-                helperText="-1で無効"
-                readonly={!isRunning}
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-4">
-              {/* FIXME: 反応しないのでヘッドレス側を修正するまで一旦コメントアウト */}
-              {/* <EditableCheckBox
-                label="オートスリープ"
-                checked={sessionState?.autoSleep || startupParams?.autoSleep || false}
-                onSave={(v) => handleSave("autoSleep", v)}
-                readonly={!isRunning}
-              /> */}
-              <EditableTextField
-                label="アイドル時の自動再起動間隔(秒)"
-                type="number"
-                value={
-                  sessionState?.idleRestartIntervalSeconds ||
-                  startupParams?.idleRestartIntervalSeconds ||
-                  -1
-                }
-                onSave={(v) =>
-                  handleSave("idleRestartIntervalSeconds", parseInt(v))
-                }
-                helperText="-1で無効"
-                readonly={!isRunning}
-              />
-            </div>
-          </div>
-        </div>
+        <EditableTextField
+          label="タグ"
+          value={
+            sessionState?.tags?.join(", ") ||
+            startupParams?.tags?.join(", ") ||
+            ""
+          }
+          onSave={handleSaveTags}
+          readonly={!isRunning}
+          isLoading={isPending}
+          helperText="カンマ区切りで入力してください"
+        />
+        <EditableTextField
+          label="最大ユーザー数"
+          type="number"
+          value={
+            sessionState?.maxUsers?.toString() ||
+            startupParams?.maxUsers?.toString() ||
+            "0"
+          }
+          onSave={(v) => handleSave("maxUsers", parseInt(v))}
+          readonly={!isRunning}
+          isLoading={isPending}
+        />
+        <EditableSelectField
+          label="アクセスレベル"
+          options={AccessLevels.map((l) => l)}
+          selectedId={
+            `${sessionState?.accessLevel || startupParams?.accessLevel}` || "1"
+          }
+          onSave={(v) => handleSave("accessLevel", v)}
+          readonly={!isRunning}
+          isLoading={isPending}
+        />
+        {/* <EditableCheckBox
+          label="自動アップデート"
+          checked={data?.session?.autoUpgrade || false}
+          onSave={(v) => handleSaveExtra("autoUpgrade", v)}
+          isLoading={isPending}
+          helperText="新しいバージョンが出た場合にユーザがいなければ自動で新しいバージョンのホストに移行します"
+        /> */}
+        <EditableTextField
+          label="AFKキック時間(分)"
+          type="number"
+          value={
+            sessionState?.awayKickMinutes ||
+            startupParams?.awayKickMinutes ||
+            -1
+          }
+          onSave={(v) => handleSave("awayKickMinutes", parseFloat(v))}
+          helperText="-1で無効"
+          readonly={!isRunning}
+          isLoading={isPending}
+        />
+        <EditableSelectField
+          label="セッションリストから隠す"
+          options={BOOL_SELECT_OPTIONS}
+          selectedId={
+            `${sessionState?.hideFromPublicListing}` ||
+            `${startupParams?.hideFromPublicListing}` ||
+            "false"
+          }
+          onSave={(v) => handleSave("hideFromPublicListing", v)}
+          readonly={!isRunning}
+          isLoading={isPending}
+        />
+        <EditableSelectField
+          label="セッション終了時に保存"
+          options={BOOL_SELECT_OPTIONS}
+          selectedId={
+            `${sessionState?.saveOnExit}` ||
+            `${startupParams?.saveOnExit}` ||
+            "false"
+          }
+          onSave={(v) => handleSave("saveOnExit", v)}
+          readonly={!isRunning}
+          isLoading={isPending}
+        />
+        <EditableTextField
+          label="自動保存間隔(秒)"
+          type="number"
+          value={
+            sessionState?.autoSaveIntervalSeconds ||
+            startupParams?.autoSaveIntervalSeconds ||
+            -1
+          }
+          onSave={(v) => handleSave("autoSaveIntervalSeconds", parseInt(v))}
+          helperText="-1で無効"
+          readonly={!isRunning}
+          isLoading={isPending}
+        />
+        {/* FIXME: 反応しないのでヘッドレス側を修正するまで一旦コメントアウト */}
+        {/* <EditableCheckBox
+          label="オートスリープ"
+          checked={sessionState?.autoSleep || startupParams?.autoSleep || false}
+          onSave={(v) => handleSave("autoSleep", v)}
+          readonly={!isRunning}
+          isLoading={isPending}
+        /> */}
+        <EditableTextField
+          label="アイドル時の自動再起動間隔(秒)"
+          type="number"
+          value={
+            sessionState?.idleRestartIntervalSeconds ||
+            startupParams?.idleRestartIntervalSeconds ||
+            -1
+          }
+          onSave={(v) => handleSave("idleRestartIntervalSeconds", parseInt(v))}
+          helperText="-1で無効"
+          readonly={!isRunning}
+          isLoading={isPending}
+        />
       </div>
       <SelectHostDialog
         isOpen={isOpenSelectHostDialog}
@@ -430,6 +416,6 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
           }
         }}
       />
-    </Loading>
+    </>
   );
 }
