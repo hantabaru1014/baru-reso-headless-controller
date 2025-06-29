@@ -319,6 +319,7 @@ func (c *ControllerService) UpdateHeadlessHostSettings(ctx context.Context, req 
 	}
 	if req.Msg.UniverseId != nil {
 		hasUpdateReq = true
+		// 実行中のホストのUniverseIDの更新は未対応
 		settings.UniverseID = req.Msg.UniverseId
 	}
 
