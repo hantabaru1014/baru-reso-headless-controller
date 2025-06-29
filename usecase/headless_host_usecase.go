@@ -30,7 +30,7 @@ func NewHeadlessHostUsecase(hhrepo port.HeadlessHostRepository, srepo port.Sessi
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostStart(ctx context.Context, params port.HeadlessHostStartParams, userId *string) (string, error) {
-	tag, err := hhuc.resolveTagToUse(&params.ContainerImageTag)
+	tag, err := hhuc.resolveTagToUse(ctx, &params.ContainerImageTag)
 	if err != nil {
 		return "", errors.Wrap(err, 0)
 	}
@@ -87,7 +87,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 		return errors.Wrap(err, 0)
 	}
 
-	tagToUse, err := hhuc.resolveTagToUse(newTag)
+	tagToUse, err := hhuc.resolveTagToUse(ctx, newTag)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -151,9 +151,9 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostShutdown(ctx context.Context, id st
 	return nil
 }
 
-func (hhuc *HeadlessHostUsecase) resolveTagToUse(tagInput *string) (string, error) {
+func (hhuc *HeadlessHostUsecase) resolveTagToUse(ctx context.Context, tagInput *string) (string, error) {
 	if tagInput == nil || *tagInput == "" || *tagInput == "latestRelease" || *tagInput == "latestPreRelease" {
-		tags, err := hhuc.hhrepo.ListContainerTags(context.Background(), nil)
+		tags, err := hhuc.hhrepo.ListContainerTags(ctx, nil)
 		if err != nil {
 			return "", errors.Wrap(err, 0)
 		}
