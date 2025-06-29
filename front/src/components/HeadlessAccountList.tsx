@@ -78,11 +78,21 @@ function FriendRequestsDialog({
       cell: ({ row }) => (
         <Button
           onClick={async () => {
-            await mutateAcceptFriendRequest({
-              headlessAccountId: accountId,
-              targetUserId: row.original.id,
-            });
-            refetch();
+            try {
+              await mutateAcceptFriendRequest({
+                headlessAccountId: accountId,
+                targetUserId: row.original.id,
+              });
+              refetch();
+            } catch (e) {
+              toast.error(
+                e instanceof Error
+                  ? e.message
+                  : "フレンドリクエストの承認に失敗しました",
+              );
+              return;
+            }
+            toast.success("フレンドリクエストを承認しました");
           }}
           className="w-full"
         >
@@ -96,7 +106,7 @@ function FriendRequestsDialog({
     <Dialog onOpenChange={(open) => !open && onClose?.()}>
       {(data?.requestedContacts.length ?? 0) > 0 && (
         <DialogTrigger asChild>
-          <Button variant="outline">
+          <Button variant="ghost" title="フレンドリクエスト一覧を開く">
             <Badge variant="default">
               {data?.requestedContacts.length ?? 0}
             </Badge>
@@ -127,7 +137,13 @@ function FriendRequestsDialog({
   );
 }
 
-function NewAccountDialog({ onClose }: { onClose?: () => void }) {
+function NewAccountDialog({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose?: () => void;
+}) {
   const { mutateAsync: mutateCreateAccount, isPending } = useMutation(
     createHeadlessAccount,
   );
@@ -136,6 +152,7 @@ function NewAccountDialog({ onClose }: { onClose?: () => void }) {
 
   return (
     <Dialog
+      open={open}
       onOpenChange={(open) => {
         if (open) {
           setCredential("");
@@ -145,9 +162,6 @@ function NewAccountDialog({ onClose }: { onClose?: () => void }) {
         }
       }}
     >
-      <DialogTrigger asChild>
-        <Button>追加</Button>
-      </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>ヘッドレスアカウントを追加</DialogTitle>
@@ -298,6 +312,7 @@ export default function HeadlessAccountList() {
     refetchHeadlessAccountInfo,
   );
   const [updateDialogAccountId, setUpdateDialogAccountId] = useState<string>();
+  const [isOpenNewAccountDialog, setIsOpenNewAccountDialog] = useState(false);
 
   const handleRefetchInfo = useCallback(
     async (accountId: string) => {
@@ -401,12 +416,19 @@ export default function HeadlessAccountList() {
     <div className="space-y-4">
       <div className="flex justify-end gap-2">
         <RefetchButton refetch={refetch} />
-        <NewAccountDialog onClose={refetch} />
+        <Button onClick={() => setIsOpenNewAccountDialog(true)}>追加</Button>
       </div>
       <DataTable
         columns={columns}
         data={data?.accounts || []}
         isLoading={isPending}
+      />
+      <NewAccountDialog
+        open={isOpenNewAccountDialog}
+        onClose={() => {
+          setIsOpenNewAccountDialog(false);
+          refetch();
+        }}
       />
       <UpdateAccountCredentialsDialog
         accountId={updateDialogAccountId ?? ""}
