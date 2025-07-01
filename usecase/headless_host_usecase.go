@@ -160,7 +160,7 @@ func (hhuc *HeadlessHostUsecase) resolveTagToUse(ctx context.Context, tagInput *
 		if len(tags) == 0 {
 			return "", errors.New("no available container image tags")
 		}
-		wantPreRelease := *tagInput == "latestPreRelease"
+		wantPreRelease := tagInput != nil && *tagInput == "latestPreRelease"
 		for _, tag := range slices.Backward(tags) {
 			if tag.IsPreRelease == wantPreRelease {
 				return tag.Tag, nil
