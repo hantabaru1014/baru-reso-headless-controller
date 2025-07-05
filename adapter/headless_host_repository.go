@@ -301,6 +301,34 @@ func (h *HeadlessHostRepository) Stop(ctx context.Context, id string, timeoutSec
 	return nil
 }
 
+// Kill implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) Kill(ctx context.Context, id string) error {
+	dbHost, err := h.q.GetHost(ctx, id)
+	if err != nil {
+		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
+	}
+	connector, err := h.getConnector(dbHost.ConnectorType)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	_ = h.q.UpdateHostStatus(ctx, db.UpdateHostStatusParams{
+		ID:     dbHost.ID,
+		Status: int32(entity.HeadlessHostStatus_STOPPING),
+	})
+	
+	err = connector.Kill(ctx, hostconnector.HostConnectString(dbHost.ConnectString))
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	_ = h.q.UpdateHostStatus(ctx, db.UpdateHostStatusParams{
+		ID:     dbHost.ID,
+		Status: int32(entity.HeadlessHostStatus_EXITED),
+	})
+
+	return nil
+}
+
 // Delete implements port.HeadlessHostRepository.
 func (h *HeadlessHostRepository) Delete(ctx context.Context, id string) error {
 	return h.q.DeleteHost(ctx, id)

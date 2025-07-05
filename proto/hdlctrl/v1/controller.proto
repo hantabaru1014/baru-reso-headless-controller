@@ -11,6 +11,7 @@ service ControllerService {
   rpc GetHeadlessHost(GetHeadlessHostRequest) returns (GetHeadlessHostResponse);
   rpc GetHeadlessHostLogs(GetHeadlessHostLogsRequest) returns (GetHeadlessHostLogsResponse);
   rpc ShutdownHeadlessHost(ShutdownHeadlessHostRequest) returns (ShutdownHeadlessHostResponse);
+  rpc KillHeadlessHost(KillHeadlessHostRequest) returns (KillHeadlessHostResponse);
   rpc UpdateHeadlessHostSettings(UpdateHeadlessHostSettingsRequest) returns (UpdateHeadlessHostSettingsResponse);
   rpc RestartHeadlessHost(RestartHeadlessHostRequest) returns (RestartHeadlessHostResponse);
   rpc StartHeadlessHost(StartHeadlessHostRequest) returns (StartHeadlessHostResponse);
@@ -184,6 +185,12 @@ message ShutdownHeadlessHostRequest {
 }
 
 message ShutdownHeadlessHostResponse {}
+
+message KillHeadlessHostRequest {
+  string host_id = 1;
+}
+
+message KillHeadlessHostResponse {}
 
 message GetHeadlessHostLogsRequest {
   string host_id = 1;

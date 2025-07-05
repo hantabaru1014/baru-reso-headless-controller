@@ -27,6 +27,11 @@ export const getHeadlessHostLogs = ControllerService.method.getHeadlessHostLogs;
 export const shutdownHeadlessHost = ControllerService.method.shutdownHeadlessHost;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.KillHeadlessHost
+ */
+export const killHeadlessHost = ControllerService.method.killHeadlessHost;
+
+/**
  * @generated from rpc hdlctrl.v1.ControllerService.UpdateHeadlessHostSettings
  */
 export const updateHeadlessHostSettings = ControllerService.method.updateHeadlessHostSettings;

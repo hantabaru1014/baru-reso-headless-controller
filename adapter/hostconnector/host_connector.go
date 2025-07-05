@@ -16,4 +16,5 @@ type HostConnector interface {
 	GetLogs(ctx context.Context, connect_string HostConnectString, limit int32, until, since string) (port.LogLineList, error)
 	Start(ctx context.Context, params port.HeadlessHostStartParams) (HostConnectString, error)
 	Stop(ctx context.Context, connect_string HostConnectString, timeoutSeconds int) error
+	Kill(ctx context.Context, connect_string HostConnectString) error
 }

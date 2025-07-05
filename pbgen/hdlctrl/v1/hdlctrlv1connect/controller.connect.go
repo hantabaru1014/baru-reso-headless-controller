@@ -46,6 +46,9 @@ const (
 	// ControllerServiceShutdownHeadlessHostProcedure is the fully-qualified name of the
 	// ControllerService's ShutdownHeadlessHost RPC.
 	ControllerServiceShutdownHeadlessHostProcedure = "/hdlctrl.v1.ControllerService/ShutdownHeadlessHost"
+	// ControllerServiceKillHeadlessHostProcedure is the fully-qualified name of the ControllerService's
+	// KillHeadlessHost RPC.
+	ControllerServiceKillHeadlessHostProcedure = "/hdlctrl.v1.ControllerService/KillHeadlessHost"
 	// ControllerServiceUpdateHeadlessHostSettingsProcedure is the fully-qualified name of the
 	// ControllerService's UpdateHeadlessHostSettings RPC.
 	ControllerServiceUpdateHeadlessHostSettingsProcedure = "/hdlctrl.v1.ControllerService/UpdateHeadlessHostSettings"
@@ -145,6 +148,7 @@ type ControllerServiceClient interface {
 	GetHeadlessHost(context.Context, *connect.Request[v1.GetHeadlessHostRequest]) (*connect.Response[v1.GetHeadlessHostResponse], error)
 	GetHeadlessHostLogs(context.Context, *connect.Request[v1.GetHeadlessHostLogsRequest]) (*connect.Response[v1.GetHeadlessHostLogsResponse], error)
 	ShutdownHeadlessHost(context.Context, *connect.Request[v1.ShutdownHeadlessHostRequest]) (*connect.Response[v1.ShutdownHeadlessHostResponse], error)
+	KillHeadlessHost(context.Context, *connect.Request[v1.KillHeadlessHostRequest]) (*connect.Response[v1.KillHeadlessHostResponse], error)
 	UpdateHeadlessHostSettings(context.Context, *connect.Request[v1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[v1.UpdateHeadlessHostSettingsResponse], error)
 	RestartHeadlessHost(context.Context, *connect.Request[v1.RestartHeadlessHostRequest]) (*connect.Response[v1.RestartHeadlessHostResponse], error)
 	StartHeadlessHost(context.Context, *connect.Request[v1.StartHeadlessHostRequest]) (*connect.Response[v1.StartHeadlessHostResponse], error)
@@ -213,6 +217,12 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+ControllerServiceShutdownHeadlessHostProcedure,
 			connect.WithSchema(controllerServiceMethods.ByName("ShutdownHeadlessHost")),
+			connect.WithClientOptions(opts...),
+		),
+		killHeadlessHost: connect.NewClient[v1.KillHeadlessHostRequest, v1.KillHeadlessHostResponse](
+			httpClient,
+			baseURL+ControllerServiceKillHeadlessHostProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("KillHeadlessHost")),
 			connect.WithClientOptions(opts...),
 		),
 		updateHeadlessHostSettings: connect.NewClient[v1.UpdateHeadlessHostSettingsRequest, v1.UpdateHeadlessHostSettingsResponse](
@@ -404,6 +414,7 @@ type controllerServiceClient struct {
 	getHeadlessHost                  *connect.Client[v1.GetHeadlessHostRequest, v1.GetHeadlessHostResponse]
 	getHeadlessHostLogs              *connect.Client[v1.GetHeadlessHostLogsRequest, v1.GetHeadlessHostLogsResponse]
 	shutdownHeadlessHost             *connect.Client[v1.ShutdownHeadlessHostRequest, v1.ShutdownHeadlessHostResponse]
+	killHeadlessHost                 *connect.Client[v1.KillHeadlessHostRequest, v1.KillHeadlessHostResponse]
 	updateHeadlessHostSettings       *connect.Client[v1.UpdateHeadlessHostSettingsRequest, v1.UpdateHeadlessHostSettingsResponse]
 	restartHeadlessHost              *connect.Client[v1.RestartHeadlessHostRequest, v1.RestartHeadlessHostResponse]
 	startHeadlessHost                *connect.Client[v1.StartHeadlessHostRequest, v1.StartHeadlessHostResponse]
@@ -454,6 +465,11 @@ func (c *controllerServiceClient) GetHeadlessHostLogs(ctx context.Context, req *
 // ShutdownHeadlessHost calls hdlctrl.v1.ControllerService.ShutdownHeadlessHost.
 func (c *controllerServiceClient) ShutdownHeadlessHost(ctx context.Context, req *connect.Request[v1.ShutdownHeadlessHostRequest]) (*connect.Response[v1.ShutdownHeadlessHostResponse], error) {
 	return c.shutdownHeadlessHost.CallUnary(ctx, req)
+}
+
+// KillHeadlessHost calls hdlctrl.v1.ControllerService.KillHeadlessHost.
+func (c *controllerServiceClient) KillHeadlessHost(ctx context.Context, req *connect.Request[v1.KillHeadlessHostRequest]) (*connect.Response[v1.KillHeadlessHostResponse], error) {
+	return c.killHeadlessHost.CallUnary(ctx, req)
 }
 
 // UpdateHeadlessHostSettings calls hdlctrl.v1.ControllerService.UpdateHeadlessHostSettings.
@@ -614,6 +630,7 @@ type ControllerServiceHandler interface {
 	GetHeadlessHost(context.Context, *connect.Request[v1.GetHeadlessHostRequest]) (*connect.Response[v1.GetHeadlessHostResponse], error)
 	GetHeadlessHostLogs(context.Context, *connect.Request[v1.GetHeadlessHostLogsRequest]) (*connect.Response[v1.GetHeadlessHostLogsResponse], error)
 	ShutdownHeadlessHost(context.Context, *connect.Request[v1.ShutdownHeadlessHostRequest]) (*connect.Response[v1.ShutdownHeadlessHostResponse], error)
+	KillHeadlessHost(context.Context, *connect.Request[v1.KillHeadlessHostRequest]) (*connect.Response[v1.KillHeadlessHostResponse], error)
 	UpdateHeadlessHostSettings(context.Context, *connect.Request[v1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[v1.UpdateHeadlessHostSettingsResponse], error)
 	RestartHeadlessHost(context.Context, *connect.Request[v1.RestartHeadlessHostRequest]) (*connect.Response[v1.RestartHeadlessHostResponse], error)
 	StartHeadlessHost(context.Context, *connect.Request[v1.StartHeadlessHostRequest]) (*connect.Response[v1.StartHeadlessHostResponse], error)
@@ -678,6 +695,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		ControllerServiceShutdownHeadlessHostProcedure,
 		svc.ShutdownHeadlessHost,
 		connect.WithSchema(controllerServiceMethods.ByName("ShutdownHeadlessHost")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceKillHeadlessHostHandler := connect.NewUnaryHandler(
+		ControllerServiceKillHeadlessHostProcedure,
+		svc.KillHeadlessHost,
+		connect.WithSchema(controllerServiceMethods.ByName("KillHeadlessHost")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceUpdateHeadlessHostSettingsHandler := connect.NewUnaryHandler(
@@ -870,6 +893,8 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceGetHeadlessHostLogsHandler.ServeHTTP(w, r)
 		case ControllerServiceShutdownHeadlessHostProcedure:
 			controllerServiceShutdownHeadlessHostHandler.ServeHTTP(w, r)
+		case ControllerServiceKillHeadlessHostProcedure:
+			controllerServiceKillHeadlessHostHandler.ServeHTTP(w, r)
 		case ControllerServiceUpdateHeadlessHostSettingsProcedure:
 			controllerServiceUpdateHeadlessHostSettingsHandler.ServeHTTP(w, r)
 		case ControllerServiceRestartHeadlessHostProcedure:
@@ -953,6 +978,10 @@ func (UnimplementedControllerServiceHandler) GetHeadlessHostLogs(context.Context
 
 func (UnimplementedControllerServiceHandler) ShutdownHeadlessHost(context.Context, *connect.Request[v1.ShutdownHeadlessHostRequest]) (*connect.Response[v1.ShutdownHeadlessHostResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.ShutdownHeadlessHost is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) KillHeadlessHost(context.Context, *connect.Request[v1.KillHeadlessHostRequest]) (*connect.Response[v1.KillHeadlessHostResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.KillHeadlessHost is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) UpdateHeadlessHostSettings(context.Context, *connect.Request[v1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[v1.UpdateHeadlessHostSettingsResponse], error) {
