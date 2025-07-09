@@ -27,6 +27,7 @@ const (
 	HeadlessControlService_StartWorld_FullMethodName                = "/headless.v1.HeadlessControlService/StartWorld"
 	HeadlessControlService_StopSession_FullMethodName               = "/headless.v1.HeadlessControlService/StopSession"
 	HeadlessControlService_SaveSessionWorld_FullMethodName          = "/headless.v1.HeadlessControlService/SaveSessionWorld"
+	HeadlessControlService_SaveAsSessionWorld_FullMethodName        = "/headless.v1.HeadlessControlService/SaveAsSessionWorld"
 	HeadlessControlService_InviteUser_FullMethodName                = "/headless.v1.HeadlessControlService/InviteUser"
 	HeadlessControlService_AllowUserToJoin_FullMethodName           = "/headless.v1.HeadlessControlService/AllowUserToJoin"
 	HeadlessControlService_UpdateUserRole_FullMethodName            = "/headless.v1.HeadlessControlService/UpdateUserRole"
@@ -61,6 +62,7 @@ type HeadlessControlServiceClient interface {
 	StartWorld(ctx context.Context, in *StartWorldRequest, opts ...grpc.CallOption) (*StartWorldResponse, error)
 	StopSession(ctx context.Context, in *StopSessionRequest, opts ...grpc.CallOption) (*StopSessionResponse, error)
 	SaveSessionWorld(ctx context.Context, in *SaveSessionWorldRequest, opts ...grpc.CallOption) (*SaveSessionWorldResponse, error)
+	SaveAsSessionWorld(ctx context.Context, in *SaveAsSessionWorldRequest, opts ...grpc.CallOption) (*SaveAsSessionWorldResponse, error)
 	InviteUser(ctx context.Context, in *InviteUserRequest, opts ...grpc.CallOption) (*InviteUserResponse, error)
 	AllowUserToJoin(ctx context.Context, in *AllowUserToJoinRequest, opts ...grpc.CallOption) (*AllowUserToJoinResponse, error)
 	UpdateUserRole(ctx context.Context, in *UpdateUserRoleRequest, opts ...grpc.CallOption) (*UpdateUserRoleResponse, error)
@@ -166,6 +168,16 @@ func (c *headlessControlServiceClient) SaveSessionWorld(ctx context.Context, in 
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SaveSessionWorldResponse)
 	err := c.cc.Invoke(ctx, HeadlessControlService_SaveSessionWorld_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) SaveAsSessionWorld(ctx context.Context, in *SaveAsSessionWorldRequest, opts ...grpc.CallOption) (*SaveAsSessionWorldResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SaveAsSessionWorldResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_SaveAsSessionWorld_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -384,6 +396,7 @@ type HeadlessControlServiceServer interface {
 	StartWorld(context.Context, *StartWorldRequest) (*StartWorldResponse, error)
 	StopSession(context.Context, *StopSessionRequest) (*StopSessionResponse, error)
 	SaveSessionWorld(context.Context, *SaveSessionWorldRequest) (*SaveSessionWorldResponse, error)
+	SaveAsSessionWorld(context.Context, *SaveAsSessionWorldRequest) (*SaveAsSessionWorldResponse, error)
 	InviteUser(context.Context, *InviteUserRequest) (*InviteUserResponse, error)
 	AllowUserToJoin(context.Context, *AllowUserToJoinRequest) (*AllowUserToJoinResponse, error)
 	UpdateUserRole(context.Context, *UpdateUserRoleRequest) (*UpdateUserRoleResponse, error)
@@ -438,6 +451,9 @@ func (UnimplementedHeadlessControlServiceServer) StopSession(context.Context, *S
 }
 func (UnimplementedHeadlessControlServiceServer) SaveSessionWorld(context.Context, *SaveSessionWorldRequest) (*SaveSessionWorldResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SaveSessionWorld not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) SaveAsSessionWorld(context.Context, *SaveAsSessionWorldRequest) (*SaveAsSessionWorldResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SaveAsSessionWorld not implemented")
 }
 func (UnimplementedHeadlessControlServiceServer) InviteUser(context.Context, *InviteUserRequest) (*InviteUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InviteUser not implemented")
@@ -661,6 +677,24 @@ func _HeadlessControlService_SaveSessionWorld_Handler(srv interface{}, ctx conte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(HeadlessControlServiceServer).SaveSessionWorld(ctx, req.(*SaveSessionWorldRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_SaveAsSessionWorld_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveAsSessionWorldRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).SaveAsSessionWorld(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_SaveAsSessionWorld_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).SaveAsSessionWorld(ctx, req.(*SaveAsSessionWorldRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1063,6 +1097,10 @@ var HeadlessControlService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SaveSessionWorld",
 			Handler:    _HeadlessControlService_SaveSessionWorld_Handler,
+		},
+		{
+			MethodName: "SaveAsSessionWorld",
+			Handler:    _HeadlessControlService_SaveAsSessionWorld_Handler,
 		},
 		{
 			MethodName: "InviteUser",
