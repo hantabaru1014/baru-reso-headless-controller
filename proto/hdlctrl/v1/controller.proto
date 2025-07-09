@@ -294,7 +294,7 @@ message StartWorldResponse {
 }
 
 message StopSessionRequest {
-  string host_id = 1;
+  string host_id = 1 [deprecated = true]; // 指定不要
   string session_id = 2;
 }
 
@@ -307,11 +307,20 @@ message DeleteEndedSessionRequest {
 message DeleteEndedSessionResponse {}
 
 message SaveSessionWorldRequest {
-  string host_id = 1;
+  enum SaveMode {
+    SAVE_MODE_UNKNOWN = 0;
+    SAVE_MODE_OVERWRITE = 1;
+    SAVE_MODE_SAVE_AS = 2;
+    SAVE_MODE_COPY = 3;
+  }
+  string host_id = 1 [deprecated = true]; // 指定不要
   string session_id = 2;
+  SaveMode save_mode = 3;
 }
 
-message SaveSessionWorldResponse {}
+message SaveSessionWorldResponse {
+  optional string saved_record_url = 1;
+}
 
 message InviteUserRequest {
   string host_id = 1;

@@ -45,6 +45,11 @@ export const stopSession = HeadlessControlService.method.stopSession;
 export const saveSessionWorld = HeadlessControlService.method.saveSessionWorld;
 
 /**
+ * @generated from rpc headless.v1.HeadlessControlService.SaveAsSessionWorld
+ */
+export const saveAsSessionWorld = HeadlessControlService.method.saveAsSessionWorld;
+
+/**
  * @generated from rpc headless.v1.HeadlessControlService.InviteUser
  */
 export const inviteUser = HeadlessControlService.method.inviteUser;

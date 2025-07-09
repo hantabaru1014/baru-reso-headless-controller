@@ -11,6 +11,14 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
 
+type SaveMode int32
+
+const (
+	SaveMode_OVERWRITE SaveMode = 1
+	SaveMode_SAVE_AS   SaveMode = 2
+	SaveMode_COPY      SaveMode = 3
+)
+
 type SessionUsecase struct {
 	sessionRepo port.SessionRepository
 	hostRepo    port.HeadlessHostRepository
@@ -319,4 +327,48 @@ func (u *SessionUsecase) UpdateSessionParameters(ctx context.Context, id string,
 
 func (u *SessionUsecase) DeleteSession(ctx context.Context, id string) error {
 	return u.sessionRepo.Delete(ctx, id)
+}
+
+func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMode SaveMode) (string, error) {
+	s, err := u.sessionRepo.Get(ctx, id)
+	if err != nil {
+		return "", errors.Wrap(err, 0)
+	}
+
+	client, err := u.hostRepo.GetRpcClient(ctx, s.HostID)
+	if err != nil {
+		return "", errors.Wrap(err, 0)
+	}
+
+	switch saveMode {
+	case SaveMode_OVERWRITE:
+		_, err = client.SaveSessionWorld(ctx, &headlessv1.SaveSessionWorldRequest{SessionId: id})
+		if err != nil {
+			return "", errors.Wrap(err, 0)
+		}
+		return s.CurrentState.WorldUrl, nil
+
+	case SaveMode_SAVE_AS:
+		saveAsResp, err := client.SaveAsSessionWorld(ctx, &headlessv1.SaveAsSessionWorldRequest{
+			SessionId: id,
+			Type:      headlessv1.SaveAsSessionWorldRequest_SAVE_AS_TYPE_SAVE_AS,
+		})
+		if err != nil {
+			return "", errors.Wrap(err, 0)
+		}
+		return saveAsResp.SavedRecordUrl, nil
+
+	case SaveMode_COPY:
+		saveAsResp, err := client.SaveAsSessionWorld(ctx, &headlessv1.SaveAsSessionWorldRequest{
+			SessionId: id,
+			Type:      headlessv1.SaveAsSessionWorldRequest_SAVE_AS_TYPE_COPY,
+		})
+		if err != nil {
+			return "", errors.Wrap(err, 0)
+		}
+		return saveAsResp.SavedRecordUrl, nil
+
+	default:
+		return "", errors.Errorf("unknown save mode: %d", saveMode)
+	}
 }
