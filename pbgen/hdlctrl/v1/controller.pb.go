@@ -2802,9 +2802,10 @@ func (x *StartWorldResponse) GetOpenedSession() *Session {
 }
 
 type StopSessionRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	HostId        string                 `protobuf:"bytes,1,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
-	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Deprecated: Marked as deprecated in hdlctrl/v1/controller.proto.
+	HostId        string `protobuf:"bytes,1,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"` // 指定不要
+	SessionId     string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2839,6 +2840,7 @@ func (*StopSessionRequest) Descriptor() ([]byte, []int) {
 	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{54}
 }
 
+// Deprecated: Marked as deprecated in hdlctrl/v1/controller.proto.
 func (x *StopSessionRequest) GetHostId() string {
 	if x != nil {
 		return x.HostId
@@ -4400,9 +4402,9 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"parameters\x12\x12\n" +
 	"\x04memo\x18\x03 \x01(\tR\x04memo\"P\n" +
 	"\x12StartWorldResponse\x12:\n" +
-	"\x0eopened_session\x18\x01 \x01(\v2\x13.hdlctrl.v1.SessionR\ropenedSession\"L\n" +
-	"\x12StopSessionRequest\x12\x17\n" +
-	"\ahost_id\x18\x01 \x01(\tR\x06hostId\x12\x1d\n" +
+	"\x0eopened_session\x18\x01 \x01(\v2\x13.hdlctrl.v1.SessionR\ropenedSession\"P\n" +
+	"\x12StopSessionRequest\x12\x1b\n" +
+	"\ahost_id\x18\x01 \x01(\tB\x02\x18\x01R\x06hostId\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x02 \x01(\tR\tsessionId\"\x15\n" +
 	"\x13StopSessionResponse\":\n" +

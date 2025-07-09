@@ -294,7 +294,7 @@ message StartWorldResponse {
 }
 
 message StopSessionRequest {
-  string host_id = 1;
+  string host_id = 1 [deprecated = true]; // 指定不要
   string session_id = 2;
 }
 
