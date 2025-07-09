@@ -397,6 +397,17 @@ func (c *ControllerService) ShutdownHeadlessHost(ctx context.Context, req *conne
 	return res, nil
 }
 
+// KillHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) KillHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.KillHeadlessHostRequest]) (*connect.Response[hdlctrlv1.KillHeadlessHostResponse], error) {
+	err := c.hhuc.HeadlessHostKill(ctx, req.Msg.HostId)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.KillHeadlessHostResponse{})
+	return res, nil
+}
+
 // AllowHostAccess implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) AllowHostAccess(ctx context.Context, req *connect.Request[hdlctrlv1.AllowHostAccessRequest]) (*connect.Response[hdlctrlv1.AllowHostAccessResponse], error) {
 	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)

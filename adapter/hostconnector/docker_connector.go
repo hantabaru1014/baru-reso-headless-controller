@@ -323,6 +323,24 @@ func (d *DockerHostConnector) Stop(ctx context.Context, connect_string HostConne
 	return nil
 }
 
+// Kill implements HostConnector.
+func (d *DockerHostConnector) Kill(ctx context.Context, connect_string HostConnectString) error {
+	id, _, err := parseConnectString(connect_string)
+	if err != nil {
+		return err
+	}
+	cli, err := d.newDockerClient()
+	if err != nil {
+		return errors.Errorf("failed to create docker client: %w", err)
+	}
+	err = cli.ContainerKill(ctx, id, "SIGKILL")
+	if err != nil {
+		return errors.Errorf("failed to kill container: %w", err)
+	}
+
+	return nil
+}
+
 func NewDockerHostConnector() *DockerHostConnector {
 	return &DockerHostConnector{}
 }

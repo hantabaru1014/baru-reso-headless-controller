@@ -58,5 +58,7 @@ type HeadlessHostRepository interface {
 	// - Use '-1' to wait indefinitely.
 	// - Use '0' to not wait for the container to exit gracefully, and immediately proceeds to forcibly terminating the container.
 	Stop(ctx context.Context, id string, timeoutSeconds int) error
+	// コンテナを強制停止する
+	Kill(ctx context.Context, id string) error
 	Delete(ctx context.Context, id string) error
 }

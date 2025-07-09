@@ -151,6 +151,28 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostShutdown(ctx context.Context, id st
 	return nil
 }
 
+func (hhuc *HeadlessHostUsecase) HeadlessHostKill(ctx context.Context, id string) error {
+	status := entity.SessionStatus_RUNNING
+	sessions, err := hhuc.huc.SearchSessions(ctx, SearchSessionsFilter{
+		HostID: &id,
+		Status: &status,
+	})
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	err = hhuc.markSessionsAsEnded(ctx, sessions)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	err = hhuc.hhrepo.Kill(ctx, id)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	return nil
+}
+
 func (hhuc *HeadlessHostUsecase) resolveTagToUse(ctx context.Context, tagInput *string) (string, error) {
 	if tagInput == nil || *tagInput == "" || *tagInput == "latestRelease" || *tagInput == "latestPreRelease" {
 		tags, err := hhuc.hhrepo.ListContainerTags(ctx, nil)

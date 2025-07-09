@@ -12,6 +12,7 @@ export * from "./ReadOnlyField";
 export * from "./RefetchButton";
 export * from "./ScrollBase";
 export * from "./SelectField";
+export * from "./SplitButton";
 export * from "./TextareaField";
 export * from "./TextField";
 export * from "./UserList";

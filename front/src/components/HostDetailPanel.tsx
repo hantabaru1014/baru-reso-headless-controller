@@ -4,6 +4,7 @@ import {
   deleteHeadlessHost,
   denyHostAccess,
   getHeadlessHost,
+  killHeadlessHost,
   restartHeadlessHost,
   shutdownHeadlessHost,
   updateHeadlessHostSettings,
@@ -17,6 +18,7 @@ import {
   DialogFooter,
   DialogTrigger,
   DialogClose,
+  DropdownMenuItem,
 } from "./ui";
 import { EditableTextField } from "./base/EditableTextField";
 import { ReadOnlyField } from "./base/ReadOnlyField";
@@ -28,7 +30,7 @@ import { useState } from "react";
 import { ScrollBase } from "./base/ScrollBase";
 import { SelectField } from "./base/SelectField";
 import { toast } from "sonner";
-import { TextField } from "./base";
+import { RefetchButton, SplitButton, TextField } from "./base";
 
 type AllowedAccessEntryType = {
   host: string;
@@ -314,6 +316,8 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
   const { mutateAsync: updateHost } = useMutation(updateHeadlessHostSettings);
   const { mutateAsync: restartHost, isPending: isPendingRestart } =
     useMutation(restartHeadlessHost);
+  const { mutateAsync: killHost, isPending: isPendingKill } =
+    useMutation(killHeadlessHost);
   const { mutateAsync: deleteHost, isPending: isPendingDelete } =
     useMutation(deleteHeadlessHost);
 
@@ -321,7 +325,7 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
 
   const handleRestart = async () => {
     try {
-      const result = await restartHost({
+      await restartHost({
         hostId,
         withUpdate: true,
         withWorldRestart: true,
@@ -329,9 +333,7 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
       setTimeout(() => {
         refetch();
       }, 1000);
-      if (result.newHostId) {
-        navigate(`/hosts/${result.newHostId}`);
-      }
+      toast.success("ホストを再起動しました");
     } catch (e) {
       toast.error(
         e instanceof Error ? e.message : "ホストの再起動に失敗しました",
@@ -345,9 +347,24 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
       setTimeout(() => {
         refetch();
       }, 1000);
+      toast.success("ホストをシャットダウンしました");
     } catch (e) {
       toast.error(
         e instanceof Error ? e.message : "ホストのシャットダウンに失敗しました",
+      );
+    }
+  };
+
+  const handleKill = async () => {
+    try {
+      await killHost({ hostId });
+      setTimeout(() => {
+        refetch();
+      }, 1000);
+      toast.success("ホストを強制終了しました");
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "ホストの強制終了に失敗しました",
       );
     }
   };
@@ -395,26 +412,41 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
                 ? hostStatusToLabel(data?.host?.status)
                 : "不明"}
             </span>
-            <Button
+            <RefetchButton refetch={refetch} />
+            <SplitButton
               variant="outline"
-              onClick={handleShutdown}
               disabled={
                 isPending ||
                 isPendingShutdown ||
                 data?.host?.status !== HeadlessHostStatus.RUNNING
               }
+              onClick={handleShutdown}
               className="w-full md:w-auto"
+              dropdownContent={
+                <>
+                  <DropdownMenuItem
+                    onClick={handleRestart}
+                    disabled={isPending || isPendingRestart}
+                  >
+                    再起動
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleKill}
+                    variant="destructive"
+                    disabled={
+                      isPending ||
+                      isPendingKill ||
+                      data?.host?.status === HeadlessHostStatus.CRASHED ||
+                      data?.host?.status === HeadlessHostStatus.EXITED
+                    }
+                  >
+                    強制停止
+                  </DropdownMenuItem>
+                </>
+              }
             >
               シャットダウン
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleRestart}
-              disabled={isPending || isPendingRestart}
-              className="w-full md:w-auto"
-            >
-              再起動
-            </Button>
+            </SplitButton>
             {data?.host?.status !== HeadlessHostStatus.RUNNING && (
               <Button
                 variant="destructive"
