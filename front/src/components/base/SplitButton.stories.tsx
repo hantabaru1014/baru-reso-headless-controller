@@ -10,7 +10,14 @@ const meta = {
   argTypes: {
     variant: {
       control: "select",
-      options: ["default", "destructive", "outline", "secondary", "ghost", "link"],
+      options: [
+        "default",
+        "destructive",
+        "outline",
+        "secondary",
+        "ghost",
+        "link",
+      ],
     },
     size: {
       control: "select",
@@ -19,16 +26,13 @@ const meta = {
     disabled: {
       control: "boolean",
     },
-    mainDisabled: {
-      control: "boolean",
-    },
     dropdownDisabled: {
       control: "boolean",
     },
   },
   args: {
     children: "メインアクション",
-    onMainClick: fn(),
+    onClick: fn(),
     dropdownContent: (
       <>
         <DropdownMenuItem onClick={fn()}>オプション1</DropdownMenuItem>
@@ -58,8 +62,12 @@ export const Destructive: Story = {
     children: "削除",
     dropdownContent: (
       <>
-        <DropdownMenuItem onClick={fn()}>選択したアイテムを削除</DropdownMenuItem>
-        <DropdownMenuItem onClick={fn()}>すべて削除</DropdownMenuItem>
+        <DropdownMenuItem onClick={fn()}>
+          選択したアイテムを削除
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={fn()} variant="destructive">
+          すべて削除
+        </DropdownMenuItem>
       </>
     ),
   },
@@ -83,27 +91,8 @@ export const Disabled: Story = {
   },
 };
 
-export const MainDisabled: Story = {
-  args: {
-    mainDisabled: true,
-  },
-};
-
 export const DropdownDisabled: Story = {
   args: {
     dropdownDisabled: true,
-  },
-};
-
-export const WithLongText: Story = {
-  args: {
-    children: "長いテキストのボタン",
-    dropdownContent: (
-      <>
-        <DropdownMenuItem onClick={fn()}>長いテキストのオプション1</DropdownMenuItem>
-        <DropdownMenuItem onClick={fn()}>長いテキストのオプション2</DropdownMenuItem>
-        <DropdownMenuItem onClick={fn()}>長いテキストのオプション3</DropdownMenuItem>
-      </>
-    ),
   },
 };

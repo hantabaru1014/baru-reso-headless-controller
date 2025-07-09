@@ -14,9 +14,8 @@ export interface SplitButtonProps
     VariantProps<typeof buttonVariants> {
   children?: React.ReactNode;
   dropdownContent?: React.ReactNode;
-  onMainClick?: () => void;
+  onClick?: () => void;
   disabled?: boolean;
-  mainDisabled?: boolean;
   dropdownDisabled?: boolean;
   className?: string;
 }
@@ -24,25 +23,21 @@ export interface SplitButtonProps
 function SplitButton({
   children,
   dropdownContent,
-  onMainClick,
+  onClick,
   disabled = false,
-  mainDisabled,
   dropdownDisabled,
   variant = "default",
   size = "default",
   className,
   ...props
 }: SplitButtonProps) {
-  const isMainDisabled = disabled || mainDisabled;
-  const isDropdownDisabled = disabled || dropdownDisabled;
-
   return (
     <div className={cn("flex", className)}>
       <Button
         variant={variant}
         size={size}
-        disabled={isMainDisabled}
-        onClick={onMainClick}
+        disabled={disabled}
+        onClick={onClick}
         className="rounded-r-none border-r-0"
         {...props}
       >
@@ -53,15 +48,13 @@ function SplitButton({
           <Button
             variant={variant}
             size={size}
-            disabled={isDropdownDisabled}
+            disabled={dropdownDisabled}
             className="rounded-l-none px-2"
           >
             <ChevronDownIcon className="size-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {dropdownContent}
-        </DropdownMenuContent>
+        <DropdownMenuContent align="end">{dropdownContent}</DropdownMenuContent>
       </DropdownMenu>
     </div>
   );
