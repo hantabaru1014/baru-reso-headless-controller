@@ -25,7 +25,7 @@ import { UserList } from "./base/UserList";
 import { RefetchButton } from "./base/RefetchButton";
 import { ScrollBase } from "./base/ScrollBase";
 import { ColumnDef } from "@tanstack/react-table";
-import { UserInSession } from "front/pbgen/headless/v1/headless_pb";
+import { UserInSession as UserInSessionProto } from "front/pbgen/headless/v1/headless_pb";
 import { DataTable } from "./base";
 import { toast } from "sonner";
 
@@ -116,6 +116,13 @@ function UserInviteDialog({
     </Dialog>
   );
 }
+
+type UserInSession = Pick<
+  UserInSessionProto,
+  "id" | "name" | "role" | "isPresent"
+> & {
+  isHost: boolean;
+};
 
 export default function SessionUserList({ sessionId }: { sessionId: string }) {
   const { data: sessionDetail } = useQuery(getSessionDetails, {
@@ -208,6 +215,7 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
           selectedId={row.original.role}
           options={UserRoles.map((r) => r)}
           onSave={(v) => handleUpdateRole(row.original.id, v)}
+          readonly={row.original.isHost}
         />
       ),
     },
@@ -220,24 +228,25 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
     {
       id: "actions",
       header: "操作",
-      cell: ({ row }) => (
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleKickUser(row.original.id)}
-          >
-            Kick
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => handleBanUser(row.original.id)}
-          >
-            Ban
-          </Button>
-        </div>
-      ),
+      cell: ({ row }) =>
+        row.original.isHost ? null : (
+          <div className="space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleKickUser(row.original.id)}
+            >
+              Kick
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => handleBanUser(row.original.id)}
+            >
+              Ban
+            </Button>
+          </div>
+        ),
     },
   ];
 
@@ -252,7 +261,12 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
         </div>
         <DataTable
           columns={columns}
-          data={data?.users || []}
+          data={
+            data?.users?.map((user, i) => ({
+              ...user,
+              isHost: i === 0, // TODO: ちゃんとホストユーザーのIDを返すようにする
+            })) || []
+          }
           isLoading={isPending}
         />
       </div>
