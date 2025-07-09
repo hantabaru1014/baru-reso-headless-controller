@@ -33,6 +33,7 @@ import { formatTimestamp } from "../libs/datetimeUtils";
 import { toast } from "sonner";
 import { EditableTextArea, SplitButton } from "./base";
 import { AspectRatio, DropdownMenuItem } from "./ui";
+import HostTip from "./HostTip";
 
 const BOOL_SELECT_OPTIONS = [
   { id: "true", label: "はい", value: true },
@@ -271,7 +272,10 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
             </AspectRatio>
           </CardContent>
         </Card>
-        <div className="flex flex-col space-y-2">
+        <div className="flex flex-col space-y-1">
+          <span>
+            ホスト: <HostTip hostId={data?.session?.hostId} />
+          </span>
           <span>開始: {formatTimestamp(data?.session?.startedAt)}</span>
           {data?.session?.ownerId && (
             <span>オーナー: {data?.session?.ownerId}</span>
