@@ -571,16 +571,26 @@ func (c *ControllerService) ListUsersInSession(ctx context.Context, req *connect
 
 // SaveSessionWorld implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) SaveSessionWorld(ctx context.Context, req *connect.Request[hdlctrlv1.SaveSessionWorldRequest]) (*connect.Response[hdlctrlv1.SaveSessionWorldResponse], error) {
-	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.HostId)
-	if err != nil {
-		return nil, convertRpcClientErr(err)
-	}
-	_, err = conn.SaveSessionWorld(ctx, &headlessv1.SaveSessionWorldRequest{SessionId: req.Msg.SessionId})
-	if err != nil {
-		return nil, convertRpcClientErr(err)
+	var saveMode usecase.SaveMode
+	switch req.Msg.SaveMode {
+	case hdlctrlv1.SaveSessionWorldRequest_SAVE_MODE_OVERWRITE:
+		saveMode = usecase.SaveMode_OVERWRITE
+	case hdlctrlv1.SaveSessionWorldRequest_SAVE_MODE_SAVE_AS:
+		saveMode = usecase.SaveMode_SAVE_AS
+	case hdlctrlv1.SaveSessionWorldRequest_SAVE_MODE_COPY:
+		saveMode = usecase.SaveMode_COPY
+	default:
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid save mode: %s", req.Msg.SaveMode.String()))
 	}
 
-	res := connect.NewResponse(&hdlctrlv1.SaveSessionWorldResponse{})
+	savedRecordUrl, err := c.suc.SaveSessionWorld(ctx, req.Msg.SessionId, saveMode)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.SaveSessionWorldResponse{
+		SavedRecordUrl: savedRecordUrl,
+	})
 	return res, nil
 }
 

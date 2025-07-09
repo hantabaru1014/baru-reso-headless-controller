@@ -31,8 +31,8 @@ import { SelectField } from "./base/SelectField";
 import { useNavigate } from "react-router";
 import { formatTimestamp } from "../libs/datetimeUtils";
 import { toast } from "sonner";
-import { EditableTextArea } from "./base";
-import { AspectRatio } from "./ui";
+import { EditableTextArea, SplitButton } from "./base";
+import { AspectRatio, DropdownMenuItem } from "./ui";
 
 const BOOL_SELECT_OPTIONS = [
   { id: "true", label: "はい", value: true },
@@ -217,19 +217,25 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
         <div className="flex justify-end space-x-2">
           {isRunning ? (
             <SessionControlButtons
-              hostId={hostId ?? ""}
               sessionId={sessionId}
-              canSave={sessionState?.canSave}
+              canSaveOverride={sessionState?.canSave}
+              canSaveAs={sessionState?.canSaveAs}
               additionalButtons={
                 <>
-                  <Button variant="outline" onClick={handleCopyUrl}>
+                  <SplitButton
+                    variant="outline"
+                    onClick={handleCopyUrl}
+                    dropdownContent={
+                      <DropdownMenuItem
+                        onClick={handleCopyWorldUrl}
+                        disabled={!sessionState?.worldUrl}
+                      >
+                        ワールドURLをコピー
+                      </DropdownMenuItem>
+                    }
+                  >
                     URLをコピー
-                  </Button>
-                  {sessionState?.worldUrl && (
-                    <Button variant="outline" onClick={handleCopyWorldUrl}>
-                      ワールドURLをコピー
-                    </Button>
-                  )}
+                  </SplitButton>
                   <RefetchButton refetch={refetch} />
                 </>
               }
