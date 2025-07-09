@@ -329,24 +329,24 @@ func (u *SessionUsecase) DeleteSession(ctx context.Context, id string) error {
 	return u.sessionRepo.Delete(ctx, id)
 }
 
-func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMode SaveMode) (*string, error) {
+func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMode SaveMode) (string, error) {
 	s, err := u.sessionRepo.Get(ctx, id)
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return "", errors.Wrap(err, 0)
 	}
 
 	client, err := u.hostRepo.GetRpcClient(ctx, s.HostID)
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return "", errors.Wrap(err, 0)
 	}
 
 	switch saveMode {
 	case SaveMode_OVERWRITE:
 		_, err = client.SaveSessionWorld(ctx, &headlessv1.SaveSessionWorldRequest{SessionId: id})
 		if err != nil {
-			return nil, errors.Wrap(err, 0)
+			return "", errors.Wrap(err, 0)
 		}
-		return nil, nil
+		return s.CurrentState.WorldUrl, nil
 
 	case SaveMode_SAVE_AS:
 		saveAsResp, err := client.SaveAsSessionWorld(ctx, &headlessv1.SaveAsSessionWorldRequest{
@@ -354,9 +354,9 @@ func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMo
 			Type:      headlessv1.SaveAsSessionWorldRequest_SAVE_AS_TYPE_SAVE_AS,
 		})
 		if err != nil {
-			return nil, errors.Wrap(err, 0)
+			return "", errors.Wrap(err, 0)
 		}
-		return &saveAsResp.SavedRecordUrl, nil
+		return saveAsResp.SavedRecordUrl, nil
 
 	case SaveMode_COPY:
 		saveAsResp, err := client.SaveAsSessionWorld(ctx, &headlessv1.SaveAsSessionWorldRequest{
@@ -364,11 +364,11 @@ func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMo
 			Type:      headlessv1.SaveAsSessionWorldRequest_SAVE_AS_TYPE_COPY,
 		})
 		if err != nil {
-			return nil, errors.Wrap(err, 0)
+			return "", errors.Wrap(err, 0)
 		}
-		return &saveAsResp.SavedRecordUrl, nil
+		return saveAsResp.SavedRecordUrl, nil
 
 	default:
-		return nil, errors.New("unknown save mode")
+		return "", errors.Errorf("unknown save mode: %d", saveMode)
 	}
 }

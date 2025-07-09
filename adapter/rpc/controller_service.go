@@ -589,7 +589,7 @@ func (c *ControllerService) SaveSessionWorld(ctx context.Context, req *connect.R
 	}
 
 	res := connect.NewResponse(&hdlctrlv1.SaveSessionWorldResponse{
-		SavedRecordUrl: savedRecordUrl,
+		SavedRecordUrl: &savedRecordUrl,
 	})
 	return res, nil
 }
