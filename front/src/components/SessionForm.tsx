@@ -256,7 +256,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
         </div>
         <Card className="h-full">
           <CardContent className="h-full">
-            <AspectRatio ratio={16 / 9}>
+            <AspectRatio ratio={2 / 1}>
               {sessionState?.thumbnailUrl ? (
                 <img
                   src={sessionState?.thumbnailUrl}
