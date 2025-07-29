@@ -11,7 +11,7 @@ require (
 
 require (
 	github.com/dchest/uniuri v1.2.0
-	github.com/docker/docker v28.2.2+incompatible
+	github.com/docker/docker v28.3.3+incompatible
 	github.com/go-co-op/gocron v1.37.0
 	github.com/go-errors/errors v1.5.1
 	github.com/golang-migrate/migrate/v4 v4.18.3
