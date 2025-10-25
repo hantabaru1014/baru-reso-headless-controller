@@ -184,7 +184,6 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 	allTags := make(port.ContainerImageList, 0)
 	currentLastTag := lastTag
 
-	// ページングですべてのタグを取得
 	for {
 		url := fmt.Sprintf("https://%s/v2/%s/tags/list", registryName, userImagePair)
 		if currentLastTag != nil {
@@ -215,7 +214,6 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 			return nil, errors.Errorf("failed to get tags: %s", resp.Status)
 		}
 
-		// Linkヘッダーをチェックして次のページがあるか確認（Body閉じる前）
 		linkHeader := resp.Header.Get("Link")
 		hasNextPage := linkHeader != "" && strings.Contains(linkHeader, `rel="next"`)
 
@@ -226,7 +224,6 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 		}
 		resp.Body.Close()
 
-		// タグが0件の場合は終了
 		if len(tagsResp.Tags) == 0 {
 			break
 		}
@@ -243,15 +240,11 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 			}
 		}
 
-		// 次のページがあるかチェック
 		if hasNextPage || linkHeader == "" {
-			// Linkヘッダーがない場合やnextがある場合、最後のタグを次のページ取得に使用
 			if len(tagsResp.Tags) > 0 {
 				lastTagInPage := tagsResp.Tags[len(tagsResp.Tags)-1]
 				currentLastTag = &lastTagInPage
 
-				// Linkヘッダーがない場合は、同じ結果が返ってくる可能性があるので
-				// デフォルトリミット（通常100件）未満のタグ数なら終了
 				if linkHeader == "" && len(tagsResp.Tags) < 100 {
 					break
 				}
@@ -259,7 +252,6 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 				break
 			}
 		} else {
-			// 次のページがない場合は終了
 			break
 		}
 	}
