@@ -183,6 +183,7 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 
 	allTags := make(port.ContainerImageList, 0)
 	currentLastTag := lastTag
+	client := &http.Client{}
 
 	for {
 		url := fmt.Sprintf("https://%s/v2/%s/tags/list", registryName, userImagePair)
@@ -203,7 +204,6 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", base64.StdEncoding.EncodeToString([]byte(authToken))))
 		}
 
-		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
 			return nil, errors.Errorf("failed to send request: %w", err)
@@ -214,9 +214,6 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 			return nil, errors.Errorf("failed to get tags: %s", resp.Status)
 		}
 
-		linkHeader := resp.Header.Get("Link")
-		hasNextPage := linkHeader != "" && strings.Contains(linkHeader, `rel="next"`)
-
 		var tagsResp tagsResponse
 		if err := json.NewDecoder(resp.Body).Decode(&tagsResp); err != nil {
 			resp.Body.Close()
@@ -224,14 +221,11 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 		}
 		resp.Body.Close()
 
-		if len(tagsResp.Tags) == 0 {
-			break
-		}
-
+		tags := make(port.ContainerImageList, 0, len(tagsResp.Tags))
 		for _, tag := range tagsResp.Tags {
 			info := parseTag(tag)
 			if info.IsVersioned {
-				allTags = append(allTags, &port.ContainerImage{
+				tags = append(tags, &port.ContainerImage{
 					Tag:             info.Tag,
 					ResoniteVersion: info.ResoniteVersion,
 					IsPreRelease:    info.IsPreRelease,
@@ -239,18 +233,11 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 				})
 			}
 		}
+		allTags = append(allTags, tags...)
 
-		if hasNextPage || linkHeader == "" {
-			if len(tagsResp.Tags) > 0 {
-				lastTagInPage := tagsResp.Tags[len(tagsResp.Tags)-1]
-				currentLastTag = &lastTagInPage
-
-				if linkHeader == "" && len(tagsResp.Tags) < 100 {
-					break
-				}
-			} else {
-				break
-			}
+		if len(tagsResp.Tags) > 0 {
+			lastTagInPage := tagsResp.Tags[len(tagsResp.Tags)-1]
+			currentLastTag = &lastTagInPage
 		} else {
 			break
 		}
