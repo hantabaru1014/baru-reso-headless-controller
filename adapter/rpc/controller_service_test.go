@@ -67,8 +67,8 @@ func TestControllerService_ListHeadlessAccounts(t *testing.T) {
 	defer testutil.CleanupTables(t, pool)
 
 	// Create test headless accounts
-	testutil.CreateTestHeadlessAccount(t, queries, "U-test1", "user1@example.com", "password1")
-	testutil.CreateTestHeadlessAccount(t, queries, "U-test2", "user2@example.com", "password2")
+	testutil.CreateTestHeadlessAccount(t, queries, "U-test1", "user1@example.test", "password1")
+	testutil.CreateTestHeadlessAccount(t, queries, "U-test2", "user2@example.test", "password2")
 
 	t.Run("成功: ヘッドレスアカウントのリストを取得", func(t *testing.T) {
 		req := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.ListHeadlessAccountsRequest{})
@@ -95,7 +95,7 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 	t.Run("成功: 有効な認証情報でアカウント作成", func(t *testing.T) {
 		// Mock skyfrost client to return successful login
 		setup.mockSkyfrost.EXPECT().
-			UserLogin(gomock.Any(), "testuser@example.com", "testpass123").
+			UserLogin(gomock.Any(), "testuser@example.test", "testpass123").
 			Return(&skyfrost.UserSession{UserId: "U-testuser123"}, nil)
 
 		setup.mockSkyfrost.EXPECT().
@@ -103,11 +103,11 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 			Return(&skyfrost.UserInfo{
 				ID:       "U-testuser123",
 				UserName: "TestUser",
-				IconUrl:  "https://example.com/icon.png",
+				IconUrl:  "https://example.test/icon.png",
 			}, nil)
 
 		req := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.CreateHeadlessAccountRequest{
-			Credential: "testuser@example.com",
+			Credential: "testuser@example.test",
 			Password:   "testpass123",
 		})
 
@@ -118,17 +118,17 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 		// Verify account was created in DB
 		account, err := queries.GetHeadlessAccount(t.Context(), "U-testuser123")
 		require.NoError(t, err)
-		assert.Equal(t, "testuser@example.com", account.Credential)
+		assert.Equal(t, "testuser@example.test", account.Credential)
 	})
 
 	t.Run("失敗: 無効な認証情報でアカウント作成", func(t *testing.T) {
 		// Mock skyfrost client to return login error
 		setup.mockSkyfrost.EXPECT().
-			UserLogin(gomock.Any(), "invalid@example.com", "invalidpassword").
+			UserLogin(gomock.Any(), "invalid@example.test", "invalidpassword").
 			Return(nil, connect.NewError(connect.CodeUnauthenticated, nil))
 
 		req := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.CreateHeadlessAccountRequest{
-			Credential: "invalid@example.com",
+			Credential: "invalid@example.test",
 			Password:   "invalidpassword",
 		})
 
@@ -142,11 +142,11 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 
 	t.Run("失敗: 既に存在するアカウントを作成", func(t *testing.T) {
 		// Create initial account
-		testutil.CreateTestHeadlessAccount(t, queries, "U-existing", "existing@example.com", "password123")
+		testutil.CreateTestHeadlessAccount(t, queries, "U-existing", "existing@example.test", "password123")
 
 		// Mock skyfrost to return successful login but DB insert will fail
 		setup.mockSkyfrost.EXPECT().
-			UserLogin(gomock.Any(), "existing@example.com", "newpassword123").
+			UserLogin(gomock.Any(), "existing@example.test", "newpassword123").
 			Return(&skyfrost.UserSession{UserId: "U-existing"}, nil)
 
 		setup.mockSkyfrost.EXPECT().
@@ -154,11 +154,11 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 			Return(&skyfrost.UserInfo{
 				ID:       "U-existing",
 				UserName: "ExistingUser",
-				IconUrl:  "https://example.com/icon.png",
+				IconUrl:  "https://example.test/icon.png",
 			}, nil)
 
 		req := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.CreateHeadlessAccountRequest{
-			Credential: "existing@example.com",
+			Credential: "existing@example.test",
 			Password:   "newpassword123",
 		})
 
@@ -180,7 +180,7 @@ func TestControllerService_DeleteHeadlessAccount(t *testing.T) {
 
 	t.Run("成功: ヘッドレスアカウントを削除", func(t *testing.T) {
 		// Create test account
-		testutil.CreateTestHeadlessAccount(t, queries, "U-todelete", "todelete@example.com", "password123")
+		testutil.CreateTestHeadlessAccount(t, queries, "U-todelete", "todelete@example.test", "password123")
 
 		req := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.DeleteHeadlessAccountRequest{
 			AccountId: "U-todelete",
@@ -323,15 +323,15 @@ func TestControllerService_Authentication(t *testing.T) {
 		defer testutil.CleanupTables(t, pool)
 
 		// Create test headless account
-		testutil.CreateTestHeadlessAccount(t, queries, "U-test1", "user1@example.com", "password1")
+		testutil.CreateTestHeadlessAccount(t, queries, "U-test1", "user1@example.test", "password1")
 
 		// Create authenticated request
 		req := testutil.CreateAuthenticatedRequest(
 			t,
 			&hdlctrlv1.ListHeadlessAccountsRequest{},
-			"test@example.com",
+			"test@example.test",
 			"U-test123",
-			"https://example.com/icon.png",
+			"https://example.test/icon.png",
 		)
 
 		res, err := client.ListHeadlessAccounts(t.Context(), req)

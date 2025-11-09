@@ -19,7 +19,7 @@ func TestUserService_GetTokenByPassword(t *testing.T) {
 	defer testutil.CleanupTables(t, pool)
 
 	// Create test user
-	testUserID := "test@example.com"
+	testUserID := "test@example.test"
 	testPassword := "testpassword123"
 	testutil.CreateTestUser(t, queries, testUserID, testPassword)
 
@@ -55,7 +55,7 @@ func TestUserService_GetTokenByPassword(t *testing.T) {
 
 	t.Run("失敗: 存在しないユーザー", func(t *testing.T) {
 		req := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.GetTokenByPasswordRequest{
-			Id:       "nonexistent@example.com",
+			Id:       "nonexistent@example.test",
 			Password: testPassword,
 		})
 
@@ -74,7 +74,7 @@ func TestUserService_RefreshToken(t *testing.T) {
 	defer testutil.CleanupTables(t, pool)
 
 	// Create test user
-	testUserID := "test@example.com"
+	testUserID := "test@example.test"
 	testPassword := "testpassword123"
 	testutil.CreateTestUser(t, queries, testUserID, testPassword)
 
