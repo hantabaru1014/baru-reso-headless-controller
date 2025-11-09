@@ -1,8 +1,6 @@
 package rpc
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -58,9 +56,23 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 	}
 }
 
+func setupAuthenticatedClient(t *testing.T, service *ControllerService) hdlctrlv1connect.ControllerServiceClient {
+	t.Helper()
+
+	server := testutil.SetupAuthenticatedHTTPServer(t, service)
+	t.Cleanup(server.Close)
+
+	return hdlctrlv1connect.NewControllerServiceClient(
+		server.Client(),
+		server.URL,
+	)
+}
+
 func TestControllerService_ListHeadlessAccounts(t *testing.T) {
 	setup := setupControllerServiceTest(t)
 	defer setup.ctrl.Finish()
+
+	client := setupAuthenticatedClient(t, setup.service)
 
 	// Get DB queries to create test data
 	queries, pool := testutil.SetupTestDB(t)
@@ -71,9 +83,9 @@ func TestControllerService_ListHeadlessAccounts(t *testing.T) {
 	testutil.CreateTestHeadlessAccount(t, queries, "U-test2", "user2@example.test", "password2")
 
 	t.Run("成功: ヘッドレスアカウントのリストを取得", func(t *testing.T) {
-		req := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.ListHeadlessAccountsRequest{})
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessAccountsRequest{})
 
-		res, err := setup.service.ListHeadlessAccounts(t.Context(), req)
+		res, err := client.ListHeadlessAccounts(t.Context(), req)
 		require.NoError(t, err)
 
 		assert.Len(t, res.Msg.Accounts, 2)
@@ -88,6 +100,8 @@ func TestControllerService_ListHeadlessAccounts(t *testing.T) {
 func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 	setup := setupControllerServiceTest(t)
 	defer setup.ctrl.Finish()
+
+	client := setupAuthenticatedClient(t, setup.service)
 
 	queries, pool := testutil.SetupTestDB(t)
 	defer testutil.CleanupTables(t, pool)
@@ -106,12 +120,12 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 				IconUrl:  "https://example.test/icon.png",
 			}, nil)
 
-		req := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.CreateHeadlessAccountRequest{
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateHeadlessAccountRequest{
 			Credential: "testuser@example.test",
 			Password:   "testpass123",
 		})
 
-		res, err := setup.service.CreateHeadlessAccount(t.Context(), req)
+		res, err := client.CreateHeadlessAccount(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
 
@@ -127,12 +141,12 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 			UserLogin(gomock.Any(), "invalid@example.test", "invalidpassword").
 			Return(nil, connect.NewError(connect.CodeUnauthenticated, nil))
 
-		req := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.CreateHeadlessAccountRequest{
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateHeadlessAccountRequest{
 			Credential: "invalid@example.test",
 			Password:   "invalidpassword",
 		})
 
-		_, err := setup.service.CreateHeadlessAccount(t.Context(), req)
+		_, err := client.CreateHeadlessAccount(t.Context(), req)
 		require.Error(t, err)
 
 		connectErr, ok := err.(*connect.Error)
@@ -157,12 +171,12 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 				IconUrl:  "https://example.test/icon.png",
 			}, nil)
 
-		req := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.CreateHeadlessAccountRequest{
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateHeadlessAccountRequest{
 			Credential: "existing@example.test",
 			Password:   "newpassword123",
 		})
 
-		_, err := setup.service.CreateHeadlessAccount(t.Context(), req)
+		_, err := client.CreateHeadlessAccount(t.Context(), req)
 		require.Error(t, err)
 
 		connectErr, ok := err.(*connect.Error)
@@ -175,6 +189,8 @@ func TestControllerService_DeleteHeadlessAccount(t *testing.T) {
 	setup := setupControllerServiceTest(t)
 	defer setup.ctrl.Finish()
 
+	client := setupAuthenticatedClient(t, setup.service)
+
 	queries, pool := testutil.SetupTestDB(t)
 	defer testutil.CleanupTables(t, pool)
 
@@ -182,11 +198,11 @@ func TestControllerService_DeleteHeadlessAccount(t *testing.T) {
 		// Create test account
 		testutil.CreateTestHeadlessAccount(t, queries, "U-todelete", "todelete@example.test", "password123")
 
-		req := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.DeleteHeadlessAccountRequest{
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.DeleteHeadlessAccountRequest{
 			AccountId: "U-todelete",
 		})
 
-		res, err := setup.service.DeleteHeadlessAccount(t.Context(), req)
+		res, err := client.DeleteHeadlessAccount(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
 
@@ -198,11 +214,11 @@ func TestControllerService_DeleteHeadlessAccount(t *testing.T) {
 	t.Run("成功: 存在しないアカウントを削除（何も起こらない）", func(t *testing.T) {
 		// DeleteHeadlessAccountは:execで実装されているため、
 		// 存在しないアカウントを削除してもエラーにならない（何も削除されないだけ）
-		req := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.DeleteHeadlessAccountRequest{
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.DeleteHeadlessAccountRequest{
 			AccountId: "U-nonexistent",
 		})
 
-		res, err := setup.service.DeleteHeadlessAccount(t.Context(), req)
+		res, err := client.DeleteHeadlessAccount(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
 	})
@@ -211,6 +227,8 @@ func TestControllerService_DeleteHeadlessAccount(t *testing.T) {
 func TestControllerService_ListHeadlessHostImageTags(t *testing.T) {
 	setup := setupControllerServiceTest(t)
 	defer setup.ctrl.Finish()
+
+	client := setupAuthenticatedClient(t, setup.service)
 
 	t.Run("成功: イメージタグ一覧を取得", func(t *testing.T) {
 		// Mock HostConnector to return test tags
@@ -231,9 +249,9 @@ func TestControllerService_ListHeadlessHostImageTags(t *testing.T) {
 				},
 			}, nil)
 
-		req := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.ListHeadlessHostImageTagsRequest{})
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessHostImageTagsRequest{})
 
-		res, err := setup.service.ListHeadlessHostImageTags(t.Context(), req)
+		res, err := client.ListHeadlessHostImageTags(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
 		assert.Len(t, res.Msg.Tags, 2)
@@ -257,9 +275,9 @@ func TestControllerService_ListHeadlessHostImageTags(t *testing.T) {
 			ListContainerTags(gomock.Any(), nil).
 			Return(nil, connect.NewError(connect.CodeInternal, nil))
 
-		req := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.ListHeadlessHostImageTagsRequest{})
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessHostImageTagsRequest{})
 
-		_, err := setup.service.ListHeadlessHostImageTags(t.Context(), req)
+		_, err := client.ListHeadlessHostImageTags(t.Context(), req)
 		require.Error(t, err)
 
 		connectErr, ok := err.(*connect.Error)
@@ -272,20 +290,7 @@ func TestControllerService_Authentication(t *testing.T) {
 	setup := setupControllerServiceTest(t)
 	defer setup.ctrl.Finish()
 
-	// Setup test HTTP server with handler
-	path, handler := setup.service.NewHandler()
-	mux := http.NewServeMux()
-	mux.Handle(path, handler)
-	server := httptest.NewUnstartedServer(mux)
-	server.EnableHTTP2 = true
-	server.StartTLS()
-	defer server.Close()
-
-	// Create client
-	client := hdlctrlv1connect.NewControllerServiceClient(
-		server.Client(),
-		server.URL,
-	)
+	client := setupAuthenticatedClient(t, setup.service)
 
 	t.Run("失敗: 認証トークンなしでRPCメソッドを呼び出し", func(t *testing.T) {
 		// Try to call a method without authentication
