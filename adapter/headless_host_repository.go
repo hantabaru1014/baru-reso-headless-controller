@@ -20,8 +20,8 @@ import (
 var _ port.HeadlessHostRepository = (*HeadlessHostRepository)(nil)
 
 type HeadlessHostRepository struct {
-	q  *db.Queries
-	dc *hostconnector.DockerHostConnector
+	q         *db.Queries
+	connector hostconnector.HostConnector
 }
 
 // UpdateHostSettings implements port.HeadlessHostRepository.
@@ -119,8 +119,7 @@ func (h *HeadlessHostRepository) ListRunningByAccount(ctx context.Context, accou
 
 // ListContainerTags implements port.HeadlessHostRepository.
 func (h *HeadlessHostRepository) ListContainerTags(ctx context.Context, lastTag *string) (port.ContainerImageList, error) {
-	// TODO: こっちに実装を持ってくる
-	return h.dc.ListContainerTags(ctx, lastTag)
+	return h.connector.ListContainerTags(ctx, lastTag)
 }
 
 // Rename implements port.HeadlessHostRepository.
@@ -334,17 +333,17 @@ func (h *HeadlessHostRepository) Delete(ctx context.Context, id string) error {
 	return h.q.DeleteHost(ctx, id)
 }
 
-func NewHeadlessHostRepository(q *db.Queries, dc *hostconnector.DockerHostConnector) *HeadlessHostRepository {
+func NewHeadlessHostRepository(q *db.Queries, connector hostconnector.HostConnector) *HeadlessHostRepository {
 	return &HeadlessHostRepository{
-		q:  q,
-		dc: dc,
+		q:         q,
+		connector: connector,
 	}
 }
 
 func (h *HeadlessHostRepository) getConnector(connector_type string) (hostconnector.HostConnector, error) {
 	switch port.HostConnectorType(connector_type) {
 	case port.HostConnectorType_DOCKER:
-		return h.dc, nil
+		return h.connector, nil
 	default:
 		return nil, errors.New("unsupported connector type: " + connector_type)
 	}

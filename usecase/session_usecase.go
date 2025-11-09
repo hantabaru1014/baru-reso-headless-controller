@@ -330,7 +330,7 @@ func (u *SessionUsecase) DeleteSession(ctx context.Context, id string) error {
 }
 
 func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMode SaveMode) (string, error) {
-	s, err := u.sessionRepo.Get(ctx, id)
+	s, err := u.GetSession(ctx, id)
 	if err != nil {
 		return "", errors.Wrap(err, 0)
 	}

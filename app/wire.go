@@ -9,6 +9,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/hantabaru1014/baru-reso-headless-controller/worker"
@@ -21,6 +22,11 @@ func InitializeServer() *Server {
 
 		// host connector
 		hostconnector.NewDockerHostConnector,
+		wire.Bind(new(hostconnector.HostConnector), new(*hostconnector.DockerHostConnector)),
+
+		// skyfrost client
+		skyfrost.NewDefaultClient,
+		wire.Bind(new(skyfrost.Client), new(*skyfrost.DefaultClient)),
 
 		// repository
 		wire.Bind(new(port.HeadlessHostRepository), new(*adapter.HeadlessHostRepository)),
@@ -53,6 +59,11 @@ func InitializeCli() *Cli {
 
 		// host connector
 		hostconnector.NewDockerHostConnector,
+		wire.Bind(new(hostconnector.HostConnector), new(*hostconnector.DockerHostConnector)),
+
+		// skyfrost client
+		skyfrost.NewDefaultClient,
+		wire.Bind(new(skyfrost.Client), new(*skyfrost.DefaultClient)),
 
 		// repository
 		wire.Bind(new(port.HeadlessHostRepository), new(*adapter.HeadlessHostRepository)),

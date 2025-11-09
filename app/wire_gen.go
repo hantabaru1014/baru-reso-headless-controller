@@ -11,6 +11,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/worker"
 )
@@ -25,9 +26,10 @@ func InitializeServer() *Server {
 	headlessHostRepository := adapter.NewHeadlessHostRepository(queries, dockerHostConnector)
 	sessionRepository := adapter.NewSessionRepository(queries)
 	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository)
-	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries)
+	defaultClient := skyfrost.NewDefaultClient()
+	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
-	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase)
+	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, defaultClient)
 	imageChecker := worker.NewImageChecker(dockerHostConnector, sessionUsecase)
 	server := NewServer(userService, controllerService, imageChecker)
 	return server
@@ -40,8 +42,9 @@ func InitializeCli() *Cli {
 	headlessHostRepository := adapter.NewHeadlessHostRepository(queries, dockerHostConnector)
 	sessionRepository := adapter.NewSessionRepository(queries)
 	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository)
-	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries)
+	defaultClient := skyfrost.NewDefaultClient()
+	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
-	cli := NewCli(queries, userUsecase, headlessHostUsecase)
+	cli := NewCli(queries, userUsecase, headlessHostUsecase, defaultClient)
 	return cli
 }
