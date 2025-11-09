@@ -1,6 +1,6 @@
 module github.com/hantabaru1014/baru-reso-headless-controller
 
-go 1.24
+go 1.25
 
 require (
 	connectrpc.com/connect v1.18.1

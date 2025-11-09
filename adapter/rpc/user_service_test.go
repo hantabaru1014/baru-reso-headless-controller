@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"connectrpc.com/connect"
@@ -82,32 +83,35 @@ func TestUserService_RefreshToken(t *testing.T) {
 	service := NewUserService(uu)
 
 	t.Run("成功: 有効なトークンでリフレッシュ", func(t *testing.T) {
-		// Get initial token
-		initialReq := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.GetTokenByPasswordRequest{
-			Id:       testUserID,
-			Password: testPassword,
+		synctest.Test(t, func(t *testing.T) {
+			// Get initial token
+			initialReq := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.GetTokenByPasswordRequest{
+				Id:       testUserID,
+				Password: testPassword,
+			})
+
+			initialRes, err := service.GetTokenByPassword(t.Context(), initialReq)
+			require.NoError(t, err)
+
+			// Wait for 1 second to ensure different IssuedAt timestamp
+			// synctest makes time.Sleep run instantly with fake time
+			time.Sleep(1 * time.Second)
+
+			// Create refresh request with the token
+			refreshReq := connect.NewRequest(&hdlctrlv1.RefreshTokenRequest{})
+			refreshReq.Header().Set("Authorization", "Bearer "+initialRes.Msg.RefreshToken)
+
+			res, err := service.RefreshToken(t.Context(), refreshReq)
+			require.NoError(t, err)
+			assert.NotEmpty(t, res.Msg.Token)
+			assert.NotEmpty(t, res.Msg.RefreshToken)
+
+			// Verify the new token is different from the old one
+			assert.NotEqual(t, initialRes.Msg.Token, res.Msg.Token)
+
+			// Verify response headers
+			assert.NotEmpty(t, res.Header().Get("WWW-Authenticate"))
 		})
-
-		initialRes, err := service.GetTokenByPassword(t.Context(), initialReq)
-		require.NoError(t, err)
-
-		// Wait for 1 second to ensure different IssuedAt timestamp
-		time.Sleep(1 * time.Second)
-
-		// Create refresh request with the token
-		refreshReq := connect.NewRequest(&hdlctrlv1.RefreshTokenRequest{})
-		refreshReq.Header().Set("Authorization", "Bearer "+initialRes.Msg.RefreshToken)
-
-		res, err := service.RefreshToken(t.Context(), refreshReq)
-		require.NoError(t, err)
-		assert.NotEmpty(t, res.Msg.Token)
-		assert.NotEmpty(t, res.Msg.RefreshToken)
-
-		// Verify the new token is different from the old one
-		assert.NotEqual(t, initialRes.Msg.Token, res.Msg.Token)
-
-		// Verify response headers
-		assert.NotEmpty(t, res.Header().Get("WWW-Authenticate"))
 	})
 
 	t.Run("失敗: トークンなし", func(t *testing.T) {
@@ -123,5 +127,32 @@ func TestUserService_RefreshToken(t *testing.T) {
 
 		_, err := service.RefreshToken(t.Context(), req)
 		assert.Error(t, err)
+	})
+
+	t.Run("失敗: 有効期限切れのリフレッシュトークン", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			// Get initial token
+			initialReq := testutil.CreateUnauthenticatedRequest(&hdlctrlv1.GetTokenByPasswordRequest{
+				Id:       testUserID,
+				Password: testPassword,
+			})
+
+			initialRes, err := service.GetTokenByPassword(t.Context(), initialReq)
+			require.NoError(t, err)
+
+			// Wait for more than 3 days to expire the refresh token
+			// synctest makes time.Sleep run instantly with fake time
+			time.Sleep(3*24*time.Hour + 1*time.Minute)
+
+			// Try to refresh with expired token
+			refreshReq := connect.NewRequest(&hdlctrlv1.RefreshTokenRequest{})
+			refreshReq.Header().Set("Authorization", "Bearer "+initialRes.Msg.RefreshToken)
+
+			_, err = service.RefreshToken(t.Context(), refreshReq)
+			require.Error(t, err)
+
+			// Verify the error message contains "expired"
+			assert.Contains(t, err.Error(), "expired")
+		})
 	})
 }
