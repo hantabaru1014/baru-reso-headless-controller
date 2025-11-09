@@ -1,6 +1,8 @@
 package rpc
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -9,6 +11,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	skyfrostmock "github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost/mock"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
+	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	"github.com/hantabaru1014/baru-reso-headless-controller/testutil"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
@@ -262,5 +265,106 @@ func TestControllerService_ListHeadlessHostImageTags(t *testing.T) {
 		connectErr, ok := err.(*connect.Error)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
+	})
+}
+
+func TestControllerService_Authentication(t *testing.T) {
+	setup := setupControllerServiceTest(t)
+	defer setup.ctrl.Finish()
+
+	// Setup test HTTP server with handler
+	path, handler := setup.service.NewHandler()
+	mux := http.NewServeMux()
+	mux.Handle(path, handler)
+	server := httptest.NewUnstartedServer(mux)
+	server.EnableHTTP2 = true
+	server.StartTLS()
+	defer server.Close()
+
+	// Create client
+	client := hdlctrlv1connect.NewControllerServiceClient(
+		server.Client(),
+		server.URL,
+	)
+
+	t.Run("失敗: 認証トークンなしでRPCメソッドを呼び出し", func(t *testing.T) {
+		// Try to call a method without authentication
+		req := connect.NewRequest(&hdlctrlv1.ListHeadlessAccountsRequest{})
+
+		_, err := client.ListHeadlessAccounts(t.Context(), req)
+		require.Error(t, err)
+
+		// Verify it's an authentication error
+		connectErr := new(connect.Error)
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+		assert.Contains(t, connectErr.Message(), "token required")
+		assert.NotEmpty(t, connectErr.Meta().Get("WWW-Authenticate"))
+	})
+
+	t.Run("失敗: 無効なトークンでRPCメソッドを呼び出し", func(t *testing.T) {
+		// Try to call with invalid token
+		req := connect.NewRequest(&hdlctrlv1.ListHeadlessAccountsRequest{})
+		req.Header().Set("Authorization", "Bearer invalid_token_here")
+
+		_, err := client.ListHeadlessAccounts(t.Context(), req)
+		require.Error(t, err)
+
+		// Verify it's an authentication error
+		connectErr := new(connect.Error)
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+		assert.Contains(t, connectErr.Message(), "token")
+		assert.NotEmpty(t, connectErr.Meta().Get("WWW-Authenticate"))
+	})
+
+	t.Run("成功: 有効なトークンでRPCメソッドを呼び出し", func(t *testing.T) {
+		queries, pool := testutil.SetupTestDB(t)
+		defer testutil.CleanupTables(t, pool)
+
+		// Create test headless account
+		testutil.CreateTestHeadlessAccount(t, queries, "U-test1", "user1@example.com", "password1")
+
+		// Create authenticated request
+		req := testutil.CreateAuthenticatedRequest(
+			t,
+			&hdlctrlv1.ListHeadlessAccountsRequest{},
+			"test@example.com",
+			"U-test123",
+			"https://example.com/icon.png",
+		)
+
+		res, err := client.ListHeadlessAccounts(t.Context(), req)
+		require.NoError(t, err)
+		assert.NotNil(t, res.Msg)
+
+		// Verify success response header
+		assert.NotEmpty(t, res.Header().Get("WWW-Authenticate"))
+	})
+
+	t.Run("失敗: 別のメソッドでも認証が必要", func(t *testing.T) {
+		// Test another method to ensure all methods require auth
+		req := connect.NewRequest(&hdlctrlv1.ListHeadlessHostRequest{})
+
+		_, err := client.ListHeadlessHost(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := new(connect.Error)
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+	})
+
+	t.Run("失敗: セッション操作でも認証が必要", func(t *testing.T) {
+		// Test session-related method
+		req := connect.NewRequest(&hdlctrlv1.SearchSessionsRequest{
+			Parameters: &hdlctrlv1.SearchSessionsRequest_SearchParameters{},
+		})
+
+		_, err := client.SearchSessions(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := new(connect.Error)
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }
