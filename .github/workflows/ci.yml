@@ -42,3 +42,54 @@ jobs:
 
       - name: TypeCheck
         run: pnpm typecheck
+
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install migrate CLI
+        run: |
+          mkdir -p bin
+          GOBIN=$(pwd)/bin go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+          echo "$(pwd)/bin" >> $GITHUB_PATH
+
+      - name: Set up test database
+        env:
+          DB_URL: postgres://postgres:postgres@localhost:5432/brhc?sslmode=disable
+          PGPASSWORD: postgres
+        run: |
+          DB_NAME=$(echo "$DB_URL" | sed 's/.*\/\([^?]*\).*/\1/')
+          TEST_DB_NAME=${DB_NAME}_test
+          TEST_DB_URL=$(echo "$DB_URL" | sed "s/$DB_NAME/$TEST_DB_NAME/")
+          echo "Creating test database $TEST_DB_NAME..."
+          psql -h localhost -U postgres -d postgres -c "CREATE DATABASE $TEST_DB_NAME"
+          echo "Running migrations..."
+          migrate -path db/migrations -database "$TEST_DB_URL" up
+
+      - name: Run tests
+        env:
+          DB_URL: postgres://postgres:postgres@localhost:5432/brhc?sslmode=disable
+        run: make test

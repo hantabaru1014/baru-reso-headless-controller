@@ -25,20 +25,22 @@ import (
 var _ hdlctrlv1connect.ControllerServiceHandler = (*ControllerService)(nil)
 
 type ControllerService struct {
-	hhrepo port.HeadlessHostRepository
-	srepo  port.SessionRepository
-	hhuc   *usecase.HeadlessHostUsecase
-	hauc   *usecase.HeadlessAccountUsecase
-	suc    *usecase.SessionUsecase
+	hhrepo         port.HeadlessHostRepository
+	srepo          port.SessionRepository
+	hhuc           *usecase.HeadlessHostUsecase
+	hauc           *usecase.HeadlessAccountUsecase
+	suc            *usecase.SessionUsecase
+	skyfrostClient skyfrost.Client
 }
 
-func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase, suc *usecase.SessionUsecase) *ControllerService {
+func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase, suc *usecase.SessionUsecase, skyfrostClient skyfrost.Client) *ControllerService {
 	return &ControllerService{
-		hhrepo: hhrepo,
-		srepo:  srepo,
-		hhuc:   hhuc,
-		hauc:   hauc,
-		suc:    suc,
+		hhrepo:         hhrepo,
+		srepo:          srepo,
+		hhuc:           hhuc,
+		hauc:           hauc,
+		suc:            suc,
+		skyfrostClient: skyfrostClient,
 	}
 }
 
@@ -169,7 +171,7 @@ func (c *ControllerService) GetHeadlessAccountStorageInfo(ctx context.Context, r
 	if err != nil {
 		return nil, convertErr(err)
 	}
-	userSession, err := skyfrost.UserLogin(ctx, account.Credential, account.Password)
+	userSession, err := c.skyfrostClient.UserLogin(ctx, account.Credential, account.Password)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to login to user: %w", err))
 	}
@@ -228,7 +230,7 @@ func (c *ControllerService) GetFriendRequests(ctx context.Context, req *connect.
 	if err != nil {
 		return nil, convertErr(err)
 	}
-	userSession, err := skyfrost.UserLogin(ctx, account.Credential, account.Password)
+	userSession, err := c.skyfrostClient.UserLogin(ctx, account.Credential, account.Password)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to login to user: %w", err))
 	}

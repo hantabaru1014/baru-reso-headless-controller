@@ -6,6 +6,7 @@ BIN_DIR := $(shell pwd)/bin
 buf := go run github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
 wire := go run github.com/google/wire/cmd/wire@v0.6.0
 sqlc := go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+mockgen := go run go.uber.org/mock/mockgen@latest
 
 .PHONY: install.tools
 install.tools:
@@ -42,3 +43,38 @@ build.docker:
 .PHONY: exec.psql
 exec.psql:
 	docker compose -f docker-compose.db.yml exec -it db psql -U postgres -d brhcdb
+
+.PHONY: gen.mock
+gen.mock:
+	@echo "Cleaning up old mock files..."
+	@rm -rf adapter/hostconnector/mock
+	@rm -rf lib/skyfrost/mock
+	@rm -rf testutil/mock
+	@echo "Generating new mock files..."
+	@mkdir -p adapter/hostconnector/mock
+	@mkdir -p lib/skyfrost/mock
+	@mkdir -p testutil/mock
+	$(mockgen) -source=adapter/hostconnector/host_connector.go -destination=adapter/hostconnector/mock/mock_host_connector.go -package=mock
+	$(mockgen) -source=lib/skyfrost/client.go -destination=lib/skyfrost/mock/mock_client.go -package=mock
+	$(mockgen) -package=mock -destination=testutil/mock/mock_rpc_client.go github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1 HeadlessControlServiceClient
+	$(mockgen) -source=usecase/port/headless_host_repository.go -destination=testutil/mock/mock_headless_host_repository.go -package=mock
+	$(mockgen) -source=usecase/port/session_repository.go -destination=testutil/mock/mock_session_repository.go -package=mock
+	@echo "Mock generation complete!"
+
+.PHONY: test.setup
+test.setup:
+	@echo "Creating test database..."
+	@DB_NAME=$$(echo "$(DB_URL)" | sed 's/.*\/\([^?]*\).*/\1/'); \
+	TEST_DB_NAME=$${DB_NAME}_test; \
+	TEST_DB_URL=$$(echo "$(DB_URL)" | sed "s/$$DB_NAME/$$TEST_DB_NAME/"); \
+	echo "Test DB URL: $$TEST_DB_URL"; \
+	echo "Checking if test database exists..."; \
+	docker compose -f docker-compose.db.yml exec -T db psql -U postgres -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = '$$TEST_DB_NAME'" | grep -q 1 || \
+	(echo "Creating test database $$TEST_DB_NAME..." && \
+	docker compose -f docker-compose.db.yml exec -T db psql -U postgres -d postgres -c "CREATE DATABASE $$TEST_DB_NAME"); \
+	echo "Running migrations..."; \
+	$(BIN_DIR)/migrate -path db/migrations -database "$$TEST_DB_URL" up
+
+.PHONY: test
+test:
+	go test -v ./...

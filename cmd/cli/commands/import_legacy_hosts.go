@@ -17,7 +17,7 @@ import (
 
 var portLabelKey = "dev.baru.brhdl.rpc-port"
 
-func NewImportLegacyHostsCommand(q *db.Queries) *cobra.Command {
+func NewImportLegacyHostsCommand(q *db.Queries, skyfrostClient skyfrost.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "import-legacy-hosts",
 		Short: "Import hosts from current docker containers",
@@ -73,7 +73,7 @@ func NewImportLegacyHostsCommand(q *db.Queries) *cobra.Command {
 						cmd.PrintErrln("Host", name, "does not have HeadlessUserCredential or HeadlessUserPassword")
 						continue
 					}
-					userSession, err := skyfrost.UserLogin(cmd.Context(), credential, password)
+					userSession, err := skyfrostClient.UserLogin(cmd.Context(), credential, password)
 					if err != nil {
 						cmd.PrintErrln("Error logging in headless account:", err)
 						continue

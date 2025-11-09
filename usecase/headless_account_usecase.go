@@ -11,21 +11,23 @@ import (
 )
 
 type HeadlessAccountUsecase struct {
-	queries *db.Queries
+	queries        *db.Queries
+	skyfrostClient skyfrost.Client
 }
 
-func NewHeadlessAccountUsecase(queries *db.Queries) *HeadlessAccountUsecase {
+func NewHeadlessAccountUsecase(queries *db.Queries, skyfrostClient skyfrost.Client) *HeadlessAccountUsecase {
 	return &HeadlessAccountUsecase{
-		queries: queries,
+		queries:        queries,
+		skyfrostClient: skyfrostClient,
 	}
 }
 
 func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, credential, password string) error {
-	userSession, err := skyfrost.UserLogin(ctx, credential, password)
+	userSession, err := u.skyfrostClient.UserLogin(ctx, credential, password)
 	if err != nil {
 		return errors.Errorf("failed to login: %w", err)
 	}
-	userInfo, err := skyfrost.FetchUserInfo(ctx, userSession.UserId)
+	userInfo, err := u.skyfrostClient.FetchUserInfo(ctx, userSession.UserId)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -39,11 +41,11 @@ func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, cred
 }
 
 func (u *HeadlessAccountUsecase) UpdateHeadlessAccountCredentials(ctx context.Context, resoniteID, credential, password string) error {
-	userSession, err := skyfrost.UserLogin(ctx, credential, password)
+	userSession, err := u.skyfrostClient.UserLogin(ctx, credential, password)
 	if err != nil {
 		return errors.Errorf("failed to login: %w", err)
 	}
-	userInfo, err := skyfrost.FetchUserInfo(ctx, userSession.UserId)
+	userInfo, err := u.skyfrostClient.FetchUserInfo(ctx, userSession.UserId)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -108,7 +110,7 @@ func (u *HeadlessAccountUsecase) DeleteHeadlessAccount(ctx context.Context, reso
 }
 
 func (u *HeadlessAccountUsecase) RefetchHeadlessAccountInfo(ctx context.Context, resoniteID string) error {
-	userInfo, err := skyfrost.FetchUserInfo(ctx, resoniteID)
+	userInfo, err := u.skyfrostClient.FetchUserInfo(ctx, resoniteID)
 	if err != nil {
 		return errors.Errorf("failed to fetch user info: %w", err)
 	}
