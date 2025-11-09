@@ -89,6 +89,9 @@ jobs:
           echo "Running migrations..."
           migrate -path db/migrations -database "$TEST_DB_URL" up
 
+      - name: Make dummy front assets
+        run: mkdir -p ./front/dist && touch ./front/dist/index.html
+
       - name: Run tests
         env:
           DB_URL: postgres://postgres:postgres@localhost:5432/brhc?sslmode=disable
