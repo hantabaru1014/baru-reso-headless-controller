@@ -56,6 +56,36 @@ func (mr *MockClientMockRecorder) FetchUserInfo(ctx, resoniteID any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchUserInfo", reflect.TypeOf((*MockClient)(nil).FetchUserInfo), ctx, resoniteID)
 }
 
+// GetContacts mocks base method.
+func (m *MockClient) GetContacts(ctx context.Context, credential, password string) ([]skyfrost.Contact, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetContacts", ctx, credential, password)
+	ret0, _ := ret[0].([]skyfrost.Contact)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetContacts indicates an expected call of GetContacts.
+func (mr *MockClientMockRecorder) GetContacts(ctx, credential, password any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContacts", reflect.TypeOf((*MockClient)(nil).GetContacts), ctx, credential, password)
+}
+
+// GetStorageInfo mocks base method.
+func (m *MockClient) GetStorageInfo(ctx context.Context, credential, password, ownerId string) (*skyfrost.StorageInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetStorageInfo", ctx, credential, password, ownerId)
+	ret0, _ := ret[0].(*skyfrost.StorageInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetStorageInfo indicates an expected call of GetStorageInfo.
+func (mr *MockClientMockRecorder) GetStorageInfo(ctx, credential, password, ownerId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStorageInfo", reflect.TypeOf((*MockClient)(nil).GetStorageInfo), ctx, credential, password, ownerId)
+}
+
 // UserLogin mocks base method.
 func (m *MockClient) UserLogin(ctx context.Context, credential, password string) (*skyfrost.UserSession, error) {
 	m.ctrl.T.Helper()

@@ -171,11 +171,7 @@ func (c *ControllerService) GetHeadlessAccountStorageInfo(ctx context.Context, r
 	if err != nil {
 		return nil, convertErr(err)
 	}
-	userSession, err := c.skyfrostClient.UserLogin(ctx, account.Credential, account.Password)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to login to user: %w", err))
-	}
-	storageInfo, err := userSession.GetStorage(ctx, account.ResoniteID)
+	storageInfo, err := c.skyfrostClient.GetStorageInfo(ctx, account.Credential, account.Password, account.ResoniteID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to get storage info for user: %w", err))
 	}
@@ -230,11 +226,7 @@ func (c *ControllerService) GetFriendRequests(ctx context.Context, req *connect.
 	if err != nil {
 		return nil, convertErr(err)
 	}
-	userSession, err := c.skyfrostClient.UserLogin(ctx, account.Credential, account.Password)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to login to user: %w", err))
-	}
-	contacts, err := userSession.GetContacts(ctx)
+	contacts, err := c.skyfrostClient.GetContacts(ctx, account.Credential, account.Password)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to get friend requests: %w", err))
 	}

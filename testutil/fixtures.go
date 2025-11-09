@@ -2,9 +2,12 @@ package testutil
 
 import (
 	"testing"
+	"time"
 
+	"github.com/dchest/uniuri"
 	"github.com/google/uuid"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -63,4 +66,63 @@ func CreateTestHeadlessAccount(t *testing.T, queries *db.Queries, resoniteID, cr
 	}
 
 	return account
+}
+
+// CreateTestHeadlessHost creates a test headless host in the database
+func CreateTestHeadlessHost(t *testing.T, queries *db.Queries, accountID, name string, status entity.HeadlessHostStatus) db.Host {
+	t.Helper()
+
+	id := uniuri.New()
+	startupConfig := []byte(`{"tickRate": 60.0}`)
+	connectString := "test-container-" + id
+
+	host, err := queries.CreateHost(t.Context(), db.CreateHostParams{
+		ID:                             id,
+		Name:                           name,
+		Status:                         int32(status),
+		AccountID:                      accountID,
+		OwnerID:                        pgtype.Text{Valid: false},
+		LastStartupConfig:              startupConfig,
+		LastStartupConfigSchemaVersion: 1,
+		ConnectorType:                  "docker",
+		ConnectString:                  connectString,
+		AutoUpdatePolicy:               int32(entity.HostAutoUpdatePolicy_UNSPECIFIED),
+		Memo:                           pgtype.Text{Valid: false},
+		StartedAt: pgtype.Timestamptz{
+			Valid: true,
+			Time:  time.Now(),
+		},
+	})
+	if err != nil {
+		t.Fatalf("failed to create test headless host: %v", err)
+	}
+
+	return host
+}
+
+// CreateTestSession creates a test session in the database
+func CreateTestSession(t *testing.T, queries *db.Queries, hostID, name string, status entity.SessionStatus) db.Session {
+	t.Helper()
+
+	id := uniuri.New()
+	startupParams := []byte(`{"maxUsers": 8}`)
+
+	session, err := queries.UpsertSession(t.Context(), db.UpsertSessionParams{
+		ID:                             id,
+		Name:                           name,
+		Status:                         int32(status),
+		StartedAt:                      pgtype.Timestamptz{Valid: true, Time: time.Now()},
+		OwnerID:                        pgtype.Text{Valid: false},
+		EndedAt:                        pgtype.Timestamptz{Valid: false},
+		HostID:                         hostID,
+		StartupParameters:              startupParams,
+		StartupParametersSchemaVersion: 1,
+		AutoUpgrade:                    false,
+		Memo:                           pgtype.Text{Valid: false},
+	})
+	if err != nil {
+		t.Fatalf("failed to create test session: %v", err)
+	}
+
+	return session
 }

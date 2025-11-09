@@ -49,16 +49,12 @@ gen.mock:
 	@echo "Cleaning up old mock files..."
 	@rm -rf adapter/hostconnector/mock
 	@rm -rf lib/skyfrost/mock
-	@rm -rf testutil/mock
 	@echo "Generating new mock files..."
 	@mkdir -p adapter/hostconnector/mock
 	@mkdir -p lib/skyfrost/mock
-	@mkdir -p testutil/mock
 	$(mockgen) -source=adapter/hostconnector/host_connector.go -destination=adapter/hostconnector/mock/mock_host_connector.go -package=mock
+	$(mockgen) -package=mock -destination=adapter/hostconnector/mock/mock_rpc_client.go github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1 HeadlessControlServiceClient
 	$(mockgen) -source=lib/skyfrost/client.go -destination=lib/skyfrost/mock/mock_client.go -package=mock
-	$(mockgen) -package=mock -destination=testutil/mock/mock_rpc_client.go github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1 HeadlessControlServiceClient
-	$(mockgen) -source=usecase/port/headless_host_repository.go -destination=testutil/mock/mock_headless_host_repository.go -package=mock
-	$(mockgen) -source=usecase/port/session_repository.go -destination=testutil/mock/mock_session_repository.go -package=mock
 	@echo "Mock generation complete!"
 
 .PHONY: test.setup
