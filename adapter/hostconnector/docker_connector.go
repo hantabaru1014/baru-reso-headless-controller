@@ -180,53 +180,70 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 	}
 	registryName := imageNameParts[0]
 	userImagePair := strings.Join(imageNameParts[1:], "/")
-	url := fmt.Sprintf("https://%s/v2/%s/tags/list", registryName, userImagePair)
-	if lastTag != nil {
-		url = fmt.Sprintf("%s?last=%s", url, *lastTag)
-	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, errors.Errorf("failed to create request: %w", err)
-	}
-
-	if registryName == "ghcr.io" {
-		authToken := os.Getenv("GHCR_AUTH_TOKEN")
-		if authToken == "" {
-			return nil, errors.Errorf("GHCR_AUTH_TOKEN is not set")
-		}
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", base64.StdEncoding.EncodeToString([]byte(authToken))))
-	}
-
+	allTags := make(port.ContainerImageList, 0)
+	currentLastTag := lastTag
 	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, errors.Errorf("failed to send request: %w", err)
-	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("failed to get tags: %s", resp.Status)
-	}
-	var tagsResp tagsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tagsResp); err != nil {
-		return nil, errors.Errorf("failed to decode response: %w", err)
-	}
+	for {
+		url := fmt.Sprintf("https://%s/v2/%s/tags/list", registryName, userImagePair)
+		if currentLastTag != nil {
+			url = fmt.Sprintf("%s?last=%s", url, *currentLastTag)
+		}
 
-	tags := make(port.ContainerImageList, 0, len(tagsResp.Tags))
-	for _, tag := range tagsResp.Tags {
-		info := parseTag(tag)
-		if info.IsVersioned {
-			tags = append(tags, &port.ContainerImage{
-				Tag:             info.Tag,
-				ResoniteVersion: info.ResoniteVersion,
-				IsPreRelease:    info.IsPreRelease,
-				AppVersion:      info.AppVersion,
-			})
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			return nil, errors.Errorf("failed to create request: %w", err)
+		}
+
+		if registryName == "ghcr.io" {
+			authToken := os.Getenv("GHCR_AUTH_TOKEN")
+			if authToken == "" {
+				return nil, errors.Errorf("GHCR_AUTH_TOKEN is not set")
+			}
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", base64.StdEncoding.EncodeToString([]byte(authToken))))
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, errors.Errorf("failed to send request: %w", err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return nil, errors.Errorf("failed to get tags: %s", resp.Status)
+		}
+
+		var tagsResp tagsResponse
+		if err := json.NewDecoder(resp.Body).Decode(&tagsResp); err != nil {
+			resp.Body.Close()
+			return nil, errors.Errorf("failed to decode response: %w", err)
+		}
+		resp.Body.Close()
+
+		tags := make(port.ContainerImageList, 0, len(tagsResp.Tags))
+		for _, tag := range tagsResp.Tags {
+			info := parseTag(tag)
+			if info.IsVersioned {
+				tags = append(tags, &port.ContainerImage{
+					Tag:             info.Tag,
+					ResoniteVersion: info.ResoniteVersion,
+					IsPreRelease:    info.IsPreRelease,
+					AppVersion:      info.AppVersion,
+				})
+			}
+		}
+		allTags = append(allTags, tags...)
+
+		if len(tagsResp.Tags) > 0 {
+			lastTagInPage := tagsResp.Tags[len(tagsResp.Tags)-1]
+			currentLastTag = &lastTagInPage
+		} else {
+			break
 		}
 	}
 
-	return tags, nil
+	return allTags, nil
 }
 
 func (d *DockerHostConnector) PullContainerImage(ctx context.Context, tag string) (string, error) {
