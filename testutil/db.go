@@ -65,19 +65,42 @@ func RunMigrations(t *testing.T) {
 }
 
 // CleanupTables truncates all tables in the test database
+// Automatically detects all tables in the public schema (excluding migrations table)
 func CleanupTables(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 
-	tables := []string{
-		"sessions",
-		"hosts",
-		"headless_accounts",
-		"users",
+	// Get all table names from the public schema, excluding the migrations table
+	query := `
+		SELECT tablename
+		FROM pg_tables
+		WHERE schemaname = 'public'
+		AND tablename != 'schema_migrations'
+		ORDER BY tablename
+	`
+
+	rows, err := pool.Query(t.Context(), query)
+	if err != nil {
+		t.Fatalf("failed to query tables: %v", err)
+	}
+	defer rows.Close()
+
+	var tables []string
+	for rows.Next() {
+		var tableName string
+		if err := rows.Scan(&tableName); err != nil {
+			t.Fatalf("failed to scan table name: %v", err)
+		}
+		tables = append(tables, tableName)
 	}
 
+	if err := rows.Err(); err != nil {
+		t.Fatalf("error iterating tables: %v", err)
+	}
+
+	// Truncate all tables in a single transaction for better performance
 	for _, table := range tables {
-		query := fmt.Sprintf("TRUNCATE TABLE %s CASCADE", table)
-		if _, err := pool.Exec(t.Context(), query); err != nil {
+		truncateQuery := fmt.Sprintf("TRUNCATE TABLE %s CASCADE", table)
+		if _, err := pool.Exec(t.Context(), truncateQuery); err != nil {
 			t.Logf("warning: failed to truncate table %s: %v", table, err)
 		}
 	}
