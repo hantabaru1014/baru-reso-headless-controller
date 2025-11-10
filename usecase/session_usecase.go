@@ -24,17 +24,15 @@ const (
 	SaveMode_COPY      SaveMode = 3
 )
 
-var (
-	portMin = 0
-	portMax = 0
-)
-
 type SessionUsecase struct {
-	sessionRepo port.SessionRepository
-	hostRepo    port.HeadlessHostRepository
+	sessionRepo  port.SessionRepository
+	hostRepo     port.HeadlessHostRepository
+	forcePortMin int
+	forcePortMax int
 }
 
 func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.HeadlessHostRepository) *SessionUsecase {
+	portMin, portMax := 0, 0
 	portMinStr := os.Getenv("SESSION_PORT_MIN")
 	portMaxStr := os.Getenv("SESSION_PORT_MAX")
 	if portMinStr != "" && portMaxStr != "" {
@@ -53,8 +51,10 @@ func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.Headles
 	}
 
 	return &SessionUsecase{
-		sessionRepo: sessionRepo,
-		hostRepo:    hostRepo,
+		sessionRepo:  sessionRepo,
+		hostRepo:     hostRepo,
+		forcePortMin: portMin,
+		forcePortMax: portMax,
 	}
 }
 
@@ -67,7 +67,7 @@ func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId
 	// forcePortが指定されていない場合、環境変数が設定されていれば自動割り当て
 	paramsForContainer := params
 	if params.ForcePort == 0 {
-		autoPort, err := getFreeSessionPort()
+		autoPort, err := u.getFreeSessionPort()
 		if err != nil {
 			return nil, errors.Wrap(err, 0)
 		}
@@ -417,21 +417,21 @@ func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMo
 
 // getFreeSessionPort は環境変数で指定されたポート範囲から空きポートを探して返す
 // 環境変数が設定されていない場合は0を返す
-func getFreeSessionPort() (int, error) {
-	if portMin == 0 && portMax == 0 {
+func (u *SessionUsecase) getFreeSessionPort() (int, error) {
+	if u.forcePortMin == 0 && u.forcePortMax == 0 {
 		return 0, nil
 	}
 
 	// ランダムな開始位置から探索（同じポートに偏らないように）
-	offset := time.Now().UnixNano() % int64(portMax-portMin+1)
-	for i := 0; i <= portMax-portMin; i++ {
-		candidatePort := portMin + int((offset+int64(i))%int64(portMax-portMin+1))
+	offset := time.Now().UnixNano() % int64(u.forcePortMax-u.forcePortMin+1)
+	for i := 0; i <= u.forcePortMax-u.forcePortMin; i++ {
+		candidatePort := u.forcePortMin + int((offset+int64(i))%int64(u.forcePortMax-u.forcePortMin+1))
 		if isPortAvailable(candidatePort) {
 			return candidatePort, nil
 		}
 	}
 
-	return 0, errors.Errorf("no free port found in range %d-%d", portMin, portMax)
+	return 0, errors.Errorf("no free port found in range %d-%d", u.forcePortMin, u.forcePortMax)
 }
 
 func isPortAvailable(port int) bool {
