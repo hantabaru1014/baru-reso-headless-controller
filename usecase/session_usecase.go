@@ -31,7 +31,7 @@ type SessionUsecase struct {
 	forcePortMax int
 }
 
-func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.HeadlessHostRepository) *SessionUsecase {
+func parseSessionPortEnv() (int, int, error) {
 	portMin, portMax := 0, 0
 	portMinStr := os.Getenv("SESSION_PORT_MIN")
 	portMaxStr := os.Getenv("SESSION_PORT_MAX")
@@ -39,15 +39,33 @@ func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.Headles
 		var err error
 		portMin, err = strconv.Atoi(portMinStr)
 		if err != nil {
-			panic(fmt.Sprintf("invalid SESSION_PORT_MIN: %s", portMinStr))
+			return 0, 0, fmt.Errorf("invalid SESSION_PORT_MIN: %s", portMinStr)
 		}
 		portMax, err = strconv.Atoi(portMaxStr)
 		if err != nil {
-			panic(fmt.Sprintf("invalid SESSION_PORT_MAX: %s", portMaxStr))
+			return 0, 0, fmt.Errorf("invalid SESSION_PORT_MAX: %s", portMaxStr)
+		}
+		// Validate portMin and portMax are within valid range
+		if portMin < 1024 || portMin > 65535 {
+			return 0, 0, fmt.Errorf("SESSION_PORT_MIN(%d) must be between 1024 and 65535", portMin)
+		}
+		if portMax < 1 || portMax > 65535 {
+			return 0, 0, fmt.Errorf("SESSION_PORT_MAX(%d) must be between 1 and 65535", portMax)
 		}
 		if portMin > portMax {
-			panic(fmt.Sprintf("invalid port range: SESSION_PORT_MIN(%d) > SESSION_PORT_MAX(%d)", portMin, portMax))
+			return 0, 0, fmt.Errorf("invalid port range: SESSION_PORT_MIN(%d) > SESSION_PORT_MAX(%d)", portMin, portMax)
 		}
+	} else if (portMinStr != "" && portMaxStr == "") || (portMinStr == "" && portMaxStr != "") {
+		return 0, 0, fmt.Errorf("SESSION_PORT_MIN and SESSION_PORT_MAX must both be set or both be unset")
+	}
+
+	return portMin, portMax, nil
+}
+
+func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.HeadlessHostRepository) *SessionUsecase {
+	portMin, portMax, err := parseSessionPortEnv()
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse session port environment variables: %v", err))
 	}
 
 	return &SessionUsecase{
@@ -435,11 +453,13 @@ func (u *SessionUsecase) getFreeSessionPort() (int, error) {
 }
 
 func isPortAvailable(port int) bool {
-	address := fmt.Sprintf("localhost:%d", port)
+	address := fmt.Sprintf(":%d", port)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return false
 	}
-	listener.Close()
+	if err := listener.Close(); err != nil {
+		slog.Warn("failed to close listener when checking port availability", "port", port, "error", err)
+	}
 	return true
 }
