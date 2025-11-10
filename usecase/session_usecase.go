@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -29,6 +30,7 @@ type SessionUsecase struct {
 	hostRepo     port.HeadlessHostRepository
 	forcePortMin int
 	forcePortMax int
+	portMutex    sync.Mutex
 }
 
 func parseSessionPortEnv() (int, int, error) {
@@ -439,6 +441,9 @@ func (u *SessionUsecase) getFreeSessionPort() (int, error) {
 	if u.forcePortMin == 0 && u.forcePortMax == 0 {
 		return 0, nil
 	}
+
+	u.portMutex.Lock()
+	defer u.portMutex.Unlock()
 
 	// ランダムな開始位置から探索（同じポートに偏らないように）
 	offset := time.Now().UnixNano() % int64(u.forcePortMax-u.forcePortMin+1)
