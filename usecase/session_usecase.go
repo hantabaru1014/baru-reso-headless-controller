@@ -2,13 +2,19 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"net"
+	"os"
+	"strconv"
+	"sync"
 	"time"
 
 	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
+	"google.golang.org/protobuf/proto"
 )
 
 type SaveMode int32
@@ -20,14 +26,55 @@ const (
 )
 
 type SessionUsecase struct {
-	sessionRepo port.SessionRepository
-	hostRepo    port.HeadlessHostRepository
+	sessionRepo  port.SessionRepository
+	hostRepo     port.HeadlessHostRepository
+	forcePortMin int
+	forcePortMax int
+	portMutex    sync.Mutex
+}
+
+func parseSessionPortEnv() (int, int, error) {
+	portMin, portMax := 0, 0
+	portMinStr := os.Getenv("SESSION_PORT_MIN")
+	portMaxStr := os.Getenv("SESSION_PORT_MAX")
+	if portMinStr != "" && portMaxStr != "" {
+		var err error
+		portMin, err = strconv.Atoi(portMinStr)
+		if err != nil {
+			return 0, 0, fmt.Errorf("invalid SESSION_PORT_MIN: %s", portMinStr)
+		}
+		portMax, err = strconv.Atoi(portMaxStr)
+		if err != nil {
+			return 0, 0, fmt.Errorf("invalid SESSION_PORT_MAX: %s", portMaxStr)
+		}
+		// Validate portMin and portMax are within valid range
+		if portMin < 1024 || portMin > 65535 {
+			return 0, 0, fmt.Errorf("SESSION_PORT_MIN(%d) must be between 1024 and 65535", portMin)
+		}
+		if portMax < 1 || portMax > 65535 {
+			return 0, 0, fmt.Errorf("SESSION_PORT_MAX(%d) must be between 1 and 65535", portMax)
+		}
+		if portMin > portMax {
+			return 0, 0, fmt.Errorf("invalid port range: SESSION_PORT_MIN(%d) > SESSION_PORT_MAX(%d)", portMin, portMax)
+		}
+	} else if (portMinStr != "" && portMaxStr == "") || (portMinStr == "" && portMaxStr != "") {
+		return 0, 0, fmt.Errorf("SESSION_PORT_MIN and SESSION_PORT_MAX must both be set or both be unset")
+	}
+
+	return portMin, portMax, nil
 }
 
 func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.HeadlessHostRepository) *SessionUsecase {
+	portMin, portMax, err := parseSessionPortEnv()
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse session port environment variables: %v", err))
+	}
+
 	return &SessionUsecase{
-		sessionRepo: sessionRepo,
-		hostRepo:    hostRepo,
+		sessionRepo:  sessionRepo,
+		hostRepo:     hostRepo,
+		forcePortMin: portMin,
+		forcePortMax: portMax,
 	}
 }
 
@@ -37,8 +84,23 @@ func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId
 		return nil, errors.Wrap(err, 0)
 	}
 
+	// forcePortが指定されていない場合、環境変数が設定されていれば自動割り当て
+	paramsForContainer := params
+	if params.ForcePort == 0 {
+		autoPort, err := u.getFreeSessionPort()
+		if err != nil {
+			return nil, errors.Wrap(err, 0)
+		}
+		if autoPort != 0 {
+			// コンテナに渡すパラメータのコピーを作成してforcePortを設定
+			paramsForContainer = proto.Clone(params).(*headlessv1.WorldStartupParameters)
+			paramsForContainer.ForcePort = uint32(autoPort)
+			slog.Info("Auto-assigned forcePort", "port", autoPort)
+		}
+	}
+
 	resp, err := client.StartWorld(ctx, &headlessv1.StartWorldRequest{
-		Parameters: params,
+		Parameters: paramsForContainer,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
@@ -371,4 +433,38 @@ func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMo
 	default:
 		return "", errors.Errorf("unknown save mode: %d", saveMode)
 	}
+}
+
+// getFreeSessionPort は環境変数で指定されたポート範囲から空きポートを探して返す
+// 環境変数が設定されていない場合は0を返す
+func (u *SessionUsecase) getFreeSessionPort() (int, error) {
+	if u.forcePortMin == 0 && u.forcePortMax == 0 {
+		return 0, nil
+	}
+
+	u.portMutex.Lock()
+	defer u.portMutex.Unlock()
+
+	// ランダムな開始位置から探索（同じポートに偏らないように）
+	offset := time.Now().UnixNano() % int64(u.forcePortMax-u.forcePortMin+1)
+	for i := 0; i <= u.forcePortMax-u.forcePortMin; i++ {
+		candidatePort := u.forcePortMin + int((offset+int64(i))%int64(u.forcePortMax-u.forcePortMin+1))
+		if isPortAvailable(candidatePort) {
+			return candidatePort, nil
+		}
+	}
+
+	return 0, errors.Errorf("no free port found in range %d-%d", u.forcePortMin, u.forcePortMax)
+}
+
+func isPortAvailable(port int) bool {
+	address := fmt.Sprintf(":%d", port)
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return false
+	}
+	if err := listener.Close(); err != nil {
+		slog.Warn("failed to close listener when checking port availability", "port", port, "error", err)
+	}
+	return true
 }
