@@ -24,12 +24,34 @@ const (
 	SaveMode_COPY      SaveMode = 3
 )
 
+var (
+	portMin = 0
+	portMax = 0
+)
+
 type SessionUsecase struct {
 	sessionRepo port.SessionRepository
 	hostRepo    port.HeadlessHostRepository
 }
 
 func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.HeadlessHostRepository) *SessionUsecase {
+	portMinStr := os.Getenv("SESSION_PORT_MIN")
+	portMaxStr := os.Getenv("SESSION_PORT_MAX")
+	if portMinStr != "" && portMaxStr != "" {
+		var err error
+		portMin, err = strconv.Atoi(portMinStr)
+		if err != nil {
+			panic(fmt.Sprintf("invalid SESSION_PORT_MIN: %s", portMinStr))
+		}
+		portMax, err = strconv.Atoi(portMaxStr)
+		if err != nil {
+			panic(fmt.Sprintf("invalid SESSION_PORT_MAX: %s", portMaxStr))
+		}
+		if portMin > portMax {
+			panic(fmt.Sprintf("invalid port range: SESSION_PORT_MIN(%d) > SESSION_PORT_MAX(%d)", portMin, portMax))
+		}
+	}
+
 	return &SessionUsecase{
 		sessionRepo: sessionRepo,
 		hostRepo:    hostRepo,
@@ -52,7 +74,7 @@ func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId
 		if autoPort != 0 {
 			// コンテナに渡すパラメータのコピーを作成してforcePortを設定
 			paramsForContainer = proto.Clone(params).(*headlessv1.WorldStartupParameters)
-			paramsForContainer.ForcePort = autoPort
+			paramsForContainer.ForcePort = uint32(autoPort)
 			slog.Info("Auto-assigned forcePort", "port", autoPort)
 		}
 	}
@@ -395,30 +417,9 @@ func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMo
 
 // getFreeSessionPort は環境変数で指定されたポート範囲から空きポートを探して返す
 // 環境変数が設定されていない場合は0を返す
-func getFreeSessionPort() (uint32, error) {
-	portMinStr := os.Getenv("SESSION_PORT_MIN")
-	portMaxStr := os.Getenv("SESSION_PORT_MAX")
-
-	// 環境変数が設定されていない場合は0を返す
-	if portMinStr == "" || portMaxStr == "" {
+func getFreeSessionPort() (int, error) {
+	if portMin == 0 && portMax == 0 {
 		return 0, nil
-	}
-
-	portMin, err := strconv.Atoi(portMinStr)
-	if err != nil {
-		return 0, errors.Errorf("invalid SESSION_PORT_MIN: %s", portMinStr)
-	}
-	portMax, err := strconv.Atoi(portMaxStr)
-	if err != nil {
-		return 0, errors.Errorf("invalid SESSION_PORT_MAX: %s", portMaxStr)
-	}
-
-	if portMin <= 0 || portMax <= 0 {
-		return 0, nil
-	}
-
-	if portMin > portMax {
-		return 0, errors.Errorf("invalid port range: SESSION_PORT_MIN(%d) > SESSION_PORT_MAX(%d)", portMin, portMax)
 	}
 
 	// ランダムな開始位置から探索（同じポートに偏らないように）
@@ -426,7 +427,7 @@ func getFreeSessionPort() (uint32, error) {
 	for i := 0; i <= portMax-portMin; i++ {
 		candidatePort := portMin + int((offset+int64(i))%int64(portMax-portMin+1))
 		if isPortAvailable(candidatePort) {
-			return uint32(candidatePort), nil
+			return candidatePort, nil
 		}
 	}
 

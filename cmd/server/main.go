@@ -19,8 +19,6 @@ var (
 	isFrontDev        = flag.Bool("fdev", false, "Whether to use the front-end development server")
 	frontDevServerUrl = flag.String("fdev-url", "http://localhost:5173", "The URL of the front-end development server")
 	shutdownTimeout   = flag.Duration("shutdown-timeout", 10*time.Second, "Maximum time to wait for server to shutdown gracefully")
-	sessionPortMin    = flag.Int("session-port-min", 0, "Minimum port number for session allocation (0 = use system ephemeral ports)")
-	sessionPortMax    = flag.Int("session-port-max", 0, "Maximum port number for session allocation (0 = use system ephemeral ports)")
 )
 
 func init() {
