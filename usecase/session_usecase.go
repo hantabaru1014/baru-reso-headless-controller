@@ -2,13 +2,18 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"net"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
+	"google.golang.org/protobuf/proto"
 )
 
 type SaveMode int32
@@ -37,8 +42,23 @@ func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId
 		return nil, errors.Wrap(err, 0)
 	}
 
+	// forcePortが指定されていない場合、環境変数が設定されていれば自動割り当て
+	paramsForContainer := params
+	if params.ForcePort == 0 {
+		autoPort, err := getFreeSessionPort()
+		if err != nil {
+			return nil, errors.Wrap(err, 0)
+		}
+		if autoPort != 0 {
+			// コンテナに渡すパラメータのコピーを作成してforcePortを設定
+			paramsForContainer = proto.Clone(params).(*headlessv1.WorldStartupParameters)
+			paramsForContainer.ForcePort = autoPort
+			slog.Info("Auto-assigned forcePort", "port", autoPort)
+		}
+	}
+
 	resp, err := client.StartWorld(ctx, &headlessv1.StartWorldRequest{
-		Parameters: params,
+		Parameters: paramsForContainer,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
@@ -371,4 +391,54 @@ func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMo
 	default:
 		return "", errors.Errorf("unknown save mode: %d", saveMode)
 	}
+}
+
+// getFreeSessionPort は環境変数で指定されたポート範囲から空きポートを探して返す
+// 環境変数が設定されていない場合は0を返す
+func getFreeSessionPort() (uint32, error) {
+	portMinStr := os.Getenv("SESSION_PORT_MIN")
+	portMaxStr := os.Getenv("SESSION_PORT_MAX")
+
+	// 環境変数が設定されていない場合は0を返す
+	if portMinStr == "" || portMaxStr == "" {
+		return 0, nil
+	}
+
+	portMin, err := strconv.Atoi(portMinStr)
+	if err != nil {
+		return 0, errors.Errorf("invalid SESSION_PORT_MIN: %s", portMinStr)
+	}
+	portMax, err := strconv.Atoi(portMaxStr)
+	if err != nil {
+		return 0, errors.Errorf("invalid SESSION_PORT_MAX: %s", portMaxStr)
+	}
+
+	if portMin <= 0 || portMax <= 0 {
+		return 0, nil
+	}
+
+	if portMin > portMax {
+		return 0, errors.Errorf("invalid port range: SESSION_PORT_MIN(%d) > SESSION_PORT_MAX(%d)", portMin, portMax)
+	}
+
+	// ランダムな開始位置から探索（同じポートに偏らないように）
+	offset := time.Now().UnixNano() % int64(portMax-portMin+1)
+	for i := 0; i <= portMax-portMin; i++ {
+		candidatePort := portMin + int((offset+int64(i))%int64(portMax-portMin+1))
+		if isPortAvailable(candidatePort) {
+			return uint32(candidatePort), nil
+		}
+	}
+
+	return 0, errors.Errorf("no free port found in range %d-%d", portMin, portMax)
+}
+
+func isPortAvailable(port int) bool {
+	address := fmt.Sprintf("localhost:%d", port)
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return false
+	}
+	listener.Close()
+	return true
 }
