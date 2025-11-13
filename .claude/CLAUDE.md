@@ -89,6 +89,36 @@ Key directories:
 3. **Frontend Development**: Use `pnpm dev` for hot reload during development
 4. **Before Committing**: Run `pnpm lint` and `pnpm typecheck` to ensure code quality
 
+## Testing Guidelines
+
+### Backend (Go) Tests
+
+#### RPC Service Tests (`adapter/rpc/controller_service_test.go`)
+
+When adding tests for new functionality in RPC services:
+
+1. **Integrate into existing test cases** - Do NOT create separate test functions for new features. Instead, add validation to existing test cases.
+
+   Good example:
+   ```go
+   t.Run("成功: ホストを起動", func(t *testing.T) {
+       // ... existing test code ...
+
+       // Add new validation for instance_id
+       assert.Equal(t, int32(1), host.InstanceCount)
+   })
+   ```
+
+   Bad example:
+   ```go
+   // Don't create a separate function like this:
+   func TestControllerService_InstanceIdManagement(t *testing.T) { ... }
+   ```
+
+2. **Update test fixtures** - When adding new database columns, update `testutil/fixtures.go` helper functions accordingly.
+
+3. **Mock all external calls** - Ensure all HostConnector and RPC client calls are properly mocked using gomock.
+
 ## Important Notes
 
 - The system manages Docker containers running Resonite headless instances
