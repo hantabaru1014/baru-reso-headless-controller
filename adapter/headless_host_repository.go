@@ -173,8 +173,13 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 		ID:     id,
 		Status: int32(entity.HeadlessHostStatus_STARTING),
 	})
+	instanceCount, err := h.q.IncrementHostInstanceCount(ctx, id)
+	if err != nil {
+		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
+	}
 	hostStartParams := hostconnector.HostStartParams{
 		ID:                id,
+		InstanceId:        instanceCount,
 		ContainerImageTag: newStartupConfig.ContainerImageTag,
 		HeadlessAccount:   newStartupConfig.HeadlessAccount,
 		StartupConfig:     newStartupConfig.StartupConfig,
@@ -220,8 +225,15 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, connector port.HostC
 		return "", errors.Wrap(err, 0)
 	}
 	id := uniuri.New()
+	ownerId := pgtype.Text{
+		Valid: userId != nil,
+	}
+	if userId != nil {
+		ownerId.String = *userId
+	}
 	startParams := hostconnector.HostStartParams{
 		ID:                id,
+		InstanceId:        1,
 		ContainerImageTag: params.ContainerImageTag,
 		HeadlessAccount:   params.HeadlessAccount,
 		StartupConfig:     params.StartupConfig,
@@ -229,12 +241,6 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, connector port.HostC
 	newConnectStr, err := connectorImpl.Start(ctx, startParams)
 	if err != nil {
 		return "", errors.Wrap(err, 0)
-	}
-	ownerId := pgtype.Text{
-		Valid: userId != nil,
-	}
-	if userId != nil {
-		ownerId.String = *userId
 	}
 	dbHost, err := h.q.CreateHost(ctx, db.CreateHostParams{
 		ID:                             id,
@@ -255,6 +261,7 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, connector port.HostC
 			Valid: true,
 			Time:  time.Now(),
 		},
+		InstanceCount: 1,
 	})
 	if err != nil {
 		return "", errors.WrapPrefix(convertDBErr(err), "headless host", 0)
@@ -398,6 +405,7 @@ func (h *HeadlessHostRepository) dbToEntity(ctx context.Context, dbHost *db.Host
 		AccountId:        dbHost.AccountID,
 		Status:           entity.HeadlessHostStatus(dbHost.Status),
 		AutoUpdatePolicy: entity.HostAutoUpdatePolicy(dbHost.AutoUpdatePolicy),
+		InstanceId:       dbHost.InstanceCount,
 	}
 	if dbHost.Memo.Valid {
 		host.Memo = dbHost.Memo.String

@@ -12,6 +12,7 @@ type HostConnectString string
 
 type HostStartParams struct {
 	ID                string
+	InstanceId        int32
 	ContainerImageTag string
 	HeadlessAccount   entity.HeadlessAccount
 	StartupConfig     *headlessv1.StartupConfig

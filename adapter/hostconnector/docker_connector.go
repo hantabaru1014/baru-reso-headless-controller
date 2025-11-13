@@ -310,14 +310,13 @@ func (d *DockerHostConnector) Start(ctx context.Context, params HostStartParams)
 	if fluentdAddr == "" {
 		fluentdAddr = ":24224"
 	}
-	instanceId := 1
 	hostConfig := container.HostConfig{
 		NetworkMode: "host",
 		LogConfig: container.LogConfig{
 			Type: "fluentd",
 			Config: map[string]string{
 				"fluentd-address": fluentdAddr,
-				"tag":             "headless-" + params.ID + "-" + strconv.Itoa(instanceId),
+				"tag":             "headless-" + params.ID + "-" + strconv.Itoa(int(params.InstanceId)),
 			},
 		},
 	}

@@ -88,6 +88,7 @@ func CreateTestHeadlessHost(t *testing.T, queries *db.Queries, accountID, name s
 		ConnectString:                  connectString,
 		AutoUpdatePolicy:               int32(entity.HostAutoUpdatePolicy_UNSPECIFIED),
 		Memo:                           pgtype.Text{Valid: false},
+		InstanceCount:                  1,
 		StartedAt: pgtype.Timestamptz{
 			Valid: true,
 			Time:  time.Now(),

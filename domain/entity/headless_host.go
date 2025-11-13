@@ -59,6 +59,7 @@ type HeadlessHost struct {
 	HostSettings     HeadlessHostSettings
 	AutoUpdatePolicy HostAutoUpdatePolicy
 	Memo             string
+	InstanceId       int32
 }
 
 type HeadlessHostList []*HeadlessHost
