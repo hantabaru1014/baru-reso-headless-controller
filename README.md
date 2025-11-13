@@ -16,18 +16,16 @@ k8sで立ち上げたり、既存のpostgresに接続したい場合はsetup.sh�
 また、baru-reso-headless-containerのdockerイメージのレジストリにアクセスできる状態である必要があります。
 
 - 空のディレクトリを用意してカレントディレクトリとする
-- 必要なファイルのダウンロードと `.env` のセットアップを行う
+- 必要なファイルのダウンロード、`.env` のセットアップ、DBの起動とマイグレーションを行う
   ```sh
   sh <(curl -s https://raw.githubusercontent.com/hantabaru1014/baru-reso-headless-controller/refs/heads/main/scripts/setup.sh)
   ```
-- DBを立ち上げる
-  ```sh
-  docker compose -f docker-compose.db.yml up -d
-  ```
-- DBマイグレーションを実行
-  ```sh
-  ./brhcli migrate
-  ```
+  このスクリプトは以下を自動的に実行します：
+  - 必要なファイルのダウンロード（docker-compose.yml、brhcliなど）
+  - `.env` ファイルの生成
+  - データベースの起動
+  - データベースマイグレーションの実行
+  - fluentbitユーザーのパスワード設定
 - 管理者ユーザの作成
   ```sh
   ./brhcli user create <メールアドレス> <パスワード> <Resonite UserID>
@@ -39,6 +37,25 @@ k8sで立ち上げたり、既存のpostgresに接続したい場合はsetup.sh�
 - 完了。 http://localhost:8014/ でアクセスできます。
   - ポートは `.env` にある `HOST` 環境変数で設定可能
   - 認証認可部分はまだちゃんと作ってないのでエンドポイント自体を何らかの信頼できる方法で保護してください(おすすめ: CloudFlare Zero Trust)
+
+## 既存環境のアップグレード
+
+既に稼働中の環境で最新版にアップグレードする場合、以下のコマンドを実行してください：
+
+```sh
+sh <(curl -s https://raw.githubusercontent.com/hantabaru1014/baru-reso-headless-controller/refs/heads/main/scripts/auto-upgrade.sh)
+```
+
+このスクリプトは以下を自動的に実行します：
+- 最新のdocker-compose.yml、brhcli等のダウンロード
+- データベースマイグレーションの実行
+- データベースの状態に応じたFluentBit設定（`.pgpass`ファイルの作成など）
+- fluentdコンテナの再起動
+
+**注意事項:**
+- このスクリプトは`.env`ファイルが存在する既存環境向けです
+- 新規セットアップの場合は `setup.sh` を使用してください
+- アップグレード前に重要なデータのバックアップを推奨します
 
 ## 開発
 

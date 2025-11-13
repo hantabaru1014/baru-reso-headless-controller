@@ -33,6 +33,7 @@ import (
 
 var (
 	imageName              = os.Getenv("HEADLESS_IMAGE_NAME")
+	fluentdAddress         = os.Getenv("CONTAINER_LOGS_FLUENTD_ADDRESS")
 	containerNotFoundError = errors.New("container not found")
 )
 
@@ -268,7 +269,7 @@ func (d *DockerHostConnector) PullContainerImage(ctx context.Context, tag string
 }
 
 // Start implements HostConnector.
-func (d *DockerHostConnector) Start(ctx context.Context, params port.HeadlessHostStartParams) (HostConnectString, error) {
+func (d *DockerHostConnector) Start(ctx context.Context, params HostStartParams) (HostConnectString, error) {
 	cli, err := d.newDockerClient()
 	if err != nil {
 		return "", errors.Errorf("failed to create docker client: %w", err)
@@ -305,8 +306,20 @@ func (d *DockerHostConnector) Start(ctx context.Context, params port.HeadlessHos
 		Env:   envs,
 		Image: fmt.Sprintf("%s:%s", imageName, imageTag),
 	}
+	fluentdAddr := fluentdAddress
+	if fluentdAddr == "" {
+		fluentdAddr = ":24224"
+	}
+	instanceId := 1
 	hostConfig := container.HostConfig{
 		NetworkMode: "host",
+		LogConfig: container.LogConfig{
+			Type: "fluentd",
+			Config: map[string]string{
+				"fluentd-address": fluentdAddr,
+				"tag":             "headless-" + params.ID + "-" + strconv.Itoa(instanceId),
+			},
+		},
 	}
 	createResp, err := cli.ContainerCreate(ctx, &config, &hostConfig, nil, nil, "")
 	if err != nil {

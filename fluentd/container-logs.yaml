@@ -1,0 +1,28 @@
+parsers:
+  - name: docker
+    format: json
+    time_key: timestamp
+    time_format: "%Y-%m-%dT%H:%M:%S.%LZ"
+
+pipeline:
+  inputs:
+    - name: forward
+      listen: 0.0.0.0
+      port: 24224
+      buffer_chunk_size: 1M
+      buffer_max_size: 6M
+  
+  filters:
+    - name: parser
+      match: '*'
+      key_name: log
+      parser: docker
+
+  outputs:
+    - name: pgsql
+      match: '*'
+      host: db
+      port: 5432
+      database: brhcdb
+      user: fluentbit
+      table: container_logs

@@ -173,7 +173,13 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 		ID:     id,
 		Status: int32(entity.HeadlessHostStatus_STARTING),
 	})
-	newConnectStr, err := connector.Start(ctx, newStartupConfig)
+	hostStartParams := hostconnector.HostStartParams{
+		ID:                id,
+		ContainerImageTag: newStartupConfig.ContainerImageTag,
+		HeadlessAccount:   newStartupConfig.HeadlessAccount,
+		StartupConfig:     newStartupConfig.StartupConfig,
+	}
+	newConnectStr, err := connector.Start(ctx, hostStartParams)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -213,11 +219,17 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, connector port.HostC
 	if err != nil {
 		return "", errors.Wrap(err, 0)
 	}
-	newConnectStr, err := connectorImpl.Start(ctx, params)
+	id := uniuri.New()
+	startParams := hostconnector.HostStartParams{
+		ID:                id,
+		ContainerImageTag: params.ContainerImageTag,
+		HeadlessAccount:   params.HeadlessAccount,
+		StartupConfig:     params.StartupConfig,
+	}
+	newConnectStr, err := connectorImpl.Start(ctx, startParams)
 	if err != nil {
 		return "", errors.Wrap(err, 0)
 	}
-	id := uniuri.New()
 	ownerId := pgtype.Text{
 		Valid: userId != nil,
 	}
@@ -314,7 +326,7 @@ func (h *HeadlessHostRepository) Kill(ctx context.Context, id string) error {
 		ID:     dbHost.ID,
 		Status: int32(entity.HeadlessHostStatus_STOPPING),
 	})
-	
+
 	err = connector.Kill(ctx, hostconnector.HostConnectString(dbHost.ConnectString))
 	if err != nil {
 		return errors.Wrap(err, 0)

@@ -18,6 +18,7 @@ chmod a+x brhcli
 
 JWT_SECRET="$(openssl rand -base64 32)"
 POSTGRES_PASSWORD="$(openssl rand -base64 32)"
+FLUENTBIT_PGSQL_PASSWORD="$(openssl rand -base64 32)"
 DOCKER_GID="$(grep docker /etc/group | cut -d: -f3)"
 
 DEFAULT_IMAGE="ghcr.io/hantabaru1014/baru-reso-headless-container"
@@ -54,9 +55,60 @@ DOCKER_GID="${DOCKER_GID}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
 DB_URL="${DB_URL}"
 HOST=":8014"
+CONTAINER_LOGS_FLUENTD_ADDRESS=":24224"
 
 # コンテナイメージの確認間隔（秒単位、デフォルト: 15秒）
 IMAGE_CHECK_INTERVAL_SEC=15
 # 新しいコンテナイメージを自動的にプルするか（デフォルト: false）
 AUTO_PULL_NEW_IMAGE=true
 EOF
+
+echo ""
+echo "===== データベースのセットアップを開始します ====="
+echo ""
+
+# DBコンテナを起動
+echo "1. データベースを起動中..."
+docker compose -f docker-compose.db.yml up -d
+
+# DBの起動を待機
+echo "2. データベースの起動を待機中..."
+for i in $(seq 1 30); do
+  if docker compose -f docker-compose.db.yml exec -T db pg_isready -U postgres > /dev/null 2>&1; then
+    echo "   データベースが起動しました"
+    break
+  fi
+  if [ $i -eq 30 ]; then
+    echo "エラー: データベースの起動がタイムアウトしました"
+    exit 1
+  fi
+  sleep 1
+done
+
+# マイグレーションを実行
+echo "3. データベースマイグレーションを実行中..."
+./brhcli migrate
+
+# fluentbitユーザーのパスワードを設定
+echo "4. fluentbitユーザーのパスワードを設定中..."
+docker compose -f docker-compose.db.yml exec -T db psql -U postgres -d brhcdb -c "ALTER USER fluentbit WITH PASSWORD '${FLUENTBIT_PGSQL_PASSWORD}';"
+
+# .pgpassファイルを作成
+echo "5. .pgpassファイルを作成中..."
+cat > .pgpass << PGPASS_EOF
+localhost:5432:brhcdb:fluentbit:${FLUENTBIT_PGSQL_PASSWORD}
+PGPASS_EOF
+chmod 600 .pgpass
+
+echo ""
+echo "✅ データベースのセットアップが完了しました！"
+echo ""
+echo "次のステップ:"
+echo "1. 管理者ユーザを作成してください:"
+echo "   ./brhcli user create <メールアドレス> <パスワード> <Resonite UserID>"
+echo ""
+echo "2. 本体を起動してください:"
+echo "   docker compose up -d"
+echo ""
+echo "3. http://localhost:8014/ でアクセスできます"
+echo ""

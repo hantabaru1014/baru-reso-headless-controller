@@ -133,7 +133,7 @@ func (mr *MockHostConnectorMockRecorder) PullContainerImage(ctx, tag any) *gomoc
 }
 
 // Start mocks base method.
-func (m *MockHostConnector) Start(ctx context.Context, params port.HeadlessHostStartParams) (hostconnector.HostConnectString, error) {
+func (m *MockHostConnector) Start(ctx context.Context, params hostconnector.HostStartParams) (hostconnector.HostConnectString, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Start", ctx, params)
 	ret0, _ := ret[0].(hostconnector.HostConnectString)
