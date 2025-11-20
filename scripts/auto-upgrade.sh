@@ -39,6 +39,8 @@ chmod a+x brhcli
 
 echo "2. データベースのマイグレーション状態を確認中..."
 
+docker compose -f docker-compose.db.yml up -d db
+
 # container_logsテーブルが存在するかチェック
 POSTGRES_PASSWORD=$(grep "^POSTGRES_PASSWORD=" .env | cut -d '=' -f2- | tr -d '"')
 CONTAINER_LOGS_EXISTS=$(docker compose -f docker-compose.db.yml exec -T db psql -U postgres -d brhcdb -t -c "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'container_logs');" | tr -d '[:space:]')
@@ -62,7 +64,7 @@ if [ "$NEEDS_CONTAINER_LOGS_SETUP" = "true" ]; then
 
   echo "5. .pgpassファイルを作成中..."
   cat > .pgpass << PGPASS_EOF
-localhost:5432:brhcdb:fluentbit:${FLUENTBIT_PGSQL_PASSWORD}
+*:*:brhcdb:fluentbit:${FLUENTBIT_PGSQL_PASSWORD}
 PGPASS_EOF
   chmod 600 .pgpass
   echo "   .pgpassファイルを作成しました"
@@ -79,14 +81,12 @@ fi
 
 # fluentdコンテナの再起動
 echo "6. fluentdコンテナを再起動中..."
-if docker compose ps fluentd 2>/dev/null | grep -q "Up"; then
-  docker compose restart fluentd
+if docker compose -f docker-compose.db.yml ps fluentd 2>/dev/null | grep -q "Up"; then
+  docker compose -f docker-compose.db.yml restart fluentd
   echo "   fluentdコンテナを再起動しました"
-elif docker compose ps fluentd 2>/dev/null | grep -q "fluentd"; then
-  echo "   fluentdコンテナが停止しているため、起動します"
-  docker compose up -d fluentd
 else
-  echo "   fluentdコンテナが存在しないため、スキップします"
+  echo "   fluentdコンテナが停止しているため、起動します"
+  docker compose -f docker-compose.db.yml up -d fluentd
 fi
 
 echo ""
