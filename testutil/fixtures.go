@@ -1,6 +1,9 @@
 package testutil
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -9,6 +12,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -126,4 +130,20 @@ func CreateTestSession(t *testing.T, queries *db.Queries, hostID, name string, s
 	}
 
 	return session
+}
+
+// InsertTestContainerLog inserts a test container log entry into the database
+func InsertTestContainerLog(t *testing.T, queries *db.Queries, hostID string, instanceID int32, ts time.Time, stream, logMsg string) {
+	t.Helper()
+	tag := fmt.Sprintf("headless-%s-%d", hostID, instanceID)
+	data, _ := json.Marshal(map[string]string{
+		"log":    logMsg,
+		"stream": stream,
+	})
+	err := queries.InsertContainerLog(context.Background(), db.InsertContainerLogParams{
+		Tag:  pgtype.Text{String: tag, Valid: true},
+		Ts:   pgtype.Timestamp{Time: ts, Valid: true},
+		Data: data,
+	})
+	require.NoError(t, err)
 }

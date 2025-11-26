@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter"
@@ -1180,17 +1181,17 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 
 		// Create test account and host
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
-		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_EXITED)
 
-		mockLogs := port.LogLineList{
-			{Timestamp: 1234567890, IsError: false, Body: "Log line 1"},
-			{Timestamp: 1234567891, IsError: true, Body: "Error line"},
-		}
+		// Insert test logs into container_logs table
+		baseTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime, "stdout", "Log line 1")
+		testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime.Add(time.Second), "stderr", "Error line")
 
-		// Mock HostConnector to return logs
+		// Mock GetStatus for Find call in usecase
 		setup.mockHostConnector.EXPECT().
-			GetLogs(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(mockLogs, nil)
+			GetStatus(gomock.Any(), gomock.Any()).
+			Return(entity.HeadlessHostStatus_EXITED)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
 			HostId: host.ID,
@@ -1206,30 +1207,28 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 		assert.True(t, res.Msg.Logs[1].IsError)
 	})
 
-	t.Run("失敗: ログの取得に失敗", func(t *testing.T) {
+	t.Run("成功: ログが存在しない場合は空のリストを返す", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 		client := setupAuthenticatedClient(t, setup.service)
 
-		// Create test account and host
+		// Create test account and host (no logs inserted)
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
-		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test2", "TestHost2", entity.HeadlessHostStatus_RUNNING)
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test2", "TestHost2", entity.HeadlessHostStatus_EXITED)
 
-		// Mock HostConnector to return error
+		// Mock GetStatus for Find call in usecase
 		setup.mockHostConnector.EXPECT().
-			GetLogs(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(nil, connect.NewError(connect.CodeInternal, nil))
+			GetStatus(gomock.Any(), gomock.Any()).
+			Return(entity.HeadlessHostStatus_EXITED)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
 			HostId: host.ID,
 		})
 
-		_, err := client.GetHeadlessHostLogs(t.Context(), req)
-		require.Error(t, err)
-
-		connectErr, ok := err.(*connect.Error)
-		require.True(t, ok, "expected connect.Error")
-		assert.Equal(t, connect.CodeInternal, connectErr.Code())
+		res, err := client.GetHeadlessHostLogs(t.Context(), req)
+		require.NoError(t, err)
+		assert.NotNil(t, res.Msg)
+		assert.Len(t, res.Msg.Logs, 0)
 	})
 }
 

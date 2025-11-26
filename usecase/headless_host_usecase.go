@@ -125,7 +125,12 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostGetLogs(ctx context.Context, id, until, since string, limit int32) (port.LogLineList, error) {
-	return hhuc.hhrepo.GetLogs(ctx, id, limit, until, since)
+	// 現在のインスタンスのログのみ取得（RPC変更は後のPRで）
+	host, err := hhuc.hhrepo.Find(ctx, id, port.HeadlessHostFetchOptions{})
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	return hhuc.hhrepo.GetLogs(ctx, id, host.InstanceId, limit, until, since)
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostShutdown(ctx context.Context, id string) error {

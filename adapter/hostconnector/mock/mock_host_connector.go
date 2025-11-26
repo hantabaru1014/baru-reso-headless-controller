@@ -44,21 +44,6 @@ func (m *MockHostConnector) EXPECT() *MockHostConnectorMockRecorder {
 	return m.recorder
 }
 
-// GetLogs mocks base method.
-func (m *MockHostConnector) GetLogs(ctx context.Context, connect_string hostconnector.HostConnectString, limit int32, until, since string) (port.LogLineList, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLogs", ctx, connect_string, limit, until, since)
-	ret0, _ := ret[0].(port.LogLineList)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetLogs indicates an expected call of GetLogs.
-func (mr *MockHostConnectorMockRecorder) GetLogs(ctx, connect_string, limit, until, since any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLogs", reflect.TypeOf((*MockHostConnector)(nil).GetLogs), ctx, connect_string, limit, until, since)
-}
-
 // GetRpcClient mocks base method.
 func (m *MockHostConnector) GetRpcClient(ctx context.Context, connect_string hostconnector.HostConnectString) (headlessv1.HeadlessControlServiceClient, error) {
 	m.ctrl.T.Helper()

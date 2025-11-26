@@ -2,6 +2,11 @@ package adapter
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -46,16 +51,65 @@ func (h *HeadlessHostRepository) Find(ctx context.Context, id string, fetchOptio
 }
 
 // GetLogs implements port.HeadlessHostRepository.
-func (h *HeadlessHostRepository) GetLogs(ctx context.Context, id string, limit int32, until string, since string) (port.LogLineList, error) {
-	host, err := h.q.GetHost(ctx, id)
-	if err != nil {
-		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
+func (h *HeadlessHostRepository) GetLogs(ctx context.Context, id string, instanceId int32, limit int32, until string, since string) (port.LogLineList, error) {
+	// FluentBitタグを構築: headless-{hostID}-{instanceID}
+	tag := fmt.Sprintf("headless-%s-%d", id, instanceId)
+
+	// until/sinceタイムスタンプをパース
+	var untilTime, sinceTime pgtype.Timestamp
+	if until != "" {
+		if unixTime, err := strconv.ParseInt(until, 10, 64); err == nil {
+			untilTime = pgtype.Timestamp{Time: time.Unix(unixTime, 0), Valid: true}
+		}
 	}
-	connector, err := h.getConnector(host.ConnectorType)
+	if since != "" {
+		if unixTime, err := strconv.ParseInt(since, 10, 64); err == nil {
+			sinceTime = pgtype.Timestamp{Time: time.Unix(unixTime, 0), Valid: true}
+		}
+	}
+
+	queryLimit := limit
+	if queryLimit <= 0 {
+		queryLimit = 1000
+	}
+
+	rows, err := h.q.GetContainerLogsByTag(ctx, db.GetContainerLogsByTagParams{
+		Tag:     pgtype.Text{String: tag, Valid: true},
+		Column2: untilTime,
+		Column3: sinceTime,
+		Column4: queryLimit,
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
-	return connector.GetLogs(ctx, hostconnector.HostConnectString(host.ConnectString), limit, until, since)
+
+	logs := make(port.LogLineList, 0, len(rows))
+	for _, row := range rows {
+		logLine, err := h.parseContainerLogRow(row)
+		if err != nil {
+			continue
+		}
+		logs = append(logs, logLine)
+	}
+
+	slices.Reverse(logs) // 時系列順に反転
+	return logs, nil
+}
+
+func (h *HeadlessHostRepository) parseContainerLogRow(row db.ContainerLog) (*port.LogLine, error) {
+	var data struct {
+		Log    string `json:"log"`
+		Stream string `json:"stream"` // "stdout" or "stderr"
+	}
+	if err := json.Unmarshal(row.Data, &data); err != nil {
+		return nil, err
+	}
+
+	return &port.LogLine{
+		Timestamp: row.Ts.Time.Unix(),
+		IsError:   data.Stream == "stderr",
+		Body:      strings.TrimSuffix(data.Log, "\n"),
+	}, nil
 }
 
 // GetRpcClient implements port.HeadlessHostRepository.
