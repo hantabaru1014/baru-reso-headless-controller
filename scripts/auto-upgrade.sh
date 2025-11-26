@@ -42,7 +42,6 @@ echo "2. データベースのマイグレーション状態を確認中..."
 docker compose -f docker-compose.db.yml up -d db
 
 # container_logsテーブルが存在するかチェック
-POSTGRES_PASSWORD=$(grep "^POSTGRES_PASSWORD=" .env | cut -d '=' -f2- | tr -d '"')
 CONTAINER_LOGS_EXISTS=$(docker compose -f docker-compose.db.yml exec -T db psql -U postgres -d brhcdb -t -c "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'container_logs');" | tr -d '[:space:]')
 
 if [ "$CONTAINER_LOGS_EXISTS" = "t" ]; then

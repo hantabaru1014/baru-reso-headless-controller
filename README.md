@@ -49,7 +49,7 @@ sh <(curl -s https://raw.githubusercontent.com/hantabaru1014/baru-reso-headless-
 このスクリプトは以下を自動的に実行します：
 - 最新のdocker-compose.yml、brhcli等のダウンロード
 - データベースマイグレーションの実行
-- データベースの状態に応じたFluentBit設定（`.pgpass`ファイルの作成など）
+- データベースの状態に応じたFluentBit設定
 - fluentdコンテナの再起動
 
 **注意事項:**

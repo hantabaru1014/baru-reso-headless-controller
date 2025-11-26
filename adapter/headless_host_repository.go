@@ -75,9 +75,9 @@ func (h *HeadlessHostRepository) GetLogs(ctx context.Context, id string, instanc
 
 	rows, err := h.q.GetContainerLogsByTag(ctx, db.GetContainerLogsByTagParams{
 		Tag:     pgtype.Text{String: tag, Valid: true},
-		Column2: untilTime,
-		Column3: sinceTime,
-		Column4: queryLimit,
+		Until:   untilTime,
+		Since:   sinceTime,
+		MaxRows: queryLimit,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
@@ -103,6 +103,10 @@ func (h *HeadlessHostRepository) parseContainerLogRow(row db.ContainerLog) (*por
 	}
 	if err := json.Unmarshal(row.Data, &data); err != nil {
 		return nil, err
+	}
+
+	if !row.Ts.Valid {
+		return nil, errors.New("invalid timestamp")
 	}
 
 	return &port.LogLine{

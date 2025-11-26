@@ -2,11 +2,11 @@
 -- 特定のタグ（hostID + instanceID）のログを取得
 SELECT tag, ts, data
 FROM container_logs
-WHERE tag = $1
-  AND ($2::timestamp IS NULL OR ts < $2)
-  AND ($3::timestamp IS NULL OR ts >= $3)
+WHERE tag = @tag
+  AND (@until::timestamp IS NULL OR ts < @until)
+  AND (@since::timestamp IS NULL OR ts >= @since)
 ORDER BY ts DESC
-LIMIT CASE WHEN $4 > 0 THEN $4 ELSE 1000 END;
+LIMIT CASE WHEN @max_rows > 0 THEN @max_rows ELSE 1000 END;
 
 -- name: InsertContainerLog :exec
 -- テスト用

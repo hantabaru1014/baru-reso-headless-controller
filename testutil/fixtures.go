@@ -136,11 +136,13 @@ func CreateTestSession(t *testing.T, queries *db.Queries, hostID, name string, s
 func InsertTestContainerLog(t *testing.T, queries *db.Queries, hostID string, instanceID int32, ts time.Time, stream, logMsg string) {
 	t.Helper()
 	tag := fmt.Sprintf("headless-%s-%d", hostID, instanceID)
-	data, _ := json.Marshal(map[string]string{
+	data, err := json.Marshal(map[string]string{
 		"log":    logMsg,
 		"stream": stream,
 	})
-	err := queries.InsertContainerLog(context.Background(), db.InsertContainerLogParams{
+	require.NoError(t, err, "failed to marshal test log data")
+
+	err = queries.InsertContainerLog(context.Background(), db.InsertContainerLogParams{
 		Tag:  pgtype.Text{String: tag, Valid: true},
 		Ts:   pgtype.Timestamp{Time: ts, Valid: true},
 		Data: data,

@@ -23,18 +23,18 @@ LIMIT CASE WHEN $4 > 0 THEN $4 ELSE 1000 END
 
 type GetContainerLogsByTagParams struct {
 	Tag     pgtype.Text
-	Column2 pgtype.Timestamp
-	Column3 pgtype.Timestamp
-	Column4 interface{}
+	Until   pgtype.Timestamp
+	Since   pgtype.Timestamp
+	MaxRows interface{}
 }
 
 // 特定のタグ（hostID + instanceID）のログを取得
 func (q *Queries) GetContainerLogsByTag(ctx context.Context, arg GetContainerLogsByTagParams) ([]ContainerLog, error) {
 	rows, err := q.db.Query(ctx, getContainerLogsByTag,
 		arg.Tag,
-		arg.Column2,
-		arg.Column3,
-		arg.Column4,
+		arg.Until,
+		arg.Since,
+		arg.MaxRows,
 	)
 	if err != nil {
 		return nil, err

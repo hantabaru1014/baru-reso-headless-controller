@@ -216,7 +216,7 @@ func (d *DockerHostConnector) Start(ctx context.Context, params HostStartParams)
 	}
 	fluentdAddr := fluentdAddress
 	if fluentdAddr == "" {
-		fluentdAddr = ":24224"
+		fluentdAddr = "localhost:24224"
 	}
 	hostConfig := container.HostConfig{
 		NetworkMode: "host",
