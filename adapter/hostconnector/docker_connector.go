@@ -13,13 +13,11 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
@@ -33,6 +31,7 @@ import (
 
 var (
 	imageName              = os.Getenv("HEADLESS_IMAGE_NAME")
+	fluentdAddress         = os.Getenv("CONTAINER_LOGS_FLUENTD_ADDRESS")
 	containerNotFoundError = errors.New("container not found")
 )
 
@@ -52,96 +51,6 @@ func (d *DockerHostConnector) GetStatus(ctx context.Context, connect_string Host
 		return entity.HeadlessHostStatus_UNKNOWN
 	}
 	return containerStatusToEntityStatus(container.State, container.Status)
-}
-
-// GetLogs implements HostConnector.
-func (d *DockerHostConnector) GetLogs(ctx context.Context, connect_string HostConnectString, limit int32, until string, since string) (port.LogLineList, error) {
-	id, _, err := parseConnectString(connect_string)
-	if err != nil {
-		return nil, err
-	}
-	cli, err := d.newDockerClient()
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	tail := fmt.Sprintf("%d", limit)
-	if limit <= 0 {
-		tail = "all"
-	}
-	r, err := cli.ContainerLogs(ctx, id, container.LogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Timestamps: true,
-		Until:      until,
-		Since:      since,
-		Tail:       tail,
-	})
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	defer r.Close()
-
-	stdout := new(bytes.Buffer)
-	stderr := new(bytes.Buffer)
-	written, err := stdcopy.StdCopy(stdout, stderr, r)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	// てきとーなサイズで初期化
-	logs := make(port.LogLineList, 0, written/100)
-
-	parseLogLine := func(line string, isError bool) (*port.LogLine, error) {
-		parts := strings.SplitN(line, " ", 2)
-		if len(parts) < 2 {
-			return nil, errors.Errorf("invalid log line format")
-		}
-		timestamp, err := time.Parse(time.RFC3339Nano, parts[0])
-		if err != nil {
-			return nil, errors.New(err)
-		}
-		return &port.LogLine{
-			Timestamp: timestamp.Unix(),
-			IsError:   isError,
-			Body:      parts[1],
-		}, nil
-	}
-
-	readNextLogLine := func(buffer *bytes.Buffer, isError bool) (*port.LogLine, error) {
-		line, err := buffer.ReadString('\n')
-		if err == nil && len(line) > 0 {
-			line = line[:len(line)-1]
-		}
-		if err != nil {
-			return nil, errors.New(err)
-		}
-		return parseLogLine(line, isError)
-	}
-
-	var stdoutLog, stderrLog *port.LogLine
-	var stdoutErr, stderrErr error
-
-	for {
-		if stdoutLog == nil && stdoutErr == nil {
-			stdoutLog, stdoutErr = readNextLogLine(stdout, false)
-		}
-		if stderrLog == nil && stderrErr == nil {
-			stderrLog, stderrErr = readNextLogLine(stderr, true)
-		}
-
-		if stdoutErr != nil && stderrErr != nil {
-			break
-		}
-
-		if stdoutErr == nil && (stderrErr != nil || stdoutLog.Timestamp <= stderrLog.Timestamp) {
-			logs = append(logs, stdoutLog)
-			stdoutLog = nil
-		} else {
-			logs = append(logs, stderrLog)
-			stderrLog = nil
-		}
-	}
-
-	return logs, nil
 }
 
 // GetRpcClient implements HostConnector.
@@ -268,7 +177,7 @@ func (d *DockerHostConnector) PullContainerImage(ctx context.Context, tag string
 }
 
 // Start implements HostConnector.
-func (d *DockerHostConnector) Start(ctx context.Context, params port.HeadlessHostStartParams) (HostConnectString, error) {
+func (d *DockerHostConnector) Start(ctx context.Context, params HostStartParams) (HostConnectString, error) {
 	cli, err := d.newDockerClient()
 	if err != nil {
 		return "", errors.Errorf("failed to create docker client: %w", err)
@@ -305,8 +214,19 @@ func (d *DockerHostConnector) Start(ctx context.Context, params port.HeadlessHos
 		Env:   envs,
 		Image: fmt.Sprintf("%s:%s", imageName, imageTag),
 	}
+	fluentdAddr := fluentdAddress
+	if fluentdAddr == "" {
+		fluentdAddr = "localhost:24224"
+	}
 	hostConfig := container.HostConfig{
 		NetworkMode: "host",
+		LogConfig: container.LogConfig{
+			Type: "fluentd",
+			Config: map[string]string{
+				"fluentd-address": fluentdAddr,
+				"tag":             "headless-" + params.ID + "-" + strconv.Itoa(int(params.InstanceId)),
+			},
+		},
 	}
 	createResp, err := cli.ContainerCreate(ctx, &config, &hostConfig, nil, nil, "")
 	if err != nil {

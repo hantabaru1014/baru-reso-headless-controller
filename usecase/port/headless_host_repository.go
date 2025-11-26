@@ -46,7 +46,7 @@ type HeadlessHostRepository interface {
 	ListRunningByAccount(ctx context.Context, accountId string) (entity.HeadlessHostList, error)
 	Find(ctx context.Context, id string, fetchOptions HeadlessHostFetchOptions) (*entity.HeadlessHost, error)
 	GetRpcClient(ctx context.Context, id string) (headlessv1.HeadlessControlServiceClient, error)
-	GetLogs(ctx context.Context, id string, limit int32, until, since string) (LogLineList, error)
+	GetLogs(ctx context.Context, id string, instanceId int32, limit int32, until, since string) (LogLineList, error)
 	Rename(ctx context.Context, id, newName string) error
 	UpdateHostSettings(ctx context.Context, id string, settings *entity.HeadlessHostSettings) error
 	// コンテナイメージのタグ一覧をリモートから取得する。一番新しいタグが最後。

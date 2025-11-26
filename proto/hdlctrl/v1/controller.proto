@@ -413,6 +413,7 @@ message HeadlessHost {
   HeadlessHostAutoUpdatePolicy auto_update_policy = 12;
   string memo = 13;
   HeadlessHostSettings host_settings = 14;
+  int32 instance_id = 15;
 }
 
 message Session {

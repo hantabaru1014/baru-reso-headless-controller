@@ -10,5 +10,20 @@ services:
       - POSTGRES_DB=brhcdb
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 
+  fluentd:
+    image: fluent/fluent-bit:latest
+    command: ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.yaml"]
+    depends_on:
+      - db
+    ports:
+      - "24224:24224"
+    environment:
+      - PGHOST=db
+      - PGPASSWORD=${FLUENTBIT_PGPASSWORD}
+    volumes:
+      - type: bind
+        source: "./fluentd/container-logs.yaml"
+        target: "/fluent-bit/etc/fluent-bit.yaml"
+
 volumes:
   db-data:

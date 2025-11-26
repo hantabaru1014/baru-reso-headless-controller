@@ -20,6 +20,7 @@ func HeadlessHostEntityToProto(e *entity.HeadlessHost) *hdlctrlv1.HeadlessHost {
 		AutoUpdatePolicy: hdlctrlv1.HeadlessHostAutoUpdatePolicy(e.AutoUpdatePolicy),
 		HostSettings:     HeadlessHostSettingsToProto(&e.HostSettings),
 		Memo:             e.Memo,
+		InstanceId:       e.InstanceId,
 	}
 }
 

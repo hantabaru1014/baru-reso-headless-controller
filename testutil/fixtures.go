@@ -1,6 +1,9 @@
 package testutil
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -9,6 +12,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -88,6 +92,7 @@ func CreateTestHeadlessHost(t *testing.T, queries *db.Queries, accountID, name s
 		ConnectString:                  connectString,
 		AutoUpdatePolicy:               int32(entity.HostAutoUpdatePolicy_UNSPECIFIED),
 		Memo:                           pgtype.Text{Valid: false},
+		InstanceCount:                  1,
 		StartedAt: pgtype.Timestamptz{
 			Valid: true,
 			Time:  time.Now(),
@@ -125,4 +130,22 @@ func CreateTestSession(t *testing.T, queries *db.Queries, hostID, name string, s
 	}
 
 	return session
+}
+
+// InsertTestContainerLog inserts a test container log entry into the database
+func InsertTestContainerLog(t *testing.T, queries *db.Queries, hostID string, instanceID int32, ts time.Time, stream, logMsg string) {
+	t.Helper()
+	tag := fmt.Sprintf("headless-%s-%d", hostID, instanceID)
+	data, err := json.Marshal(map[string]string{
+		"log":    logMsg,
+		"stream": stream,
+	})
+	require.NoError(t, err, "failed to marshal test log data")
+
+	err = queries.InsertContainerLog(context.Background(), db.InsertContainerLogParams{
+		Tag:  pgtype.Text{String: tag, Valid: true},
+		Ts:   pgtype.Timestamp{Time: ts, Valid: true},
+		Data: data,
+	})
+	require.NoError(t, err)
 }

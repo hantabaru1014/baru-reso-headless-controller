@@ -23,9 +23,10 @@ INSERT INTO hosts (
     connect_string,
     started_at,
     auto_update_policy,
-    memo
+    memo,
+    instance_count
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
 ) RETURNING *;
 
 -- name: UpdateHostStatus :exec
@@ -51,3 +52,6 @@ UPDATE hosts SET connect_string = $2 WHERE id = $1;
 
 -- name: DeleteHost :exec
 DELETE FROM hosts WHERE id = $1;
+
+-- name: IncrementHostInstanceCount :one
+UPDATE hosts SET instance_count = instance_count + 1 WHERE id = $1 RETURNING instance_count;

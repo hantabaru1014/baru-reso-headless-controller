@@ -57,6 +57,14 @@ gen.mock:
 	$(mockgen) -source=lib/skyfrost/client.go -destination=lib/skyfrost/mock/mock_client.go -package=mock
 	@echo "Mock generation complete!"
 
+.PHONY: migrate.up
+migrate.up:
+	@$(BIN_DIR)/migrate -path db/migrations -database "$(DB_URL)" up
+	@DB_NAME=$$(echo "$(DB_URL)" | sed 's/.*\/\([^?]*\).*/\1/'); \
+	TEST_DB_NAME=$${DB_NAME}_test; \
+	TEST_DB_URL=$$(echo "$(DB_URL)" | sed "s/$$DB_NAME/$$TEST_DB_NAME/"); \
+	$(BIN_DIR)/migrate -path db/migrations -database "$$TEST_DB_URL" up
+
 .PHONY: test.setup
 test.setup:
 	@echo "Creating test database..."

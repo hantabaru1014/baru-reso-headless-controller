@@ -2,6 +2,11 @@ package adapter
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -46,16 +51,69 @@ func (h *HeadlessHostRepository) Find(ctx context.Context, id string, fetchOptio
 }
 
 // GetLogs implements port.HeadlessHostRepository.
-func (h *HeadlessHostRepository) GetLogs(ctx context.Context, id string, limit int32, until string, since string) (port.LogLineList, error) {
-	host, err := h.q.GetHost(ctx, id)
-	if err != nil {
-		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
+func (h *HeadlessHostRepository) GetLogs(ctx context.Context, id string, instanceId int32, limit int32, until string, since string) (port.LogLineList, error) {
+	// FluentBitタグを構築: headless-{hostID}-{instanceID}
+	tag := fmt.Sprintf("headless-%s-%d", id, instanceId)
+
+	// until/sinceタイムスタンプをパース
+	var untilTime, sinceTime pgtype.Timestamp
+	if until != "" {
+		if unixTime, err := strconv.ParseInt(until, 10, 64); err == nil {
+			untilTime = pgtype.Timestamp{Time: time.Unix(unixTime, 0), Valid: true}
+		}
 	}
-	connector, err := h.getConnector(host.ConnectorType)
+	if since != "" {
+		if unixTime, err := strconv.ParseInt(since, 10, 64); err == nil {
+			sinceTime = pgtype.Timestamp{Time: time.Unix(unixTime, 0), Valid: true}
+		}
+	}
+
+	queryLimit := limit
+	if queryLimit <= 0 {
+		queryLimit = 1000
+	}
+
+	rows, err := h.q.GetContainerLogsByTag(ctx, db.GetContainerLogsByTagParams{
+		Tag:     pgtype.Text{String: tag, Valid: true},
+		Until:   untilTime,
+		Since:   sinceTime,
+		MaxRows: queryLimit,
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
-	return connector.GetLogs(ctx, hostconnector.HostConnectString(host.ConnectString), limit, until, since)
+
+	logs := make(port.LogLineList, 0, len(rows))
+	for _, row := range rows {
+		logLine, err := h.parseContainerLogRow(row)
+		if err != nil {
+			continue
+		}
+		logs = append(logs, logLine)
+	}
+
+	slices.Reverse(logs) // 時系列順に反転
+	return logs, nil
+}
+
+func (h *HeadlessHostRepository) parseContainerLogRow(row db.ContainerLog) (*port.LogLine, error) {
+	var data struct {
+		Log    string `json:"log"`
+		Stream string `json:"stream"` // "stdout" or "stderr"
+	}
+	if err := json.Unmarshal(row.Data, &data); err != nil {
+		return nil, err
+	}
+
+	if !row.Ts.Valid {
+		return nil, errors.New("invalid timestamp")
+	}
+
+	return &port.LogLine{
+		Timestamp: row.Ts.Time.Unix(),
+		IsError:   data.Stream == "stderr",
+		Body:      strings.TrimSuffix(data.Log, "\n"),
+	}, nil
 }
 
 // GetRpcClient implements port.HeadlessHostRepository.
@@ -173,7 +231,18 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 		ID:     id,
 		Status: int32(entity.HeadlessHostStatus_STARTING),
 	})
-	newConnectStr, err := connector.Start(ctx, newStartupConfig)
+	instanceCount, err := h.q.IncrementHostInstanceCount(ctx, id)
+	if err != nil {
+		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
+	}
+	hostStartParams := hostconnector.HostStartParams{
+		ID:                id,
+		InstanceId:        instanceCount,
+		ContainerImageTag: newStartupConfig.ContainerImageTag,
+		HeadlessAccount:   newStartupConfig.HeadlessAccount,
+		StartupConfig:     newStartupConfig.StartupConfig,
+	}
+	newConnectStr, err := connector.Start(ctx, hostStartParams)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -213,16 +282,23 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, connector port.HostC
 	if err != nil {
 		return "", errors.Wrap(err, 0)
 	}
-	newConnectStr, err := connectorImpl.Start(ctx, params)
-	if err != nil {
-		return "", errors.Wrap(err, 0)
-	}
 	id := uniuri.New()
 	ownerId := pgtype.Text{
 		Valid: userId != nil,
 	}
 	if userId != nil {
 		ownerId.String = *userId
+	}
+	startParams := hostconnector.HostStartParams{
+		ID:                id,
+		InstanceId:        1,
+		ContainerImageTag: params.ContainerImageTag,
+		HeadlessAccount:   params.HeadlessAccount,
+		StartupConfig:     params.StartupConfig,
+	}
+	newConnectStr, err := connectorImpl.Start(ctx, startParams)
+	if err != nil {
+		return "", errors.Wrap(err, 0)
 	}
 	dbHost, err := h.q.CreateHost(ctx, db.CreateHostParams{
 		ID:                             id,
@@ -243,6 +319,7 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, connector port.HostC
 			Valid: true,
 			Time:  time.Now(),
 		},
+		InstanceCount: 1,
 	})
 	if err != nil {
 		return "", errors.WrapPrefix(convertDBErr(err), "headless host", 0)
@@ -314,7 +391,7 @@ func (h *HeadlessHostRepository) Kill(ctx context.Context, id string) error {
 		ID:     dbHost.ID,
 		Status: int32(entity.HeadlessHostStatus_STOPPING),
 	})
-	
+
 	err = connector.Kill(ctx, hostconnector.HostConnectString(dbHost.ConnectString))
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -386,6 +463,7 @@ func (h *HeadlessHostRepository) dbToEntity(ctx context.Context, dbHost *db.Host
 		AccountId:        dbHost.AccountID,
 		Status:           entity.HeadlessHostStatus(dbHost.Status),
 		AutoUpdatePolicy: entity.HostAutoUpdatePolicy(dbHost.AutoUpdatePolicy),
+		InstanceId:       dbHost.InstanceCount,
 	}
 	if dbHost.Memo.Valid {
 		host.Memo = dbHost.Memo.String
