@@ -78,14 +78,11 @@ jobs:
 
       - name: Set up test database
         env:
-          DB_URL: postgres://postgres:postgres@localhost:5432/brhc?sslmode=disable
+          TEST_DB_URL: postgres://postgres:postgres@localhost:5432/brhcdb_test?sslmode=disable
           PGPASSWORD: postgres
         run: |
-          DB_NAME=$(echo "$DB_URL" | sed 's/.*\/\([^?]*\).*/\1/')
-          TEST_DB_NAME=${DB_NAME}_test
-          TEST_DB_URL=$(echo "$DB_URL" | sed "s/$DB_NAME/$TEST_DB_NAME/")
-          echo "Creating test database $TEST_DB_NAME..."
-          psql -h localhost -U postgres -d postgres -c "CREATE DATABASE $TEST_DB_NAME"
+          echo "Creating test database..."
+          psql -h localhost -U postgres -d postgres -c "CREATE DATABASE brhcdb_test"
           echo "Running migrations..."
           migrate -path db/migrations -database "$TEST_DB_URL" up
 
@@ -94,5 +91,5 @@ jobs:
 
       - name: Run tests
         env:
-          DB_URL: postgres://postgres:postgres@localhost:5432/brhc?sslmode=disable
+          DB_URL: postgres://postgres:postgres@localhost:5432/brhcdb?sslmode=disable
         run: make test

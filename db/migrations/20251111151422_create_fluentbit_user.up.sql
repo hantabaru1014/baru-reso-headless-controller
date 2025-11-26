@@ -8,7 +8,11 @@ END
 $$;
 
 -- Grant connect privilege to the database
-GRANT CONNECT ON DATABASE brhcdb TO fluentbit;
+DO $$
+BEGIN
+  EXECUTE 'GRANT CONNECT ON DATABASE ' || current_database() || ' TO fluentbit';
+END
+$$;
 
 -- Grant usage and create privileges on public schema
 GRANT USAGE, CREATE ON SCHEMA public TO fluentbit;
