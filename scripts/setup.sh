@@ -53,6 +53,7 @@ HEADLESS_REGISTRY_AUTH="${HEADLESS_REGISTRY_AUTH}"
 GHCR_AUTH_TOKEN="${GHCR_AUTH_TOKEN}"
 DOCKER_GID="${DOCKER_GID}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
+FLUENTBIT_PGPASSWORD="${FLUENTBIT_PGSQL_PASSWORD}"
 DB_URL="${DB_URL}"
 HOST=":8014"
 CONTAINER_LOGS_FLUENTD_ADDRESS=":24224"
@@ -92,13 +93,6 @@ echo "3. データベースマイグレーションを実行中..."
 # fluentbitユーザーのパスワードを設定
 echo "4. fluentbitユーザーのパスワードを設定中..."
 docker compose -f docker-compose.db.yml exec -T db psql -U postgres -d brhcdb -c "ALTER USER fluentbit WITH PASSWORD '${FLUENTBIT_PGSQL_PASSWORD}';"
-
-# .pgpassファイルを作成
-echo "5. .pgpassファイルを作成中..."
-cat > .pgpass << PGPASS_EOF
-localhost:5432:brhcdb:fluentbit:${FLUENTBIT_PGSQL_PASSWORD}
-PGPASS_EOF
-chmod 600 .pgpass
 
 echo ""
 echo "✅ データベースのセットアップが完了しました！"

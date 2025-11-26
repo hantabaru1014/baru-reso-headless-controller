@@ -18,15 +18,12 @@ services:
     ports:
       - "24224:24224"
     environment:
-      - PGPASSFILE=/etc/secrets/.pgpass
+      - PGHOST=db
+      - PGPASSWORD=${FLUENTBIT_PGPASSWORD}
     volumes:
       - type: bind
         source: "./fluentd/container-logs.yaml"
         target: "/fluent-bit/etc/fluent-bit.yaml"
-      - type: bind
-        source: "./.pgpass"
-        target: "/etc/secrets/.pgpass"
-        read_only: true
 
 volumes:
   db-data:

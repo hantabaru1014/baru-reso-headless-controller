@@ -61,26 +61,21 @@ if [ "$NEEDS_CONTAINER_LOGS_SETUP" = "true" ]; then
   echo "4. fluentbitユーザーのパスワードを設定中..."
   FLUENTBIT_PGSQL_PASSWORD="$(openssl rand -base64 32)"
   docker compose -f docker-compose.db.yml exec -T db psql -U postgres -d brhcdb -c "ALTER USER fluentbit WITH PASSWORD '${FLUENTBIT_PGSQL_PASSWORD}';"
-
-  echo "5. .pgpassファイルを作成中..."
-  cat > .pgpass << PGPASS_EOF
-*:*:brhcdb:fluentbit:${FLUENTBIT_PGSQL_PASSWORD}
-PGPASS_EOF
-  chmod 600 .pgpass
-  echo "   .pgpassファイルを作成しました"
+  echo "FLUENTBIT_PGPASSWORD=\"${FLUENTBIT_PGSQL_PASSWORD}\"" >> .env
+  echo "   FLUENTBIT_PGPASSWORDを.envに追加しました"
 else
   echo "4. container_logsテーブルは既に存在するため、fluentbit関連のセットアップをスキップします"
 
-  # .pgpassが存在しない場合は警告
-  if [ ! -f ".pgpass" ]; then
-    echo "   ⚠️  警告: .pgpassファイルが見つかりません"
-    echo "   既存環境で.pgpassファイルが削除されている可能性があります"
-    echo "   手動で作成するか、setup.shを参考にしてください"
+  # FLUENTBIT_PGPASSWORDが.envに存在しない場合は警告
+  if ! grep -q "^FLUENTBIT_PGPASSWORD=" .env 2>/dev/null; then
+    echo "   ⚠️  警告: FLUENTBIT_PGPASSWORDが.envに見つかりません"
+    echo "   fluentdがPostgreSQLに接続できない可能性があります"
+    echo "   手動で.envにFLUENTBIT_PGPASSWORDを追加してください"
   fi
 fi
 
 # fluentdコンテナの再起動
-echo "6. fluentdコンテナを再起動中..."
+echo "5. fluentdコンテナを再起動中..."
 if docker compose -f docker-compose.db.yml ps fluentd 2>/dev/null | grep -q "Up"; then
   docker compose -f docker-compose.db.yml restart fluentd
   echo "   fluentdコンテナを再起動しました"
@@ -96,8 +91,7 @@ echo "実行された処理:"
 echo "- 最新のdocker-compose.yml、brhcli等をダウンロード"
 echo "- データベースマイグレーションを実行"
 if [ "$NEEDS_CONTAINER_LOGS_SETUP" = "true" ]; then
-  echo "- .pgpassファイルを作成"
-  echo "- fluentbitユーザーのパスワードを設定"
+  echo "- fluentbitユーザーのパスワードを設定し、FLUENTBIT_PGPASSWORDを.envに追加"
 fi
 echo "- fluentdコンテナを再起動"
 echo ""

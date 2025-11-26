@@ -21,8 +21,9 @@ pipeline:
   outputs:
     - name: pgsql
       match: '*'
-      host: db
+      host: ${PGHOST}
       port: 5432
       database: brhcdb
       user: fluentbit
+      password: ${PGPASSWORD}
       table: container_logs
