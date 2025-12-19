@@ -394,6 +394,11 @@ func (h *HeadlessHostRepository) Kill(ctx context.Context, id string) error {
 
 // Delete implements port.HeadlessHostRepository.
 func (h *HeadlessHostRepository) Delete(ctx context.Context, id string) error {
+	// ホストに関連するコンテナログを削除
+	err := h.q.DeleteContainerLogsByHostID(ctx, pgtype.Text{String: id, Valid: true})
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
 	return h.q.DeleteHost(ctx, id)
 }
 

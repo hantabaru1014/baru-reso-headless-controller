@@ -20,6 +20,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/testutil"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1621,6 +1622,20 @@ func TestControllerService_DeleteHeadlessHost(t *testing.T) {
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_EXITED)
 
+		// Add container logs for this host (multiple instances)
+		now := time.Now()
+		testutil.InsertTestContainerLog(t, setup.queries, host.ID, 1, now, "stdout", "log message 1")
+		testutil.InsertTestContainerLog(t, setup.queries, host.ID, 1, now.Add(time.Second), "stderr", "error message")
+		testutil.InsertTestContainerLog(t, setup.queries, host.ID, 2, now, "stdout", "log from instance 2")
+
+		// Verify logs exist before deletion
+		logsBefore, err := setup.queries.GetContainerLogsByTag(t.Context(), db.GetContainerLogsByTagParams{
+			Tag:     pgtype.Text{String: "headless-" + host.ID + "-1", Valid: true},
+			MaxRows: int32(100),
+		})
+		require.NoError(t, err)
+		assert.Len(t, logsBefore, 2, "should have 2 logs for instance 1 before deletion")
+
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.DeleteHeadlessHostRequest{
 			HostId: host.ID,
 		})
@@ -1632,6 +1647,21 @@ func TestControllerService_DeleteHeadlessHost(t *testing.T) {
 		// Verify host was deleted from database
 		_, err = setup.queries.GetHost(t.Context(), host.ID)
 		assert.Error(t, err)
+
+		// Verify container logs were also deleted
+		logsAfter1, err := setup.queries.GetContainerLogsByTag(t.Context(), db.GetContainerLogsByTagParams{
+			Tag:     pgtype.Text{String: "headless-" + host.ID + "-1", Valid: true},
+			MaxRows: int32(100),
+		})
+		require.NoError(t, err)
+		assert.Empty(t, logsAfter1, "logs for instance 1 should be deleted")
+
+		logsAfter2, err := setup.queries.GetContainerLogsByTag(t.Context(), db.GetContainerLogsByTagParams{
+			Tag:     pgtype.Text{String: "headless-" + host.ID + "-2", Valid: true},
+			MaxRows: int32(100),
+		})
+		require.NoError(t, err)
+		assert.Empty(t, logsAfter2, "logs for instance 2 should be deleted")
 	})
 
 	t.Run("成功: 存在しないホストを削除（何も起こらない）", func(t *testing.T) {
