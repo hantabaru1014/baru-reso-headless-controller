@@ -2,8 +2,11 @@ import { callUnaryMethod, useTransport } from "@connectrpc/connect-query";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { getHeadlessHostLogs } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { Card, CardContent, CardHeader } from "./ui/card";
-import { useEffect, useMemo, useRef } from "react";
+import { Button } from "./ui/button";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 type PageParam = {
   direction: "before" | "after" | "init";
@@ -253,10 +256,84 @@ export default function HostLogViewer({
 
   const virtualItems = virtualizer.getVirtualItems();
 
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = useCallback(async () => {
+    setIsDownloading(true);
+
+    try {
+      // 全ログを取得
+      type LogEntry = (typeof logs)[number];
+      const allLogs: LogEntry[] = [];
+
+      // 最初のページを取得
+      let response = await callUnaryMethod(transport, getHeadlessHostLogs, {
+        hostId,
+        instanceId,
+        limit: 100,
+      });
+      allLogs.push(...response.logs);
+
+      // 古いログを全て取得
+      while (response.hasMoreBefore && response.logs.length > 0) {
+        const firstLog = response.logs[0];
+        response = await callUnaryMethod(transport, getHeadlessHostLogs, {
+          hostId,
+          instanceId,
+          limit: 100,
+          cursor: { case: "beforeId" as const, value: firstLog.id },
+        });
+        allLogs.unshift(...response.logs);
+      }
+
+      if (allLogs.length === 0) return;
+
+      const content = allLogs
+        .map((log) => {
+          const timestamp = log.timestamp
+            ? new Date(Number(log.timestamp.seconds) * 1000).toISOString()
+            : "";
+          return `${timestamp} ${log.body}`;
+        })
+        .join("\n");
+
+      const blob = new Blob([content], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `host-${hostId}-instance-${instanceId}.log`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "ログのダウンロードに失敗しました",
+      );
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [transport, hostId, instanceId]);
+
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <h3 className="text-lg font-semibold">Logs</h3>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownload}
+          disabled={logs.length === 0 || isDownloading}
+        >
+          {isDownloading ? (
+            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4 mr-1" />
+          )}
+          {isDownloading ? "Downloading..." : "Download"}
+        </Button>
       </CardHeader>
       <CardContent className="relative" style={{ height }}>
         <div
