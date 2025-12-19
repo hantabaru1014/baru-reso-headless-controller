@@ -199,12 +199,15 @@ export default function HostLogViewer({
 
     const fetchNewLogs = async () => {
       if (isTailingFetchingRef.current) return;
+      isTailingFetchingRef.current = true;
 
       const currentLogs = logsRef.current;
       const lastLog = currentLogs[currentLogs.length - 1];
-      if (!lastLog) return;
+      if (!lastLog) {
+        isTailingFetchingRef.current = false;
+        return;
+      }
 
-      isTailingFetchingRef.current = true;
       try {
         const response = await callUnaryMethod(transport, getHeadlessHostLogs, {
           hostId,
