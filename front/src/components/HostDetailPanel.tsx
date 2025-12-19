@@ -18,7 +18,10 @@ import {
   DialogFooter,
   DialogTrigger,
   DialogClose,
+  DropdownMenu,
+  DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "./ui";
 import { EditableTextField } from "./base/EditableTextField";
 import { ReadOnlyField } from "./base/ReadOnlyField";
@@ -31,6 +34,8 @@ import { ScrollBase } from "./base/ScrollBase";
 import { SelectField } from "./base/SelectField";
 import { toast } from "sonner";
 import { RefetchButton, SplitButton, TextField } from "./base";
+import { MoreHorizontalIcon } from "lucide-react";
+import { PastInstancesDialog } from "./PastInstancesDialog";
 
 type AllowedAccessEntryType = {
   host: string;
@@ -323,6 +328,8 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
 
   const settings = data?.host?.hostSettings;
 
+  const [isInstancesDialogOpen, setIsInstancesDialogOpen] = useState(false);
+
   const handleRestart = async () => {
     try {
       await restartHost({
@@ -457,6 +464,25 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
                 削除
               </Button>
             )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <MoreHorizontalIcon className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => setIsInstancesDialogOpen(true)}
+                >
+                  過去のインスタンス一覧
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <PastInstancesDialog
+              hostId={hostId}
+              open={isInstancesDialogOpen}
+              onOpenChange={setIsInstancesDialogOpen}
+            />
           </div>
           <ReadOnlyField
             label="アカウント"

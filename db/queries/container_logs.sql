@@ -19,3 +19,15 @@ INSERT INTO container_logs (tag, ts, data) VALUES ($1, $2, $3);
 -- タグは "headless-{hostID}-{instanceID}" の形式
 DELETE FROM container_logs
 WHERE tag LIKE 'headless-' || @host_id || '-%';
+
+-- name: GetInstanceTimestamps :many
+-- 各インスタンスのログの最初と最後のタイムスタンプを取得
+SELECT
+    CAST(SUBSTRING(tag FROM 'headless-[^-]+-(\d+)') AS INTEGER) AS instance_id,
+    MIN(ts) AS first_log_at,
+    MAX(ts) AS last_log_at,
+    COUNT(*) AS log_count
+FROM container_logs
+WHERE tag LIKE 'headless-' || @host_id || '-%'
+GROUP BY SUBSTRING(tag FROM 'headless-[^-]+-(\d+)')
+ORDER BY instance_id DESC;

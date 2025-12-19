@@ -183,6 +183,41 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostGetLogs(ctx context.Context, params
 	return result, nil
 }
 
+type HeadlessHostInstance struct {
+	InstanceID int32
+	FirstLogAt *int64 // UnixTime (秒), nil = データなし
+	LastLogAt  *int64 // UnixTime (秒), nil = データなし
+	LogCount   int64
+	IsCurrent  bool
+}
+
+func (hhuc *HeadlessHostUsecase) HeadlessHostGetInstances(ctx context.Context, hostID string) ([]*HeadlessHostInstance, error) {
+	// ホストを取得して現在のinstance_idを確認
+	host, err := hhuc.hhrepo.Find(ctx, hostID, port.HeadlessHostFetchOptions{})
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	// リポジトリからインスタンスタイムスタンプを取得
+	timestamps, err := hhuc.hhrepo.GetInstanceTimestamps(ctx, hostID)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	// 現在のインスタンスかどうかを判定
+	result := make([]*HeadlessHostInstance, 0, len(timestamps))
+	for _, ts := range timestamps {
+		result = append(result, &HeadlessHostInstance{
+			InstanceID: ts.InstanceID,
+			FirstLogAt: ts.FirstLogAt,
+			LastLogAt:  ts.LastLogAt,
+			LogCount:   ts.LogCount,
+			IsCurrent:  ts.InstanceID == host.InstanceId,
+		})
+	}
+	return result, nil
+}
+
 func (hhuc *HeadlessHostUsecase) HeadlessHostShutdown(ctx context.Context, id string) error {
 	status := entity.SessionStatus_RUNNING
 	sessions, err := hhuc.huc.SearchSessions(ctx, SearchSessionsFilter{

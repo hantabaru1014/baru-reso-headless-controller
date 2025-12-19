@@ -70,6 +70,9 @@ const (
 	// ControllerServiceDeleteHeadlessHostProcedure is the fully-qualified name of the
 	// ControllerService's DeleteHeadlessHost RPC.
 	ControllerServiceDeleteHeadlessHostProcedure = "/hdlctrl.v1.ControllerService/DeleteHeadlessHost"
+	// ControllerServiceListHeadlessHostInstancesProcedure is the fully-qualified name of the
+	// ControllerService's ListHeadlessHostInstances RPC.
+	ControllerServiceListHeadlessHostInstancesProcedure = "/hdlctrl.v1.ControllerService/ListHeadlessHostInstances"
 	// ControllerServiceCreateHeadlessAccountProcedure is the fully-qualified name of the
 	// ControllerService's CreateHeadlessAccount RPC.
 	ControllerServiceCreateHeadlessAccountProcedure = "/hdlctrl.v1.ControllerService/CreateHeadlessAccount"
@@ -156,6 +159,7 @@ type ControllerServiceClient interface {
 	DenyHostAccess(context.Context, *connect.Request[v1.DenyHostAccessRequest]) (*connect.Response[v1.DenyHostAccessResponse], error)
 	ListHeadlessHostImageTags(context.Context, *connect.Request[v1.ListHeadlessHostImageTagsRequest]) (*connect.Response[v1.ListHeadlessHostImageTagsResponse], error)
 	DeleteHeadlessHost(context.Context, *connect.Request[v1.DeleteHeadlessHostRequest]) (*connect.Response[v1.DeleteHeadlessHostResponse], error)
+	ListHeadlessHostInstances(context.Context, *connect.Request[v1.ListHeadlessHostInstancesRequest]) (*connect.Response[v1.ListHeadlessHostInstancesResponse], error)
 	// アカウント系
 	CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error)
 	ListHeadlessAccounts(context.Context, *connect.Request[v1.ListHeadlessAccountsRequest]) (*connect.Response[v1.ListHeadlessAccountsResponse], error)
@@ -265,6 +269,12 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+ControllerServiceDeleteHeadlessHostProcedure,
 			connect.WithSchema(controllerServiceMethods.ByName("DeleteHeadlessHost")),
+			connect.WithClientOptions(opts...),
+		),
+		listHeadlessHostInstances: connect.NewClient[v1.ListHeadlessHostInstancesRequest, v1.ListHeadlessHostInstancesResponse](
+			httpClient,
+			baseURL+ControllerServiceListHeadlessHostInstancesProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("ListHeadlessHostInstances")),
 			connect.WithClientOptions(opts...),
 		),
 		createHeadlessAccount: connect.NewClient[v1.CreateHeadlessAccountRequest, v1.CreateHeadlessAccountResponse](
@@ -422,6 +432,7 @@ type controllerServiceClient struct {
 	denyHostAccess                   *connect.Client[v1.DenyHostAccessRequest, v1.DenyHostAccessResponse]
 	listHeadlessHostImageTags        *connect.Client[v1.ListHeadlessHostImageTagsRequest, v1.ListHeadlessHostImageTagsResponse]
 	deleteHeadlessHost               *connect.Client[v1.DeleteHeadlessHostRequest, v1.DeleteHeadlessHostResponse]
+	listHeadlessHostInstances        *connect.Client[v1.ListHeadlessHostInstancesRequest, v1.ListHeadlessHostInstancesResponse]
 	createHeadlessAccount            *connect.Client[v1.CreateHeadlessAccountRequest, v1.CreateHeadlessAccountResponse]
 	listHeadlessAccounts             *connect.Client[v1.ListHeadlessAccountsRequest, v1.ListHeadlessAccountsResponse]
 	deleteHeadlessAccount            *connect.Client[v1.DeleteHeadlessAccountRequest, v1.DeleteHeadlessAccountResponse]
@@ -505,6 +516,11 @@ func (c *controllerServiceClient) ListHeadlessHostImageTags(ctx context.Context,
 // DeleteHeadlessHost calls hdlctrl.v1.ControllerService.DeleteHeadlessHost.
 func (c *controllerServiceClient) DeleteHeadlessHost(ctx context.Context, req *connect.Request[v1.DeleteHeadlessHostRequest]) (*connect.Response[v1.DeleteHeadlessHostResponse], error) {
 	return c.deleteHeadlessHost.CallUnary(ctx, req)
+}
+
+// ListHeadlessHostInstances calls hdlctrl.v1.ControllerService.ListHeadlessHostInstances.
+func (c *controllerServiceClient) ListHeadlessHostInstances(ctx context.Context, req *connect.Request[v1.ListHeadlessHostInstancesRequest]) (*connect.Response[v1.ListHeadlessHostInstancesResponse], error) {
+	return c.listHeadlessHostInstances.CallUnary(ctx, req)
 }
 
 // CreateHeadlessAccount calls hdlctrl.v1.ControllerService.CreateHeadlessAccount.
@@ -638,6 +654,7 @@ type ControllerServiceHandler interface {
 	DenyHostAccess(context.Context, *connect.Request[v1.DenyHostAccessRequest]) (*connect.Response[v1.DenyHostAccessResponse], error)
 	ListHeadlessHostImageTags(context.Context, *connect.Request[v1.ListHeadlessHostImageTagsRequest]) (*connect.Response[v1.ListHeadlessHostImageTagsResponse], error)
 	DeleteHeadlessHost(context.Context, *connect.Request[v1.DeleteHeadlessHostRequest]) (*connect.Response[v1.DeleteHeadlessHostResponse], error)
+	ListHeadlessHostInstances(context.Context, *connect.Request[v1.ListHeadlessHostInstancesRequest]) (*connect.Response[v1.ListHeadlessHostInstancesResponse], error)
 	// アカウント系
 	CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error)
 	ListHeadlessAccounts(context.Context, *connect.Request[v1.ListHeadlessAccountsRequest]) (*connect.Response[v1.ListHeadlessAccountsResponse], error)
@@ -743,6 +760,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		ControllerServiceDeleteHeadlessHostProcedure,
 		svc.DeleteHeadlessHost,
 		connect.WithSchema(controllerServiceMethods.ByName("DeleteHeadlessHost")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceListHeadlessHostInstancesHandler := connect.NewUnaryHandler(
+		ControllerServiceListHeadlessHostInstancesProcedure,
+		svc.ListHeadlessHostInstances,
+		connect.WithSchema(controllerServiceMethods.ByName("ListHeadlessHostInstances")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceCreateHeadlessAccountHandler := connect.NewUnaryHandler(
@@ -909,6 +932,8 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceListHeadlessHostImageTagsHandler.ServeHTTP(w, r)
 		case ControllerServiceDeleteHeadlessHostProcedure:
 			controllerServiceDeleteHeadlessHostHandler.ServeHTTP(w, r)
+		case ControllerServiceListHeadlessHostInstancesProcedure:
+			controllerServiceListHeadlessHostInstancesHandler.ServeHTTP(w, r)
 		case ControllerServiceCreateHeadlessAccountProcedure:
 			controllerServiceCreateHeadlessAccountHandler.ServeHTTP(w, r)
 		case ControllerServiceListHeadlessAccountsProcedure:
@@ -1010,6 +1035,10 @@ func (UnimplementedControllerServiceHandler) ListHeadlessHostImageTags(context.C
 
 func (UnimplementedControllerServiceHandler) DeleteHeadlessHost(context.Context, *connect.Request[v1.DeleteHeadlessHostRequest]) (*connect.Response[v1.DeleteHeadlessHostResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.DeleteHeadlessHost is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) ListHeadlessHostInstances(context.Context, *connect.Request[v1.ListHeadlessHostInstancesRequest]) (*connect.Response[v1.ListHeadlessHostInstancesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.ListHeadlessHostInstances is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error) {

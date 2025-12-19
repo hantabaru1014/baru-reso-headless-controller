@@ -80,6 +80,51 @@ func (q *Queries) GetContainerLogsByTag(ctx context.Context, arg GetContainerLog
 	return items, nil
 }
 
+const getInstanceTimestamps = `-- name: GetInstanceTimestamps :many
+SELECT
+    CAST(SUBSTRING(tag FROM 'headless-[^-]+-(\d+)') AS INTEGER) AS instance_id,
+    MIN(ts) AS first_log_at,
+    MAX(ts) AS last_log_at,
+    COUNT(*) AS log_count
+FROM container_logs
+WHERE tag LIKE 'headless-' || $1 || '-%'
+GROUP BY SUBSTRING(tag FROM 'headless-[^-]+-(\d+)')
+ORDER BY instance_id DESC
+`
+
+type GetInstanceTimestampsRow struct {
+	InstanceID int32
+	FirstLogAt interface{}
+	LastLogAt  interface{}
+	LogCount   int64
+}
+
+// 各インスタンスのログの最初と最後のタイムスタンプを取得
+func (q *Queries) GetInstanceTimestamps(ctx context.Context, hostID pgtype.Text) ([]GetInstanceTimestampsRow, error) {
+	rows, err := q.db.Query(ctx, getInstanceTimestamps, hostID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetInstanceTimestampsRow
+	for rows.Next() {
+		var i GetInstanceTimestampsRow
+		if err := rows.Scan(
+			&i.InstanceID,
+			&i.FirstLogAt,
+			&i.LastLogAt,
+			&i.LogCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertContainerLog = `-- name: InsertContainerLog :exec
 INSERT INTO container_logs (tag, ts, data) VALUES ($1, $2, $3)
 `

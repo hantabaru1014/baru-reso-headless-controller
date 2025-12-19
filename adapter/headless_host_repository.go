@@ -104,6 +104,34 @@ func (h *HeadlessHostRepository) parseContainerLogRow(row db.GetContainerLogsByT
 	}, nil
 }
 
+// GetInstanceTimestamps implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) GetInstanceTimestamps(ctx context.Context, hostID string) (port.InstanceTimestampList, error) {
+	rows, err := h.q.GetInstanceTimestamps(ctx, pgtype.Text{String: hostID, Valid: true})
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	result := make(port.InstanceTimestampList, 0, len(rows))
+	for _, row := range rows {
+		var firstLogAt, lastLogAt *int64
+		if ts, ok := row.FirstLogAt.(time.Time); ok {
+			unix := ts.Unix()
+			firstLogAt = &unix
+		}
+		if ts, ok := row.LastLogAt.(time.Time); ok {
+			unix := ts.Unix()
+			lastLogAt = &unix
+		}
+		result = append(result, &port.InstanceTimestamp{
+			InstanceID: row.InstanceID,
+			FirstLogAt: firstLogAt,
+			LastLogAt:  lastLogAt,
+			LogCount:   row.LogCount,
+		})
+	}
+	return result, nil
+}
+
 // GetRpcClient implements port.HeadlessHostRepository.
 func (h *HeadlessHostRepository) GetRpcClient(ctx context.Context, id string) (headlessv1.HeadlessControlServiceClient, error) {
 	host, err := h.q.GetHost(ctx, id)
