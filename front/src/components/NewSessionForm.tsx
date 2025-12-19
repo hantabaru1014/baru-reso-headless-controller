@@ -4,12 +4,13 @@ import {
   listHeadlessHost,
   startWorld,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import { Button } from "./ui";
+import { Avatar, AvatarFallback, AvatarImage, Button } from "./ui";
+import { resolveUrl } from "@/libs/skyfrostUtils";
 import { useNavigate } from "react-router";
-import { AccessLevels } from "../constants";
+import { AccessLevels, UserRoles } from "../constants";
 import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { z } from "zod";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
@@ -18,7 +19,10 @@ import {
   TextareaField,
   TextField,
   SelectField,
+  UserSearchField,
+  UserInfo,
 } from "./base";
+import { Trash2 } from "lucide-react";
 
 const sessionFormSchema = z
   .object({
@@ -44,6 +48,7 @@ const sessionFormSchema = z
         z.object({
           role: z.string(),
           userName: z.string(),
+          iconUrl: z.string().optional(),
         }),
       )
       .optional(),
@@ -159,6 +164,18 @@ export default function NewSessionForm() {
   const hostId = watch("hostId");
   const worldSource = watch("worldSource");
   const worldUrl = watch("worldUrl");
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "defaultUserRoles",
+  });
+
+  const handleUserSelect = (user: UserInfo) => {
+    const exists = fields.some((f) => f.userName === user.name);
+    if (!exists) {
+      append({ userName: user.name, role: "Guest", iconUrl: user.iconUrl });
+    }
+  };
 
   const handleFetchInfo = async () => {
     if (!hostId || !worldUrl) return;
@@ -626,6 +643,59 @@ export default function NewSessionForm() {
             />
           )}
         />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <UserSearchField
+            hostId={hostId}
+            onUserSelect={handleUserSelect}
+            placeholder="ユーザーを検索して追加"
+            label="デフォルトユーザーロール"
+          />
+          {fields.length > 0 && (
+            <div className="space-y-2 rounded-md border p-2">
+              {fields.map((field, index) => (
+                <div
+                  key={field.id}
+                  className="flex items-center gap-2 p-2 rounded-md border bg-muted/50"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={resolveUrl(field.iconUrl || "")}
+                      alt={`${field.userName}のアイコン`}
+                    />
+                    <AvatarFallback className="text-xs">
+                      {field.userName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="flex-1 text-sm">{field.userName}</span>
+                  <Controller
+                    name={`defaultUserRoles.${index}.role`}
+                    control={control}
+                    render={({ field: roleField }) => (
+                      <SelectField
+                        options={UserRoles.map((r) => r)}
+                        selectedId={roleField.value}
+                        onChange={(option) => roleField.onChange(option.id)}
+                        minWidth="7rem"
+                      />
+                    )}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => remove(index)}
+                    title="削除"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <Controller
