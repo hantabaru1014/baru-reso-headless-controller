@@ -32,6 +32,7 @@ const (
 	ControllerService_DenyHostAccess_FullMethodName                   = "/hdlctrl.v1.ControllerService/DenyHostAccess"
 	ControllerService_ListHeadlessHostImageTags_FullMethodName        = "/hdlctrl.v1.ControllerService/ListHeadlessHostImageTags"
 	ControllerService_DeleteHeadlessHost_FullMethodName               = "/hdlctrl.v1.ControllerService/DeleteHeadlessHost"
+	ControllerService_ListHeadlessHostInstances_FullMethodName        = "/hdlctrl.v1.ControllerService/ListHeadlessHostInstances"
 	ControllerService_CreateHeadlessAccount_FullMethodName            = "/hdlctrl.v1.ControllerService/CreateHeadlessAccount"
 	ControllerService_ListHeadlessAccounts_FullMethodName             = "/hdlctrl.v1.ControllerService/ListHeadlessAccounts"
 	ControllerService_DeleteHeadlessAccount_FullMethodName            = "/hdlctrl.v1.ControllerService/DeleteHeadlessAccount"
@@ -74,6 +75,7 @@ type ControllerServiceClient interface {
 	DenyHostAccess(ctx context.Context, in *DenyHostAccessRequest, opts ...grpc.CallOption) (*DenyHostAccessResponse, error)
 	ListHeadlessHostImageTags(ctx context.Context, in *ListHeadlessHostImageTagsRequest, opts ...grpc.CallOption) (*ListHeadlessHostImageTagsResponse, error)
 	DeleteHeadlessHost(ctx context.Context, in *DeleteHeadlessHostRequest, opts ...grpc.CallOption) (*DeleteHeadlessHostResponse, error)
+	ListHeadlessHostInstances(ctx context.Context, in *ListHeadlessHostInstancesRequest, opts ...grpc.CallOption) (*ListHeadlessHostInstancesResponse, error)
 	// アカウント系
 	CreateHeadlessAccount(ctx context.Context, in *CreateHeadlessAccountRequest, opts ...grpc.CallOption) (*CreateHeadlessAccountResponse, error)
 	ListHeadlessAccounts(ctx context.Context, in *ListHeadlessAccountsRequest, opts ...grpc.CallOption) (*ListHeadlessAccountsResponse, error)
@@ -224,6 +226,16 @@ func (c *controllerServiceClient) DeleteHeadlessHost(ctx context.Context, in *De
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeleteHeadlessHostResponse)
 	err := c.cc.Invoke(ctx, ControllerService_DeleteHeadlessHost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) ListHeadlessHostInstances(ctx context.Context, in *ListHeadlessHostInstancesRequest, opts ...grpc.CallOption) (*ListHeadlessHostInstancesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListHeadlessHostInstancesResponse)
+	err := c.cc.Invoke(ctx, ControllerService_ListHeadlessHostInstances_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -477,6 +489,7 @@ type ControllerServiceServer interface {
 	DenyHostAccess(context.Context, *DenyHostAccessRequest) (*DenyHostAccessResponse, error)
 	ListHeadlessHostImageTags(context.Context, *ListHeadlessHostImageTagsRequest) (*ListHeadlessHostImageTagsResponse, error)
 	DeleteHeadlessHost(context.Context, *DeleteHeadlessHostRequest) (*DeleteHeadlessHostResponse, error)
+	ListHeadlessHostInstances(context.Context, *ListHeadlessHostInstancesRequest) (*ListHeadlessHostInstancesResponse, error)
 	// アカウント系
 	CreateHeadlessAccount(context.Context, *CreateHeadlessAccountRequest) (*CreateHeadlessAccountResponse, error)
 	ListHeadlessAccounts(context.Context, *ListHeadlessAccountsRequest) (*ListHeadlessAccountsResponse, error)
@@ -548,6 +561,9 @@ func (UnimplementedControllerServiceServer) ListHeadlessHostImageTags(context.Co
 }
 func (UnimplementedControllerServiceServer) DeleteHeadlessHost(context.Context, *DeleteHeadlessHostRequest) (*DeleteHeadlessHostResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteHeadlessHost not implemented")
+}
+func (UnimplementedControllerServiceServer) ListHeadlessHostInstances(context.Context, *ListHeadlessHostInstancesRequest) (*ListHeadlessHostInstancesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListHeadlessHostInstances not implemented")
 }
 func (UnimplementedControllerServiceServer) CreateHeadlessAccount(context.Context, *CreateHeadlessAccountRequest) (*CreateHeadlessAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateHeadlessAccount not implemented")
@@ -851,6 +867,24 @@ func _ControllerService_DeleteHeadlessHost_Handler(srv interface{}, ctx context.
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).DeleteHeadlessHost(ctx, req.(*DeleteHeadlessHostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_ListHeadlessHostInstances_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListHeadlessHostInstancesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).ListHeadlessHostInstances(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_ListHeadlessHostInstances_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).ListHeadlessHostInstances(ctx, req.(*ListHeadlessHostInstancesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1323,6 +1357,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteHeadlessHost",
 			Handler:    _ControllerService_DeleteHeadlessHost_Handler,
+		},
+		{
+			MethodName: "ListHeadlessHostInstances",
+			Handler:    _ControllerService_ListHeadlessHostInstances_Handler,
 		},
 		{
 			MethodName: "CreateHeadlessAccount",

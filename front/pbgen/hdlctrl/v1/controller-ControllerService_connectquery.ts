@@ -67,6 +67,11 @@ export const listHeadlessHostImageTags = ControllerService.method.listHeadlessHo
 export const deleteHeadlessHost = ControllerService.method.deleteHeadlessHost;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.ListHeadlessHostInstances
+ */
+export const listHeadlessHostInstances = ControllerService.method.listHeadlessHostInstances;
+
+/**
  * アカウント系
  *
  * @generated from rpc hdlctrl.v1.ControllerService.CreateHeadlessAccount

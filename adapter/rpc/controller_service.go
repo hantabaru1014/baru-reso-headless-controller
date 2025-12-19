@@ -388,6 +388,35 @@ func (c *ControllerService) GetHeadlessHostLogs(ctx context.Context, req *connec
 	return res, nil
 }
 
+// ListHeadlessHostInstances implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) ListHeadlessHostInstances(ctx context.Context, req *connect.Request[hdlctrlv1.ListHeadlessHostInstancesRequest]) (*connect.Response[hdlctrlv1.ListHeadlessHostInstancesResponse], error) {
+	instances, err := c.hhuc.HeadlessHostGetInstances(ctx, req.Msg.HostId)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	protoInstances := make([]*hdlctrlv1.ListHeadlessHostInstancesResponse_Instance, 0, len(instances))
+	for _, inst := range instances {
+		protoInst := &hdlctrlv1.ListHeadlessHostInstancesResponse_Instance{
+			InstanceId: inst.InstanceID,
+			LogCount:   inst.LogCount,
+			IsCurrent:  inst.IsCurrent,
+		}
+		if inst.FirstLogAt != nil {
+			protoInst.FirstLogAt = timestamppb.New(time.Unix(*inst.FirstLogAt, 0))
+		}
+		if inst.LastLogAt != nil {
+			protoInst.LastLogAt = timestamppb.New(time.Unix(*inst.LastLogAt, 0))
+		}
+		protoInstances = append(protoInstances, protoInst)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.ListHeadlessHostInstancesResponse{
+		Instances: protoInstances,
+	})
+	return res, nil
+}
+
 // ShutdownHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) ShutdownHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.ShutdownHeadlessHostRequest]) (*connect.Response[hdlctrlv1.ShutdownHeadlessHostResponse], error) {
 	err := c.hhuc.HeadlessHostShutdown(ctx, req.Msg.HostId)

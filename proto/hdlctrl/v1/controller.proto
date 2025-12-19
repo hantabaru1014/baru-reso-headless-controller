@@ -19,6 +19,7 @@ service ControllerService {
   rpc DenyHostAccess(DenyHostAccessRequest) returns (DenyHostAccessResponse);
   rpc ListHeadlessHostImageTags(ListHeadlessHostImageTagsRequest) returns (ListHeadlessHostImageTagsResponse);
   rpc DeleteHeadlessHost(DeleteHeadlessHostRequest) returns (DeleteHeadlessHostResponse);
+  rpc ListHeadlessHostInstances(ListHeadlessHostInstancesRequest) returns (ListHeadlessHostInstancesResponse);
 
   // アカウント系
   rpc CreateHeadlessAccount(CreateHeadlessAccountRequest) returns (CreateHeadlessAccountResponse);
@@ -84,6 +85,22 @@ message DeleteHeadlessHostRequest {
 }
 
 message DeleteHeadlessHostResponse {}
+
+// ホストの過去のインスタンス一覧を取得
+message ListHeadlessHostInstancesRequest {
+  string host_id = 1;
+}
+
+message ListHeadlessHostInstancesResponse {
+  message Instance {
+    int32 instance_id = 1;
+    google.protobuf.Timestamp first_log_at = 2;
+    google.protobuf.Timestamp last_log_at = 3;
+    int64 log_count = 4;
+    bool is_current = 5;
+  }
+  repeated Instance instances = 1;
+}
 
 message AllowHostAccessRequest {
   string host_id = 1;

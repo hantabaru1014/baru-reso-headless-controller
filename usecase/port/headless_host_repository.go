@@ -24,6 +24,15 @@ type GetLogsParams struct {
 	AfterID    int64 // このIDより大きいログ (新しい方向へのページネーション)
 }
 
+type InstanceTimestamp struct {
+	InstanceID int32
+	FirstLogAt *int64 // UnixTime (秒), nil = データなし
+	LastLogAt  *int64 // UnixTime (秒), nil = データなし
+	LogCount   int64
+}
+
+type InstanceTimestampList []*InstanceTimestamp
+
 type HeadlessHostStartParams struct {
 	Name              string
 	ContainerImageTag string
@@ -56,6 +65,7 @@ type HeadlessHostRepository interface {
 	Find(ctx context.Context, id string, fetchOptions HeadlessHostFetchOptions) (*entity.HeadlessHost, error)
 	GetRpcClient(ctx context.Context, id string) (headlessv1.HeadlessControlServiceClient, error)
 	GetLogs(ctx context.Context, params GetLogsParams) (LogLineList, error)
+	GetInstanceTimestamps(ctx context.Context, hostID string) (InstanceTimestampList, error)
 	Rename(ctx context.Context, id, newName string) error
 	UpdateHostSettings(ctx context.Context, id string, settings *entity.HeadlessHostSettings) error
 	// コンテナイメージのタグ一覧をリモートから取得する。一番新しいタグが最後。
