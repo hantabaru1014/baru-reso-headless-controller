@@ -27,4 +27,6 @@ type HostConnector interface {
 	Start(ctx context.Context, params HostStartParams) (HostConnectString, error)
 	Stop(ctx context.Context, connect_string HostConnectString, timeoutSeconds int) error
 	Kill(ctx context.Context, connect_string HostConnectString) error
+	// Remove removes the container. Returns nil if the container does not exist.
+	Remove(ctx context.Context, connect_string HostConnectString) error
 }

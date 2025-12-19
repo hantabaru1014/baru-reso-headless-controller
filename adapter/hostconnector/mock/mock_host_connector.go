@@ -117,6 +117,20 @@ func (mr *MockHostConnectorMockRecorder) PullContainerImage(ctx, tag any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PullContainerImage", reflect.TypeOf((*MockHostConnector)(nil).PullContainerImage), ctx, tag)
 }
 
+// Remove mocks base method.
+func (m *MockHostConnector) Remove(ctx context.Context, connect_string hostconnector.HostConnectString) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Remove", ctx, connect_string)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Remove indicates an expected call of Remove.
+func (mr *MockHostConnectorMockRecorder) Remove(ctx, connect_string any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Remove", reflect.TypeOf((*MockHostConnector)(nil).Remove), ctx, connect_string)
+}
+
 // Start mocks base method.
 func (m *MockHostConnector) Start(ctx context.Context, params hostconnector.HostStartParams) (hostconnector.HostConnectString, error) {
 	m.ctrl.T.Helper()

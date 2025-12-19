@@ -278,6 +278,33 @@ func (d *DockerHostConnector) Kill(ctx context.Context, connect_string HostConne
 	return nil
 }
 
+// Remove implements HostConnector.
+func (d *DockerHostConnector) Remove(ctx context.Context, connect_string HostConnectString) error {
+	id, _, err := parseConnectString(connect_string)
+	if err != nil {
+		return err
+	}
+	_, err = d.getContainer(ctx, id)
+	if err != nil {
+		if errors.Is(err, containerNotFoundError) {
+			return nil
+		}
+		return errors.Errorf("failed to get container: %w", err)
+	}
+	cli, err := d.newDockerClient()
+	if err != nil {
+		return errors.Errorf("failed to create docker client: %w", err)
+	}
+	err = cli.ContainerRemove(ctx, id, container.RemoveOptions{
+		Force: true,
+	})
+	if err != nil {
+		return errors.Errorf("failed to remove container: %w", err)
+	}
+
+	return nil
+}
+
 func NewDockerHostConnector() *DockerHostConnector {
 	return &DockerHostConnector{}
 }

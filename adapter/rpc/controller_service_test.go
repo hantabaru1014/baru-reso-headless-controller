@@ -1636,6 +1636,11 @@ func TestControllerService_DeleteHeadlessHost(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, logsBefore, 2, "should have 2 logs for instance 1 before deletion")
 
+		// Mock the container removal
+		setup.mockHostConnector.EXPECT().
+			Remove(gomock.Any(), gomock.Any()).
+			Return(nil)
+
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.DeleteHeadlessHostRequest{
 			HostId: host.ID,
 		})
