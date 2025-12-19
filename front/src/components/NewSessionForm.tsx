@@ -41,7 +41,14 @@ const sessionFormSchema = z
     worldUrl: z.string().optional(),
     worldTemplate: z.enum(["grid", "platform", "blank"]),
     // 追加フィールド
-    autoInviteUsernames: z.string().optional(),
+    autoInviteUsernames: z
+      .array(
+        z.object({
+          userName: z.string(),
+          iconUrl: z.string().optional(),
+        }),
+      )
+      .optional(),
     hideFromPublicListing: z.boolean(),
     defaultUserRoles: z
       .array(
@@ -144,7 +151,7 @@ export default function NewSessionForm() {
       accessLevel: 1,
       hideFromPublicListing: false,
       tags: "",
-      autoInviteUsernames: "",
+      autoInviteUsernames: [],
       defaultUserRoles: [],
       awayKickMinutes: -1,
       idleRestartIntervalSeconds: -1,
@@ -165,15 +172,39 @@ export default function NewSessionForm() {
   const worldSource = watch("worldSource");
   const worldUrl = watch("worldUrl");
 
-  const { fields, append, remove } = useFieldArray({
+  const {
+    fields: defaultUserRoleFields,
+    append: appendDefaultUserRole,
+    remove: removeDefaultUserRole,
+  } = useFieldArray({
     control,
     name: "defaultUserRoles",
   });
 
-  const handleUserSelect = (user: UserInfo) => {
-    const exists = fields.some((f) => f.userName === user.name);
+  const {
+    fields: autoInviteFields,
+    append: appendAutoInvite,
+    remove: removeAutoInvite,
+  } = useFieldArray({
+    control,
+    name: "autoInviteUsernames",
+  });
+
+  const handleDefaultUserRoleSelect = (user: UserInfo) => {
+    const exists = defaultUserRoleFields.some((f) => f.userName === user.name);
     if (!exists) {
-      append({ userName: user.name, role: "Guest", iconUrl: user.iconUrl });
+      appendDefaultUserRole({
+        userName: user.name,
+        role: "Guest",
+        iconUrl: user.iconUrl,
+      });
+    }
+  };
+
+  const handleAutoInviteSelect = (user: UserInfo) => {
+    const exists = autoInviteFields.some((f) => f.userName === user.name);
+    if (!exists) {
+      appendAutoInvite({ userName: user.name, iconUrl: user.iconUrl });
     }
   };
 
@@ -209,7 +240,8 @@ export default function NewSessionForm() {
           maxUsers: data.maxUsers,
           accessLevel: data.accessLevel,
           customSessionId: data.customSessionId || "",
-          autoInviteUsernames: processCSV(data.autoInviteUsernames),
+          autoInviteUsernames:
+            data.autoInviteUsernames?.map((u) => u.userName) || [],
           hideFromPublicListing: data.hideFromPublicListing,
           defaultUserRoles: data.defaultUserRoles || [],
           awayKickMinutes: data.awayKickMinutes,
@@ -619,18 +651,44 @@ export default function NewSessionForm() {
         />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Controller
-          name="autoInviteUsernames"
-          control={control}
-          render={({ field }) => (
-            <TextareaField
-              label="自動招待ユーザ"
-              error={errors.autoInviteUsernames?.message}
-              helperText="カンマ区切りで入力してください"
-              {...field}
-            />
+        <div className="space-y-1">
+          <UserSearchField
+            hostId={hostId}
+            onUserSelect={handleAutoInviteSelect}
+            placeholder="ユーザーを検索して追加"
+            label="自動招待ユーザ"
+          />
+          {autoInviteFields.length > 0 && (
+            <div className="space-y-2 rounded-md border p-2">
+              {autoInviteFields.map((field, index) => (
+                <div
+                  key={field.id}
+                  className="flex items-center gap-2 p-2 rounded-md border bg-muted/50"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={resolveUrl(field.iconUrl || "")}
+                      alt={`${field.userName}のアイコン`}
+                    />
+                    <AvatarFallback className="text-xs">
+                      {field.userName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="flex-1 text-sm">{field.userName}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeAutoInvite(index)}
+                    title="削除"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
           )}
-        />
+        </div>
 
         <Controller
           name="autoInviteMessage"
@@ -649,13 +707,13 @@ export default function NewSessionForm() {
         <div className="space-y-1">
           <UserSearchField
             hostId={hostId}
-            onUserSelect={handleUserSelect}
+            onUserSelect={handleDefaultUserRoleSelect}
             placeholder="ユーザーを検索して追加"
             label="デフォルトユーザーロール"
           />
-          {fields.length > 0 && (
+          {defaultUserRoleFields.length > 0 && (
             <div className="space-y-2 rounded-md border p-2">
-              {fields.map((field, index) => (
+              {defaultUserRoleFields.map((field, index) => (
                 <div
                   key={field.id}
                   className="flex items-center gap-2 p-2 rounded-md border bg-muted/50"
@@ -686,7 +744,7 @@ export default function NewSessionForm() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    onClick={() => remove(index)}
+                    onClick={() => removeDefaultUserRole(index)}
                     title="削除"
                   >
                     <Trash2 className="h-4 w-4" />
