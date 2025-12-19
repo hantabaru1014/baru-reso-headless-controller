@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -51,33 +50,20 @@ func (h *HeadlessHostRepository) Find(ctx context.Context, id string, fetchOptio
 }
 
 // GetLogs implements port.HeadlessHostRepository.
-func (h *HeadlessHostRepository) GetLogs(ctx context.Context, id string, instanceId int32, limit int32, until string, since string) (port.LogLineList, error) {
+func (h *HeadlessHostRepository) GetLogs(ctx context.Context, params port.GetLogsParams) (port.LogLineList, error) {
 	// FluentBitタグを構築: headless-{hostID}-{instanceID}
-	tag := fmt.Sprintf("headless-%s-%d", id, instanceId)
+	tag := fmt.Sprintf("headless-%s-%d", params.HostID, params.InstanceID)
 
-	// until/sinceタイムスタンプをパース
-	var untilTime, sinceTime pgtype.Timestamp
-	if until != "" {
-		if unixTime, err := strconv.ParseInt(until, 10, 64); err == nil {
-			untilTime = pgtype.Timestamp{Time: time.Unix(unixTime, 0), Valid: true}
-		}
-	}
-	if since != "" {
-		if unixTime, err := strconv.ParseInt(since, 10, 64); err == nil {
-			sinceTime = pgtype.Timestamp{Time: time.Unix(unixTime, 0), Valid: true}
-		}
-	}
-
-	queryLimit := limit
+	queryLimit := params.Limit
 	if queryLimit <= 0 {
-		queryLimit = 1000
+		queryLimit = 100
 	}
 
 	rows, err := h.q.GetContainerLogsByTag(ctx, db.GetContainerLogsByTagParams{
-		Tag:     pgtype.Text{String: tag, Valid: true},
-		Until:   untilTime,
-		Since:   sinceTime,
-		MaxRows: queryLimit,
+		Tag:      pgtype.Text{String: tag, Valid: true},
+		BeforeID: params.BeforeID,
+		AfterID:  params.AfterID,
+		MaxRows:  queryLimit,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
@@ -96,7 +82,7 @@ func (h *HeadlessHostRepository) GetLogs(ctx context.Context, id string, instanc
 	return logs, nil
 }
 
-func (h *HeadlessHostRepository) parseContainerLogRow(row db.ContainerLog) (*port.LogLine, error) {
+func (h *HeadlessHostRepository) parseContainerLogRow(row db.GetContainerLogsByTagRow) (*port.LogLine, error) {
 	var data struct {
 		Log    string `json:"log"`
 		Stream string `json:"stream"` // "stdout" or "stderr"
@@ -105,11 +91,12 @@ func (h *HeadlessHostRepository) parseContainerLogRow(row db.ContainerLog) (*por
 		return nil, err
 	}
 
-	if !row.Ts.Valid {
-		return nil, errors.New("invalid timestamp")
+	if !row.Ts.Valid || !row.ID.Valid {
+		return nil, errors.New("invalid row data")
 	}
 
 	return &port.LogLine{
+		ID:        row.ID.Int64,
 		Timestamp: row.Ts.Time.Unix(),
 		IsError:   data.Stream == "stderr",
 		Body:      strings.TrimSuffix(data.Log, "\n"),

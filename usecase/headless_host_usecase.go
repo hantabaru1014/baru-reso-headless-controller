@@ -124,13 +124,63 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 	return nil
 }
 
-func (hhuc *HeadlessHostUsecase) HeadlessHostGetLogs(ctx context.Context, id, until, since string, limit int32) (port.LogLineList, error) {
-	// 現在のインスタンスのログのみ取得（RPC変更は後のPRで）
-	host, err := hhuc.hhrepo.Find(ctx, id, port.HeadlessHostFetchOptions{})
+type HeadlessHostGetLogsParams struct {
+	HostID     string
+	InstanceID int32
+	Limit      int32
+	BeforeID   int64 // このIDより小さいログ (古い方向へのページネーション)
+	AfterID    int64 // このIDより大きいログ (新しい方向へのページネーション)
+}
+
+type HeadlessHostGetLogsResult struct {
+	Logs          port.LogLineList
+	HasMoreBefore bool
+	HasMoreAfter  bool
+}
+
+func (hhuc *HeadlessHostUsecase) HeadlessHostGetLogs(ctx context.Context, params HeadlessHostGetLogsParams) (*HeadlessHostGetLogsResult, error) {
+	// limit+1 件取得して has_more を判定
+	fetchLimit := params.Limit
+	if fetchLimit <= 0 {
+		fetchLimit = 100
+	}
+	fetchLimit++ // 1件多く取得して has_more 判定
+
+	logs, err := hhuc.hhrepo.GetLogs(ctx, port.GetLogsParams{
+		HostID:     params.HostID,
+		InstanceID: params.InstanceID,
+		Limit:      fetchLimit,
+		BeforeID:   params.BeforeID,
+		AfterID:    params.AfterID,
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
-	return hhuc.hhrepo.GetLogs(ctx, id, host.InstanceId, limit, until, since)
+
+	hasMore := len(logs) >= int(fetchLimit)
+	if hasMore {
+		logs = logs[:len(logs)-1] // 余分な1件を削除
+	}
+
+	// before_id 指定時は has_more_before、after_id 指定時は has_more_after
+	result := &HeadlessHostGetLogsResult{
+		Logs:          logs,
+		HasMoreBefore: false,
+		HasMoreAfter:  false,
+	}
+
+	if params.BeforeID > 0 {
+		// before_id 指定 = 古いログを取得中 → hasMore は「さらに古いログがある」
+		result.HasMoreBefore = hasMore
+	} else if params.AfterID > 0 {
+		// after_id 指定 = 新しいログを取得中 → hasMore は「さらに新しいログがある」
+		result.HasMoreAfter = hasMore
+	} else {
+		// カーソルなし = 最新から取得 → hasMore は「古いログがある」
+		result.HasMoreBefore = hasMore
+	}
+
+	return result, nil
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostShutdown(ctx context.Context, id string) error {

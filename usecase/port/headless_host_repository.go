@@ -8,12 +8,21 @@ import (
 )
 
 type LogLine struct {
+	ID        int64
 	Timestamp int64
 	IsError   bool
 	Body      string
 }
 
 type LogLineList []*LogLine
+
+type GetLogsParams struct {
+	HostID     string
+	InstanceID int32
+	Limit      int32
+	BeforeID   int64 // このIDより小さいログ (古い方向へのページネーション)
+	AfterID    int64 // このIDより大きいログ (新しい方向へのページネーション)
+}
 
 type HeadlessHostStartParams struct {
 	Name              string
@@ -46,7 +55,7 @@ type HeadlessHostRepository interface {
 	ListRunningByAccount(ctx context.Context, accountId string) (entity.HeadlessHostList, error)
 	Find(ctx context.Context, id string, fetchOptions HeadlessHostFetchOptions) (*entity.HeadlessHost, error)
 	GetRpcClient(ctx context.Context, id string) (headlessv1.HeadlessControlServiceClient, error)
-	GetLogs(ctx context.Context, id string, instanceId int32, limit int32, until, since string) (LogLineList, error)
+	GetLogs(ctx context.Context, params GetLogsParams) (LogLineList, error)
 	Rename(ctx context.Context, id, newName string) error
 	UpdateHostSettings(ctx context.Context, id string, settings *entity.HeadlessHostSettings) error
 	// コンテナイメージのタグ一覧をリモートから取得する。一番新しいタグが最後。
