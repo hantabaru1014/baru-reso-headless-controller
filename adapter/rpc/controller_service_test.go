@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -1188,13 +1189,9 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 		testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime, "stdout", "Log line 1")
 		testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime.Add(time.Second), "stderr", "Error line")
 
-		// Mock GetStatus for Find call in usecase
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_EXITED)
-
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
-			HostId: host.ID,
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
 		})
 
 		res, err := client.GetHeadlessHostLogs(t.Context(), req)
@@ -1216,19 +1213,213 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test2", "TestHost2", entity.HeadlessHostStatus_EXITED)
 
-		// Mock GetStatus for Find call in usecase
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_EXITED)
-
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
-			HostId: host.ID,
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
 		})
 
 		res, err := client.GetHeadlessHostLogs(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
 		assert.Len(t, res.Msg.Logs, 0)
+	})
+
+	t.Run("成功: limitパラメータでログ件数を制限", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+		client := setupAuthenticatedClient(t, setup.service)
+
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test3", "test3@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test3", "TestHost3", entity.HeadlessHostStatus_EXITED)
+
+		// Insert 5 logs
+		baseTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		for i := 0; i < 5; i++ {
+			testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime.Add(time.Duration(i)*time.Second), "stdout", fmt.Sprintf("Log line %d", i+1))
+		}
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+			Limit:      3,
+		})
+
+		res, err := client.GetHeadlessHostLogs(t.Context(), req)
+		require.NoError(t, err)
+		assert.Len(t, res.Msg.Logs, 3)
+		assert.True(t, res.Msg.HasMoreBefore, "should have more logs before")
+		assert.False(t, res.Msg.HasMoreAfter, "should not have more logs after (initial fetch)")
+	})
+
+	t.Run("成功: beforeIdカーソルで古いログを取得", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+		client := setupAuthenticatedClient(t, setup.service)
+
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test4", "test4@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test4", "TestHost4", entity.HeadlessHostStatus_EXITED)
+
+		// Insert logs with distinct timestamps
+		baseTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime, "stdout", "Old log")
+		testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime.Add(time.Minute), "stdout", "Middle log")
+		testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime.Add(2*time.Minute), "stdout", "New log")
+
+		// First, get all logs to find the ID of "Middle log"
+		allLogsReq := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+		})
+		allLogsRes, err := client.GetHeadlessHostLogs(t.Context(), allLogsReq)
+		require.NoError(t, err)
+		require.Len(t, allLogsRes.Msg.Logs, 3)
+
+		// Find the middle log's ID (logs are returned in chronological order: Old, Middle, New)
+		var middleLogId int64
+		for _, log := range allLogsRes.Msg.Logs {
+			if log.Body == "Middle log" {
+				middleLogId = log.Id
+				break
+			}
+		}
+		require.NotZero(t, middleLogId, "should find middle log")
+
+		// Use beforeId cursor to get logs before "Middle log"
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+			Cursor:     &hdlctrlv1.GetHeadlessHostLogsRequest_BeforeId{BeforeId: middleLogId},
+		})
+
+		res, err := client.GetHeadlessHostLogs(t.Context(), req)
+		require.NoError(t, err)
+		assert.Len(t, res.Msg.Logs, 1)
+		assert.Equal(t, "Old log", res.Msg.Logs[0].Body)
+		assert.False(t, res.Msg.HasMoreBefore, "no more older logs")
+	})
+
+	t.Run("成功: afterIdカーソルで新しいログを取得", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+		client := setupAuthenticatedClient(t, setup.service)
+
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test5", "test5@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test5", "TestHost5", entity.HeadlessHostStatus_EXITED)
+
+		// Insert logs with distinct timestamps
+		baseTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime, "stdout", "Old log")
+		testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime.Add(time.Minute), "stdout", "Middle log")
+		testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime.Add(2*time.Minute), "stdout", "New log")
+
+		// First, get all logs to find the ID of "Middle log"
+		allLogsReq := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+		})
+		allLogsRes, err := client.GetHeadlessHostLogs(t.Context(), allLogsReq)
+		require.NoError(t, err)
+		require.Len(t, allLogsRes.Msg.Logs, 3)
+
+		// Find the middle log's ID (logs are returned in chronological order: Old, Middle, New)
+		var middleLogId int64
+		for _, log := range allLogsRes.Msg.Logs {
+			if log.Body == "Middle log" {
+				middleLogId = log.Id
+				break
+			}
+		}
+		require.NotZero(t, middleLogId, "should find middle log")
+
+		// Use afterId cursor to get logs after "Middle log"
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+			Cursor:     &hdlctrlv1.GetHeadlessHostLogsRequest_AfterId{AfterId: middleLogId},
+		})
+
+		res, err := client.GetHeadlessHostLogs(t.Context(), req)
+		require.NoError(t, err)
+		assert.Len(t, res.Msg.Logs, 1)
+		assert.Equal(t, "New log", res.Msg.Logs[0].Body)
+		assert.False(t, res.Msg.HasMoreAfter, "no more newer logs")
+	})
+
+	t.Run("成功: 異なるinstanceIdでログを分離", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+		client := setupAuthenticatedClient(t, setup.service)
+
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test6", "test6@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test6", "TestHost6", entity.HeadlessHostStatus_EXITED)
+
+		baseTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		// Insert logs for instance 1 (current)
+		testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime, "stdout", "Current instance log")
+		// Insert logs for instance 0 (previous)
+		testutil.InsertTestContainerLog(t, setup.queries, host.ID, 0, baseTime, "stdout", "Previous instance log")
+
+		// Request current instance logs
+		req1 := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+		})
+		res1, err := client.GetHeadlessHostLogs(t.Context(), req1)
+		require.NoError(t, err)
+		assert.Len(t, res1.Msg.Logs, 1)
+		assert.Equal(t, "Current instance log", res1.Msg.Logs[0].Body)
+
+		// Request previous instance logs
+		req2 := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: 0,
+		})
+		res2, err := client.GetHeadlessHostLogs(t.Context(), req2)
+		require.NoError(t, err)
+		assert.Len(t, res2.Msg.Logs, 1)
+		assert.Equal(t, "Previous instance log", res2.Msg.Logs[0].Body)
+	})
+
+	t.Run("成功: has_more_afterフラグが正しく設定される", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+		client := setupAuthenticatedClient(t, setup.service)
+
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test7", "test7@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test7", "TestHost7", entity.HeadlessHostStatus_EXITED)
+
+		// Insert 5 logs
+		baseTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		for i := 0; i < 5; i++ {
+			testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime.Add(time.Duration(i)*time.Minute), "stdout", fmt.Sprintf("Log %d", i+1))
+		}
+
+		// First, get all logs to find the ID of "Log 1" (oldest)
+		allLogsReq := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+		})
+		allLogsRes, err := client.GetHeadlessHostLogs(t.Context(), allLogsReq)
+		require.NoError(t, err)
+		require.Len(t, allLogsRes.Msg.Logs, 5)
+
+		// Get the first log's ID (oldest, "Log 1")
+		firstLogId := allLogsRes.Msg.Logs[0].Id
+		require.NotZero(t, firstLogId, "should have first log ID")
+
+		// Use afterId cursor with limit to trigger has_more_after
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+			Limit:      2,
+			Cursor:     &hdlctrlv1.GetHeadlessHostLogsRequest_AfterId{AfterId: firstLogId},
+		})
+
+		res, err := client.GetHeadlessHostLogs(t.Context(), req)
+		require.NoError(t, err)
+		assert.Len(t, res.Msg.Logs, 2)
+		assert.True(t, res.Msg.HasMoreAfter, "should have more logs after")
+		assert.False(t, res.Msg.HasMoreBefore, "should not have has_more_before with after cursor")
 	})
 }
 

@@ -351,31 +351,39 @@ func (c *ControllerService) UpdateHeadlessHostSettings(ctx context.Context, req 
 
 // GetHeadlessHostLogs implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) GetHeadlessHostLogs(ctx context.Context, req *connect.Request[hdlctrlv1.GetHeadlessHostLogsRequest]) (*connect.Response[hdlctrlv1.GetHeadlessHostLogsResponse], error) {
-	until := req.Msg.GetUntil()
-	untilStr := ""
-	if until != nil {
-		untilStr = fmt.Sprintf("%d", until.AsTime().Unix())
+	// カーソル解析 (ID-based)
+	var beforeID, afterID int64
+	switch cursor := req.Msg.GetCursor().(type) {
+	case *hdlctrlv1.GetHeadlessHostLogsRequest_BeforeId:
+		beforeID = cursor.BeforeId
+	case *hdlctrlv1.GetHeadlessHostLogsRequest_AfterId:
+		afterID = cursor.AfterId
 	}
-	since := req.Msg.GetSince()
-	sinceStr := ""
-	if since != nil {
-		sinceStr = fmt.Sprintf("%d", since.AsTime().Unix())
-	}
-	logs, err := c.hhuc.HeadlessHostGetLogs(ctx, req.Msg.HostId, untilStr, sinceStr, req.Msg.GetLimit())
+
+	result, err := c.hhuc.HeadlessHostGetLogs(ctx, usecase.HeadlessHostGetLogsParams{
+		HostID:     req.Msg.HostId,
+		InstanceID: req.Msg.InstanceId,
+		Limit:      req.Msg.Limit,
+		BeforeID:   beforeID,
+		AfterID:    afterID,
+	})
 	if err != nil {
 		return nil, convertErr(err)
 	}
 
-	protoLogs := make([]*hdlctrlv1.GetHeadlessHostLogsResponse_Log, 0, len(logs))
-	for _, log := range logs {
+	protoLogs := make([]*hdlctrlv1.GetHeadlessHostLogsResponse_Log, 0, len(result.Logs))
+	for _, log := range result.Logs {
 		protoLogs = append(protoLogs, &hdlctrlv1.GetHeadlessHostLogsResponse_Log{
 			Timestamp: timestamppb.New(time.Unix(log.Timestamp, 0)),
 			IsError:   log.IsError,
 			Body:      log.Body,
+			Id:        log.ID,
 		})
 	}
 	res := connect.NewResponse(&hdlctrlv1.GetHeadlessHostLogsResponse{
-		Logs: protoLogs,
+		Logs:          protoLogs,
+		HasMoreBefore: result.HasMoreBefore,
+		HasMoreAfter:  result.HasMoreAfter,
 	})
 	return res, nil
 }

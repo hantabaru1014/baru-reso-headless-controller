@@ -12,38 +12,52 @@ import (
 )
 
 const getContainerLogsByTag = `-- name: GetContainerLogsByTag :many
-SELECT tag, ts, data
+SELECT id, tag, ts, data
 FROM container_logs
 WHERE tag = $1
-  AND ($2::timestamp IS NULL OR ts < $2)
-  AND ($3::timestamp IS NULL OR ts >= $3)
-ORDER BY ts DESC
-LIMIT CASE WHEN $4 > 0 THEN $4 ELSE 1000 END
+  AND ($2::bigint IS NULL OR $2 = 0 OR id < $2)
+  AND ($3::bigint IS NULL OR $3 = 0 OR id > $3)
+ORDER BY id DESC
+LIMIT CASE WHEN $4 > 0 THEN $4 ELSE 100 END
 `
 
 type GetContainerLogsByTagParams struct {
-	Tag     pgtype.Text
-	Until   pgtype.Timestamp
-	Since   pgtype.Timestamp
-	MaxRows interface{}
+	Tag      pgtype.Text
+	BeforeID int64
+	AfterID  int64
+	MaxRows  interface{}
+}
+
+type GetContainerLogsByTagRow struct {
+	ID   pgtype.Int8
+	Tag  pgtype.Text
+	Ts   pgtype.Timestamp
+	Data []byte
 }
 
 // 特定のタグ（hostID + instanceID）のログを取得
-func (q *Queries) GetContainerLogsByTag(ctx context.Context, arg GetContainerLogsByTagParams) ([]ContainerLog, error) {
+// before_id: このIDより小さいログ (古い方向へのページネーション)
+// after_id: このIDより大きいログ (新しい方向へのページネーション)
+func (q *Queries) GetContainerLogsByTag(ctx context.Context, arg GetContainerLogsByTagParams) ([]GetContainerLogsByTagRow, error) {
 	rows, err := q.db.Query(ctx, getContainerLogsByTag,
 		arg.Tag,
-		arg.Until,
-		arg.Since,
+		arg.BeforeID,
+		arg.AfterID,
 		arg.MaxRows,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ContainerLog
+	var items []GetContainerLogsByTagRow
 	for rows.Next() {
-		var i ContainerLog
-		if err := rows.Scan(&i.Tag, &i.Ts, &i.Data); err != nil {
+		var i GetContainerLogsByTagRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Tag,
+			&i.Ts,
+			&i.Data,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

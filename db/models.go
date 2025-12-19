@@ -12,6 +12,7 @@ type ContainerLog struct {
 	Tag  pgtype.Text
 	Ts   pgtype.Timestamp
 	Data []byte
+	ID   pgtype.Int8
 }
 
 type HeadlessAccount struct {

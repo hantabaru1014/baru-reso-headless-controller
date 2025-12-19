@@ -194,13 +194,22 @@ message KillHeadlessHostResponse {}
 
 message GetHeadlessHostLogsRequest {
   string host_id = 1;
-  oneof query {
-    // limit が指定されている場合は、最新のログから limit 件取得する
-    int32 limit = 2;
-    // until が指定されている場合は、until 以前のログを全て取得する
-    google.protobuf.Timestamp until = 3;
-    // since が指定されている場合は、since 以降のログを全て取得する
-    google.protobuf.Timestamp since = 4;
+
+  // 既存フィールドを予約 (破壊的変更)
+  reserved 2, 3, 4, 7, 8;
+
+  // instance_id: 対象インスタンスID（過去のインスタンスのログも閲覧可能）
+  int32 instance_id = 5;
+
+  // 取得件数 (デフォルト100、最大1000)
+  int32 limit = 6;
+
+  // ページングカーソル (IDベース)
+  oneof cursor {
+    // 古いログを取得: このIDより小さいログ
+    int64 before_id = 9;
+    // 新しいログを取得: このIDより大きいログ
+    int64 after_id = 10;
   }
 }
 
@@ -209,9 +218,14 @@ message GetHeadlessHostLogsResponse {
     google.protobuf.Timestamp timestamp = 1;
     bool is_error = 2;
     string body = 3;
+    int64 id = 4;
   }
   // 時系列に並んだログ
   repeated Log logs = 1;
+  // より古いログが存在するか
+  bool has_more_before = 2;
+  // より新しいログが存在するか
+  bool has_more_after = 3;
 }
 
 message SearchUserInfoRequest {
