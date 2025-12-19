@@ -13,3 +13,9 @@ LIMIT CASE WHEN @max_rows > 0 THEN @max_rows ELSE 100 END;
 -- name: InsertContainerLog :exec
 -- テスト用
 INSERT INTO container_logs (tag, ts, data) VALUES ($1, $2, $3);
+
+-- name: DeleteContainerLogsByHostID :exec
+-- 特定のホストIDに関連するすべてのログを削除
+-- タグは "headless-{hostID}-{instanceID}" の形式
+DELETE FROM container_logs
+WHERE tag LIKE 'headless-' || @host_id || '-%';

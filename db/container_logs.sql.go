@@ -11,6 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteContainerLogsByHostID = `-- name: DeleteContainerLogsByHostID :exec
+DELETE FROM container_logs
+WHERE tag LIKE 'headless-' || $1 || '-%'
+`
+
+// 特定のホストIDに関連するすべてのログを削除
+// タグは "headless-{hostID}-{instanceID}" の形式
+func (q *Queries) DeleteContainerLogsByHostID(ctx context.Context, hostID pgtype.Text) error {
+	_, err := q.db.Exec(ctx, deleteContainerLogsByHostID, hostID)
+	return err
+}
+
 const getContainerLogsByTag = `-- name: GetContainerLogsByTag :many
 SELECT id, tag, ts, data
 FROM container_logs

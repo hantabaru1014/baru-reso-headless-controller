@@ -14,6 +14,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/converter"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
@@ -394,6 +395,27 @@ func (h *HeadlessHostRepository) Kill(ctx context.Context, id string) error {
 
 // Delete implements port.HeadlessHostRepository.
 func (h *HeadlessHostRepository) Delete(ctx context.Context, id string) error {
+	dbHost, err := h.q.GetHost(ctx, id)
+	if err != nil {
+		if errors.Is(convertDBErr(err), domain.ErrNotFound) {
+			return nil
+		}
+		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
+	}
+
+	connector, err := h.getConnector(dbHost.ConnectorType)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	err = connector.Remove(ctx, hostconnector.HostConnectString(dbHost.ConnectString))
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	err = h.q.DeleteContainerLogsByHostID(ctx, pgtype.Text{String: id, Valid: true})
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
 	return h.q.DeleteHost(ctx, id)
 }
 
