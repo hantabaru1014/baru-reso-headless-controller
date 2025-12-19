@@ -4,7 +4,14 @@ import {
   listHeadlessHost,
   startWorld,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import { Avatar, AvatarFallback, AvatarImage, Button } from "./ui";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Button,
+  Checkbox,
+  Label,
+} from "./ui";
 import { resolveUrl } from "@/libs/skyfrostUtils";
 import { useNavigate } from "react-router";
 import { AccessLevels, UserRoles } from "../constants";
@@ -45,7 +52,9 @@ const sessionFormSchema = z
       .array(
         z.object({
           userName: z.string(),
+          userId: z.string(),
           iconUrl: z.string().optional(),
+          joinAllowedOnly: z.boolean(),
         }),
       )
       .optional(),
@@ -202,9 +211,14 @@ export default function NewSessionForm() {
   };
 
   const handleAutoInviteSelect = (user: UserInfo) => {
-    const exists = autoInviteFields.some((f) => f.userName === user.name);
+    const exists = autoInviteFields.some((f) => f.userId === user.id);
     if (!exists) {
-      appendAutoInvite({ userName: user.name, iconUrl: user.iconUrl });
+      appendAutoInvite({
+        userName: user.name,
+        userId: user.id,
+        iconUrl: user.iconUrl,
+        joinAllowedOnly: false,
+      });
     }
   };
 
@@ -241,7 +255,13 @@ export default function NewSessionForm() {
           accessLevel: data.accessLevel,
           customSessionId: data.customSessionId || "",
           autoInviteUsernames:
-            data.autoInviteUsernames?.map((u) => u.userName) || [],
+            data.autoInviteUsernames
+              ?.filter((u) => !u.joinAllowedOnly)
+              .map((u) => u.userName) || [],
+          joinAllowedUserIds:
+            data.autoInviteUsernames
+              ?.filter((u) => u.joinAllowedOnly)
+              .map((u) => u.userId) || [],
           hideFromPublicListing: data.hideFromPublicListing,
           defaultUserRoles: data.defaultUserRoles || [],
           awayKickMinutes: data.awayKickMinutes,
@@ -675,6 +695,25 @@ export default function NewSessionForm() {
                     </AvatarFallback>
                   </Avatar>
                   <span className="flex-1 text-sm">{field.userName}</span>
+                  <Controller
+                    name={`autoInviteUsernames.${index}.joinAllowedOnly`}
+                    control={control}
+                    render={({ field: checkboxField }) => (
+                      <div className="flex items-center gap-1.5">
+                        <Checkbox
+                          id={`joinAllowedOnly-${index}`}
+                          checked={checkboxField.value}
+                          onCheckedChange={checkboxField.onChange}
+                        />
+                        <Label
+                          htmlFor={`joinAllowedOnly-${index}`}
+                          className="text-sm"
+                        >
+                          参加許可のみ
+                        </Label>
+                      </div>
+                    )}
+                  />
                   <Button
                     type="button"
                     variant="ghost"
