@@ -16,3 +16,4 @@ export * from "./SplitButton";
 export * from "./TextareaField";
 export * from "./TextField";
 export * from "./UserList";
+export * from "./UserSearchField";

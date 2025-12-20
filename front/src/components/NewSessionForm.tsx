@@ -4,12 +4,20 @@ import {
   listHeadlessHost,
   startWorld,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import { Button } from "./ui";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Button,
+  Checkbox,
+  Label,
+} from "./ui";
+import { resolveUrl } from "@/libs/skyfrostUtils";
 import { useNavigate } from "react-router";
-import { AccessLevels } from "../constants";
+import { AccessLevels, UserRoles } from "../constants";
 import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { z } from "zod";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
@@ -18,7 +26,10 @@ import {
   TextareaField,
   TextField,
   SelectField,
+  UserSearchField,
+  UserInfo,
 } from "./base";
+import { Trash2 } from "lucide-react";
 
 const sessionFormSchema = z
   .object({
@@ -37,13 +48,23 @@ const sessionFormSchema = z
     worldUrl: z.string().optional(),
     worldTemplate: z.enum(["grid", "platform", "blank"]),
     // 追加フィールド
-    autoInviteUsernames: z.string().optional(),
+    autoInviteUsernames: z
+      .array(
+        z.object({
+          userName: z.string(),
+          userId: z.string(),
+          iconUrl: z.string().optional(),
+          joinAllowedOnly: z.boolean(),
+        }),
+      )
+      .optional(),
     hideFromPublicListing: z.boolean(),
     defaultUserRoles: z
       .array(
         z.object({
           role: z.string(),
           userName: z.string(),
+          iconUrl: z.string().optional(),
         }),
       )
       .optional(),
@@ -139,7 +160,7 @@ export default function NewSessionForm() {
       accessLevel: 1,
       hideFromPublicListing: false,
       tags: "",
-      autoInviteUsernames: "",
+      autoInviteUsernames: [],
       defaultUserRoles: [],
       awayKickMinutes: -1,
       idleRestartIntervalSeconds: -1,
@@ -159,6 +180,47 @@ export default function NewSessionForm() {
   const hostId = watch("hostId");
   const worldSource = watch("worldSource");
   const worldUrl = watch("worldUrl");
+
+  const {
+    fields: defaultUserRoleFields,
+    append: appendDefaultUserRole,
+    remove: removeDefaultUserRole,
+  } = useFieldArray({
+    control,
+    name: "defaultUserRoles",
+  });
+
+  const {
+    fields: autoInviteFields,
+    append: appendAutoInvite,
+    remove: removeAutoInvite,
+  } = useFieldArray({
+    control,
+    name: "autoInviteUsernames",
+  });
+
+  const handleDefaultUserRoleSelect = (user: UserInfo) => {
+    const exists = defaultUserRoleFields.some((f) => f.userName === user.name);
+    if (!exists) {
+      appendDefaultUserRole({
+        userName: user.name,
+        role: "Guest",
+        iconUrl: user.iconUrl,
+      });
+    }
+  };
+
+  const handleAutoInviteSelect = (user: UserInfo) => {
+    const exists = autoInviteFields.some((f) => f.userId === user.id);
+    if (!exists) {
+      appendAutoInvite({
+        userName: user.name,
+        userId: user.id,
+        iconUrl: user.iconUrl,
+        joinAllowedOnly: false,
+      });
+    }
+  };
 
   const handleFetchInfo = async () => {
     if (!hostId || !worldUrl) return;
@@ -192,7 +254,14 @@ export default function NewSessionForm() {
           maxUsers: data.maxUsers,
           accessLevel: data.accessLevel,
           customSessionId: data.customSessionId || "",
-          autoInviteUsernames: processCSV(data.autoInviteUsernames),
+          autoInviteUsernames:
+            data.autoInviteUsernames
+              ?.filter((u) => !u.joinAllowedOnly)
+              .map((u) => u.userName) || [],
+          joinAllowedUserIds:
+            data.autoInviteUsernames
+              ?.filter((u) => u.joinAllowedOnly)
+              .map((u) => u.userId) || [],
           hideFromPublicListing: data.hideFromPublicListing,
           defaultUserRoles: data.defaultUserRoles || [],
           awayKickMinutes: data.awayKickMinutes,
@@ -602,18 +671,63 @@ export default function NewSessionForm() {
         />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Controller
-          name="autoInviteUsernames"
-          control={control}
-          render={({ field }) => (
-            <TextareaField
-              label="自動招待ユーザ"
-              error={errors.autoInviteUsernames?.message}
-              helperText="カンマ区切りで入力してください"
-              {...field}
-            />
+        <div className="space-y-1">
+          <UserSearchField
+            hostId={hostId}
+            onUserSelect={handleAutoInviteSelect}
+            placeholder="ユーザーを検索して追加"
+            label="自動招待ユーザ"
+          />
+          {autoInviteFields.length > 0 && (
+            <div className="space-y-2 rounded-md border p-2">
+              {autoInviteFields.map((field, index) => (
+                <div
+                  key={field.id}
+                  className="flex items-center gap-2 p-2 rounded-md border bg-muted/50"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={resolveUrl(field.iconUrl || "")}
+                      alt={`${field.userName}のアイコン`}
+                    />
+                    <AvatarFallback className="text-xs">
+                      {field.userName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="flex-1 text-sm">{field.userName}</span>
+                  <Controller
+                    name={`autoInviteUsernames.${index}.joinAllowedOnly`}
+                    control={control}
+                    render={({ field: checkboxField }) => (
+                      <div className="flex items-center gap-1.5">
+                        <Checkbox
+                          id={`joinAllowedOnly-${index}`}
+                          checked={checkboxField.value}
+                          onCheckedChange={checkboxField.onChange}
+                        />
+                        <Label
+                          htmlFor={`joinAllowedOnly-${index}`}
+                          className="text-sm"
+                        >
+                          参加許可のみ
+                        </Label>
+                      </div>
+                    )}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeAutoInvite(index)}
+                    title="削除"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
           )}
-        />
+        </div>
 
         <Controller
           name="autoInviteMessage"
@@ -626,6 +740,59 @@ export default function NewSessionForm() {
             />
           )}
         />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <UserSearchField
+            hostId={hostId}
+            onUserSelect={handleDefaultUserRoleSelect}
+            placeholder="ユーザーを検索して追加"
+            label="デフォルトユーザーロール"
+          />
+          {defaultUserRoleFields.length > 0 && (
+            <div className="space-y-2 rounded-md border p-2">
+              {defaultUserRoleFields.map((field, index) => (
+                <div
+                  key={field.id}
+                  className="flex items-center gap-2 p-2 rounded-md border bg-muted/50"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={resolveUrl(field.iconUrl || "")}
+                      alt={`${field.userName}のアイコン`}
+                    />
+                    <AvatarFallback className="text-xs">
+                      {field.userName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="flex-1 text-sm">{field.userName}</span>
+                  <Controller
+                    name={`defaultUserRoles.${index}.role`}
+                    control={control}
+                    render={({ field: roleField }) => (
+                      <SelectField
+                        options={UserRoles.map((r) => r)}
+                        selectedId={roleField.value}
+                        onChange={(option) => roleField.onChange(option.id)}
+                        minWidth="7rem"
+                      />
+                    )}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeDefaultUserRole(index)}
+                    title="削除"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <Controller

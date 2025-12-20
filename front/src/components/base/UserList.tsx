@@ -11,10 +11,12 @@ export function UserList({
   data,
   isLoading,
   renderActions,
+  onUserClick,
 }: {
   data: UserInfo[];
   isLoading?: boolean;
   renderActions?: (user: UserInfo) => React.ReactNode;
+  onUserClick?: (user: UserInfo) => void;
 }) {
   return (
     <div className="space-y-2">
@@ -28,7 +30,8 @@ export function UserList({
         : data.map((user) => (
             <div
               key={user.id}
-              className="flex items-center justify-between space-x-3 p-2 rounded-md hover:bg-accent"
+              className={`flex items-center justify-between space-x-3 p-2 rounded-md hover:bg-accent ${onUserClick ? "cursor-pointer" : ""}`}
+              onClick={onUserClick ? () => onUserClick(user) : undefined}
             >
               <div className="flex items-center space-x-3">
                 <Avatar>

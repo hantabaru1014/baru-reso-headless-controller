@@ -243,6 +243,25 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
             />
           ) : (
             <div className="flex space-x-2">
+              {startupParams?.loadWorld?.case === "loadWorldUrl" &&
+                startupParams.loadWorld.value && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (
+                        startupParams?.loadWorld?.case === "loadWorldUrl" &&
+                        startupParams.loadWorld.value
+                      ) {
+                        navigator.clipboard.writeText(
+                          startupParams.loadWorld.value,
+                        );
+                        toast.success("ワールドURLをコピーしました");
+                      }
+                    }}
+                  >
+                    ワールドURLをコピー
+                  </Button>
+                )}
               <Button
                 disabled={isPendingStartWorld}
                 onClick={() => setIsOpenSelectHostDialog(true)}

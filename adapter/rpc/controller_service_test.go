@@ -2859,6 +2859,44 @@ func TestControllerService_SearchSessions(t *testing.T) {
 			assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
 		}
 	})
+
+	t.Run("成功: StatusとHostIDでAND検索", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+		client := setupAuthenticatedClient(t, setup.service)
+
+		// Create test account and two hosts
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
+		host1 := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost1", entity.HeadlessHostStatus_RUNNING)
+		host2 := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost2", entity.HeadlessHostStatus_RUNNING)
+
+		// Create sessions with different statuses on different hosts
+		testutil.CreateTestSession(t, setup.queries, host1.ID, "Host1-Ended1", entity.SessionStatus_ENDED)
+		testutil.CreateTestSession(t, setup.queries, host1.ID, "Host1-Ended2", entity.SessionStatus_ENDED)
+		testutil.CreateTestSession(t, setup.queries, host1.ID, "Host1-Running", entity.SessionStatus_RUNNING)
+		testutil.CreateTestSession(t, setup.queries, host2.ID, "Host2-Ended", entity.SessionStatus_ENDED)
+		testutil.CreateTestSession(t, setup.queries, host2.ID, "Host2-Running", entity.SessionStatus_RUNNING)
+
+		// Search for ENDED sessions on Host1 only
+		status := hdlctrlv1.SessionStatus_SESSION_STATUS_ENDED
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.SearchSessionsRequest{
+			Parameters: &hdlctrlv1.SearchSessionsRequest_SearchParameters{
+				Status: &status,
+				HostId: &host1.ID,
+			},
+		})
+
+		res, err := client.SearchSessions(t.Context(), req)
+		require.NoError(t, err)
+		assert.NotNil(t, res.Msg)
+
+		// Should return only ENDED sessions from Host1 (2 sessions)
+		assert.Len(t, res.Msg.Sessions, 2)
+		for _, session := range res.Msg.Sessions {
+			assert.Equal(t, host1.ID, session.HostId, "Session should belong to Host1")
+			assert.Equal(t, hdlctrlv1.SessionStatus_SESSION_STATUS_ENDED, session.Status, "Session should be ENDED")
+		}
+	})
 }
 
 func TestControllerService_DeleteEndedSession(t *testing.T) {
