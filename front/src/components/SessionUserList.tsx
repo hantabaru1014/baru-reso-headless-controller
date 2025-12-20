@@ -20,7 +20,7 @@ import {
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { UserRoles } from "../constants";
 import { EditableSelectField } from "./base/EditableSelectField";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { UserList } from "./base/UserList";
 import { RefetchButton } from "./base/RefetchButton";
 import { ScrollBase } from "./base/ScrollBase";
@@ -41,12 +41,15 @@ function UserInviteDialog({
   sessionId?: string;
 }) {
   const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const {
     data: searchResult,
     mutateAsync: mutateSearch,
     isPending: isPendingSearch,
   } = useMutation(searchUserInfo);
-  const { mutateAsync: mutateInviteUser } = useMutation(inviteUser);
+  const { mutateAsync: mutateInviteUser, isPending: isPendingInvite } =
+    useMutation(inviteUser);
+  const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.toLowerCase();
@@ -66,6 +69,7 @@ function UserInviteDialog({
   };
 
   const handleInviteUser = async (userId: string) => {
+    setInvitingUserId(userId);
     try {
       await mutateInviteUser({
         hostId,
@@ -76,8 +80,12 @@ function UserInviteDialog({
         },
       });
       toast.success("ユーザーを招待しました");
+      setQuery("");
+      inputRef.current?.focus();
     } catch (e) {
       toast.error(`ユーザーの招待に失敗しました: ${e}`);
+    } finally {
+      setInvitingUserId(null);
     }
   };
 
@@ -91,6 +99,7 @@ function UserInviteDialog({
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
+              ref={inputRef}
               placeholder="ユーザーID/名"
               value={query}
               onChange={handleQueryChange}
@@ -101,9 +110,17 @@ function UserInviteDialog({
             <UserList
               data={searchResult?.users || []}
               isLoading={isPendingSearch}
-              renderActions={(user) => (
-                <Button onClick={() => handleInviteUser(user.id)}>招待</Button>
-              )}
+              renderActions={(user) => {
+                const isLoading = isPendingInvite && invitingUserId === user.id;
+                return (
+                  <Button
+                    onClick={() => handleInviteUser(user.id)}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "招待中..." : "招待"}
+                  </Button>
+                );
+              }}
             />
           </ScrollBase>
         </div>
