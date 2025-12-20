@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/go-errors/errors"
 	"github.com/google/uuid"
@@ -79,6 +80,13 @@ func FetchUserInfo(ctx context.Context, resoniteID string) (*UserInfo, error) {
 type UserSession struct {
 	UserId string
 	token  string
+	expire time.Time
+}
+
+// IsValid returns true if the session is still valid (not expired)
+func (s *UserSession) IsValid() bool {
+	// 有効期限の1分前には再ログインするようにする
+	return time.Now().Add(time.Minute).Before(s.expire)
 }
 
 func UserLogin(ctx context.Context, credential, password string) (*UserSession, error) {
@@ -143,9 +151,15 @@ func UserLogin(ctx context.Context, credential, password string) (*UserSession, 
 		return nil, errors.Errorf("failed to parse response: %w", err)
 	}
 
+	expireTime, err := time.Parse(time.RFC3339, respEntity.Entity.Expire)
+	if err != nil {
+		return nil, errors.Errorf("failed to parse expire time: %w", err)
+	}
+
 	newSession := &UserSession{
 		UserId: respEntity.Entity.UserId,
 		token:  respEntity.Entity.Token,
+		expire: expireTime,
 	}
 	return newSession, nil
 }
