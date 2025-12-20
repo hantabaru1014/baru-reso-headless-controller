@@ -221,9 +221,6 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 			return nil, errors.Wrap(err, 0)
 		}
 		dbSessions = s
-		if *filter.Status != entity.SessionStatus_RUNNING {
-			return dbSessions, nil
-		}
 	} else {
 		s, err := u.sessionRepo.ListAll(ctx)
 		if err != nil {
@@ -240,6 +237,11 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 			}
 		}
 		dbSessions = filteredSessions
+	}
+
+	// RUNNING以外のステータスでフィルタする場合は、headlessからのリアルタイム情報は不要
+	if filter.Status != nil && *filter.Status != entity.SessionStatus_RUNNING {
+		return dbSessions, nil
 	}
 
 	var hdlSessions []*headlessv1.Session
