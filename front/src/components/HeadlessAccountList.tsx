@@ -5,9 +5,6 @@ import {
   DialogTitle,
   DialogFooter,
   Button,
-  Avatar,
-  AvatarImage,
-  AvatarFallback,
   DialogTrigger,
   Badge,
   DialogClose,
@@ -27,6 +24,7 @@ import {
   listHeadlessAccounts,
   refetchHeadlessAccountInfo,
   updateHeadlessAccountCredentials,
+  updateHeadlessAccountIcon,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { RefetchButton } from "./base/RefetchButton";
 import { useCallback, useMemo, useState } from "react";
@@ -40,6 +38,8 @@ import {
 import prettyBytes from "@/libs/prettyBytes";
 import { resolveUrl } from "@/libs/skyfrostUtils";
 import { MoreVertical } from "lucide-react";
+import { IconChangeDialog } from "./IconChangeDialog";
+import { ResoniteUserIcon } from "./ResoniteUserIcon";
 
 function FriendRequestsDialog({
   onClose,
@@ -59,13 +59,10 @@ function FriendRequestsDialog({
       accessorKey: "iconUrl",
       header: "アイコン",
       cell: ({ row }) => (
-        <Avatar>
-          <AvatarImage
-            src={resolveUrl(row.original.iconUrl)}
-            alt={`${row.original.name}のアイコン`}
-          />
-          <AvatarFallback>{row.original.name.charAt(0)}</AvatarFallback>
-        </Avatar>
+        <ResoniteUserIcon
+          iconUrl={row.original.iconUrl}
+          alt={`${row.original.name}のアイコン`}
+        />
       ),
     },
     {
@@ -311,8 +308,31 @@ export default function HeadlessAccountList() {
   const { mutateAsync: mutateRefetchAccountInfo } = useMutation(
     refetchHeadlessAccountInfo,
   );
+  const { mutateAsync: mutateUpdateIcon, isPending: isUpdatingIcon } =
+    useMutation(updateHeadlessAccountIcon);
   const [updateDialogAccountId, setUpdateDialogAccountId] = useState<string>();
   const [isOpenNewAccountDialog, setIsOpenNewAccountDialog] = useState(false);
+  const [iconChangeAccount, setIconChangeAccount] = useState<{
+    userId: string;
+    iconUrl: string;
+  }>();
+
+  const handleChangeIcon = useCallback((userId: string, iconUrl: string) => {
+    setIconChangeAccount({ userId, iconUrl });
+  }, []);
+
+  const handleUploadIcon = useCallback(
+    async (iconData: Uint8Array) => {
+      if (!iconChangeAccount) return;
+      await mutateUpdateIcon({
+        accountId: iconChangeAccount.userId,
+        iconData,
+      });
+      toast.success("アイコンを更新しました");
+      refetch();
+    },
+    [iconChangeAccount, mutateUpdateIcon, refetch],
+  );
 
   const handleRefetchInfo = useCallback(
     async (accountId: string) => {
@@ -353,13 +373,10 @@ export default function HeadlessAccountList() {
         header: "アイコン",
         cell: ({ row }) => {
           return (
-            <Avatar>
-              <AvatarImage
-                src={resolveUrl(row.original.iconUrl)}
-                alt={`${row.original.userName}のアイコン`}
-              />
-              <AvatarFallback>{row.original.userName.charAt(0)}</AvatarFallback>
-            </Avatar>
+            <ResoniteUserIcon
+              iconUrl={row.original.iconUrl}
+              alt={`${row.original.userName}のアイコン`}
+            />
           );
         },
       },
@@ -395,6 +412,16 @@ export default function HeadlessAccountList() {
                 ログイン情報の更新
               </DropdownMenuItem>
               <DropdownMenuItem
+                onClick={() =>
+                  handleChangeIcon(
+                    row.original.userId,
+                    resolveUrl(row.original.iconUrl) ?? "",
+                  )
+                }
+              >
+                アイコンを変更
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 onClick={() => handleRefetchInfo(row.original.userId)}
               >
                 名前とアイコンの再取得
@@ -409,7 +436,12 @@ export default function HeadlessAccountList() {
         ),
       },
     ],
-    [setUpdateDialogAccountId, handleRefetchInfo, handleDeleteAccount],
+    [
+      setUpdateDialogAccountId,
+      handleRefetchInfo,
+      handleDeleteAccount,
+      handleChangeIcon,
+    ],
   );
 
   return (
@@ -437,6 +469,13 @@ export default function HeadlessAccountList() {
           setUpdateDialogAccountId(undefined);
           refetch();
         }}
+      />
+      <IconChangeDialog
+        open={!!iconChangeAccount}
+        onClose={() => setIconChangeAccount(undefined)}
+        currentIconUrl={iconChangeAccount?.iconUrl}
+        onUpload={handleUploadIcon}
+        isUploading={isUpdatingIcon}
       />
     </div>
   );

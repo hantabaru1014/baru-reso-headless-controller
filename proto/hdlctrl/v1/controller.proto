@@ -28,6 +28,7 @@ service ControllerService {
   rpc UpdateHeadlessAccountCredentials(UpdateHeadlessAccountCredentialsRequest) returns (UpdateHeadlessAccountCredentialsResponse);
   rpc GetHeadlessAccountStorageInfo(GetHeadlessAccountStorageInfoRequest) returns (GetHeadlessAccountStorageInfoResponse);
   rpc RefetchHeadlessAccountInfo(RefetchHeadlessAccountInfoRequest) returns (RefetchHeadlessAccountInfoResponse);
+  rpc UpdateHeadlessAccountIcon(UpdateHeadlessAccountIconRequest) returns (UpdateHeadlessAccountIconResponse);
 
   // Cloud系
   rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
@@ -56,6 +57,15 @@ message RefetchHeadlessAccountInfoRequest {
 }
 
 message RefetchHeadlessAccountInfoResponse {}
+
+message UpdateHeadlessAccountIconRequest {
+  string account_id = 1;
+  bytes icon_data = 2; // 画像バイナリ (PNG, JPG, GIF, WebP)
+}
+
+message UpdateHeadlessAccountIconResponse {
+  string new_icon_url = 1;
+}
 
 message GetHeadlessAccountStorageInfoRequest {
   string account_id = 1;

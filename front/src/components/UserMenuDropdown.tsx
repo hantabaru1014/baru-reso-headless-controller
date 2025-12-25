@@ -1,7 +1,4 @@
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
   Button,
   DropdownMenu,
   DropdownMenuItem,
@@ -10,8 +7,8 @@ import {
   DropdownMenuTrigger,
 } from "./ui";
 import { UserInfo } from "@/atoms/sessionAtom";
-import { resolveUrl } from "@/libs/skyfrostUtils";
 import { LogOut } from "lucide-react";
+import { ResoniteUserIcon } from "./ResoniteUserIcon";
 
 export function UserMenuDropdown({
   user,
@@ -24,10 +21,11 @@ export function UserMenuDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={resolveUrl(user?.image)} alt={user?.name} />
-            <AvatarFallback>{user?.name?.charAt(0) || "U"}</AvatarFallback>
-          </Avatar>
+          <ResoniteUserIcon
+            iconUrl={user?.image}
+            alt={user?.name}
+            className="h-8 w-8"
+          />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>

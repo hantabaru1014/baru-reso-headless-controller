@@ -193,6 +193,18 @@ func (c *ControllerService) RefetchHeadlessAccountInfo(ctx context.Context, req 
 	return connect.NewResponse(&hdlctrlv1.RefetchHeadlessAccountInfoResponse{}), nil
 }
 
+// UpdateHeadlessAccountIcon implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) UpdateHeadlessAccountIcon(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateHeadlessAccountIconRequest]) (*connect.Response[hdlctrlv1.UpdateHeadlessAccountIconResponse], error) {
+	newIconUrl, err := c.hauc.UpdateHeadlessAccountIcon(ctx, req.Msg.AccountId, req.Msg.IconData)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.UpdateHeadlessAccountIconResponse{
+		NewIconUrl: newIconUrl,
+	}), nil
+}
+
 // AcceptFriendRequests implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) AcceptFriendRequests(ctx context.Context, req *connect.Request[hdlctrlv1.AcceptFriendRequestsRequest]) (*connect.Response[hdlctrlv1.AcceptFriendRequestsResponse], error) {
 	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.HeadlessAccountId)

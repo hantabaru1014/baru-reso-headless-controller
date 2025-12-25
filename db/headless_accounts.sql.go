@@ -94,6 +94,20 @@ func (q *Queries) ListHeadlessAccounts(ctx context.Context) ([]HeadlessAccount, 
 	return items, nil
 }
 
+const updateAccountIconUrl = `-- name: UpdateAccountIconUrl :exec
+UPDATE headless_accounts SET last_icon_url = $2 WHERE resonite_id = $1
+`
+
+type UpdateAccountIconUrlParams struct {
+	ResoniteID  string
+	LastIconUrl pgtype.Text
+}
+
+func (q *Queries) UpdateAccountIconUrl(ctx context.Context, arg UpdateAccountIconUrlParams) error {
+	_, err := q.db.Exec(ctx, updateAccountIconUrl, arg.ResoniteID, arg.LastIconUrl)
+	return err
+}
+
 const updateAccountInfo = `-- name: UpdateAccountInfo :exec
 UPDATE headless_accounts SET last_display_name = $2, last_icon_url = $3 WHERE resonite_id = $1
 `

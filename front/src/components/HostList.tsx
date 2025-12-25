@@ -14,7 +14,6 @@ import {
   DialogClose,
 } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import {
   Collapsible,
   CollapsibleContent,
@@ -33,7 +32,7 @@ import { HeadlessHost } from "front/pbgen/hdlctrl/v1/controller_pb";
 import { DataTable } from "./base/DataTable";
 import { toast } from "sonner";
 import { TextField } from "./base";
-import { resolveUrl } from "@/libs/skyfrostUtils";
+import { ResoniteUserIcon } from "./ResoniteUserIcon";
 
 const newHostFormSchema = z.object({
   name: z.string().min(1, "ホスト名は必須です"),
@@ -148,15 +147,10 @@ function NewHostDialog({
                     id: account.userId,
                     label: (
                       <span className="flex items-center gap-2">
-                        <Avatar>
-                          <AvatarImage
-                            src={resolveUrl(account.iconUrl)}
-                            alt={account.userName}
-                          />
-                          <AvatarFallback>
-                            {account.userName.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <ResoniteUserIcon
+                          iconUrl={account.iconUrl}
+                          alt={`${account.userName}のアイコン`}
+                        />
                         <span className="text-sm font-medium">
                           {account.userName}
                         </span>

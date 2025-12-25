@@ -15,3 +15,6 @@ UPDATE headless_accounts SET last_display_name = $2, last_icon_url = $3 WHERE re
 
 -- name: UpdateHeadlessAccountCredentials :exec
 UPDATE headless_accounts SET credential = $2, password = $3 WHERE resonite_id = $1;
+
+-- name: UpdateAccountIconUrl :exec
+UPDATE headless_accounts SET last_icon_url = $2 WHERE resonite_id = $1;

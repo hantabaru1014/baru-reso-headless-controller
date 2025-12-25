@@ -4,15 +4,7 @@ import {
   listHeadlessHost,
   startWorld,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Button,
-  Checkbox,
-  Label,
-} from "./ui";
-import { resolveUrl } from "@/libs/skyfrostUtils";
+import { Button, Checkbox, Label } from "./ui";
 import { useNavigate } from "react-router";
 import { AccessLevels, UserRoles } from "../constants";
 import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
@@ -30,6 +22,7 @@ import {
   UserInfo,
 } from "./base";
 import { Trash2 } from "lucide-react";
+import { ResoniteUserIcon } from "./ResoniteUserIcon";
 
 const sessionFormSchema = z
   .object({
@@ -685,15 +678,11 @@ export default function NewSessionForm() {
                   key={field.id}
                   className="flex items-center gap-2 p-2 rounded-md border bg-muted/50"
                 >
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage
-                      src={resolveUrl(field.iconUrl || "")}
-                      alt={`${field.userName}のアイコン`}
-                    />
-                    <AvatarFallback className="text-xs">
-                      {field.userName.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <ResoniteUserIcon
+                    iconUrl={field.iconUrl}
+                    alt={`${field.userName}のアイコン`}
+                    className="h-8 w-8"
+                  />
                   <span className="flex-1 text-sm">{field.userName}</span>
                   <Controller
                     name={`autoInviteUsernames.${index}.joinAllowedOnly`}
@@ -757,15 +746,11 @@ export default function NewSessionForm() {
                   key={field.id}
                   className="flex items-center gap-2 p-2 rounded-md border bg-muted/50"
                 >
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage
-                      src={resolveUrl(field.iconUrl || "")}
-                      alt={`${field.userName}のアイコン`}
-                    />
-                    <AvatarFallback className="text-xs">
-                      {field.userName.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <ResoniteUserIcon
+                    iconUrl={field.iconUrl}
+                    alt={`${field.userName}のアイコン`}
+                    className="h-8 w-8"
+                  />
                   <span className="flex-1 text-sm">{field.userName}</span>
                   <Controller
                     name={`defaultUserRoles.${index}.role`}

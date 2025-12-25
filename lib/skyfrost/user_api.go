@@ -178,3 +178,35 @@ func (s *UserSession) makeApiRequest(ctx context.Context, method string, url str
 
 	return req, nil
 }
+
+// UpdateUserProfile updates the user's profile
+// PUT users/{userId}/profile
+func (s *UserSession) UpdateUserProfile(ctx context.Context, profile *UserProfile) error {
+	reqUrl, err := url.JoinPath(API_BASE_URL, "users", s.UserId, "profile")
+	if err != nil {
+		return errors.Errorf("failed to make request URL: %w", err)
+	}
+
+	reqBody, err := json.Marshal(profile)
+	if err != nil {
+		return errors.Errorf("failed to marshal profile: %w", err)
+	}
+
+	req, err := s.makeApiRequest(ctx, http.MethodPut, reqUrl, bytes.NewReader(reqBody))
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return errors.Errorf("failed to update profile: %s - %s", resp.Status, string(body))
+	}
+
+	return nil
+}

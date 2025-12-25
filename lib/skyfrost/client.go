@@ -15,6 +15,11 @@ type Client interface {
 	GetStorageInfo(ctx context.Context, credential, password, ownerId string) (*StorageInfo, error)
 	// GetContacts gets contacts for a user by logging in with the given credentials
 	GetContacts(ctx context.Context, credential, password string) ([]Contact, error)
+	// UploadTextureRecord uploads a texture image and creates a record for it
+	// Returns the record ID and asset URI
+	UploadTextureRecord(ctx context.Context, credential, password, name, path string, imageData []byte) (recordId string, assetUri string, err error)
+	// UpdateUserProfile updates the user's profile
+	UpdateUserProfile(ctx context.Context, credential, password string, profile *UserProfile) error
 }
 
 // DefaultClient is the default implementation of Client using real API calls
@@ -81,4 +86,22 @@ func (c *DefaultClient) GetContacts(ctx context.Context, credential, password st
 		return nil, err
 	}
 	return userSession.GetContacts(ctx)
+}
+
+// UploadTextureRecord implements Client.UploadTextureRecord
+func (c *DefaultClient) UploadTextureRecord(ctx context.Context, credential, password, name, path string, imageData []byte) (recordId string, assetUri string, err error) {
+	userSession, err := c.getOrLogin(ctx, credential, password)
+	if err != nil {
+		return "", "", err
+	}
+	return userSession.UploadTextureRecord(ctx, name, path, imageData)
+}
+
+// UpdateUserProfile implements Client.UpdateUserProfile
+func (c *DefaultClient) UpdateUserProfile(ctx context.Context, credential, password string, profile *UserProfile) error {
+	userSession, err := c.getOrLogin(ctx, credential, password)
+	if err != nil {
+		return err
+	}
+	return userSession.UpdateUserProfile(ctx, profile)
 }

@@ -1,5 +1,5 @@
-import { resolveUrl } from "@/libs/skyfrostUtils";
-import { Avatar, AvatarFallback, AvatarImage, Skeleton } from "../ui";
+import { ResoniteUserIcon } from "../ResoniteUserIcon";
+import { Skeleton } from "../ui";
 
 export type UserInfo = {
   id: string;
@@ -34,13 +34,10 @@ export function UserList({
               onClick={onUserClick ? () => onUserClick(user) : undefined}
             >
               <div className="flex items-center space-x-3">
-                <Avatar>
-                  <AvatarImage
-                    src={resolveUrl(user.iconUrl)}
-                    alt={`${user.name}のアイコン`}
-                  />
-                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                </Avatar>
+                <ResoniteUserIcon
+                  iconUrl={user.iconUrl}
+                  alt={`${user.name}のアイコン`}
+                />
                 <span className="text-sm font-medium">{user.name}</span>
               </div>
               {renderActions && renderActions(user)}
