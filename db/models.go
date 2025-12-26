@@ -43,6 +43,14 @@ type Host struct {
 	InstanceCount                  int32
 }
 
+type RegistrationToken struct {
+	Token      string
+	ResoniteID string
+	ExpiresAt  pgtype.Timestamptz
+	UsedAt     pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+}
+
 type Session struct {
 	ID                             string
 	Name                           string
@@ -57,14 +65,6 @@ type Session struct {
 	Memo                           pgtype.Text
 	CreatedAt                      pgtype.Timestamptz
 	UpdatedAt                      pgtype.Timestamptz
-}
-
-type RegistrationToken struct {
-	Token      string
-	ResoniteID string
-	ExpiresAt  pgtype.Timestamptz
-	UsedAt     pgtype.Timestamptz
-	CreatedAt  pgtype.Timestamptz
 }
 
 type User struct {

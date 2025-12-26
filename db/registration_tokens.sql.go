@@ -22,11 +22,7 @@ type CreateRegistrationTokenParams struct {
 }
 
 func (q *Queries) CreateRegistrationToken(ctx context.Context, arg CreateRegistrationTokenParams) error {
-	_, err := q.db.Exec(ctx, createRegistrationToken,
-		arg.Token,
-		arg.ResoniteID,
-		arg.ExpiresAt,
-	)
+	_, err := q.db.Exec(ctx, createRegistrationToken, arg.Token, arg.ResoniteID, arg.ExpiresAt)
 	return err
 }
 
