@@ -106,6 +106,15 @@ const (
 	// ControllerServiceAcceptFriendRequestsProcedure is the fully-qualified name of the
 	// ControllerService's AcceptFriendRequests RPC.
 	ControllerServiceAcceptFriendRequestsProcedure = "/hdlctrl.v1.ControllerService/AcceptFriendRequests"
+	// ControllerServiceListContactsProcedure is the fully-qualified name of the ControllerService's
+	// ListContacts RPC.
+	ControllerServiceListContactsProcedure = "/hdlctrl.v1.ControllerService/ListContacts"
+	// ControllerServiceGetContactMessagesProcedure is the fully-qualified name of the
+	// ControllerService's GetContactMessages RPC.
+	ControllerServiceGetContactMessagesProcedure = "/hdlctrl.v1.ControllerService/GetContactMessages"
+	// ControllerServiceSendContactMessageProcedure is the fully-qualified name of the
+	// ControllerService's SendContactMessage RPC.
+	ControllerServiceSendContactMessageProcedure = "/hdlctrl.v1.ControllerService/SendContactMessage"
 	// ControllerServiceSearchSessionsProcedure is the fully-qualified name of the ControllerService's
 	// SearchSessions RPC.
 	ControllerServiceSearchSessionsProcedure = "/hdlctrl.v1.ControllerService/SearchSessions"
@@ -176,6 +185,10 @@ type ControllerServiceClient interface {
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
 	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v1.GetFriendRequestsResponse], error)
 	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
+	// コンタクト・チャット系
+	ListContacts(context.Context, *connect.Request[v1.ListContactsRequest]) (*connect.Response[v1.ListContactsResponse], error)
+	GetContactMessages(context.Context, *connect.Request[v1.GetContactMessagesRequest]) (*connect.Response[v1.GetContactMessagesResponse], error)
+	SendContactMessage(context.Context, *connect.Request[v1.SendContactMessageRequest]) (*connect.Response[v1.SendContactMessageResponse], error)
 	// セッション系
 	SearchSessions(context.Context, *connect.Request[v1.SearchSessionsRequest]) (*connect.Response[v1.SearchSessionsResponse], error)
 	GetSessionDetails(context.Context, *connect.Request[v1.GetSessionDetailsRequest]) (*connect.Response[v1.GetSessionDetailsResponse], error)
@@ -347,6 +360,24 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(controllerServiceMethods.ByName("AcceptFriendRequests")),
 			connect.WithClientOptions(opts...),
 		),
+		listContacts: connect.NewClient[v1.ListContactsRequest, v1.ListContactsResponse](
+			httpClient,
+			baseURL+ControllerServiceListContactsProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("ListContacts")),
+			connect.WithClientOptions(opts...),
+		),
+		getContactMessages: connect.NewClient[v1.GetContactMessagesRequest, v1.GetContactMessagesResponse](
+			httpClient,
+			baseURL+ControllerServiceGetContactMessagesProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("GetContactMessages")),
+			connect.WithClientOptions(opts...),
+		),
+		sendContactMessage: connect.NewClient[v1.SendContactMessageRequest, v1.SendContactMessageResponse](
+			httpClient,
+			baseURL+ControllerServiceSendContactMessageProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("SendContactMessage")),
+			connect.WithClientOptions(opts...),
+		),
 		searchSessions: connect.NewClient[v1.SearchSessionsRequest, v1.SearchSessionsResponse](
 			httpClient,
 			baseURL+ControllerServiceSearchSessionsProcedure,
@@ -454,6 +485,9 @@ type controllerServiceClient struct {
 	searchUserInfo                   *connect.Client[v1.SearchUserInfoRequest, v11.SearchUserInfoResponse]
 	getFriendRequests                *connect.Client[v1.GetFriendRequestsRequest, v1.GetFriendRequestsResponse]
 	acceptFriendRequests             *connect.Client[v1.AcceptFriendRequestsRequest, v1.AcceptFriendRequestsResponse]
+	listContacts                     *connect.Client[v1.ListContactsRequest, v1.ListContactsResponse]
+	getContactMessages               *connect.Client[v1.GetContactMessagesRequest, v1.GetContactMessagesResponse]
+	sendContactMessage               *connect.Client[v1.SendContactMessageRequest, v1.SendContactMessageResponse]
 	searchSessions                   *connect.Client[v1.SearchSessionsRequest, v1.SearchSessionsResponse]
 	getSessionDetails                *connect.Client[v1.GetSessionDetailsRequest, v1.GetSessionDetailsResponse]
 	startWorld                       *connect.Client[v1.StartWorldRequest, v1.StartWorldResponse]
@@ -590,6 +624,21 @@ func (c *controllerServiceClient) AcceptFriendRequests(ctx context.Context, req 
 	return c.acceptFriendRequests.CallUnary(ctx, req)
 }
 
+// ListContacts calls hdlctrl.v1.ControllerService.ListContacts.
+func (c *controllerServiceClient) ListContacts(ctx context.Context, req *connect.Request[v1.ListContactsRequest]) (*connect.Response[v1.ListContactsResponse], error) {
+	return c.listContacts.CallUnary(ctx, req)
+}
+
+// GetContactMessages calls hdlctrl.v1.ControllerService.GetContactMessages.
+func (c *controllerServiceClient) GetContactMessages(ctx context.Context, req *connect.Request[v1.GetContactMessagesRequest]) (*connect.Response[v1.GetContactMessagesResponse], error) {
+	return c.getContactMessages.CallUnary(ctx, req)
+}
+
+// SendContactMessage calls hdlctrl.v1.ControllerService.SendContactMessage.
+func (c *controllerServiceClient) SendContactMessage(ctx context.Context, req *connect.Request[v1.SendContactMessageRequest]) (*connect.Response[v1.SendContactMessageResponse], error) {
+	return c.sendContactMessage.CallUnary(ctx, req)
+}
+
 // SearchSessions calls hdlctrl.v1.ControllerService.SearchSessions.
 func (c *controllerServiceClient) SearchSessions(ctx context.Context, req *connect.Request[v1.SearchSessionsRequest]) (*connect.Response[v1.SearchSessionsResponse], error) {
 	return c.searchSessions.CallUnary(ctx, req)
@@ -684,6 +733,10 @@ type ControllerServiceHandler interface {
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
 	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v1.GetFriendRequestsResponse], error)
 	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
+	// コンタクト・チャット系
+	ListContacts(context.Context, *connect.Request[v1.ListContactsRequest]) (*connect.Response[v1.ListContactsResponse], error)
+	GetContactMessages(context.Context, *connect.Request[v1.GetContactMessagesRequest]) (*connect.Response[v1.GetContactMessagesResponse], error)
+	SendContactMessage(context.Context, *connect.Request[v1.SendContactMessageRequest]) (*connect.Response[v1.SendContactMessageResponse], error)
 	// セッション系
 	SearchSessions(context.Context, *connect.Request[v1.SearchSessionsRequest]) (*connect.Response[v1.SearchSessionsResponse], error)
 	GetSessionDetails(context.Context, *connect.Request[v1.GetSessionDetailsRequest]) (*connect.Response[v1.GetSessionDetailsResponse], error)
@@ -851,6 +904,24 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		connect.WithSchema(controllerServiceMethods.ByName("AcceptFriendRequests")),
 		connect.WithHandlerOptions(opts...),
 	)
+	controllerServiceListContactsHandler := connect.NewUnaryHandler(
+		ControllerServiceListContactsProcedure,
+		svc.ListContacts,
+		connect.WithSchema(controllerServiceMethods.ByName("ListContacts")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceGetContactMessagesHandler := connect.NewUnaryHandler(
+		ControllerServiceGetContactMessagesProcedure,
+		svc.GetContactMessages,
+		connect.WithSchema(controllerServiceMethods.ByName("GetContactMessages")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceSendContactMessageHandler := connect.NewUnaryHandler(
+		ControllerServiceSendContactMessageProcedure,
+		svc.SendContactMessage,
+		connect.WithSchema(controllerServiceMethods.ByName("SendContactMessage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	controllerServiceSearchSessionsHandler := connect.NewUnaryHandler(
 		ControllerServiceSearchSessionsProcedure,
 		svc.SearchSessions,
@@ -979,6 +1050,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceGetFriendRequestsHandler.ServeHTTP(w, r)
 		case ControllerServiceAcceptFriendRequestsProcedure:
 			controllerServiceAcceptFriendRequestsHandler.ServeHTTP(w, r)
+		case ControllerServiceListContactsProcedure:
+			controllerServiceListContactsHandler.ServeHTTP(w, r)
+		case ControllerServiceGetContactMessagesProcedure:
+			controllerServiceGetContactMessagesHandler.ServeHTTP(w, r)
+		case ControllerServiceSendContactMessageProcedure:
+			controllerServiceSendContactMessageHandler.ServeHTTP(w, r)
 		case ControllerServiceSearchSessionsProcedure:
 			controllerServiceSearchSessionsHandler.ServeHTTP(w, r)
 		case ControllerServiceGetSessionDetailsProcedure:
@@ -1108,6 +1185,18 @@ func (UnimplementedControllerServiceHandler) GetFriendRequests(context.Context, 
 
 func (UnimplementedControllerServiceHandler) AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.AcceptFriendRequests is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) ListContacts(context.Context, *connect.Request[v1.ListContactsRequest]) (*connect.Response[v1.ListContactsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.ListContacts is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) GetContactMessages(context.Context, *connect.Request[v1.GetContactMessagesRequest]) (*connect.Response[v1.GetContactMessagesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.GetContactMessages is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) SendContactMessage(context.Context, *connect.Request[v1.SendContactMessageRequest]) (*connect.Response[v1.SendContactMessageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.SendContactMessage is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) SearchSessions(context.Context, *connect.Request[v1.SearchSessionsRequest]) (*connect.Response[v1.SearchSessionsResponse], error) {

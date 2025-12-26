@@ -36,6 +36,11 @@ service ControllerService {
   rpc GetFriendRequests(GetFriendRequestsRequest) returns (GetFriendRequestsResponse);
   rpc AcceptFriendRequests(AcceptFriendRequestsRequest) returns (AcceptFriendRequestsResponse);
 
+  // コンタクト・チャット系
+  rpc ListContacts(ListContactsRequest) returns (ListContactsResponse);
+  rpc GetContactMessages(GetContactMessagesRequest) returns (GetContactMessagesResponse);
+  rpc SendContactMessage(SendContactMessageRequest) returns (SendContactMessageResponse);
+
   // セッション系
   rpc SearchSessions(SearchSessionsRequest) returns (SearchSessionsResponse);
   rpc GetSessionDetails(GetSessionDetailsRequest) returns (GetSessionDetailsResponse);
@@ -482,3 +487,46 @@ message UserInfo {
   string name = 2;
   string icon_url = 3;
 }
+
+// コンタクト・チャット系メッセージ
+message ListContactsRequest {
+  string headless_account_id = 1;
+  int32 limit = 2;
+  optional string cursor = 3;
+}
+
+message ListContactsResponse {
+  repeated UserInfo contacts = 1;
+  optional string next_cursor = 2;
+}
+
+message GetContactMessagesRequest {
+  string headless_account_id = 1;
+  string contact_user_id = 2;
+  int32 limit = 3;
+  optional string before_id = 4;
+  optional string after_id = 5;
+}
+
+message GetContactMessagesResponse {
+  repeated ContactMessage messages = 1;
+  bool has_more_before = 2;
+  bool has_more_after = 3;
+}
+
+message ContactMessage {
+  string id = 1;
+  headless.v1.ContactChatMessageType type = 2;
+  string content = 3;
+  google.protobuf.Timestamp send_time = 4;
+  optional google.protobuf.Timestamp read_time = 5;
+  bool is_own_message = 6;
+}
+
+message SendContactMessageRequest {
+  string headless_account_id = 1;
+  string contact_user_id = 2;
+  string message = 3;
+}
+
+message SendContactMessageResponse {}

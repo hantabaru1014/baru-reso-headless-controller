@@ -44,6 +44,9 @@ const (
 	ControllerService_SearchUserInfo_FullMethodName                   = "/hdlctrl.v1.ControllerService/SearchUserInfo"
 	ControllerService_GetFriendRequests_FullMethodName                = "/hdlctrl.v1.ControllerService/GetFriendRequests"
 	ControllerService_AcceptFriendRequests_FullMethodName             = "/hdlctrl.v1.ControllerService/AcceptFriendRequests"
+	ControllerService_ListContacts_FullMethodName                     = "/hdlctrl.v1.ControllerService/ListContacts"
+	ControllerService_GetContactMessages_FullMethodName               = "/hdlctrl.v1.ControllerService/GetContactMessages"
+	ControllerService_SendContactMessage_FullMethodName               = "/hdlctrl.v1.ControllerService/SendContactMessage"
 	ControllerService_SearchSessions_FullMethodName                   = "/hdlctrl.v1.ControllerService/SearchSessions"
 	ControllerService_GetSessionDetails_FullMethodName                = "/hdlctrl.v1.ControllerService/GetSessionDetails"
 	ControllerService_StartWorld_FullMethodName                       = "/hdlctrl.v1.ControllerService/StartWorld"
@@ -90,6 +93,10 @@ type ControllerServiceClient interface {
 	SearchUserInfo(ctx context.Context, in *SearchUserInfoRequest, opts ...grpc.CallOption) (*v1.SearchUserInfoResponse, error)
 	GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*GetFriendRequestsResponse, error)
 	AcceptFriendRequests(ctx context.Context, in *AcceptFriendRequestsRequest, opts ...grpc.CallOption) (*AcceptFriendRequestsResponse, error)
+	// コンタクト・チャット系
+	ListContacts(ctx context.Context, in *ListContactsRequest, opts ...grpc.CallOption) (*ListContactsResponse, error)
+	GetContactMessages(ctx context.Context, in *GetContactMessagesRequest, opts ...grpc.CallOption) (*GetContactMessagesResponse, error)
+	SendContactMessage(ctx context.Context, in *SendContactMessageRequest, opts ...grpc.CallOption) (*SendContactMessageResponse, error)
 	// セッション系
 	SearchSessions(ctx context.Context, in *SearchSessionsRequest, opts ...grpc.CallOption) (*SearchSessionsResponse, error)
 	GetSessionDetails(ctx context.Context, in *GetSessionDetailsRequest, opts ...grpc.CallOption) (*GetSessionDetailsResponse, error)
@@ -354,6 +361,36 @@ func (c *controllerServiceClient) AcceptFriendRequests(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *controllerServiceClient) ListContacts(ctx context.Context, in *ListContactsRequest, opts ...grpc.CallOption) (*ListContactsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListContactsResponse)
+	err := c.cc.Invoke(ctx, ControllerService_ListContacts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) GetContactMessages(ctx context.Context, in *GetContactMessagesRequest, opts ...grpc.CallOption) (*GetContactMessagesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetContactMessagesResponse)
+	err := c.cc.Invoke(ctx, ControllerService_GetContactMessages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) SendContactMessage(ctx context.Context, in *SendContactMessageRequest, opts ...grpc.CallOption) (*SendContactMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendContactMessageResponse)
+	err := c.cc.Invoke(ctx, ControllerService_SendContactMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *controllerServiceClient) SearchSessions(ctx context.Context, in *SearchSessionsRequest, opts ...grpc.CallOption) (*SearchSessionsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SearchSessionsResponse)
@@ -515,6 +552,10 @@ type ControllerServiceServer interface {
 	SearchUserInfo(context.Context, *SearchUserInfoRequest) (*v1.SearchUserInfoResponse, error)
 	GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*GetFriendRequestsResponse, error)
 	AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error)
+	// コンタクト・チャット系
+	ListContacts(context.Context, *ListContactsRequest) (*ListContactsResponse, error)
+	GetContactMessages(context.Context, *GetContactMessagesRequest) (*GetContactMessagesResponse, error)
+	SendContactMessage(context.Context, *SendContactMessageRequest) (*SendContactMessageResponse, error)
 	// セッション系
 	SearchSessions(context.Context, *SearchSessionsRequest) (*SearchSessionsResponse, error)
 	GetSessionDetails(context.Context, *GetSessionDetailsRequest) (*GetSessionDetailsResponse, error)
@@ -610,6 +651,15 @@ func (UnimplementedControllerServiceServer) GetFriendRequests(context.Context, *
 }
 func (UnimplementedControllerServiceServer) AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AcceptFriendRequests not implemented")
+}
+func (UnimplementedControllerServiceServer) ListContacts(context.Context, *ListContactsRequest) (*ListContactsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListContacts not implemented")
+}
+func (UnimplementedControllerServiceServer) GetContactMessages(context.Context, *GetContactMessagesRequest) (*GetContactMessagesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetContactMessages not implemented")
+}
+func (UnimplementedControllerServiceServer) SendContactMessage(context.Context, *SendContactMessageRequest) (*SendContactMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendContactMessage not implemented")
 }
 func (UnimplementedControllerServiceServer) SearchSessions(context.Context, *SearchSessionsRequest) (*SearchSessionsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SearchSessions not implemented")
@@ -1103,6 +1153,60 @@ func _ControllerService_AcceptFriendRequests_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_ListContacts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListContactsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).ListContacts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_ListContacts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).ListContacts(ctx, req.(*ListContactsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_GetContactMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetContactMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).GetContactMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_GetContactMessages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).GetContactMessages(ctx, req.(*GetContactMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_SendContactMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendContactMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).SendContactMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_SendContactMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).SendContactMessage(ctx, req.(*SendContactMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ControllerService_SearchSessions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SearchSessionsRequest)
 	if err := dec(in); err != nil {
@@ -1439,6 +1543,18 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AcceptFriendRequests",
 			Handler:    _ControllerService_AcceptFriendRequests_Handler,
+		},
+		{
+			MethodName: "ListContacts",
+			Handler:    _ControllerService_ListContacts_Handler,
+		},
+		{
+			MethodName: "GetContactMessages",
+			Handler:    _ControllerService_GetContactMessages_Handler,
+		},
+		{
+			MethodName: "SendContactMessage",
+			Handler:    _ControllerService_SendContactMessage_Handler,
 		},
 		{
 			MethodName: "SearchSessions",

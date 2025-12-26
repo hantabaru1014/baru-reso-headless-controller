@@ -131,6 +131,23 @@ export const getFriendRequests = ControllerService.method.getFriendRequests;
 export const acceptFriendRequests = ControllerService.method.acceptFriendRequests;
 
 /**
+ * コンタクト・チャット系
+ *
+ * @generated from rpc hdlctrl.v1.ControllerService.ListContacts
+ */
+export const listContacts = ControllerService.method.listContacts;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.GetContactMessages
+ */
+export const getContactMessages = ControllerService.method.getContactMessages;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.SendContactMessage
+ */
+export const sendContactMessage = ControllerService.method.sendContactMessage;
+
+/**
  * セッション系
  *
  * @generated from rpc hdlctrl.v1.ControllerService.SearchSessions

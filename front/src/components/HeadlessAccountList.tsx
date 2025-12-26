@@ -40,6 +40,7 @@ import { resolveUrl } from "@/libs/skyfrostUtils";
 import { MoreVertical } from "lucide-react";
 import { IconChangeDialog } from "./IconChangeDialog";
 import { ResoniteUserIcon } from "./ResoniteUserIcon";
+import { ChatDialog } from "./chat";
 
 function FriendRequestsDialog({
   onClose,
@@ -316,6 +317,10 @@ export default function HeadlessAccountList() {
     userId: string;
     iconUrl: string;
   }>();
+  const [chatAccount, setChatAccount] = useState<{
+    userId: string;
+    userName: string;
+  }>();
 
   const handleChangeIcon = useCallback((userId: string, iconUrl: string) => {
     setIconChangeAccount({ userId, iconUrl });
@@ -407,6 +412,16 @@ export default function HeadlessAccountList() {
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem
+                onClick={() =>
+                  setChatAccount({
+                    userId: row.original.userId,
+                    userName: row.original.userName,
+                  })
+                }
+              >
+                チャットを開く
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 onClick={() => setUpdateDialogAccountId(row.original.userId)}
               >
                 ログイン情報の更新
@@ -476,6 +491,12 @@ export default function HeadlessAccountList() {
         currentIconUrl={iconChangeAccount?.iconUrl}
         onUpload={handleUploadIcon}
         isUploading={isUpdatingIcon}
+      />
+      <ChatDialog
+        open={!!chatAccount}
+        onClose={() => setChatAccount(undefined)}
+        accountId={chatAccount?.userId ?? ""}
+        accountName={chatAccount?.userName ?? ""}
       />
     </div>
   );
