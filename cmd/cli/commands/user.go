@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/spf13/cobra"
@@ -26,16 +25,10 @@ func NewUserCommand(uu *usecase.UserUsecase) *cobra.Command {
 				return
 			}
 
-			frontUrl := os.Getenv("FRONT_URL")
-			if frontUrl == "" {
-				frontUrl = "http://localhost:5173"
-			}
-
-			registrationUrl := fmt.Sprintf("%s/register/%s", frontUrl, token)
+			registrationUrl := fmt.Sprintf("https://<your base URL>/register/%s", token)
 			cmd.Println("Registration link generated successfully!")
 			cmd.Println("Resonite ID:", resoniteId)
 			cmd.Println("Valid for: 24 hours")
-			cmd.Println("")
 			cmd.Println("Registration URL:")
 			cmd.Println(registrationUrl)
 		},
