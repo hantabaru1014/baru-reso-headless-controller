@@ -1,3 +1,8 @@
+// Resoniteのデフォルトユーザーアイコン (OfficialAssets.Graphics.Thumbnails.AnonymousHeadset)
+export const DEFAULT_USER_ICON_HASH =
+  "ed45a39d752c06d53943dbb294a457e7ab42ecfa4a56a74a98c3859be5dda345";
+export const DEFAULT_USER_ICON_URL = `https://assets.resonite.com/${DEFAULT_USER_ICON_HASH}`;
+
 // もしURLがresdb形式であれば、解決されたURLを返す
 export function resolveResdbUrl(url: string | undefined) {
   if (!url) return undefined;

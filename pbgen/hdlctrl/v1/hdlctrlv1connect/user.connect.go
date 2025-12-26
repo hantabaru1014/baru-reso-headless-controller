@@ -45,6 +45,9 @@ const (
 	// UserServiceRefreshTokenProcedure is the fully-qualified name of the UserService's RefreshToken
 	// RPC.
 	UserServiceRefreshTokenProcedure = "/hdlctrl.v1.UserService/RefreshToken"
+	// UserServiceChangePasswordProcedure is the fully-qualified name of the UserService's
+	// ChangePassword RPC.
+	UserServiceChangePasswordProcedure = "/hdlctrl.v1.UserService/ChangePassword"
 )
 
 // UserServiceClient is a client for the hdlctrl.v1.UserService service.
@@ -55,6 +58,7 @@ type UserServiceClient interface {
 	RegisterWithToken(context.Context, *connect.Request[v1.RegisterWithTokenRequest]) (*connect.Response[v1.TokenSetResponse], error)
 	// 認証付きRPC
 	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.TokenSetResponse], error)
+	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
 }
 
 // NewUserServiceClient constructs a client for the hdlctrl.v1.UserService service. By default, it
@@ -74,10 +78,28 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(userServiceMethods.ByName("GetTokenByPassword")),
 			connect.WithClientOptions(opts...),
 		),
+		validateRegistrationToken: connect.NewClient[v1.ValidateRegistrationTokenRequest, v1.ValidateRegistrationTokenResponse](
+			httpClient,
+			baseURL+UserServiceValidateRegistrationTokenProcedure,
+			connect.WithSchema(userServiceMethods.ByName("ValidateRegistrationToken")),
+			connect.WithClientOptions(opts...),
+		),
+		registerWithToken: connect.NewClient[v1.RegisterWithTokenRequest, v1.TokenSetResponse](
+			httpClient,
+			baseURL+UserServiceRegisterWithTokenProcedure,
+			connect.WithSchema(userServiceMethods.ByName("RegisterWithToken")),
+			connect.WithClientOptions(opts...),
+		),
 		refreshToken: connect.NewClient[v1.RefreshTokenRequest, v1.TokenSetResponse](
 			httpClient,
 			baseURL+UserServiceRefreshTokenProcedure,
 			connect.WithSchema(userServiceMethods.ByName("RefreshToken")),
+			connect.WithClientOptions(opts...),
+		),
+		changePassword: connect.NewClient[v1.ChangePasswordRequest, v1.ChangePasswordResponse](
+			httpClient,
+			baseURL+UserServiceChangePasswordProcedure,
+			connect.WithSchema(userServiceMethods.ByName("ChangePassword")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -85,8 +107,11 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // userServiceClient implements UserServiceClient.
 type userServiceClient struct {
-	getTokenByPassword *connect.Client[v1.GetTokenByPasswordRequest, v1.TokenSetResponse]
-	refreshToken       *connect.Client[v1.RefreshTokenRequest, v1.TokenSetResponse]
+	getTokenByPassword        *connect.Client[v1.GetTokenByPasswordRequest, v1.TokenSetResponse]
+	validateRegistrationToken *connect.Client[v1.ValidateRegistrationTokenRequest, v1.ValidateRegistrationTokenResponse]
+	registerWithToken         *connect.Client[v1.RegisterWithTokenRequest, v1.TokenSetResponse]
+	refreshToken              *connect.Client[v1.RefreshTokenRequest, v1.TokenSetResponse]
+	changePassword            *connect.Client[v1.ChangePasswordRequest, v1.ChangePasswordResponse]
 }
 
 // GetTokenByPassword calls hdlctrl.v1.UserService.GetTokenByPassword.
@@ -94,9 +119,24 @@ func (c *userServiceClient) GetTokenByPassword(ctx context.Context, req *connect
 	return c.getTokenByPassword.CallUnary(ctx, req)
 }
 
+// ValidateRegistrationToken calls hdlctrl.v1.UserService.ValidateRegistrationToken.
+func (c *userServiceClient) ValidateRegistrationToken(ctx context.Context, req *connect.Request[v1.ValidateRegistrationTokenRequest]) (*connect.Response[v1.ValidateRegistrationTokenResponse], error) {
+	return c.validateRegistrationToken.CallUnary(ctx, req)
+}
+
+// RegisterWithToken calls hdlctrl.v1.UserService.RegisterWithToken.
+func (c *userServiceClient) RegisterWithToken(ctx context.Context, req *connect.Request[v1.RegisterWithTokenRequest]) (*connect.Response[v1.TokenSetResponse], error) {
+	return c.registerWithToken.CallUnary(ctx, req)
+}
+
 // RefreshToken calls hdlctrl.v1.UserService.RefreshToken.
 func (c *userServiceClient) RefreshToken(ctx context.Context, req *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.TokenSetResponse], error) {
 	return c.refreshToken.CallUnary(ctx, req)
+}
+
+// ChangePassword calls hdlctrl.v1.UserService.ChangePassword.
+func (c *userServiceClient) ChangePassword(ctx context.Context, req *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error) {
+	return c.changePassword.CallUnary(ctx, req)
 }
 
 // UserServiceHandler is an implementation of the hdlctrl.v1.UserService service.
@@ -107,6 +147,7 @@ type UserServiceHandler interface {
 	RegisterWithToken(context.Context, *connect.Request[v1.RegisterWithTokenRequest]) (*connect.Response[v1.TokenSetResponse], error)
 	// 認証付きRPC
 	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.TokenSetResponse], error)
+	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
 }
 
 // NewUserServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -115,24 +156,35 @@ type UserServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	userServiceMethods := v1.File_hdlctrl_v1_user_proto.Services().ByName("UserService").Methods()
 	userServiceGetTokenByPasswordHandler := connect.NewUnaryHandler(
 		UserServiceGetTokenByPasswordProcedure,
 		svc.GetTokenByPassword,
+		connect.WithSchema(userServiceMethods.ByName("GetTokenByPassword")),
 		connect.WithHandlerOptions(opts...),
 	)
 	userServiceValidateRegistrationTokenHandler := connect.NewUnaryHandler(
 		UserServiceValidateRegistrationTokenProcedure,
 		svc.ValidateRegistrationToken,
+		connect.WithSchema(userServiceMethods.ByName("ValidateRegistrationToken")),
 		connect.WithHandlerOptions(opts...),
 	)
 	userServiceRegisterWithTokenHandler := connect.NewUnaryHandler(
 		UserServiceRegisterWithTokenProcedure,
 		svc.RegisterWithToken,
+		connect.WithSchema(userServiceMethods.ByName("RegisterWithToken")),
 		connect.WithHandlerOptions(opts...),
 	)
 	userServiceRefreshTokenHandler := connect.NewUnaryHandler(
 		UserServiceRefreshTokenProcedure,
 		svc.RefreshToken,
+		connect.WithSchema(userServiceMethods.ByName("RefreshToken")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userServiceChangePasswordHandler := connect.NewUnaryHandler(
+		UserServiceChangePasswordProcedure,
+		svc.ChangePassword,
+		connect.WithSchema(userServiceMethods.ByName("ChangePassword")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/hdlctrl.v1.UserService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -145,6 +197,8 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 			userServiceRegisterWithTokenHandler.ServeHTTP(w, r)
 		case UserServiceRefreshTokenProcedure:
 			userServiceRefreshTokenHandler.ServeHTTP(w, r)
+		case UserServiceChangePasswordProcedure:
+			userServiceChangePasswordHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -168,4 +222,8 @@ func (UnimplementedUserServiceHandler) RegisterWithToken(context.Context, *conne
 
 func (UnimplementedUserServiceHandler) RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.TokenSetResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.UserService.RefreshToken is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.UserService.ChangePassword is not implemented"))
 }

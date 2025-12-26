@@ -1,17 +1,16 @@
+import { Link } from "react-router";
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
   Button,
   DropdownMenu,
   DropdownMenuItem,
   DropdownMenuContent,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui";
 import { UserInfo } from "@/atoms/sessionAtom";
-import { resolveUrl } from "@/libs/skyfrostUtils";
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
+import { ResoniteUserIcon } from "./ResoniteUserIcon";
 
 export function UserMenuDropdown({
   user,
@@ -24,10 +23,11 @@ export function UserMenuDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={resolveUrl(user?.image)} alt={user?.name} />
-            <AvatarFallback>{user?.name?.charAt(0) || "U"}</AvatarFallback>
-          </Avatar>
+          <ResoniteUserIcon
+            iconUrl={user?.image}
+            alt={user?.name}
+            className="h-8 w-8"
+          />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
@@ -35,6 +35,14 @@ export function UserMenuDropdown({
           <div className="font-medium">{user?.name}</div>
           <div className="text-muted-foreground">{user?.email}</div>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link to="/user-settings">
+            <Settings className="h-4 w-4" />
+            <span>ユーザー設定</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={signOut}>
           <LogOut className="h-4 w-4" />
           <span>サインアウト</span>

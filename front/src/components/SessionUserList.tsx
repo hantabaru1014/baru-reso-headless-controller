@@ -11,6 +11,7 @@ import { Search, Check } from "lucide-react";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
   banUser,
+  getHeadlessHost,
   getSessionDetails,
   inviteUser,
   kickUser,
@@ -18,6 +19,9 @@ import {
   searchUserInfo,
   updateUserRole,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
+import { UserInfoSchema } from "../../pbgen/hdlctrl/v1/controller_pb";
+import { DirectChatDialog } from "./chat";
+import { create } from "@bufbuild/protobuf";
 import { UserRoles } from "../constants";
 import { EditableSelectField } from "./base/EditableSelectField";
 import { useRef, useState } from "react";
@@ -154,6 +158,11 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
   const { mutateAsync: mutateKickUser } = useMutation(kickUser);
   const { mutateAsync: mutateBanUser } = useMutation(banUser);
   const [isOpenInviteDialog, setIsOpenInviteDialog] = useState(false);
+  const [chatUserId, setChatUserId] = useState<string | null>(null);
+
+  const { data: hostData } = useQuery(getHeadlessHost, {
+    hostId: hostId ?? "",
+  });
 
   const handleUpdateRole = async (userId: string, role: string) => {
     try {
@@ -245,25 +254,35 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
     {
       id: "actions",
       header: "操作",
-      cell: ({ row }) =>
-        row.original.isHost ? null : (
-          <div className="space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleKickUser(row.original.id)}
-            >
-              Kick
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => handleBanUser(row.original.id)}
-            >
-              Ban
-            </Button>
-          </div>
-        ),
+      cell: ({ row }) => (
+        <div className="space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setChatUserId(row.original.id)}
+          >
+            チャット
+          </Button>
+          {!row.original.isHost && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleKickUser(row.original.id)}
+              >
+                Kick
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => handleBanUser(row.original.id)}
+              >
+                Ban
+              </Button>
+            </>
+          )}
+        </div>
+      ),
     },
   ];
 
@@ -296,6 +315,20 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
         hostId={hostId}
         sessionId={sessionId}
       />
+      {chatUserId && hostData?.host && (
+        <DirectChatDialog
+          open={!!chatUserId}
+          onClose={() => setChatUserId(null)}
+          accountId={hostData.host.accountId}
+          accountName={hostData.host.accountName}
+          contact={create(UserInfoSchema, {
+            id: chatUserId,
+            name:
+              data?.users?.find((u) => u.id === chatUserId)?.name ?? chatUserId,
+            iconUrl: "",
+          })}
+        />
+      )}
     </>
   );
 }

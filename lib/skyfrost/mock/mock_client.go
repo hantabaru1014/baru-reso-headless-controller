@@ -86,6 +86,36 @@ func (mr *MockClientMockRecorder) GetStorageInfo(ctx, credential, password, owne
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStorageInfo", reflect.TypeOf((*MockClient)(nil).GetStorageInfo), ctx, credential, password, ownerId)
 }
 
+// UpdateUserProfile mocks base method.
+func (m *MockClient) UpdateUserProfile(ctx context.Context, credential, password string, profile *skyfrost.UserProfile) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUserProfile", ctx, credential, password, profile)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateUserProfile indicates an expected call of UpdateUserProfile.
+func (mr *MockClientMockRecorder) UpdateUserProfile(ctx, credential, password, profile any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserProfile", reflect.TypeOf((*MockClient)(nil).UpdateUserProfile), ctx, credential, password, profile)
+}
+
+// UploadTextureRecord mocks base method.
+func (m *MockClient) UploadTextureRecord(ctx context.Context, credential, password, name, path string, imageData []byte) (string, string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UploadTextureRecord", ctx, credential, password, name, path, imageData)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// UploadTextureRecord indicates an expected call of UploadTextureRecord.
+func (mr *MockClientMockRecorder) UploadTextureRecord(ctx, credential, password, name, path, imageData any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadTextureRecord", reflect.TypeOf((*MockClient)(nil).UploadTextureRecord), ctx, credential, password, name, path, imageData)
+}
+
 // UserLogin mocks base method.
 func (m *MockClient) UserLogin(ctx context.Context, credential, password string) (*skyfrost.UserSession, error) {
 	m.ctrl.T.Helper()

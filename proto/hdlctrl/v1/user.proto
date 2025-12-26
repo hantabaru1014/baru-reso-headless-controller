@@ -10,6 +10,7 @@ service UserService {
 
   // 認証付きRPC
   rpc RefreshToken(RefreshTokenRequest) returns (TokenSetResponse) {}
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {}
 }
 
 message TokenSetResponse {
@@ -39,3 +40,10 @@ message RegisterWithTokenRequest {
   string user_id = 2;
   string password = 3;
 }
+
+message ChangePasswordRequest {
+  string current_password = 1;
+  string new_password = 2;
+}
+
+message ChangePasswordResponse {}

@@ -12,8 +12,23 @@ import { UserService } from "./user_pb";
 export const getTokenByPassword = UserService.method.getTokenByPassword;
 
 /**
+ * @generated from rpc hdlctrl.v1.UserService.ValidateRegistrationToken
+ */
+export const validateRegistrationToken = UserService.method.validateRegistrationToken;
+
+/**
+ * @generated from rpc hdlctrl.v1.UserService.RegisterWithToken
+ */
+export const registerWithToken = UserService.method.registerWithToken;
+
+/**
  * 認証付きRPC
  *
  * @generated from rpc hdlctrl.v1.UserService.RefreshToken
  */
 export const refreshToken = UserService.method.refreshToken;
+
+/**
+ * @generated from rpc hdlctrl.v1.UserService.ChangePassword
+ */
+export const changePassword = UserService.method.changePassword;

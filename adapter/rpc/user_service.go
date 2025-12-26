@@ -99,6 +99,19 @@ func (u *UserService) RegisterWithToken(ctx context.Context, req *connect.Reques
 	}), nil
 }
 
+// ChangePassword implements hdlctrlv1connect.UserServiceHandler.
+func (u *UserService) ChangePassword(ctx context.Context, req *connect.Request[hdlctrlv1.ChangePasswordRequest]) (*connect.Response[hdlctrlv1.ChangePasswordResponse], error) {
+	claims, err := auth.GetAuthClaimsFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+	err = u.uu.ChangePassword(ctx, claims.UserID, req.Msg.CurrentPassword, req.Msg.NewPassword)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	return connect.NewResponse(&hdlctrlv1.ChangePasswordResponse{}), nil
+}
+
 func NewUserService(uu *usecase.UserUsecase) *UserService {
 	return &UserService{
 		uu: uu,
@@ -106,6 +119,9 @@ func NewUserService(uu *usecase.UserUsecase) *UserService {
 }
 
 func (u *UserService) NewHandler() (string, http.Handler) {
-	interceptors := connect.WithInterceptors(logging.NewErrorLogInterceptor())
+	interceptors := connect.WithInterceptors(
+		logging.NewErrorLogInterceptor(),
+		auth.NewOptionalAuthInterceptor(),
+	)
 	return hdlctrlv1connect.NewUserServiceHandler(u, interceptors)
 }

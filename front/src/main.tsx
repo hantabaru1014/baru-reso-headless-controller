@@ -13,6 +13,7 @@ import SessionNew from "./pages/sessions/new";
 import Hosts from "./pages/hosts";
 import HostDetail from "./pages/hosts/detail";
 import HeadlessAccounts from "./pages/headlessAccounts";
+import UserSettings from "./pages/userSettings";
 
 const router = createBrowserRouter([
   {
@@ -64,6 +65,10 @@ const router = createBrowserRouter([
                 Component: HeadlessAccounts,
               },
             ],
+          },
+          {
+            path: "user-settings",
+            Component: UserSettings,
           },
         ],
       },
