@@ -9,16 +9,19 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type UserUsecase struct {
-	queries *db.Queries
+	queries        *db.Queries
+	skyfrostClient skyfrost.Client
 }
 
-func NewUserUsecase(queries *db.Queries) *UserUsecase {
+func NewUserUsecase(queries *db.Queries, skyfrostClient skyfrost.Client) *UserUsecase {
 	return &UserUsecase{
-		queries: queries,
+		queries:        queries,
+		skyfrostClient: skyfrostClient,
 	}
 }
 
@@ -27,11 +30,17 @@ func (u *UserUsecase) CreateUser(ctx context.Context, id, password, resoniteId s
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
+	iconUrl := pgtype.Text{Valid: false}
+	if userInfo, err := u.skyfrostClient.FetchUserInfo(ctx, resoniteId); err == nil && userInfo.IconUrl != "" {
+		iconUrl = pgtype.Text{String: userInfo.IconUrl, Valid: true}
+	}
+
 	return u.queries.CreateUser(ctx, db.CreateUserParams{
 		ID:         id,
 		Password:   passwordHash,
 		ResoniteID: pgtype.Text{String: resoniteId, Valid: true},
-		IconUrl:    pgtype.Text{Valid: false},
+		IconUrl:    iconUrl,
 	})
 }
 
@@ -97,11 +106,16 @@ func (u *UserUsecase) RegisterWithToken(ctx context.Context, token, userId, pass
 		return nil, errors.Wrap(err, 0)
 	}
 
+	iconUrl := pgtype.Text{Valid: false}
+	if userInfo, err := u.skyfrostClient.FetchUserInfo(ctx, regToken.ResoniteID); err == nil && userInfo.IconUrl != "" {
+		iconUrl = pgtype.Text{String: userInfo.IconUrl, Valid: true}
+	}
+
 	err = u.queries.CreateUser(ctx, db.CreateUserParams{
 		ID:         userId,
 		Password:   passwordHash,
 		ResoniteID: pgtype.Text{String: regToken.ResoniteID, Valid: true},
-		IconUrl:    pgtype.Text{Valid: false},
+		IconUrl:    iconUrl,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
