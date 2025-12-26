@@ -20,6 +20,7 @@ import {
 } from "@/components/ui";
 import { Loader2 } from "lucide-react";
 import { TextField } from "@/components/base";
+import { ResoniteUserIcon } from "@/components/ResoniteUserIcon";
 
 interface RegisterForm {
   userId: string;
@@ -44,6 +45,8 @@ export default function Register() {
   const [isValidating, setIsValidating] = useState(true);
   const [isValidToken, setIsValidToken] = useState(false);
   const [resoniteId, setResoniteId] = useState<string>("");
+  const [resoniteUserName, setResoniteUserName] = useState<string>("");
+  const [iconUrl, setIconUrl] = useState<string>("");
 
   const transport = useMemo(() => createConnectTransport({ baseUrl: "/" }), []);
 
@@ -73,6 +76,8 @@ export default function Register() {
         if (response.valid) {
           setIsValidToken(true);
           setResoniteId(response.resoniteId);
+          setResoniteUserName(response.resoniteUserName);
+          setIconUrl(response.iconUrl);
         }
       } catch (err) {
         console.error("Token validation failed:", err);
@@ -174,12 +179,19 @@ export default function Register() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            新規登録
-          </CardTitle>
-          <CardDescription className="text-center">
-            Resonite ID: <strong>{resoniteId}</strong>
-          </CardDescription>
+          <div className="flex flex-col items-center gap-3">
+            <ResoniteUserIcon
+              iconUrl={iconUrl}
+              alt={resoniteUserName}
+              className="size-16"
+            />
+            <CardTitle className="text-2xl font-bold text-center">
+              ようこそ {resoniteUserName || resoniteId}！
+            </CardTitle>
+            <CardDescription className="text-center text-muted-foreground text-xs">
+              {resoniteId}
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

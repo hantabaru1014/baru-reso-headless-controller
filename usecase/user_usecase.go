@@ -82,14 +82,22 @@ func (u *UserUsecase) CreateRegistrationToken(ctx context.Context, resoniteId st
 	return token, nil
 }
 
-// ValidateRegistrationToken checks if the token is valid and returns the associated resonite ID.
-func (u *UserUsecase) ValidateRegistrationToken(ctx context.Context, token string) (string, error) {
+// ValidateRegistrationToken checks if the token is valid and returns the associated resonite ID and user info.
+func (u *UserUsecase) ValidateRegistrationToken(ctx context.Context, token string) (*skyfrost.UserInfo, error) {
 	regToken, err := u.queries.GetValidRegistrationToken(ctx, token)
 	if err != nil {
-		return "", errors.Wrap(err, 0)
+		return nil, errors.Wrap(err, 0)
 	}
 
-	return regToken.ResoniteID, nil
+	userInfo, err := u.skyfrostClient.FetchUserInfo(ctx, regToken.ResoniteID)
+	if err != nil {
+		// ユーザー情報が取得できなくてもResonite IDだけで返す
+		return &skyfrost.UserInfo{
+			ID: regToken.ResoniteID,
+		}, nil
+	}
+
+	return userInfo, nil
 }
 
 // RegisterWithToken registers a new user using a registration token.

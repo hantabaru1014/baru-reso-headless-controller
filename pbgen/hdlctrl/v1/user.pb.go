@@ -207,11 +207,13 @@ func (x *ValidateRegistrationTokenRequest) GetToken() string {
 }
 
 type ValidateRegistrationTokenResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Valid         bool                   `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
-	ResoniteId    string                 `protobuf:"bytes,2,opt,name=resonite_id,json=resoniteId,proto3" json:"resonite_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Valid            bool                   `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
+	ResoniteId       string                 `protobuf:"bytes,2,opt,name=resonite_id,json=resoniteId,proto3" json:"resonite_id,omitempty"`
+	ResoniteUserName string                 `protobuf:"bytes,3,opt,name=resonite_user_name,json=resoniteUserName,proto3" json:"resonite_user_name,omitempty"`
+	IconUrl          string                 `protobuf:"bytes,4,opt,name=icon_url,json=iconUrl,proto3" json:"icon_url,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ValidateRegistrationTokenResponse) Reset() {
@@ -254,6 +256,20 @@ func (x *ValidateRegistrationTokenResponse) GetValid() bool {
 func (x *ValidateRegistrationTokenResponse) GetResoniteId() string {
 	if x != nil {
 		return x.ResoniteId
+	}
+	return ""
+}
+
+func (x *ValidateRegistrationTokenResponse) GetResoniteUserName() string {
+	if x != nil {
+		return x.ResoniteUserName
+	}
+	return ""
+}
+
+func (x *ValidateRegistrationTokenResponse) GetIconUrl() string {
+	if x != nil {
+		return x.IconUrl
 	}
 	return ""
 }
@@ -420,11 +436,13 @@ const file_hdlctrl_v1_user_proto_rawDesc = "" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"\x15\n" +
 	"\x13RefreshTokenRequest\"8\n" +
 	" ValidateRegistrationTokenRequest\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\"Z\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"\xa3\x01\n" +
 	"!ValidateRegistrationTokenResponse\x12\x14\n" +
 	"\x05valid\x18\x01 \x01(\bR\x05valid\x12\x1f\n" +
 	"\vresonite_id\x18\x02 \x01(\tR\n" +
-	"resoniteId\"e\n" +
+	"resoniteId\x12,\n" +
+	"\x12resonite_user_name\x18\x03 \x01(\tR\x10resoniteUserName\x12\x19\n" +
+	"\bicon_url\x18\x04 \x01(\tR\aiconUrl\"e\n" +
 	"\x18RegisterWithTokenRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x1a\n" +

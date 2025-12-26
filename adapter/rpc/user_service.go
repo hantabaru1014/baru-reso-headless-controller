@@ -63,17 +63,21 @@ func (u *UserService) GetTokenByPassword(ctx context.Context, req *connect.Reque
 
 // ValidateRegistrationToken implements hdlctrlv1connect.UserServiceHandler.
 func (u *UserService) ValidateRegistrationToken(ctx context.Context, req *connect.Request[hdlctrlv1.ValidateRegistrationTokenRequest]) (*connect.Response[hdlctrlv1.ValidateRegistrationTokenResponse], error) {
-	resoniteId, err := u.uu.ValidateRegistrationToken(ctx, req.Msg.Token)
+	userInfo, err := u.uu.ValidateRegistrationToken(ctx, req.Msg.Token)
 	if err != nil {
 		return connect.NewResponse(&hdlctrlv1.ValidateRegistrationTokenResponse{
-			Valid:      false,
-			ResoniteId: "",
+			Valid:            false,
+			ResoniteId:       "",
+			ResoniteUserName: "",
+			IconUrl:          "",
 		}), nil
 	}
 
 	return connect.NewResponse(&hdlctrlv1.ValidateRegistrationTokenResponse{
-		Valid:      true,
-		ResoniteId: resoniteId,
+		Valid:            true,
+		ResoniteId:       userInfo.ID,
+		ResoniteUserName: userInfo.UserName,
+		IconUrl:          userInfo.IconUrl,
 	}), nil
 }
 

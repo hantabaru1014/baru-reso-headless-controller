@@ -33,6 +33,8 @@ message ValidateRegistrationTokenRequest {
 message ValidateRegistrationTokenResponse {
   bool valid = 1;
   string resonite_id = 2;
+  string resonite_user_name = 3;
+  string icon_url = 4;
 }
 
 message RegisterWithTokenRequest {
