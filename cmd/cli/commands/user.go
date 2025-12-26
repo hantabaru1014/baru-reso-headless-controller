@@ -3,11 +3,12 @@ package commands
 import (
 	"fmt"
 
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/spf13/cobra"
 )
 
-func NewUserCommand(uu *usecase.UserUsecase) *cobra.Command {
+func NewUserCommand(uu *usecase.UserUsecase, skyfrostClient skyfrost.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "user",
 		Short: "User management commands",
@@ -19,6 +20,14 @@ func NewUserCommand(uu *usecase.UserUsecase) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			resoniteId := args[0]
+
+			userInfo, err := skyfrostClient.FetchUserInfo(cmd.Context(), resoniteId)
+			if err != nil {
+				cmd.PrintErrln("Failed to validate Resonite ID:", err)
+				cmd.PrintErrln("Please check if the Resonite ID is correct.")
+				return
+			}
+
 			token, err := uu.CreateRegistrationToken(cmd.Context(), resoniteId)
 			if err != nil {
 				cmd.PrintErrln("Failed to create registration token:", err)
@@ -27,7 +36,7 @@ func NewUserCommand(uu *usecase.UserUsecase) *cobra.Command {
 
 			registrationUrl := fmt.Sprintf("https://<your base URL>/register/%s", token)
 			cmd.Println("Registration link generated successfully!")
-			cmd.Println("Resonite ID:", resoniteId)
+			cmd.Println("for Resonite User:", userInfo.UserName, "(ID:", userInfo.ID+")")
 			cmd.Println("Valid for: 24 hours")
 			cmd.Println("Registration URL:")
 			cmd.Println(registrationUrl)
