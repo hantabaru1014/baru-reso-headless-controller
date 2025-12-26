@@ -43,6 +43,14 @@ type Host struct {
 	InstanceCount                  int32
 }
 
+type RegistrationToken struct {
+	Token      string
+	ResoniteID string
+	ExpiresAt  pgtype.Timestamptz
+	UsedAt     pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+}
+
 type Session struct {
 	ID                             string
 	Name                           string

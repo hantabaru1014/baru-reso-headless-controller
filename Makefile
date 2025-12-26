@@ -4,7 +4,7 @@ BIN_DIR := $(shell pwd)/bin
 
 # tools
 buf := go run github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
-wire := go run github.com/google/wire/cmd/wire@v0.6.0
+wire := go run github.com/google/wire/cmd/wire@latest
 sqlc := go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 mockgen := go run go.uber.org/mock/mockgen@latest
 

@@ -5,6 +5,8 @@ package hdlctrl.v1;
 service UserService {
   // 認証なしRPC
   rpc GetTokenByPassword(GetTokenByPasswordRequest) returns (TokenSetResponse) {}
+  rpc ValidateRegistrationToken(ValidateRegistrationTokenRequest) returns (ValidateRegistrationTokenResponse) {}
+  rpc RegisterWithToken(RegisterWithTokenRequest) returns (TokenSetResponse) {}
 
   // 認証付きRPC
   rpc RefreshToken(RefreshTokenRequest) returns (TokenSetResponse) {}
@@ -23,6 +25,23 @@ message GetTokenByPasswordRequest {
 
 // 既に持っているトークンをheaderに付与してリクエストする
 message RefreshTokenRequest {}
+
+message ValidateRegistrationTokenRequest {
+  string token = 1;
+}
+
+message ValidateRegistrationTokenResponse {
+  bool valid = 1;
+  string resonite_id = 2;
+  string resonite_user_name = 3;
+  string icon_url = 4;
+}
+
+message RegisterWithTokenRequest {
+  string token = 1;
+  string user_id = 2;
+  string password = 3;
+}
 
 message ChangePasswordRequest {
   string current_password = 1;

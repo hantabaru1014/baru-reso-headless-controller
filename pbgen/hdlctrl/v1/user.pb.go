@@ -162,6 +162,178 @@ func (*RefreshTokenRequest) Descriptor() ([]byte, []int) {
 	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{2}
 }
 
+type ValidateRegistrationTokenRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ValidateRegistrationTokenRequest) Reset() {
+	*x = ValidateRegistrationTokenRequest{}
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidateRegistrationTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidateRegistrationTokenRequest) ProtoMessage() {}
+
+func (x *ValidateRegistrationTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidateRegistrationTokenRequest.ProtoReflect.Descriptor instead.
+func (*ValidateRegistrationTokenRequest) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ValidateRegistrationTokenRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type ValidateRegistrationTokenResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Valid            bool                   `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
+	ResoniteId       string                 `protobuf:"bytes,2,opt,name=resonite_id,json=resoniteId,proto3" json:"resonite_id,omitempty"`
+	ResoniteUserName string                 `protobuf:"bytes,3,opt,name=resonite_user_name,json=resoniteUserName,proto3" json:"resonite_user_name,omitempty"`
+	IconUrl          string                 `protobuf:"bytes,4,opt,name=icon_url,json=iconUrl,proto3" json:"icon_url,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ValidateRegistrationTokenResponse) Reset() {
+	*x = ValidateRegistrationTokenResponse{}
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidateRegistrationTokenResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidateRegistrationTokenResponse) ProtoMessage() {}
+
+func (x *ValidateRegistrationTokenResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidateRegistrationTokenResponse.ProtoReflect.Descriptor instead.
+func (*ValidateRegistrationTokenResponse) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ValidateRegistrationTokenResponse) GetValid() bool {
+	if x != nil {
+		return x.Valid
+	}
+	return false
+}
+
+func (x *ValidateRegistrationTokenResponse) GetResoniteId() string {
+	if x != nil {
+		return x.ResoniteId
+	}
+	return ""
+}
+
+func (x *ValidateRegistrationTokenResponse) GetResoniteUserName() string {
+	if x != nil {
+		return x.ResoniteUserName
+	}
+	return ""
+}
+
+func (x *ValidateRegistrationTokenResponse) GetIconUrl() string {
+	if x != nil {
+		return x.IconUrl
+	}
+	return ""
+}
+
+type RegisterWithTokenRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Password      string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RegisterWithTokenRequest) Reset() {
+	*x = RegisterWithTokenRequest{}
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegisterWithTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegisterWithTokenRequest) ProtoMessage() {}
+
+func (x *RegisterWithTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegisterWithTokenRequest.ProtoReflect.Descriptor instead.
+func (*RegisterWithTokenRequest) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *RegisterWithTokenRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *RegisterWithTokenRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *RegisterWithTokenRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
 type ChangePasswordRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	CurrentPassword string                 `protobuf:"bytes,1,opt,name=current_password,json=currentPassword,proto3" json:"current_password,omitempty"`
@@ -172,7 +344,7 @@ type ChangePasswordRequest struct {
 
 func (x *ChangePasswordRequest) Reset() {
 	*x = ChangePasswordRequest{}
-	mi := &file_hdlctrl_v1_user_proto_msgTypes[3]
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -184,7 +356,7 @@ func (x *ChangePasswordRequest) String() string {
 func (*ChangePasswordRequest) ProtoMessage() {}
 
 func (x *ChangePasswordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_user_proto_msgTypes[3]
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -197,7 +369,7 @@ func (x *ChangePasswordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChangePasswordRequest.ProtoReflect.Descriptor instead.
 func (*ChangePasswordRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{3}
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ChangePasswordRequest) GetCurrentPassword() string {
@@ -222,7 +394,7 @@ type ChangePasswordResponse struct {
 
 func (x *ChangePasswordResponse) Reset() {
 	*x = ChangePasswordResponse{}
-	mi := &file_hdlctrl_v1_user_proto_msgTypes[4]
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -234,7 +406,7 @@ func (x *ChangePasswordResponse) String() string {
 func (*ChangePasswordResponse) ProtoMessage() {}
 
 func (x *ChangePasswordResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_user_proto_msgTypes[4]
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -247,7 +419,7 @@ func (x *ChangePasswordResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChangePasswordResponse.ProtoReflect.Descriptor instead.
 func (*ChangePasswordResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{4}
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{7}
 }
 
 var File_hdlctrl_v1_user_proto protoreflect.FileDescriptor
@@ -262,13 +434,27 @@ const file_hdlctrl_v1_user_proto_rawDesc = "" +
 	"\x19GetTokenByPasswordRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"\x15\n" +
-	"\x13RefreshTokenRequest\"e\n" +
+	"\x13RefreshTokenRequest\"8\n" +
+	" ValidateRegistrationTokenRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"\xa3\x01\n" +
+	"!ValidateRegistrationTokenResponse\x12\x14\n" +
+	"\x05valid\x18\x01 \x01(\bR\x05valid\x12\x1f\n" +
+	"\vresonite_id\x18\x02 \x01(\tR\n" +
+	"resoniteId\x12,\n" +
+	"\x12resonite_user_name\x18\x03 \x01(\tR\x10resoniteUserName\x12\x19\n" +
+	"\bicon_url\x18\x04 \x01(\tR\aiconUrl\"e\n" +
+	"\x18RegisterWithTokenRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x1a\n" +
+	"\bpassword\x18\x03 \x01(\tR\bpassword\"e\n" +
 	"\x15ChangePasswordRequest\x12)\n" +
 	"\x10current_password\x18\x01 \x01(\tR\x0fcurrentPassword\x12!\n" +
 	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\"\x18\n" +
-	"\x16ChangePasswordResponse2\x96\x02\n" +
+	"\x16ChangePasswordResponse2\xed\x03\n" +
 	"\vUserService\x12[\n" +
-	"\x12GetTokenByPassword\x12%.hdlctrl.v1.GetTokenByPasswordRequest\x1a\x1c.hdlctrl.v1.TokenSetResponse\"\x00\x12O\n" +
+	"\x12GetTokenByPassword\x12%.hdlctrl.v1.GetTokenByPasswordRequest\x1a\x1c.hdlctrl.v1.TokenSetResponse\"\x00\x12z\n" +
+	"\x19ValidateRegistrationToken\x12,.hdlctrl.v1.ValidateRegistrationTokenRequest\x1a-.hdlctrl.v1.ValidateRegistrationTokenResponse\"\x00\x12Y\n" +
+	"\x11RegisterWithToken\x12$.hdlctrl.v1.RegisterWithTokenRequest\x1a\x1c.hdlctrl.v1.TokenSetResponse\"\x00\x12O\n" +
 	"\fRefreshToken\x12\x1f.hdlctrl.v1.RefreshTokenRequest\x1a\x1c.hdlctrl.v1.TokenSetResponse\"\x00\x12Y\n" +
 	"\x0eChangePassword\x12!.hdlctrl.v1.ChangePasswordRequest\x1a\".hdlctrl.v1.ChangePasswordResponse\"\x00B\xb7\x01\n" +
 	"\x0ecom.hdlctrl.v1B\tUserProtoP\x01ZQgithub.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1;hdlctrlv1\xa2\x02\x03HXX\xaa\x02\n" +
@@ -287,23 +473,30 @@ func file_hdlctrl_v1_user_proto_rawDescGZIP() []byte {
 	return file_hdlctrl_v1_user_proto_rawDescData
 }
 
-var file_hdlctrl_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_hdlctrl_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_hdlctrl_v1_user_proto_goTypes = []any{
-	(*TokenSetResponse)(nil),          // 0: hdlctrl.v1.TokenSetResponse
-	(*GetTokenByPasswordRequest)(nil), // 1: hdlctrl.v1.GetTokenByPasswordRequest
-	(*RefreshTokenRequest)(nil),       // 2: hdlctrl.v1.RefreshTokenRequest
-	(*ChangePasswordRequest)(nil),     // 3: hdlctrl.v1.ChangePasswordRequest
-	(*ChangePasswordResponse)(nil),    // 4: hdlctrl.v1.ChangePasswordResponse
+	(*TokenSetResponse)(nil),                  // 0: hdlctrl.v1.TokenSetResponse
+	(*GetTokenByPasswordRequest)(nil),         // 1: hdlctrl.v1.GetTokenByPasswordRequest
+	(*RefreshTokenRequest)(nil),               // 2: hdlctrl.v1.RefreshTokenRequest
+	(*ValidateRegistrationTokenRequest)(nil),  // 3: hdlctrl.v1.ValidateRegistrationTokenRequest
+	(*ValidateRegistrationTokenResponse)(nil), // 4: hdlctrl.v1.ValidateRegistrationTokenResponse
+	(*RegisterWithTokenRequest)(nil),          // 5: hdlctrl.v1.RegisterWithTokenRequest
+	(*ChangePasswordRequest)(nil),             // 6: hdlctrl.v1.ChangePasswordRequest
+	(*ChangePasswordResponse)(nil),            // 7: hdlctrl.v1.ChangePasswordResponse
 }
 var file_hdlctrl_v1_user_proto_depIdxs = []int32{
 	1, // 0: hdlctrl.v1.UserService.GetTokenByPassword:input_type -> hdlctrl.v1.GetTokenByPasswordRequest
-	2, // 1: hdlctrl.v1.UserService.RefreshToken:input_type -> hdlctrl.v1.RefreshTokenRequest
-	3, // 2: hdlctrl.v1.UserService.ChangePassword:input_type -> hdlctrl.v1.ChangePasswordRequest
-	0, // 3: hdlctrl.v1.UserService.GetTokenByPassword:output_type -> hdlctrl.v1.TokenSetResponse
-	0, // 4: hdlctrl.v1.UserService.RefreshToken:output_type -> hdlctrl.v1.TokenSetResponse
-	4, // 5: hdlctrl.v1.UserService.ChangePassword:output_type -> hdlctrl.v1.ChangePasswordResponse
-	3, // [3:6] is the sub-list for method output_type
-	0, // [0:3] is the sub-list for method input_type
+	3, // 1: hdlctrl.v1.UserService.ValidateRegistrationToken:input_type -> hdlctrl.v1.ValidateRegistrationTokenRequest
+	5, // 2: hdlctrl.v1.UserService.RegisterWithToken:input_type -> hdlctrl.v1.RegisterWithTokenRequest
+	2, // 3: hdlctrl.v1.UserService.RefreshToken:input_type -> hdlctrl.v1.RefreshTokenRequest
+	6, // 4: hdlctrl.v1.UserService.ChangePassword:input_type -> hdlctrl.v1.ChangePasswordRequest
+	0, // 5: hdlctrl.v1.UserService.GetTokenByPassword:output_type -> hdlctrl.v1.TokenSetResponse
+	4, // 6: hdlctrl.v1.UserService.ValidateRegistrationToken:output_type -> hdlctrl.v1.ValidateRegistrationTokenResponse
+	0, // 7: hdlctrl.v1.UserService.RegisterWithToken:output_type -> hdlctrl.v1.TokenSetResponse
+	0, // 8: hdlctrl.v1.UserService.RefreshToken:output_type -> hdlctrl.v1.TokenSetResponse
+	7, // 9: hdlctrl.v1.UserService.ChangePassword:output_type -> hdlctrl.v1.ChangePasswordResponse
+	5, // [5:10] is the sub-list for method output_type
+	0, // [0:5] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -320,7 +513,7 @@ func file_hdlctrl_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hdlctrl_v1_user_proto_rawDesc), len(file_hdlctrl_v1_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

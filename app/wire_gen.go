@@ -20,13 +20,13 @@ import (
 
 func InitializeServer() *Server {
 	queries := db.NewQueries()
-	userUsecase := usecase.NewUserUsecase(queries)
+	defaultClient := skyfrost.NewDefaultClient()
+	userUsecase := usecase.NewUserUsecase(queries, defaultClient)
 	userService := rpc.NewUserService(userUsecase)
 	dockerHostConnector := hostconnector.NewDockerHostConnector()
 	headlessHostRepository := adapter.NewHeadlessHostRepository(queries, dockerHostConnector)
 	sessionRepository := adapter.NewSessionRepository(queries)
 	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository)
-	defaultClient := skyfrost.NewDefaultClient()
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
 	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, defaultClient)
@@ -37,12 +37,12 @@ func InitializeServer() *Server {
 
 func InitializeCli() *Cli {
 	queries := db.NewQueries()
-	userUsecase := usecase.NewUserUsecase(queries)
+	defaultClient := skyfrost.NewDefaultClient()
+	userUsecase := usecase.NewUserUsecase(queries, defaultClient)
 	dockerHostConnector := hostconnector.NewDockerHostConnector()
 	headlessHostRepository := adapter.NewHeadlessHostRepository(queries, dockerHostConnector)
 	sessionRepository := adapter.NewSessionRepository(queries)
 	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository)
-	defaultClient := skyfrost.NewDefaultClient()
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
 	cli := NewCli(queries, userUsecase, headlessHostUsecase, defaultClient)

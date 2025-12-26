@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hdlctrl/v1/user.proto.
  */
 export const file_hdlctrl_v1_user: GenFile = /*@__PURE__*/
-  fileDesc("ChVoZGxjdHJsL3YxL3VzZXIucHJvdG8SCmhkbGN0cmwudjEiOAoQVG9rZW5TZXRSZXNwb25zZRINCgV0b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJIjkKGUdldFRva2VuQnlQYXNzd29yZFJlcXVlc3QSCgoCaWQYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiFQoTUmVmcmVzaFRva2VuUmVxdWVzdCJHChVDaGFuZ2VQYXNzd29yZFJlcXVlc3QSGAoQY3VycmVudF9wYXNzd29yZBgBIAEoCRIUCgxuZXdfcGFzc3dvcmQYAiABKAkiGAoWQ2hhbmdlUGFzc3dvcmRSZXNwb25zZTKWAgoLVXNlclNlcnZpY2USWwoSR2V0VG9rZW5CeVBhc3N3b3JkEiUuaGRsY3RybC52MS5HZXRUb2tlbkJ5UGFzc3dvcmRSZXF1ZXN0GhwuaGRsY3RybC52MS5Ub2tlblNldFJlc3BvbnNlIgASTwoMUmVmcmVzaFRva2VuEh8uaGRsY3RybC52MS5SZWZyZXNoVG9rZW5SZXF1ZXN0GhwuaGRsY3RybC52MS5Ub2tlblNldFJlc3BvbnNlIgASWQoOQ2hhbmdlUGFzc3dvcmQSIS5oZGxjdHJsLnYxLkNoYW5nZVBhc3N3b3JkUmVxdWVzdBoiLmhkbGN0cmwudjEuQ2hhbmdlUGFzc3dvcmRSZXNwb25zZSIAQrcBCg5jb20uaGRsY3RybC52MUIJVXNlclByb3RvUAFaUWdpdGh1Yi5jb20vaGFudGFiYXJ1MTAxNC9iYXJ1LXJlc28taGVhZGxlc3MtY29udHJvbGxlci9wYmdlbi9oZGxjdHJsL3YxO2hkbGN0cmx2MaICA0hYWKoCCkhkbGN0cmwuVjHKAgpIZGxjdHJsXFYx4gIWSGRsY3RybFxWMVxHUEJNZXRhZGF0YeoCC0hkbGN0cmw6OlYxYgZwcm90bzM");
+  fileDesc("ChVoZGxjdHJsL3YxL3VzZXIucHJvdG8SCmhkbGN0cmwudjEiOAoQVG9rZW5TZXRSZXNwb25zZRINCgV0b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJIjkKGUdldFRva2VuQnlQYXNzd29yZFJlcXVlc3QSCgoCaWQYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiFQoTUmVmcmVzaFRva2VuUmVxdWVzdCIxCiBWYWxpZGF0ZVJlZ2lzdHJhdGlvblRva2VuUmVxdWVzdBINCgV0b2tlbhgBIAEoCSJ1CiFWYWxpZGF0ZVJlZ2lzdHJhdGlvblRva2VuUmVzcG9uc2USDQoFdmFsaWQYASABKAgSEwoLcmVzb25pdGVfaWQYAiABKAkSGgoScmVzb25pdGVfdXNlcl9uYW1lGAMgASgJEhAKCGljb25fdXJsGAQgASgJIkwKGFJlZ2lzdGVyV2l0aFRva2VuUmVxdWVzdBINCgV0b2tlbhgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEhAKCHBhc3N3b3JkGAMgASgJIkcKFUNoYW5nZVBhc3N3b3JkUmVxdWVzdBIYChBjdXJyZW50X3Bhc3N3b3JkGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSIYChZDaGFuZ2VQYXNzd29yZFJlc3BvbnNlMu0DCgtVc2VyU2VydmljZRJbChJHZXRUb2tlbkJ5UGFzc3dvcmQSJS5oZGxjdHJsLnYxLkdldFRva2VuQnlQYXNzd29yZFJlcXVlc3QaHC5oZGxjdHJsLnYxLlRva2VuU2V0UmVzcG9uc2UiABJ6ChlWYWxpZGF0ZVJlZ2lzdHJhdGlvblRva2VuEiwuaGRsY3RybC52MS5WYWxpZGF0ZVJlZ2lzdHJhdGlvblRva2VuUmVxdWVzdBotLmhkbGN0cmwudjEuVmFsaWRhdGVSZWdpc3RyYXRpb25Ub2tlblJlc3BvbnNlIgASWQoRUmVnaXN0ZXJXaXRoVG9rZW4SJC5oZGxjdHJsLnYxLlJlZ2lzdGVyV2l0aFRva2VuUmVxdWVzdBocLmhkbGN0cmwudjEuVG9rZW5TZXRSZXNwb25zZSIAEk8KDFJlZnJlc2hUb2tlbhIfLmhkbGN0cmwudjEuUmVmcmVzaFRva2VuUmVxdWVzdBocLmhkbGN0cmwudjEuVG9rZW5TZXRSZXNwb25zZSIAElkKDkNoYW5nZVBhc3N3b3JkEiEuaGRsY3RybC52MS5DaGFuZ2VQYXNzd29yZFJlcXVlc3QaIi5oZGxjdHJsLnYxLkNoYW5nZVBhc3N3b3JkUmVzcG9uc2UiAEK3AQoOY29tLmhkbGN0cmwudjFCCVVzZXJQcm90b1ABWlFnaXRodWIuY29tL2hhbnRhYmFydTEwMTQvYmFydS1yZXNvLWhlYWRsZXNzLWNvbnRyb2xsZXIvcGJnZW4vaGRsY3RybC92MTtoZGxjdHJsdjGiAgNIWFiqAgpIZGxjdHJsLlYxygIKSGRsY3RybFxWMeICFkhkbGN0cmxcVjFcR1BCTWV0YWRhdGHqAgtIZGxjdHJsOjpWMWIGcHJvdG8z");
 
 /**
  * @generated from message hdlctrl.v1.TokenSetResponse
@@ -72,6 +72,82 @@ export const RefreshTokenRequestSchema: GenMessage<RefreshTokenRequest> = /*@__P
   messageDesc(file_hdlctrl_v1_user, 2);
 
 /**
+ * @generated from message hdlctrl.v1.ValidateRegistrationTokenRequest
+ */
+export type ValidateRegistrationTokenRequest = Message<"hdlctrl.v1.ValidateRegistrationTokenRequest"> & {
+  /**
+   * @generated from field: string token = 1;
+   */
+  token: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.ValidateRegistrationTokenRequest.
+ * Use `create(ValidateRegistrationTokenRequestSchema)` to create a new message.
+ */
+export const ValidateRegistrationTokenRequestSchema: GenMessage<ValidateRegistrationTokenRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 3);
+
+/**
+ * @generated from message hdlctrl.v1.ValidateRegistrationTokenResponse
+ */
+export type ValidateRegistrationTokenResponse = Message<"hdlctrl.v1.ValidateRegistrationTokenResponse"> & {
+  /**
+   * @generated from field: bool valid = 1;
+   */
+  valid: boolean;
+
+  /**
+   * @generated from field: string resonite_id = 2;
+   */
+  resoniteId: string;
+
+  /**
+   * @generated from field: string resonite_user_name = 3;
+   */
+  resoniteUserName: string;
+
+  /**
+   * @generated from field: string icon_url = 4;
+   */
+  iconUrl: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.ValidateRegistrationTokenResponse.
+ * Use `create(ValidateRegistrationTokenResponseSchema)` to create a new message.
+ */
+export const ValidateRegistrationTokenResponseSchema: GenMessage<ValidateRegistrationTokenResponse> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 4);
+
+/**
+ * @generated from message hdlctrl.v1.RegisterWithTokenRequest
+ */
+export type RegisterWithTokenRequest = Message<"hdlctrl.v1.RegisterWithTokenRequest"> & {
+  /**
+   * @generated from field: string token = 1;
+   */
+  token: string;
+
+  /**
+   * @generated from field: string user_id = 2;
+   */
+  userId: string;
+
+  /**
+   * @generated from field: string password = 3;
+   */
+  password: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.RegisterWithTokenRequest.
+ * Use `create(RegisterWithTokenRequestSchema)` to create a new message.
+ */
+export const RegisterWithTokenRequestSchema: GenMessage<RegisterWithTokenRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 5);
+
+/**
  * @generated from message hdlctrl.v1.ChangePasswordRequest
  */
 export type ChangePasswordRequest = Message<"hdlctrl.v1.ChangePasswordRequest"> & {
@@ -91,7 +167,7 @@ export type ChangePasswordRequest = Message<"hdlctrl.v1.ChangePasswordRequest"> 
  * Use `create(ChangePasswordRequestSchema)` to create a new message.
  */
 export const ChangePasswordRequestSchema: GenMessage<ChangePasswordRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_user, 3);
+  messageDesc(file_hdlctrl_v1_user, 6);
 
 /**
  * @generated from message hdlctrl.v1.ChangePasswordResponse
@@ -104,7 +180,7 @@ export type ChangePasswordResponse = Message<"hdlctrl.v1.ChangePasswordResponse"
  * Use `create(ChangePasswordResponseSchema)` to create a new message.
  */
 export const ChangePasswordResponseSchema: GenMessage<ChangePasswordResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_user, 4);
+  messageDesc(file_hdlctrl_v1_user, 7);
 
 /**
  * @generated from service hdlctrl.v1.UserService
@@ -118,6 +194,22 @@ export const UserService: GenService<{
   getTokenByPassword: {
     methodKind: "unary";
     input: typeof GetTokenByPasswordRequestSchema;
+    output: typeof TokenSetResponseSchema;
+  },
+  /**
+   * @generated from rpc hdlctrl.v1.UserService.ValidateRegistrationToken
+   */
+  validateRegistrationToken: {
+    methodKind: "unary";
+    input: typeof ValidateRegistrationTokenRequestSchema;
+    output: typeof ValidateRegistrationTokenResponseSchema;
+  },
+  /**
+   * @generated from rpc hdlctrl.v1.UserService.RegisterWithToken
+   */
+  registerWithToken: {
+    methodKind: "unary";
+    input: typeof RegisterWithTokenRequestSchema;
     output: typeof TokenSetResponseSchema;
   },
   /**

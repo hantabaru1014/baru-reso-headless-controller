@@ -67,7 +67,6 @@ export default function SignIn() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <TextField
               label="ID"
-              type="email"
               {...register("email", { required: "IDは必須です" })}
               disabled={isLoading}
               error={errors.email?.message}

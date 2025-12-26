@@ -6,6 +6,7 @@ import App from "./App";
 import Layout from "./layouts/dashboard";
 import DashboardPage from "./pages";
 import SignInPage from "./pages/signin";
+import RegisterPage from "./pages/register";
 import Sessions from "./pages/sessions";
 import SessionDetail from "./pages/sessions/detail";
 import SessionNew from "./pages/sessions/new";
@@ -74,6 +75,10 @@ const router = createBrowserRouter([
       {
         path: "/sign-in",
         Component: SignInPage,
+      },
+      {
+        path: "/register/:token",
+        Component: RegisterPage,
       },
     ],
   },

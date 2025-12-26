@@ -61,6 +61,48 @@ func (u *UserService) GetTokenByPassword(ctx context.Context, req *connect.Reque
 	return res, nil
 }
 
+// ValidateRegistrationToken implements hdlctrlv1connect.UserServiceHandler.
+func (u *UserService) ValidateRegistrationToken(ctx context.Context, req *connect.Request[hdlctrlv1.ValidateRegistrationTokenRequest]) (*connect.Response[hdlctrlv1.ValidateRegistrationTokenResponse], error) {
+	userInfo, err := u.uu.ValidateRegistrationToken(ctx, req.Msg.Token)
+	if err != nil {
+		return connect.NewResponse(&hdlctrlv1.ValidateRegistrationTokenResponse{
+			Valid:            false,
+			ResoniteId:       "",
+			ResoniteUserName: "",
+			IconUrl:          "",
+		}), nil
+	}
+
+	return connect.NewResponse(&hdlctrlv1.ValidateRegistrationTokenResponse{
+		Valid:            true,
+		ResoniteId:       userInfo.ID,
+		ResoniteUserName: userInfo.UserName,
+		IconUrl:          userInfo.IconUrl,
+	}), nil
+}
+
+// RegisterWithToken implements hdlctrlv1connect.UserServiceHandler.
+func (u *UserService) RegisterWithToken(ctx context.Context, req *connect.Request[hdlctrlv1.RegisterWithTokenRequest]) (*connect.Response[hdlctrlv1.TokenSetResponse], error) {
+	user, err := u.uu.RegisterWithToken(ctx, req.Msg.Token, req.Msg.UserId, req.Msg.Password)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("registration failed: invalid token or user already exists"))
+	}
+
+	token, refreshToken, err := auth.GenerateTokensWithDefaultTTL(auth.AuthClaims{
+		UserID:     user.ID,
+		ResoniteID: user.ResoniteID.String,
+		IconUrl:    user.IconUrl.String,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.TokenSetResponse{
+		Token:        token,
+		RefreshToken: refreshToken,
+	}), nil
+}
+
 // ChangePassword implements hdlctrlv1connect.UserServiceHandler.
 func (u *UserService) ChangePassword(ctx context.Context, req *connect.Request[hdlctrlv1.ChangePasswordRequest]) (*connect.Response[hdlctrlv1.ChangePasswordResponse], error) {
 	claims, err := auth.GetAuthClaimsFromContext(ctx)
