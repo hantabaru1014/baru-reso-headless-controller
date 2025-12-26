@@ -1,4 +1,3 @@
-"use client";
 import { useState, useEffect, useMemo } from "react";
 import { Navigate, useNavigate, useParams } from "react-router";
 import { useForm } from "react-hook-form";

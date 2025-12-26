@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	skyfrostmock "github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost/mock"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/testutil"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func TestUserService_GetTokenByPassword(t *testing.T) {
@@ -24,7 +26,10 @@ func TestUserService_GetTokenByPassword(t *testing.T) {
 	testutil.CreateTestUser(t, queries, testUserID, testPassword)
 
 	// Setup service
-	uu := usecase.NewUserUsecase(queries)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockSkyfrost := skyfrostmock.NewMockClient(ctrl)
+	uu := usecase.NewUserUsecase(queries, mockSkyfrost)
 	service := NewUserService(uu)
 
 	t.Run("成功: 正しいIDとパスワードでトークンを取得", func(t *testing.T) {
@@ -79,7 +84,10 @@ func TestUserService_RefreshToken(t *testing.T) {
 	testutil.CreateTestUser(t, queries, testUserID, testPassword)
 
 	// Setup service
-	uu := usecase.NewUserUsecase(queries)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockSkyfrost := skyfrostmock.NewMockClient(ctrl)
+	uu := usecase.NewUserUsecase(queries, mockSkyfrost)
 	service := NewUserService(uu)
 
 	t.Run("成功: 有効なトークンでリフレッシュ", func(t *testing.T) {
