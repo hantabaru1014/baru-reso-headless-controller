@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	UserService_GetTokenByPassword_FullMethodName = "/hdlctrl.v1.UserService/GetTokenByPassword"
 	UserService_RefreshToken_FullMethodName       = "/hdlctrl.v1.UserService/RefreshToken"
+	UserService_ChangePassword_FullMethodName     = "/hdlctrl.v1.UserService/ChangePassword"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -31,6 +32,7 @@ type UserServiceClient interface {
 	GetTokenByPassword(ctx context.Context, in *GetTokenByPasswordRequest, opts ...grpc.CallOption) (*TokenSetResponse, error)
 	// 認証付きRPC
 	RefreshToken(ctx context.Context, in *RefreshTokenRequest, opts ...grpc.CallOption) (*TokenSetResponse, error)
+	ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*ChangePasswordResponse, error)
 }
 
 type userServiceClient struct {
@@ -61,6 +63,16 @@ func (c *userServiceClient) RefreshToken(ctx context.Context, in *RefreshTokenRe
 	return out, nil
 }
 
+func (c *userServiceClient) ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*ChangePasswordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ChangePasswordResponse)
+	err := c.cc.Invoke(ctx, UserService_ChangePassword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -69,6 +81,7 @@ type UserServiceServer interface {
 	GetTokenByPassword(context.Context, *GetTokenByPasswordRequest) (*TokenSetResponse, error)
 	// 認証付きRPC
 	RefreshToken(context.Context, *RefreshTokenRequest) (*TokenSetResponse, error)
+	ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -84,6 +97,9 @@ func (UnimplementedUserServiceServer) GetTokenByPassword(context.Context, *GetTo
 }
 func (UnimplementedUserServiceServer) RefreshToken(context.Context, *RefreshTokenRequest) (*TokenSetResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RefreshToken not implemented")
+}
+func (UnimplementedUserServiceServer) ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ChangePassword not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -142,6 +158,24 @@ func _UserService_RefreshToken_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ChangePassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangePasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ChangePassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ChangePassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ChangePassword(ctx, req.(*ChangePasswordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -156,6 +190,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RefreshToken",
 			Handler:    _UserService_RefreshToken_Handler,
+		},
+		{
+			MethodName: "ChangePassword",
+			Handler:    _UserService_ChangePassword_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

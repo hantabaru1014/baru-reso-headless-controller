@@ -162,6 +162,94 @@ func (*RefreshTokenRequest) Descriptor() ([]byte, []int) {
 	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{2}
 }
 
+type ChangePasswordRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	CurrentPassword string                 `protobuf:"bytes,1,opt,name=current_password,json=currentPassword,proto3" json:"current_password,omitempty"`
+	NewPassword     string                 `protobuf:"bytes,2,opt,name=new_password,json=newPassword,proto3" json:"new_password,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ChangePasswordRequest) Reset() {
+	*x = ChangePasswordRequest{}
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChangePasswordRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChangePasswordRequest) ProtoMessage() {}
+
+func (x *ChangePasswordRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChangePasswordRequest.ProtoReflect.Descriptor instead.
+func (*ChangePasswordRequest) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ChangePasswordRequest) GetCurrentPassword() string {
+	if x != nil {
+		return x.CurrentPassword
+	}
+	return ""
+}
+
+func (x *ChangePasswordRequest) GetNewPassword() string {
+	if x != nil {
+		return x.NewPassword
+	}
+	return ""
+}
+
+type ChangePasswordResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChangePasswordResponse) Reset() {
+	*x = ChangePasswordResponse{}
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChangePasswordResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChangePasswordResponse) ProtoMessage() {}
+
+func (x *ChangePasswordResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChangePasswordResponse.ProtoReflect.Descriptor instead.
+func (*ChangePasswordResponse) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{4}
+}
+
 var File_hdlctrl_v1_user_proto protoreflect.FileDescriptor
 
 const file_hdlctrl_v1_user_proto_rawDesc = "" +
@@ -174,10 +262,15 @@ const file_hdlctrl_v1_user_proto_rawDesc = "" +
 	"\x19GetTokenByPasswordRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"\x15\n" +
-	"\x13RefreshTokenRequest2\xbb\x01\n" +
+	"\x13RefreshTokenRequest\"e\n" +
+	"\x15ChangePasswordRequest\x12)\n" +
+	"\x10current_password\x18\x01 \x01(\tR\x0fcurrentPassword\x12!\n" +
+	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\"\x18\n" +
+	"\x16ChangePasswordResponse2\x96\x02\n" +
 	"\vUserService\x12[\n" +
 	"\x12GetTokenByPassword\x12%.hdlctrl.v1.GetTokenByPasswordRequest\x1a\x1c.hdlctrl.v1.TokenSetResponse\"\x00\x12O\n" +
-	"\fRefreshToken\x12\x1f.hdlctrl.v1.RefreshTokenRequest\x1a\x1c.hdlctrl.v1.TokenSetResponse\"\x00B\xb7\x01\n" +
+	"\fRefreshToken\x12\x1f.hdlctrl.v1.RefreshTokenRequest\x1a\x1c.hdlctrl.v1.TokenSetResponse\"\x00\x12Y\n" +
+	"\x0eChangePassword\x12!.hdlctrl.v1.ChangePasswordRequest\x1a\".hdlctrl.v1.ChangePasswordResponse\"\x00B\xb7\x01\n" +
 	"\x0ecom.hdlctrl.v1B\tUserProtoP\x01ZQgithub.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1;hdlctrlv1\xa2\x02\x03HXX\xaa\x02\n" +
 	"Hdlctrl.V1\xca\x02\n" +
 	"Hdlctrl\\V1\xe2\x02\x16Hdlctrl\\V1\\GPBMetadata\xea\x02\vHdlctrl::V1b\x06proto3"
@@ -194,19 +287,23 @@ func file_hdlctrl_v1_user_proto_rawDescGZIP() []byte {
 	return file_hdlctrl_v1_user_proto_rawDescData
 }
 
-var file_hdlctrl_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_hdlctrl_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_hdlctrl_v1_user_proto_goTypes = []any{
 	(*TokenSetResponse)(nil),          // 0: hdlctrl.v1.TokenSetResponse
 	(*GetTokenByPasswordRequest)(nil), // 1: hdlctrl.v1.GetTokenByPasswordRequest
 	(*RefreshTokenRequest)(nil),       // 2: hdlctrl.v1.RefreshTokenRequest
+	(*ChangePasswordRequest)(nil),     // 3: hdlctrl.v1.ChangePasswordRequest
+	(*ChangePasswordResponse)(nil),    // 4: hdlctrl.v1.ChangePasswordResponse
 }
 var file_hdlctrl_v1_user_proto_depIdxs = []int32{
 	1, // 0: hdlctrl.v1.UserService.GetTokenByPassword:input_type -> hdlctrl.v1.GetTokenByPasswordRequest
 	2, // 1: hdlctrl.v1.UserService.RefreshToken:input_type -> hdlctrl.v1.RefreshTokenRequest
-	0, // 2: hdlctrl.v1.UserService.GetTokenByPassword:output_type -> hdlctrl.v1.TokenSetResponse
-	0, // 3: hdlctrl.v1.UserService.RefreshToken:output_type -> hdlctrl.v1.TokenSetResponse
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
+	3, // 2: hdlctrl.v1.UserService.ChangePassword:input_type -> hdlctrl.v1.ChangePasswordRequest
+	0, // 3: hdlctrl.v1.UserService.GetTokenByPassword:output_type -> hdlctrl.v1.TokenSetResponse
+	0, // 4: hdlctrl.v1.UserService.RefreshToken:output_type -> hdlctrl.v1.TokenSetResponse
+	4, // 5: hdlctrl.v1.UserService.ChangePassword:output_type -> hdlctrl.v1.ChangePasswordResponse
+	3, // [3:6] is the sub-list for method output_type
+	0, // [0:3] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -223,7 +320,7 @@ func file_hdlctrl_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hdlctrl_v1_user_proto_rawDesc), len(file_hdlctrl_v1_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
