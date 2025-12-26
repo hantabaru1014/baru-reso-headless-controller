@@ -72,6 +72,72 @@ export const RefreshTokenRequestSchema: GenMessage<RefreshTokenRequest> = /*@__P
   messageDesc(file_hdlctrl_v1_user, 2);
 
 /**
+ * @generated from message hdlctrl.v1.ValidateRegistrationTokenRequest
+ */
+export type ValidateRegistrationTokenRequest = Message<"hdlctrl.v1.ValidateRegistrationTokenRequest"> & {
+  /**
+   * @generated from field: string token = 1;
+   */
+  token: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.ValidateRegistrationTokenRequest.
+ * Use `create(ValidateRegistrationTokenRequestSchema)` to create a new message.
+ */
+export const ValidateRegistrationTokenRequestSchema: GenMessage<ValidateRegistrationTokenRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 3);
+
+/**
+ * @generated from message hdlctrl.v1.ValidateRegistrationTokenResponse
+ */
+export type ValidateRegistrationTokenResponse = Message<"hdlctrl.v1.ValidateRegistrationTokenResponse"> & {
+  /**
+   * @generated from field: bool valid = 1;
+   */
+  valid: boolean;
+
+  /**
+   * @generated from field: string resonite_id = 2;
+   */
+  resoniteId: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.ValidateRegistrationTokenResponse.
+ * Use `create(ValidateRegistrationTokenResponseSchema)` to create a new message.
+ */
+export const ValidateRegistrationTokenResponseSchema: GenMessage<ValidateRegistrationTokenResponse> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 4);
+
+/**
+ * @generated from message hdlctrl.v1.RegisterWithTokenRequest
+ */
+export type RegisterWithTokenRequest = Message<"hdlctrl.v1.RegisterWithTokenRequest"> & {
+  /**
+   * @generated from field: string token = 1;
+   */
+  token: string;
+
+  /**
+   * @generated from field: string user_id = 2;
+   */
+  userId: string;
+
+  /**
+   * @generated from field: string password = 3;
+   */
+  password: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.RegisterWithTokenRequest.
+ * Use `create(RegisterWithTokenRequestSchema)` to create a new message.
+ */
+export const RegisterWithTokenRequestSchema: GenMessage<RegisterWithTokenRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 5);
+
+/**
  * @generated from service hdlctrl.v1.UserService
  */
 export const UserService: GenService<{
@@ -83,6 +149,22 @@ export const UserService: GenService<{
   getTokenByPassword: {
     methodKind: "unary";
     input: typeof GetTokenByPasswordRequestSchema;
+    output: typeof TokenSetResponseSchema;
+  },
+  /**
+   * @generated from rpc hdlctrl.v1.UserService.ValidateRegistrationToken
+   */
+  validateRegistrationToken: {
+    methodKind: "unary";
+    input: typeof ValidateRegistrationTokenRequestSchema;
+    output: typeof ValidateRegistrationTokenResponseSchema;
+  },
+  /**
+   * @generated from rpc hdlctrl.v1.UserService.RegisterWithToken
+   */
+  registerWithToken: {
+    methodKind: "unary";
+    input: typeof RegisterWithTokenRequestSchema;
     output: typeof TokenSetResponseSchema;
   },
   /**

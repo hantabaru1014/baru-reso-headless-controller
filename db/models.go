@@ -59,6 +59,14 @@ type Session struct {
 	UpdatedAt                      pgtype.Timestamptz
 }
 
+type RegistrationToken struct {
+	Token      string
+	ResoniteID string
+	ExpiresAt  pgtype.Timestamptz
+	UsedAt     pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+}
+
 type User struct {
 	ID         string
 	Password   string

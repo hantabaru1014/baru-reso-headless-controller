@@ -162,6 +162,162 @@ func (*RefreshTokenRequest) Descriptor() ([]byte, []int) {
 	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{2}
 }
 
+type ValidateRegistrationTokenRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ValidateRegistrationTokenRequest) Reset() {
+	*x = ValidateRegistrationTokenRequest{}
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidateRegistrationTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidateRegistrationTokenRequest) ProtoMessage() {}
+
+func (x *ValidateRegistrationTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidateRegistrationTokenRequest.ProtoReflect.Descriptor instead.
+func (*ValidateRegistrationTokenRequest) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ValidateRegistrationTokenRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type ValidateRegistrationTokenResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Valid         bool                   `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
+	ResoniteId    string                 `protobuf:"bytes,2,opt,name=resonite_id,json=resoniteId,proto3" json:"resonite_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ValidateRegistrationTokenResponse) Reset() {
+	*x = ValidateRegistrationTokenResponse{}
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidateRegistrationTokenResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidateRegistrationTokenResponse) ProtoMessage() {}
+
+func (x *ValidateRegistrationTokenResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidateRegistrationTokenResponse.ProtoReflect.Descriptor instead.
+func (*ValidateRegistrationTokenResponse) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ValidateRegistrationTokenResponse) GetValid() bool {
+	if x != nil {
+		return x.Valid
+	}
+	return false
+}
+
+func (x *ValidateRegistrationTokenResponse) GetResoniteId() string {
+	if x != nil {
+		return x.ResoniteId
+	}
+	return ""
+}
+
+type RegisterWithTokenRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Password      string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RegisterWithTokenRequest) Reset() {
+	*x = RegisterWithTokenRequest{}
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegisterWithTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegisterWithTokenRequest) ProtoMessage() {}
+
+func (x *RegisterWithTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegisterWithTokenRequest.ProtoReflect.Descriptor instead.
+func (*RegisterWithTokenRequest) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *RegisterWithTokenRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *RegisterWithTokenRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *RegisterWithTokenRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
 var File_hdlctrl_v1_user_proto protoreflect.FileDescriptor
 
 const file_hdlctrl_v1_user_proto_rawDesc = "" +

@@ -1,6 +1,9 @@
 package commands
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/spf13/cobra"
 )
@@ -11,9 +14,36 @@ func NewUserCommand(uu *usecase.UserUsecase) *cobra.Command {
 		Short: "User management commands",
 	}
 
+	inviteCmd := &cobra.Command{
+		Use:   "invite <resoniteId>",
+		Short: "Generate a registration link for a new user",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			resoniteId := args[0]
+			token, err := uu.CreateRegistrationToken(cmd.Context(), resoniteId)
+			if err != nil {
+				cmd.PrintErrln("Failed to create registration token:", err)
+				return
+			}
+
+			frontUrl := os.Getenv("FRONT_URL")
+			if frontUrl == "" {
+				frontUrl = "http://localhost:5173"
+			}
+
+			registrationUrl := fmt.Sprintf("%s/register/%s", frontUrl, token)
+			cmd.Println("Registration link generated successfully!")
+			cmd.Println("Resonite ID:", resoniteId)
+			cmd.Println("Valid for: 24 hours")
+			cmd.Println("")
+			cmd.Println("Registration URL:")
+			cmd.Println(registrationUrl)
+		},
+	}
+
 	createUserCmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create a user",
+		Use:   "create <id> <password> <resoniteId>",
+		Short: "Create a user directly (deprecated, use 'invite' instead)",
 		Args:  cobra.ExactArgs(3),
 		Run: func(cmd *cobra.Command, args []string) {
 			err := uu.CreateUser(cmd.Context(), args[0], args[1], args[2])
@@ -31,7 +61,7 @@ func NewUserCommand(uu *usecase.UserUsecase) *cobra.Command {
 	}
 
 	deleteUserCmd := &cobra.Command{
-		Use:   "delete",
+		Use:   "delete <id>",
 		Short: "Delete a user",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -44,6 +74,6 @@ func NewUserCommand(uu *usecase.UserUsecase) *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(createUserCmd, deleteUserCmd)
+	cmd.AddCommand(inviteCmd, createUserCmd, deleteUserCmd)
 	return cmd
 }
