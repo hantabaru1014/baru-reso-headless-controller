@@ -104,6 +104,11 @@ export const getHeadlessAccountStorageInfo = ControllerService.method.getHeadles
 export const refetchHeadlessAccountInfo = ControllerService.method.refetchHeadlessAccountInfo;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.UpdateHeadlessAccountIcon
+ */
+export const updateHeadlessAccountIcon = ControllerService.method.updateHeadlessAccountIcon;
+
+/**
  * Cloud系
  *
  * @generated from rpc hdlctrl.v1.ControllerService.FetchWorldInfo
@@ -124,6 +129,23 @@ export const getFriendRequests = ControllerService.method.getFriendRequests;
  * @generated from rpc hdlctrl.v1.ControllerService.AcceptFriendRequests
  */
 export const acceptFriendRequests = ControllerService.method.acceptFriendRequests;
+
+/**
+ * コンタクト・チャット系
+ *
+ * @generated from rpc hdlctrl.v1.ControllerService.ListContacts
+ */
+export const listContacts = ControllerService.method.listContacts;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.GetContactMessages
+ */
+export const getContactMessages = ControllerService.method.getContactMessages;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.SendContactMessage
+ */
+export const sendContactMessage = ControllerService.method.sendContactMessage;
 
 /**
  * セッション系

@@ -39,10 +39,14 @@ const (
 	ControllerService_UpdateHeadlessAccountCredentials_FullMethodName = "/hdlctrl.v1.ControllerService/UpdateHeadlessAccountCredentials"
 	ControllerService_GetHeadlessAccountStorageInfo_FullMethodName    = "/hdlctrl.v1.ControllerService/GetHeadlessAccountStorageInfo"
 	ControllerService_RefetchHeadlessAccountInfo_FullMethodName       = "/hdlctrl.v1.ControllerService/RefetchHeadlessAccountInfo"
+	ControllerService_UpdateHeadlessAccountIcon_FullMethodName        = "/hdlctrl.v1.ControllerService/UpdateHeadlessAccountIcon"
 	ControllerService_FetchWorldInfo_FullMethodName                   = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
 	ControllerService_SearchUserInfo_FullMethodName                   = "/hdlctrl.v1.ControllerService/SearchUserInfo"
 	ControllerService_GetFriendRequests_FullMethodName                = "/hdlctrl.v1.ControllerService/GetFriendRequests"
 	ControllerService_AcceptFriendRequests_FullMethodName             = "/hdlctrl.v1.ControllerService/AcceptFriendRequests"
+	ControllerService_ListContacts_FullMethodName                     = "/hdlctrl.v1.ControllerService/ListContacts"
+	ControllerService_GetContactMessages_FullMethodName               = "/hdlctrl.v1.ControllerService/GetContactMessages"
+	ControllerService_SendContactMessage_FullMethodName               = "/hdlctrl.v1.ControllerService/SendContactMessage"
 	ControllerService_SearchSessions_FullMethodName                   = "/hdlctrl.v1.ControllerService/SearchSessions"
 	ControllerService_GetSessionDetails_FullMethodName                = "/hdlctrl.v1.ControllerService/GetSessionDetails"
 	ControllerService_StartWorld_FullMethodName                       = "/hdlctrl.v1.ControllerService/StartWorld"
@@ -83,11 +87,16 @@ type ControllerServiceClient interface {
 	UpdateHeadlessAccountCredentials(ctx context.Context, in *UpdateHeadlessAccountCredentialsRequest, opts ...grpc.CallOption) (*UpdateHeadlessAccountCredentialsResponse, error)
 	GetHeadlessAccountStorageInfo(ctx context.Context, in *GetHeadlessAccountStorageInfoRequest, opts ...grpc.CallOption) (*GetHeadlessAccountStorageInfoResponse, error)
 	RefetchHeadlessAccountInfo(ctx context.Context, in *RefetchHeadlessAccountInfoRequest, opts ...grpc.CallOption) (*RefetchHeadlessAccountInfoResponse, error)
+	UpdateHeadlessAccountIcon(ctx context.Context, in *UpdateHeadlessAccountIconRequest, opts ...grpc.CallOption) (*UpdateHeadlessAccountIconResponse, error)
 	// Cloud系
 	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(ctx context.Context, in *SearchUserInfoRequest, opts ...grpc.CallOption) (*v1.SearchUserInfoResponse, error)
 	GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*GetFriendRequestsResponse, error)
 	AcceptFriendRequests(ctx context.Context, in *AcceptFriendRequestsRequest, opts ...grpc.CallOption) (*AcceptFriendRequestsResponse, error)
+	// コンタクト・チャット系
+	ListContacts(ctx context.Context, in *ListContactsRequest, opts ...grpc.CallOption) (*ListContactsResponse, error)
+	GetContactMessages(ctx context.Context, in *GetContactMessagesRequest, opts ...grpc.CallOption) (*GetContactMessagesResponse, error)
+	SendContactMessage(ctx context.Context, in *SendContactMessageRequest, opts ...grpc.CallOption) (*SendContactMessageResponse, error)
 	// セッション系
 	SearchSessions(ctx context.Context, in *SearchSessionsRequest, opts ...grpc.CallOption) (*SearchSessionsResponse, error)
 	GetSessionDetails(ctx context.Context, in *GetSessionDetailsRequest, opts ...grpc.CallOption) (*GetSessionDetailsResponse, error)
@@ -302,6 +311,16 @@ func (c *controllerServiceClient) RefetchHeadlessAccountInfo(ctx context.Context
 	return out, nil
 }
 
+func (c *controllerServiceClient) UpdateHeadlessAccountIcon(ctx context.Context, in *UpdateHeadlessAccountIconRequest, opts ...grpc.CallOption) (*UpdateHeadlessAccountIconResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateHeadlessAccountIconResponse)
+	err := c.cc.Invoke(ctx, ControllerService_UpdateHeadlessAccountIcon_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *controllerServiceClient) FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*v1.FetchWorldInfoResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(v1.FetchWorldInfoResponse)
@@ -336,6 +355,36 @@ func (c *controllerServiceClient) AcceptFriendRequests(ctx context.Context, in *
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AcceptFriendRequestsResponse)
 	err := c.cc.Invoke(ctx, ControllerService_AcceptFriendRequests_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) ListContacts(ctx context.Context, in *ListContactsRequest, opts ...grpc.CallOption) (*ListContactsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListContactsResponse)
+	err := c.cc.Invoke(ctx, ControllerService_ListContacts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) GetContactMessages(ctx context.Context, in *GetContactMessagesRequest, opts ...grpc.CallOption) (*GetContactMessagesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetContactMessagesResponse)
+	err := c.cc.Invoke(ctx, ControllerService_GetContactMessages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) SendContactMessage(ctx context.Context, in *SendContactMessageRequest, opts ...grpc.CallOption) (*SendContactMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendContactMessageResponse)
+	err := c.cc.Invoke(ctx, ControllerService_SendContactMessage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -497,11 +546,16 @@ type ControllerServiceServer interface {
 	UpdateHeadlessAccountCredentials(context.Context, *UpdateHeadlessAccountCredentialsRequest) (*UpdateHeadlessAccountCredentialsResponse, error)
 	GetHeadlessAccountStorageInfo(context.Context, *GetHeadlessAccountStorageInfoRequest) (*GetHeadlessAccountStorageInfoResponse, error)
 	RefetchHeadlessAccountInfo(context.Context, *RefetchHeadlessAccountInfoRequest) (*RefetchHeadlessAccountInfoResponse, error)
+	UpdateHeadlessAccountIcon(context.Context, *UpdateHeadlessAccountIconRequest) (*UpdateHeadlessAccountIconResponse, error)
 	// Cloud系
 	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(context.Context, *SearchUserInfoRequest) (*v1.SearchUserInfoResponse, error)
 	GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*GetFriendRequestsResponse, error)
 	AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error)
+	// コンタクト・チャット系
+	ListContacts(context.Context, *ListContactsRequest) (*ListContactsResponse, error)
+	GetContactMessages(context.Context, *GetContactMessagesRequest) (*GetContactMessagesResponse, error)
+	SendContactMessage(context.Context, *SendContactMessageRequest) (*SendContactMessageResponse, error)
 	// セッション系
 	SearchSessions(context.Context, *SearchSessionsRequest) (*SearchSessionsResponse, error)
 	GetSessionDetails(context.Context, *GetSessionDetailsRequest) (*GetSessionDetailsResponse, error)
@@ -583,6 +637,9 @@ func (UnimplementedControllerServiceServer) GetHeadlessAccountStorageInfo(contex
 func (UnimplementedControllerServiceServer) RefetchHeadlessAccountInfo(context.Context, *RefetchHeadlessAccountInfoRequest) (*RefetchHeadlessAccountInfoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RefetchHeadlessAccountInfo not implemented")
 }
+func (UnimplementedControllerServiceServer) UpdateHeadlessAccountIcon(context.Context, *UpdateHeadlessAccountIconRequest) (*UpdateHeadlessAccountIconResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateHeadlessAccountIcon not implemented")
+}
 func (UnimplementedControllerServiceServer) FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method FetchWorldInfo not implemented")
 }
@@ -594,6 +651,15 @@ func (UnimplementedControllerServiceServer) GetFriendRequests(context.Context, *
 }
 func (UnimplementedControllerServiceServer) AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AcceptFriendRequests not implemented")
+}
+func (UnimplementedControllerServiceServer) ListContacts(context.Context, *ListContactsRequest) (*ListContactsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListContacts not implemented")
+}
+func (UnimplementedControllerServiceServer) GetContactMessages(context.Context, *GetContactMessagesRequest) (*GetContactMessagesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetContactMessages not implemented")
+}
+func (UnimplementedControllerServiceServer) SendContactMessage(context.Context, *SendContactMessageRequest) (*SendContactMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendContactMessage not implemented")
 }
 func (UnimplementedControllerServiceServer) SearchSessions(context.Context, *SearchSessionsRequest) (*SearchSessionsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SearchSessions not implemented")
@@ -997,6 +1063,24 @@ func _ControllerService_RefetchHeadlessAccountInfo_Handler(srv interface{}, ctx 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_UpdateHeadlessAccountIcon_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateHeadlessAccountIconRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).UpdateHeadlessAccountIcon(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_UpdateHeadlessAccountIcon_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).UpdateHeadlessAccountIcon(ctx, req.(*UpdateHeadlessAccountIconRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ControllerService_FetchWorldInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(FetchWorldInfoRequest)
 	if err := dec(in); err != nil {
@@ -1065,6 +1149,60 @@ func _ControllerService_AcceptFriendRequests_Handler(srv interface{}, ctx contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).AcceptFriendRequests(ctx, req.(*AcceptFriendRequestsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_ListContacts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListContactsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).ListContacts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_ListContacts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).ListContacts(ctx, req.(*ListContactsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_GetContactMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetContactMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).GetContactMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_GetContactMessages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).GetContactMessages(ctx, req.(*GetContactMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_SendContactMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendContactMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).SendContactMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_SendContactMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).SendContactMessage(ctx, req.(*SendContactMessageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1387,6 +1525,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ControllerService_RefetchHeadlessAccountInfo_Handler,
 		},
 		{
+			MethodName: "UpdateHeadlessAccountIcon",
+			Handler:    _ControllerService_UpdateHeadlessAccountIcon_Handler,
+		},
+		{
 			MethodName: "FetchWorldInfo",
 			Handler:    _ControllerService_FetchWorldInfo_Handler,
 		},
@@ -1401,6 +1543,18 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AcceptFriendRequests",
 			Handler:    _ControllerService_AcceptFriendRequests_Handler,
+		},
+		{
+			MethodName: "ListContacts",
+			Handler:    _ControllerService_ListContacts_Handler,
+		},
+		{
+			MethodName: "GetContactMessages",
+			Handler:    _ControllerService_GetContactMessages_Handler,
+		},
+		{
+			MethodName: "SendContactMessage",
+			Handler:    _ControllerService_SendContactMessage_Handler,
 		},
 		{
 			MethodName: "SearchSessions",

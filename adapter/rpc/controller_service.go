@@ -193,6 +193,18 @@ func (c *ControllerService) RefetchHeadlessAccountInfo(ctx context.Context, req 
 	return connect.NewResponse(&hdlctrlv1.RefetchHeadlessAccountInfoResponse{}), nil
 }
 
+// UpdateHeadlessAccountIcon implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) UpdateHeadlessAccountIcon(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateHeadlessAccountIconRequest]) (*connect.Response[hdlctrlv1.UpdateHeadlessAccountIconResponse], error) {
+	newIconUrl, err := c.hauc.UpdateHeadlessAccountIcon(ctx, req.Msg.AccountId, req.Msg.IconData)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.UpdateHeadlessAccountIconResponse{
+		NewIconUrl: newIconUrl,
+	}), nil
+}
+
 // AcceptFriendRequests implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) AcceptFriendRequests(ctx context.Context, req *connect.Request[hdlctrlv1.AcceptFriendRequestsRequest]) (*connect.Response[hdlctrlv1.AcceptFriendRequestsResponse], error) {
 	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.HeadlessAccountId)
@@ -244,6 +256,115 @@ func (c *ControllerService) GetFriendRequests(ctx context.Context, req *connect.
 	return connect.NewResponse(&hdlctrlv1.GetFriendRequestsResponse{
 		RequestedContacts: requestedContacts,
 	}), nil
+}
+
+// ListContacts implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) ListContacts(ctx context.Context, req *connect.Request[hdlctrlv1.ListContactsRequest]) (*connect.Response[hdlctrlv1.ListContactsResponse], error) {
+	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.HeadlessAccountId)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+	if len(hosts) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("このアカウントで起動中のヘッドレスホストが必要です"))
+	}
+	conn, err := c.hhrepo.GetRpcClient(ctx, hosts[0].ID)
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	headlessRes, err := conn.ListContacts(ctx, &headlessv1.ListContactsRequest{
+		Limit:  req.Msg.Limit,
+		Cursor: req.Msg.Cursor,
+	})
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	contacts := make([]*hdlctrlv1.UserInfo, 0, len(headlessRes.Users))
+	for _, u := range headlessRes.Users {
+		contacts = append(contacts, &hdlctrlv1.UserInfo{
+			Id:      u.Id,
+			Name:    u.Name,
+			IconUrl: u.IconUrl,
+		})
+	}
+
+	return connect.NewResponse(&hdlctrlv1.ListContactsResponse{
+		Contacts:   contacts,
+		NextCursor: headlessRes.NextCursor,
+	}), nil
+}
+
+// GetContactMessages implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) GetContactMessages(ctx context.Context, req *connect.Request[hdlctrlv1.GetContactMessagesRequest]) (*connect.Response[hdlctrlv1.GetContactMessagesResponse], error) {
+	account, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.HeadlessAccountId)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.HeadlessAccountId)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+	if len(hosts) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("このアカウントで起動中のヘッドレスホストが必要です"))
+	}
+	conn, err := c.hhrepo.GetRpcClient(ctx, hosts[0].ID)
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	headlessRes, err := conn.GetContactMessages(ctx, &headlessv1.GetContactMessagesRequest{
+		UserId:   req.Msg.ContactUserId,
+		Limit:    req.Msg.Limit,
+		BeforeId: req.Msg.BeforeId,
+		AfterId:  req.Msg.AfterId,
+	})
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	messages := make([]*hdlctrlv1.ContactMessage, 0, len(headlessRes.Messages))
+	for _, m := range headlessRes.Messages {
+		messages = append(messages, &hdlctrlv1.ContactMessage{
+			Id:           m.Id,
+			Type:         m.Type,
+			Content:      m.Content,
+			SendTime:     m.SendTime,
+			ReadTime:     m.ReadTime,
+			IsOwnMessage: m.SenderId == account.ResoniteID,
+		})
+	}
+
+	return connect.NewResponse(&hdlctrlv1.GetContactMessagesResponse{
+		Messages:      messages,
+		HasMoreBefore: headlessRes.HasMoreBefore,
+		HasMoreAfter:  headlessRes.HasMoreAfter,
+	}), nil
+}
+
+// SendContactMessage implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) SendContactMessage(ctx context.Context, req *connect.Request[hdlctrlv1.SendContactMessageRequest]) (*connect.Response[hdlctrlv1.SendContactMessageResponse], error) {
+	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.HeadlessAccountId)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+	if len(hosts) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("このアカウントで起動中のヘッドレスホストが必要です"))
+	}
+	conn, err := c.hhrepo.GetRpcClient(ctx, hosts[0].ID)
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	_, err = conn.SendContactMessage(ctx, &headlessv1.SendContactMessageRequest{
+		UserId:  req.Msg.ContactUserId,
+		Message: req.Msg.Message,
+	})
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.SendContactMessageResponse{}), nil
 }
 
 // RestartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.

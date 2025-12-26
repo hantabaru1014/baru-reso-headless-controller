@@ -757,6 +757,7 @@ func (*DenyHostAccessResponse) Descriptor() ([]byte, []int) {
 type ListContactsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
+	Cursor        *string                `protobuf:"bytes,2,opt,name=cursor,proto3,oneof" json:"cursor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -798,9 +799,17 @@ func (x *ListContactsRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *ListContactsRequest) GetCursor() string {
+	if x != nil && x.Cursor != nil {
+		return *x.Cursor
+	}
+	return ""
+}
+
 type ListContactsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Users         []*UserInfo            `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	NextCursor    *string                `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3,oneof" json:"next_cursor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -842,10 +851,19 @@ func (x *ListContactsResponse) GetUsers() []*UserInfo {
 	return nil
 }
 
+func (x *ListContactsResponse) GetNextCursor() string {
+	if x != nil && x.NextCursor != nil {
+		return *x.NextCursor
+	}
+	return ""
+}
+
 type GetContactMessagesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	BeforeId      *string                `protobuf:"bytes,3,opt,name=before_id,json=beforeId,proto3,oneof" json:"before_id,omitempty"`
+	AfterId       *string                `protobuf:"bytes,4,opt,name=after_id,json=afterId,proto3,oneof" json:"after_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -894,9 +912,25 @@ func (x *GetContactMessagesRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *GetContactMessagesRequest) GetBeforeId() string {
+	if x != nil && x.BeforeId != nil {
+		return *x.BeforeId
+	}
+	return ""
+}
+
+func (x *GetContactMessagesRequest) GetAfterId() string {
+	if x != nil && x.AfterId != nil {
+		return *x.AfterId
+	}
+	return ""
+}
+
 type GetContactMessagesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Messages      []*ContactChatMessage  `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
+	HasMoreBefore bool                   `protobuf:"varint,2,opt,name=has_more_before,json=hasMoreBefore,proto3" json:"has_more_before,omitempty"`
+	HasMoreAfter  bool                   `protobuf:"varint,3,opt,name=has_more_after,json=hasMoreAfter,proto3" json:"has_more_after,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -936,6 +970,20 @@ func (x *GetContactMessagesResponse) GetMessages() []*ContactChatMessage {
 		return x.Messages
 	}
 	return nil
+}
+
+func (x *GetContactMessagesResponse) GetHasMoreBefore() bool {
+	if x != nil {
+		return x.HasMoreBefore
+	}
+	return false
+}
+
+func (x *GetContactMessagesResponse) GetHasMoreAfter() bool {
+	if x != nil {
+		return x.HasMoreAfter
+	}
+	return false
 }
 
 type SendContactMessageRequest struct {
@@ -4020,6 +4068,7 @@ type ContactChatMessage struct {
 	Content       string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
 	SendTime      *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=send_time,json=sendTime,proto3" json:"send_time,omitempty"`
 	ReadTime      *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=read_time,json=readTime,proto3,oneof" json:"read_time,omitempty"`
+	SenderId      string                 `protobuf:"bytes,6,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4087,6 +4136,13 @@ func (x *ContactChatMessage) GetReadTime() *timestamppb.Timestamp {
 		return x.ReadTime
 	}
 	return nil
+}
+
+func (x *ContactChatMessage) GetSenderId() string {
+	if x != nil {
+		return x.SenderId
+	}
+	return ""
 }
 
 type AllowedAccessEntry struct {
@@ -4336,16 +4392,28 @@ const file_headless_v1_headless_proto_rawDesc = "" +
 	"\vaccess_type\x18\x03 \x01(\x0e2*.headless.v1.AllowedAccessEntry.AccessTypeR\n" +
 	"accessTypeB\a\n" +
 	"\x05_port\"\x18\n" +
-	"\x16DenyHostAccessResponse\"+\n" +
+	"\x16DenyHostAccessResponse\"S\n" +
 	"\x13ListContactsRequest\x12\x14\n" +
-	"\x05limit\x18\x01 \x01(\x05R\x05limit\"C\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x1b\n" +
+	"\x06cursor\x18\x02 \x01(\tH\x00R\x06cursor\x88\x01\x01B\t\n" +
+	"\a_cursor\"y\n" +
 	"\x14ListContactsResponse\x12+\n" +
-	"\x05users\x18\x01 \x03(\v2\x15.headless.v1.UserInfoR\x05users\"J\n" +
+	"\x05users\x18\x01 \x03(\v2\x15.headless.v1.UserInfoR\x05users\x12$\n" +
+	"\vnext_cursor\x18\x02 \x01(\tH\x00R\n" +
+	"nextCursor\x88\x01\x01B\x0e\n" +
+	"\f_next_cursor\"\xa7\x01\n" +
 	"\x19GetContactMessagesRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\"Y\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12 \n" +
+	"\tbefore_id\x18\x03 \x01(\tH\x00R\bbeforeId\x88\x01\x01\x12\x1e\n" +
+	"\bafter_id\x18\x04 \x01(\tH\x01R\aafterId\x88\x01\x01B\f\n" +
+	"\n" +
+	"_before_idB\v\n" +
+	"\t_after_id\"\xa7\x01\n" +
 	"\x1aGetContactMessagesResponse\x12;\n" +
-	"\bmessages\x18\x01 \x03(\v2\x1f.headless.v1.ContactChatMessageR\bmessages\"N\n" +
+	"\bmessages\x18\x01 \x03(\v2\x1f.headless.v1.ContactChatMessageR\bmessages\x12&\n" +
+	"\x0fhas_more_before\x18\x02 \x01(\bR\rhasMoreBefore\x12$\n" +
+	"\x0ehas_more_after\x18\x03 \x01(\bR\fhasMoreAfter\"N\n" +
 	"\x19SendContactMessageRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"\x1c\n" +
@@ -4613,13 +4681,14 @@ const file_headless_v1_headless_proto_rawDesc = "" +
 	"\x19_deny_user_cloud_variableB$\n" +
 	"\"_required_user_join_cloud_variableB1\n" +
 	"/_required_user_join_cloud_variable_deny_messageB\x16\n" +
-	"\x14_auto_invite_message\"\xfc\x01\n" +
+	"\x14_auto_invite_message\"\x99\x02\n" +
 	"\x12ContactChatMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x127\n" +
 	"\x04type\x18\x02 \x01(\x0e2#.headless.v1.ContactChatMessageTypeR\x04type\x12\x18\n" +
 	"\acontent\x18\x03 \x01(\tR\acontent\x127\n" +
 	"\tsend_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\bsendTime\x12<\n" +
-	"\tread_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\breadTime\x88\x01\x01B\f\n" +
+	"\tread_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\breadTime\x88\x01\x01\x12\x1b\n" +
+	"\tsender_id\x18\x06 \x01(\tR\bsenderIdB\f\n" +
 	"\n" +
 	"_read_time\"\xa6\x02\n" +
 	"\x12AllowedAccessEntry\x12\x12\n" +
@@ -4890,6 +4959,9 @@ func file_headless_v1_headless_proto_init() {
 	file_headless_v1_headless_proto_msgTypes[3].OneofWrappers = []any{}
 	file_headless_v1_headless_proto_msgTypes[4].OneofWrappers = []any{}
 	file_headless_v1_headless_proto_msgTypes[8].OneofWrappers = []any{}
+	file_headless_v1_headless_proto_msgTypes[10].OneofWrappers = []any{}
+	file_headless_v1_headless_proto_msgTypes[11].OneofWrappers = []any{}
+	file_headless_v1_headless_proto_msgTypes[12].OneofWrappers = []any{}
 	file_headless_v1_headless_proto_msgTypes[20].OneofWrappers = []any{
 		(*KickUserRequest_UserId)(nil),
 		(*KickUserRequest_UserName)(nil),

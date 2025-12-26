@@ -120,3 +120,43 @@ func (u *HeadlessAccountUsecase) RefetchHeadlessAccountInfo(ctx context.Context,
 		LastIconUrl:     pgtype.Text{String: userInfo.IconUrl, Valid: true},
 	})
 }
+
+// UpdateHeadlessAccountIcon updates the headless account's profile icon
+// It processes the image, uploads it to Resonite cloud, and updates the profile
+func (u *HeadlessAccountUsecase) UpdateHeadlessAccountIcon(ctx context.Context, resoniteID string, iconData []byte) (string, error) {
+	// Get account credentials from DB
+	account, err := u.queries.GetHeadlessAccount(ctx, resoniteID)
+	if err != nil {
+		return "", errors.Errorf("failed to get headless account: %w", err)
+	}
+
+	// Process the image (crop to square, resize to 256x256, convert to PNG)
+	processedData, err := skyfrost.ProcessIconImage(iconData)
+	if err != nil {
+		return "", errors.Errorf("failed to process icon image: %w", err)
+	}
+
+	// Upload the image to Resonite cloud as a texture record
+	_, iconUrl, err := u.skyfrostClient.UploadTextureRecord(ctx, account.Credential, account.Password, "Profile Icon", "Inventory", processedData)
+	if err != nil {
+		return "", errors.Errorf("failed to upload icon: %w", err)
+	}
+
+	// Update the user profile with new icon URL
+	profile := &skyfrost.UserProfile{
+		IconUrl: iconUrl,
+	}
+	if err := u.skyfrostClient.UpdateUserProfile(ctx, account.Credential, account.Password, profile); err != nil {
+		return "", errors.Errorf("failed to update profile: %w", err)
+	}
+
+	// Update the DB with new icon URL
+	if err := u.queries.UpdateAccountIconUrl(ctx, db.UpdateAccountIconUrlParams{
+		ResoniteID:  resoniteID,
+		LastIconUrl: pgtype.Text{String: iconUrl, Valid: true},
+	}); err != nil {
+		return "", errors.Errorf("failed to update account info in DB: %w", err)
+	}
+
+	return iconUrl, nil
+}
