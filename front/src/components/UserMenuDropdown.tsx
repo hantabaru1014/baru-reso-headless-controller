@@ -7,11 +7,13 @@ import {
   DropdownMenuItem,
   DropdownMenuContent,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui";
 import { UserInfo } from "@/atoms/sessionAtom";
 import { resolveUrl } from "@/libs/skyfrostUtils";
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
+import { useNavigate } from "react-router";
 
 export function UserMenuDropdown({
   user,
@@ -20,6 +22,8 @@ export function UserMenuDropdown({
   user?: UserInfo;
   signOut: () => void;
 }) {
+  const navigate = useNavigate();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -35,6 +39,11 @@ export function UserMenuDropdown({
           <div className="font-medium">{user?.name}</div>
           <div className="text-muted-foreground">{user?.email}</div>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => navigate("/settings")}>
+          <Settings className="h-4 w-4" />
+          <span>設定</span>
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={signOut}>
           <LogOut className="h-4 w-4" />
           <span>サインアウト</span>

@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/go-errors/errors"
@@ -70,4 +71,51 @@ func NewUserService(uu *usecase.UserUsecase) *UserService {
 func (u *UserService) NewHandler() (string, http.Handler) {
 	interceptors := connect.WithInterceptors(logging.NewErrorLogInterceptor())
 	return hdlctrlv1connect.NewUserServiceHandler(u, interceptors)
+}
+
+type changePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
+type errorResponse struct {
+	Error string `json:"error"`
+}
+
+// ChangePasswordHandler はパスワード変更用のHTTPハンドラーを返す
+func (u *UserService) ChangePasswordHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		// 認証トークンを検証
+		claims, err := auth.ValidateTokenFromHeader(r.Header.Get("Authorization"))
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(errorResponse{Error: "unauthorized"})
+			return
+		}
+
+		// リクエストボディをパース
+		var req changePasswordRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(errorResponse{Error: "invalid request body"})
+			return
+		}
+
+		// パスワードを更新
+		if err := u.uu.UpdatePassword(r.Context(), claims.UserID, req.CurrentPassword, req.NewPassword); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(errorResponse{Error: "invalid current password"})
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	}
 }

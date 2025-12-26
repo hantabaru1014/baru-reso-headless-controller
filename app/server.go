@@ -64,6 +64,7 @@ func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 		p, h := s.controllerService.NewHandler()
 		router.PathPrefix(p).Handler(h)
 	}
+	router.HandleFunc("/api/change-password", s.userService.ChangePasswordHandler())
 
 	if len(frontUrl) > 0 {
 		rpURL, err := url.Parse(frontUrl)

@@ -48,3 +48,22 @@ func (u *UserUsecase) GetUserWithPassword(ctx context.Context, id, password stri
 func (u *UserUsecase) DeleteUser(ctx context.Context, id string) error {
 	return u.queries.DeleteUser(ctx, id)
 }
+
+func (u *UserUsecase) UpdatePassword(ctx context.Context, id, currentPassword, newPassword string) error {
+	// 現在のパスワードを検証
+	_, err := u.GetUserWithPassword(ctx, id, currentPassword)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	// 新しいパスワードをハッシュ化して更新
+	newPasswordHash, err := auth.HashPassword(newPassword)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	return u.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
+		ID:       id,
+		Password: newPasswordHash,
+	})
+}

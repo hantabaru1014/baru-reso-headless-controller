@@ -98,6 +98,21 @@ func SetSuccessResponseHeader(res connect.AnyResponse) {
 	res.Header().Set("WWW-Authenticate", "Bearer realm=\"\"")
 }
 
+// ValidateTokenFromHeader はAuthorizationヘッダー文字列からトークンを検証します
+func ValidateTokenFromHeader(authHeader string) (*AuthClaims, error) {
+	if len(authHeader) <= len("Bearer ") {
+		return nil, errors.New("token required")
+	}
+	token := authHeader[len("Bearer "):]
+
+	claims, err := ParseToken(token)
+	if err != nil {
+		return nil, err
+	}
+
+	return claims, nil
+}
+
 func NewAuthInterceptor() connect.UnaryInterceptorFunc {
 	i := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {

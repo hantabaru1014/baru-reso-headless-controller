@@ -8,6 +8,7 @@ service UserService {
 
   // 認証付きRPC
   rpc RefreshToken(RefreshTokenRequest) returns (TokenSetResponse) {}
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {}
 }
 
 message TokenSetResponse {
@@ -22,3 +23,10 @@ message GetTokenByPasswordRequest {
 
 // 既に持っているトークンをheaderに付与してリクエストする
 message RefreshTokenRequest {}
+
+message ChangePasswordRequest {
+  string current_password = 1;
+  string new_password = 2;
+}
+
+message ChangePasswordResponse {}
