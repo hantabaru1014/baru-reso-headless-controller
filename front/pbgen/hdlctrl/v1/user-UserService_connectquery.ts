@@ -17,3 +17,8 @@ export const getTokenByPassword = UserService.method.getTokenByPassword;
  * @generated from rpc hdlctrl.v1.UserService.RefreshToken
  */
 export const refreshToken = UserService.method.refreshToken;
+
+/**
+ * @generated from rpc hdlctrl.v1.UserService.ChangePassword
+ */
+export const changePassword = UserService.method.changePassword;

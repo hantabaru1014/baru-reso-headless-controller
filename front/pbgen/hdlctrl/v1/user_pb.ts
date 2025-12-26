@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hdlctrl/v1/user.proto.
  */
 export const file_hdlctrl_v1_user: GenFile = /*@__PURE__*/
-  fileDesc("ChVoZGxjdHJsL3YxL3VzZXIucHJvdG8SCmhkbGN0cmwudjEiOAoQVG9rZW5TZXRSZXNwb25zZRINCgV0b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJIjkKGUdldFRva2VuQnlQYXNzd29yZFJlcXVlc3QSCgoCaWQYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiFQoTUmVmcmVzaFRva2VuUmVxdWVzdDK7AQoLVXNlclNlcnZpY2USWwoSR2V0VG9rZW5CeVBhc3N3b3JkEiUuaGRsY3RybC52MS5HZXRUb2tlbkJ5UGFzc3dvcmRSZXF1ZXN0GhwuaGRsY3RybC52MS5Ub2tlblNldFJlc3BvbnNlIgASTwoMUmVmcmVzaFRva2VuEh8uaGRsY3RybC52MS5SZWZyZXNoVG9rZW5SZXF1ZXN0GhwuaGRsY3RybC52MS5Ub2tlblNldFJlc3BvbnNlIgBCtwEKDmNvbS5oZGxjdHJsLnYxQglVc2VyUHJvdG9QAVpRZ2l0aHViLmNvbS9oYW50YWJhcnUxMDE0L2JhcnUtcmVzby1oZWFkbGVzcy1jb250cm9sbGVyL3BiZ2VuL2hkbGN0cmwvdjE7aGRsY3RybHYxogIDSFhYqgIKSGRsY3RybC5WMcoCCkhkbGN0cmxcVjHiAhZIZGxjdHJsXFYxXEdQQk1ldGFkYXRh6gILSGRsY3RybDo6VjFiBnByb3RvMw");
+  fileDesc("ChVoZGxjdHJsL3YxL3VzZXIucHJvdG8SCmhkbGN0cmwudjEiOAoQVG9rZW5TZXRSZXNwb25zZRINCgV0b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJIjkKGUdldFRva2VuQnlQYXNzd29yZFJlcXVlc3QSCgoCaWQYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiFQoTUmVmcmVzaFRva2VuUmVxdWVzdCJHChVDaGFuZ2VQYXNzd29yZFJlcXVlc3QSGAoQY3VycmVudF9wYXNzd29yZBgBIAEoCRIUCgxuZXdfcGFzc3dvcmQYAiABKAkiGAoWQ2hhbmdlUGFzc3dvcmRSZXNwb25zZTKWAgoLVXNlclNlcnZpY2USWwoSR2V0VG9rZW5CeVBhc3N3b3JkEiUuaGRsY3RybC52MS5HZXRUb2tlbkJ5UGFzc3dvcmRSZXF1ZXN0GhwuaGRsY3RybC52MS5Ub2tlblNldFJlc3BvbnNlIgASTwoMUmVmcmVzaFRva2VuEh8uaGRsY3RybC52MS5SZWZyZXNoVG9rZW5SZXF1ZXN0GhwuaGRsY3RybC52MS5Ub2tlblNldFJlc3BvbnNlIgASWQoOQ2hhbmdlUGFzc3dvcmQSIS5oZGxjdHJsLnYxLkNoYW5nZVBhc3N3b3JkUmVxdWVzdBoiLmhkbGN0cmwudjEuQ2hhbmdlUGFzc3dvcmRSZXNwb25zZSIAQrcBCg5jb20uaGRsY3RybC52MUIJVXNlclByb3RvUAFaUWdpdGh1Yi5jb20vaGFudGFiYXJ1MTAxNC9iYXJ1LXJlc28taGVhZGxlc3MtY29udHJvbGxlci9wYmdlbi9oZGxjdHJsL3YxO2hkbGN0cmx2MaICA0hYWKoCCkhkbGN0cmwuVjHKAgpIZGxjdHJsXFYx4gIWSGRsY3RybFxWMVxHUEJNZXRhZGF0YeoCC0hkbGN0cmw6OlYxYgZwcm90bzM");
 
 /**
  * @generated from message hdlctrl.v1.TokenSetResponse
@@ -72,6 +72,41 @@ export const RefreshTokenRequestSchema: GenMessage<RefreshTokenRequest> = /*@__P
   messageDesc(file_hdlctrl_v1_user, 2);
 
 /**
+ * @generated from message hdlctrl.v1.ChangePasswordRequest
+ */
+export type ChangePasswordRequest = Message<"hdlctrl.v1.ChangePasswordRequest"> & {
+  /**
+   * @generated from field: string current_password = 1;
+   */
+  currentPassword: string;
+
+  /**
+   * @generated from field: string new_password = 2;
+   */
+  newPassword: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.ChangePasswordRequest.
+ * Use `create(ChangePasswordRequestSchema)` to create a new message.
+ */
+export const ChangePasswordRequestSchema: GenMessage<ChangePasswordRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 3);
+
+/**
+ * @generated from message hdlctrl.v1.ChangePasswordResponse
+ */
+export type ChangePasswordResponse = Message<"hdlctrl.v1.ChangePasswordResponse"> & {
+};
+
+/**
+ * Describes the message hdlctrl.v1.ChangePasswordResponse.
+ * Use `create(ChangePasswordResponseSchema)` to create a new message.
+ */
+export const ChangePasswordResponseSchema: GenMessage<ChangePasswordResponse> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 4);
+
+/**
  * @generated from service hdlctrl.v1.UserService
  */
 export const UserService: GenService<{
@@ -94,6 +129,14 @@ export const UserService: GenService<{
     methodKind: "unary";
     input: typeof RefreshTokenRequestSchema;
     output: typeof TokenSetResponseSchema;
+  },
+  /**
+   * @generated from rpc hdlctrl.v1.UserService.ChangePassword
+   */
+  changePassword: {
+    methodKind: "unary";
+    input: typeof ChangePasswordRequestSchema;
+    output: typeof ChangePasswordResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_hdlctrl_v1_user, 0);

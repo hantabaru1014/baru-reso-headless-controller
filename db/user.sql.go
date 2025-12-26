@@ -89,3 +89,17 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	}
 	return items, nil
 }
+
+const updateUserPassword = `-- name: UpdateUserPassword :exec
+UPDATE users SET password = $2, updated_at = current_timestamp WHERE id = $1
+`
+
+type UpdateUserPasswordParams struct {
+	ID       string
+	Password string
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error {
+	_, err := q.db.Exec(ctx, updateUserPassword, arg.ID, arg.Password)
+	return err
+}

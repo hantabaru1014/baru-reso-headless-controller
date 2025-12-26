@@ -48,3 +48,24 @@ func (u *UserUsecase) GetUserWithPassword(ctx context.Context, id, password stri
 func (u *UserUsecase) DeleteUser(ctx context.Context, id string) error {
 	return u.queries.DeleteUser(ctx, id)
 }
+
+func (u *UserUsecase) ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error {
+	user, err := u.queries.GetUser(ctx, userID)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	if err := auth.ComparePasswordAndHash(currentPassword, user.Password); err != nil {
+		return errors.New("現在のパスワードが正しくありません")
+	}
+	if len(newPassword) < 8 {
+		return errors.New("パスワードは8文字以上である必要があります")
+	}
+	passwordHash, err := auth.HashPassword(newPassword)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	return u.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
+		ID:       userID,
+		Password: passwordHash,
+	})
+}

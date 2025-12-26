@@ -118,6 +118,24 @@ func NewAuthInterceptor() connect.UnaryInterceptorFunc {
 	return connect.UnaryInterceptorFunc(i)
 }
 
+// NewOptionalAuthInterceptor は認証情報があればコンテキストにセットするが、
+// なくてもエラーにしないインターセプター
+func NewOptionalAuthInterceptor() connect.UnaryInterceptorFunc {
+	return func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			token := req.Header().Get("authorization")
+			if len(token) > len("Bearer ") {
+				token = token[len("Bearer "):]
+				claims, err := ParseToken(token)
+				if err == nil {
+					ctx = context.WithValue(ctx, AuthClaimsKey, claims)
+				}
+			}
+			return next(ctx, req)
+		}
+	}
+}
+
 func HashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
