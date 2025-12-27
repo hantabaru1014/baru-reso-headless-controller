@@ -4,10 +4,21 @@ import { createConnectTransport } from "@connectrpc/connect-web";
 import { TransportProvider } from "@connectrpc/connect-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "./hooks/useAuth";
+import { useResoniteUserSync } from "./hooks/useResoniteUserSync";
 import { Toaster } from "./components/ui";
 import { ThemeProvider } from "./components/ThemeProvider";
 
 const queryClient = new QueryClient();
+
+function AppContent() {
+  useResoniteUserSync();
+  return (
+    <>
+      <Outlet />
+      <Toaster position="top-center" />
+    </>
+  );
+}
 
 export default function App() {
   const { configuredFetch } = useAuth("/");
@@ -24,8 +35,7 @@ export default function App() {
     <ThemeProvider>
       <TransportProvider transport={finalTransport}>
         <QueryClientProvider client={queryClient}>
-          <Outlet />
-          <Toaster position="top-center" />
+          <AppContent />
         </QueryClientProvider>
       </TransportProvider>
     </ThemeProvider>

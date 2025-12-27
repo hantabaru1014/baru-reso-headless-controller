@@ -52,9 +52,9 @@ export const useAuth = (baseUrl: string) => {
           setSession({
             token: refreshResponse.token,
             user: {
-              name: payload.user_id,
-              email: payload.user_id,
-              image: payload.icon_url,
+              id: payload.user_id,
+              iconUrl: payload.icon_url,
+              resoniteId: payload.resonite_id,
             },
           });
           setRefreshToken(refreshResponse.refreshToken);
@@ -127,9 +127,9 @@ export const useAuth = (baseUrl: string) => {
           setSession({
             token: response.token,
             user: {
-              name: payload.user_id,
-              email: payload.user_id,
-              image: payload.icon_url,
+              id: payload.user_id,
+              iconUrl: payload.icon_url,
+              resoniteId: payload.resonite_id,
             },
           });
           setRefreshToken(response.refreshToken);

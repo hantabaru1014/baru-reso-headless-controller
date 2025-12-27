@@ -2,33 +2,20 @@ import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
   deleteEndedSession,
   getSessionDetails,
-  listHeadlessHost,
-  startWorld,
   updateSessionExtraSettings,
   updateSessionParameters,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "./ui/dialog";
 import { EditableTextField } from "./base/EditableTextField";
 import { EditableSelectField } from "./base/EditableSelectField";
 import { AccessLevels } from "../constants";
 import SessionControlButtons from "./SessionControlButtons";
 import { ImageOff } from "lucide-react";
 import { RefetchButton } from "./base/RefetchButton";
-import {
-  HeadlessHostStatus,
-  SessionStatus,
-} from "../../pbgen/hdlctrl/v1/controller_pb";
-import { useState } from "react";
-import { SelectField } from "./base/SelectField";
+import { SessionStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { useNavigate } from "react-router";
+import { startupParamsToSearchParams } from "../libs/sessionFormUtils";
 import { formatTimestamp } from "../libs/datetimeUtils";
 import { toast } from "sonner";
 import { EditableTextArea, SplitButton } from "./base";
@@ -40,54 +27,6 @@ const BOOL_SELECT_OPTIONS = [
   { id: "false", label: "いいえ", value: false },
 ];
 
-function SelectHostDialog({
-  isOpen,
-  onClose,
-  title,
-  primaryButtonLabel,
-}: {
-  isOpen: boolean;
-  onClose: (hostId: string | null) => void;
-  title: string;
-  primaryButtonLabel: string;
-}) {
-  const { data: hostList } = useQuery(listHeadlessHost);
-  const [selectedHostId, setSelectedHostId] = useState("");
-
-  return (
-    <Dialog open={isOpen} onOpenChange={() => onClose(null)}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <SelectField
-          label="Host"
-          options={
-            hostList?.hosts
-              .filter((host) => host.status === HeadlessHostStatus.RUNNING)
-              .map((host) => ({
-                id: host.id,
-                label: `${host.name} (${host.id.slice(0, 6)})`,
-                value: host,
-              })) ?? []
-          }
-          selectedId={selectedHostId || ""}
-          onChange={(option) => setSelectedHostId(option.value?.id ?? "")}
-          minWidth="7rem"
-        />
-        <DialogFooter>
-          <Button onClick={() => onClose(selectedHostId)}>
-            {primaryButtonLabel}
-          </Button>
-          <Button variant="outline" onClick={() => onClose(null)}>
-            キャンセル
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function SessionForm({ sessionId }: { sessionId: string }) {
   const { data, refetch, isPending } = useQuery(getSessionDetails, {
     sessionId,
@@ -96,11 +35,8 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
   const { mutateAsync: mutateSaveExtra } = useMutation(
     updateSessionExtraSettings,
   );
-  const { mutateAsync: mutateStartWorld, isPending: isPendingStartWorld } =
-    useMutation(startWorld);
   const { mutateAsync: mutateDelete } = useMutation(deleteEndedSession);
   const navigate = useNavigate();
-  const [isOpenSelectHostDialog, setIsOpenSelectHostDialog] = useState(false);
 
   const hostId = data?.session?.hostId;
   const isRunning = data?.session?.status === SessionStatus.RUNNING;
@@ -176,23 +112,9 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
     toast.success("ワールドURLをコピーしました");
   };
 
-  const handleRestartSession = async (selectedHostId: string) => {
-    if (!selectedHostId) {
-      return;
-    }
-    try {
-      const result = await mutateStartWorld({
-        hostId: selectedHostId,
-        parameters: startupParams,
-        memo: data?.session?.memo,
-      });
-      if (result.openedSession) {
-        toast.success("セッションを開始しました");
-        navigate(`/sessions/${result.openedSession.id}`);
-      }
-    } catch (e) {
-      toast.error(`セッションの開始に失敗しました: ${e}`);
-    }
+  const handleOpenWithSameSettings = () => {
+    const searchParams = startupParamsToSearchParams(startupParams);
+    navigate(`/sessions/new?${searchParams.toString()}`);
   };
 
   const handleDeleteSession = async () => {
@@ -262,12 +184,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                     ワールドURLをコピー
                   </Button>
                 )}
-              <Button
-                disabled={isPendingStartWorld}
-                onClick={() => setIsOpenSelectHostDialog(true)}
-              >
-                同設定で開始
-              </Button>
+              <Button onClick={handleOpenWithSameSettings}>同設定で開始</Button>
               <Button variant="destructive" onClick={handleDeleteSession}>
                 削除
               </Button>
@@ -434,17 +351,6 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
           isLoading={isPending}
         />
       </div>
-      <SelectHostDialog
-        isOpen={isOpenSelectHostDialog}
-        title="セッションを開始するホストを選択"
-        primaryButtonLabel="開始"
-        onClose={(hostId) => {
-          setIsOpenSelectHostDialog(false);
-          if (hostId) {
-            handleRestartSession(hostId);
-          }
-        }}
-      />
     </>
   );
 }

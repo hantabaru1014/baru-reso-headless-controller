@@ -652,6 +652,21 @@ func (c *ControllerService) FetchWorldInfo(ctx context.Context, req *connect.Req
 	return res, nil
 }
 
+// GetResoniteUser implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) GetResoniteUser(ctx context.Context, req *connect.Request[hdlctrlv1.GetResoniteUserRequest]) (*connect.Response[hdlctrlv1.GetResoniteUserResponse], error) {
+	userInfo, err := c.skyfrostClient.FetchUserInfo(ctx, req.Msg.ResoniteId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.GetResoniteUserResponse{
+		Id:      userInfo.ID,
+		Name:    userInfo.UserName,
+		IconUrl: userInfo.IconUrl,
+	})
+	return res, nil
+}
+
 // GetHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) GetHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.GetHeadlessHostRequest]) (*connect.Response[hdlctrlv1.GetHeadlessHostResponse], error) {
 	host, err := c.hhuc.HeadlessHostGet(ctx, req.Msg.HostId)

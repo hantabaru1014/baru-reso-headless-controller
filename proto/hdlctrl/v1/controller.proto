@@ -33,6 +33,7 @@ service ControllerService {
   // Cloud系
   rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
   rpc SearchUserInfo(SearchUserInfoRequest) returns (headless.v1.SearchUserInfoResponse);
+  rpc GetResoniteUser(GetResoniteUserRequest) returns (GetResoniteUserResponse);
   rpc GetFriendRequests(GetFriendRequestsRequest) returns (GetFriendRequestsResponse);
   rpc AcceptFriendRequests(AcceptFriendRequestsRequest) returns (AcceptFriendRequestsResponse);
 
@@ -483,6 +484,16 @@ message HeadlessAccount {
 }
 
 message UserInfo {
+  string id = 1;
+  string name = 2;
+  string icon_url = 3;
+}
+
+message GetResoniteUserRequest {
+  string resonite_id = 1;
+}
+
+message GetResoniteUserResponse {
   string id = 1;
   string name = 2;
   string icon_url = 3;
