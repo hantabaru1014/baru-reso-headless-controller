@@ -9,8 +9,8 @@ const meta = {
   tags: ["autodocs"],
   args: {
     user: {
-      name: "User Name",
-      email: "user@example.com",
+      resoniteName: "User Name",
+      id: "user@example.com",
     },
     signOut: fn(),
   },

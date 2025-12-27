@@ -100,6 +100,9 @@ const (
 	// ControllerServiceSearchUserInfoProcedure is the fully-qualified name of the ControllerService's
 	// SearchUserInfo RPC.
 	ControllerServiceSearchUserInfoProcedure = "/hdlctrl.v1.ControllerService/SearchUserInfo"
+	// ControllerServiceGetResoniteUserProcedure is the fully-qualified name of the ControllerService's
+	// GetResoniteUser RPC.
+	ControllerServiceGetResoniteUserProcedure = "/hdlctrl.v1.ControllerService/GetResoniteUser"
 	// ControllerServiceGetFriendRequestsProcedure is the fully-qualified name of the
 	// ControllerService's GetFriendRequests RPC.
 	ControllerServiceGetFriendRequestsProcedure = "/hdlctrl.v1.ControllerService/GetFriendRequests"
@@ -183,6 +186,7 @@ type ControllerServiceClient interface {
 	// Cloud系
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
+	GetResoniteUser(context.Context, *connect.Request[v1.GetResoniteUserRequest]) (*connect.Response[v1.GetResoniteUserResponse], error)
 	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v1.GetFriendRequestsResponse], error)
 	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
 	// コンタクト・チャット系
@@ -348,6 +352,12 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(controllerServiceMethods.ByName("SearchUserInfo")),
 			connect.WithClientOptions(opts...),
 		),
+		getResoniteUser: connect.NewClient[v1.GetResoniteUserRequest, v1.GetResoniteUserResponse](
+			httpClient,
+			baseURL+ControllerServiceGetResoniteUserProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("GetResoniteUser")),
+			connect.WithClientOptions(opts...),
+		),
 		getFriendRequests: connect.NewClient[v1.GetFriendRequestsRequest, v1.GetFriendRequestsResponse](
 			httpClient,
 			baseURL+ControllerServiceGetFriendRequestsProcedure,
@@ -483,6 +493,7 @@ type controllerServiceClient struct {
 	updateHeadlessAccountIcon        *connect.Client[v1.UpdateHeadlessAccountIconRequest, v1.UpdateHeadlessAccountIconResponse]
 	fetchWorldInfo                   *connect.Client[v1.FetchWorldInfoRequest, v11.FetchWorldInfoResponse]
 	searchUserInfo                   *connect.Client[v1.SearchUserInfoRequest, v11.SearchUserInfoResponse]
+	getResoniteUser                  *connect.Client[v1.GetResoniteUserRequest, v1.GetResoniteUserResponse]
 	getFriendRequests                *connect.Client[v1.GetFriendRequestsRequest, v1.GetFriendRequestsResponse]
 	acceptFriendRequests             *connect.Client[v1.AcceptFriendRequestsRequest, v1.AcceptFriendRequestsResponse]
 	listContacts                     *connect.Client[v1.ListContactsRequest, v1.ListContactsResponse]
@@ -614,6 +625,11 @@ func (c *controllerServiceClient) SearchUserInfo(ctx context.Context, req *conne
 	return c.searchUserInfo.CallUnary(ctx, req)
 }
 
+// GetResoniteUser calls hdlctrl.v1.ControllerService.GetResoniteUser.
+func (c *controllerServiceClient) GetResoniteUser(ctx context.Context, req *connect.Request[v1.GetResoniteUserRequest]) (*connect.Response[v1.GetResoniteUserResponse], error) {
+	return c.getResoniteUser.CallUnary(ctx, req)
+}
+
 // GetFriendRequests calls hdlctrl.v1.ControllerService.GetFriendRequests.
 func (c *controllerServiceClient) GetFriendRequests(ctx context.Context, req *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v1.GetFriendRequestsResponse], error) {
 	return c.getFriendRequests.CallUnary(ctx, req)
@@ -731,6 +747,7 @@ type ControllerServiceHandler interface {
 	// Cloud系
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
+	GetResoniteUser(context.Context, *connect.Request[v1.GetResoniteUserRequest]) (*connect.Response[v1.GetResoniteUserResponse], error)
 	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v1.GetFriendRequestsResponse], error)
 	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
 	// コンタクト・チャット系
@@ -892,6 +909,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		connect.WithSchema(controllerServiceMethods.ByName("SearchUserInfo")),
 		connect.WithHandlerOptions(opts...),
 	)
+	controllerServiceGetResoniteUserHandler := connect.NewUnaryHandler(
+		ControllerServiceGetResoniteUserProcedure,
+		svc.GetResoniteUser,
+		connect.WithSchema(controllerServiceMethods.ByName("GetResoniteUser")),
+		connect.WithHandlerOptions(opts...),
+	)
 	controllerServiceGetFriendRequestsHandler := connect.NewUnaryHandler(
 		ControllerServiceGetFriendRequestsProcedure,
 		svc.GetFriendRequests,
@@ -1046,6 +1069,8 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceFetchWorldInfoHandler.ServeHTTP(w, r)
 		case ControllerServiceSearchUserInfoProcedure:
 			controllerServiceSearchUserInfoHandler.ServeHTTP(w, r)
+		case ControllerServiceGetResoniteUserProcedure:
+			controllerServiceGetResoniteUserHandler.ServeHTTP(w, r)
 		case ControllerServiceGetFriendRequestsProcedure:
 			controllerServiceGetFriendRequestsHandler.ServeHTTP(w, r)
 		case ControllerServiceAcceptFriendRequestsProcedure:
@@ -1177,6 +1202,10 @@ func (UnimplementedControllerServiceHandler) FetchWorldInfo(context.Context, *co
 
 func (UnimplementedControllerServiceHandler) SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.SearchUserInfo is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) GetResoniteUser(context.Context, *connect.Request[v1.GetResoniteUserRequest]) (*connect.Response[v1.GetResoniteUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.GetResoniteUser is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v1.GetFriendRequestsResponse], error) {

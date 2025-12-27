@@ -157,9 +157,9 @@ export default function Register() {
       setSession({
         token: response.token,
         user: {
-          name: decoded.user_id,
-          email: decoded.user_id,
-          image: decoded.icon_url,
+          id: decoded.user_id,
+          iconUrl: decoded.icon_url,
+          resoniteId: decoded.resonite_id,
         },
       });
       setRefreshToken(response.refreshToken);

@@ -3,9 +3,10 @@ import { atomWithStorage } from "jotai/utils";
 import { localStorageKeyPrefix } from "./shared";
 
 export interface UserInfo {
-  name?: string;
-  email?: string;
-  image?: string;
+  id?: string;
+  iconUrl?: string;
+  resoniteId?: string;
+  resoniteName?: string;
 }
 
 export interface Session {

@@ -24,16 +24,16 @@ export function UserMenuDropdown({
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon">
           <ResoniteUserIcon
-            iconUrl={user?.image}
-            alt={user?.name}
+            iconUrl={user?.iconUrl}
+            alt={user?.resoniteName}
             className="h-8 w-8"
           />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuLabel>
-          <div className="font-medium">{user?.name}</div>
-          <div className="text-muted-foreground">{user?.email}</div>
+          <div className="font-medium">{user?.resoniteName}</div>
+          <div className="text-muted-foreground">{user?.id}</div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>

@@ -36,6 +36,9 @@ import {
 } from "./base";
 import { Trash2 } from "lucide-react";
 import { ResoniteUserIcon } from "./ResoniteUserIcon";
+import { useAtomValue } from "jotai";
+import { sessionAtom } from "../atoms/sessionAtom";
+import { useEffect, useRef } from "react";
 
 const sessionFormSchema = z
   .object({
@@ -190,6 +193,50 @@ export default function NewSessionForm() {
     control,
     name: "autoInviteUsernames",
   });
+
+  // ログインユーザーを自動追加
+  const session = useAtomValue(sessionAtom);
+  const hasAddedCurrentUser = useRef(false);
+
+  useEffect(() => {
+    if (hasAddedCurrentUser.current) return;
+    if (!session?.user?.resoniteId || !session?.user?.resoniteName) return;
+
+    const { resoniteId, resoniteName, iconUrl } = session.user;
+
+    // joinAllowedUserIdsに追加（参加許可のみ）
+    const existsInAutoInvite = autoInviteFields.some(
+      (f) => f.userId === resoniteId,
+    );
+    if (!existsInAutoInvite) {
+      appendAutoInvite({
+        userName: resoniteName,
+        userId: resoniteId,
+        iconUrl,
+        joinAllowedOnly: true,
+      });
+    }
+
+    // defaultUserRolesにAdminで追加
+    const existsInDefaultRoles = defaultUserRoleFields.some(
+      (f) => f.userName === resoniteName,
+    );
+    if (!existsInDefaultRoles) {
+      appendDefaultUserRole({
+        userName: resoniteName,
+        role: "Admin",
+        iconUrl,
+      });
+    }
+
+    hasAddedCurrentUser.current = true;
+  }, [
+    session,
+    autoInviteFields,
+    defaultUserRoleFields,
+    appendAutoInvite,
+    appendDefaultUserRole,
+  ]);
 
   const handleDefaultUserRoleSelect = (user: UserInfo) => {
     const exists = defaultUserRoleFields.some((f) => f.userName === user.name);
