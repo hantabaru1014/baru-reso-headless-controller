@@ -4,7 +4,16 @@ import {
   listHeadlessHost,
   startWorld,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import { Button, Checkbox, Label } from "./ui";
+import {
+  Button,
+  Checkbox,
+  Label,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "./ui";
 import { useNavigate, useSearchParams } from "react-router";
 import {
   searchParamsToFormValues,
@@ -281,564 +290,598 @@ export default function NewSessionForm() {
     }
   };
 
+  const runningHosts =
+    hostList?.hosts
+      .filter((host) => host.status === HeadlessHostStatus.RUNNING)
+      .map((host) => ({
+        id: host.id,
+        label: `${host.name} (${host.id.slice(0, 6)}) - ${host.accountName} - ${host.resoniteVersion}`,
+        value: host,
+      })) ?? [];
+
   return (
-    <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
-      <Controller
-        name="hostId"
-        control={control}
-        render={({ field }) => (
-          <SelectField
-            label="Host"
-            options={
-              hostList?.hosts
-                .filter((host) => host.status === HeadlessHostStatus.RUNNING)
-                .map((host) => ({
-                  id: host.id,
-                  label: `${host.name} (${host.id.slice(0, 6)})`,
-                  value: host,
-                })) ?? []
-            }
-            selectedId={field.value || ""}
-            onChange={(option) => field.onChange(option.value?.id ?? "")}
-            minWidth="7rem"
-            error={errors.hostId?.message}
-          />
-        )}
-      />
-      <Controller
-        name="worldSource"
-        control={control}
-        render={({ field }) => (
-          <RadioGroupField
-            label="ワールド指定方法"
-            options={[
-              { label: "レコードURLを指定", value: "url" },
-              { label: "テンプレートを指定", value: "template" },
-            ]}
-            value={field.value}
-            onValueChange={field.onChange}
-            error={errors.worldSource?.message}
-            className="flex flex-row space-x-4"
-          />
-        )}
-      />
-      {worldSource === "url" ? (
-        <div className="grid grid-cols-12 gap-2">
-          <div className="col-span-10">
-            <Controller
-              name="worldUrl"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  label="レコードURL"
-                  error={errors.worldUrl?.message}
-                  {...field}
-                />
-              )}
-            />
+    <>
+      <Dialog open={!hostId}>
+        <DialogContent
+          showCloseButton={false}
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>ホストを選択</DialogTitle>
+            <DialogDescription>
+              セッションを開始するホストを選択してください
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[70vh] overflow-y-auto">
+            {runningHosts.map((host) => (
+              <Button
+                key={host.id}
+                variant="outline"
+                className="w-full justify-start"
+                onClick={() => setValue("hostId", host.id)}
+              >
+                {host.label}
+              </Button>
+            ))}
+            {runningHosts.length === 0 && (
+              <p className="text-muted-foreground text-center py-4">
+                稼働中のホストがありません
+              </p>
+            )}
           </div>
-          <div className="col-span-2 flex items-end">
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={handleFetchInfo}
-              disabled={isPendingFetchInfo || !hostId || !worldUrl}
-            >
-              情報取得
-            </Button>
-          </div>
-        </div>
-      ) : (
+        </DialogContent>
+      </Dialog>
+      <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
         <Controller
-          name="worldTemplate"
+          name="hostId"
           control={control}
           render={({ field }) => (
             <SelectField
-              label="ワールドテンプレート"
+              label="Host"
+              options={runningHosts}
+              selectedId={field.value || ""}
+              onChange={(option) => field.onChange(option.value?.id ?? "")}
+              minWidth="7rem"
+              error={errors.hostId?.message}
+            />
+          )}
+        />
+        <Controller
+          name="worldSource"
+          control={control}
+          render={({ field }) => (
+            <RadioGroupField
+              label="ワールド指定方法"
               options={[
-                { id: "grid", label: "Grid" },
-                { id: "platform", label: "Platform" },
-                { id: "blank", label: "Blank" },
+                { label: "レコードURLを指定", value: "url" },
+                { label: "テンプレートを指定", value: "template" },
               ]}
-              selectedId={field.value}
-              onChange={(option) => field.onChange(option.id)}
-              error={errors.worldTemplate?.message}
+              value={field.value}
+              onValueChange={field.onChange}
+              error={errors.worldSource?.message}
+              className="flex flex-row space-x-4"
             />
           )}
         />
-      )}
-      <Controller
-        name="name"
-        control={control}
-        render={({ field }) => (
-          <TextField
-            label="セッション名"
-            error={errors.name?.message}
-            {...field}
-          />
-        )}
-      />
-      <Controller
-        name="description"
-        control={control}
-        render={({ field }) => (
-          <TextareaField
-            label="説明"
-            error={errors.description?.message}
-            {...field}
-          />
-        )}
-      />
-      <Controller
-        name="tags"
-        control={control}
-        render={({ field }) => (
-          <TextField
-            label="タグ"
-            error={errors.tags?.message}
-            {...field}
-            helperText="カンマ区切りで入力してください"
-          />
-        )}
-      />
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Controller
-          name="maxUsers"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              label="最大ユーザー数"
-              type="number"
-              error={errors.maxUsers?.message}
-              {...field}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const value =
-                  e.target.value === "" ? "" : parseInt(e.target.value);
-                field.onChange(value);
-              }}
-            />
-          )}
-        />
-
-        <Controller
-          name="accessLevel"
-          control={control}
-          render={({ field }) => (
-            <SelectField
-              label="アクセスレベル"
-              options={AccessLevels.map((l) => l)}
-              selectedId={`${field.value}`}
-              onChange={(option) => field.onChange(option.value as number)}
-              error={errors.accessLevel?.message}
-            />
-          )}
-        />
-
-        <Controller
-          name="hideFromPublicListing"
-          control={control}
-          render={({ field }) => (
-            <CheckboxField
-              label="セッションリストから隠す"
-              checked={field.value}
-              onCheckedChange={field.onChange}
-            />
-          )}
-        />
-      </div>
-      <Controller
-        name="customSessionId"
-        control={control}
-        render={({ field }) => (
-          <TextField
-            label="カスタムセッションID"
-            error={errors.customSessionId?.message}
-            {...field}
-          />
-        )}
-      />
-
-      <Controller
-        name="parentSessionIds"
-        control={control}
-        render={({ field }) => (
-          <TextField
-            label="parentSessionIds"
-            error={errors.parentSessionIds?.message}
-            helperText="カンマ区切りで入力してください"
-            {...field}
-          />
-        )}
-      />
-
-      <Controller
-        name="overrideCorrespondingWorldId"
-        control={control}
-        render={({ field }) => (
-          <TextField
-            label="overrideCorrespondingWorldId"
-            error={errors.overrideCorrespondingWorldId?.message}
-            helperText="ownerId/id の形式で入力してください"
-            {...field}
-          />
-        )}
-      />
-
-      <Controller
-        name="awayKickMinutes"
-        control={control}
-        render={({ field }) => (
-          <TextField
-            label="AFKキック時間(分)"
-            type="number"
-            error={errors.awayKickMinutes?.message}
-            helperText="-1で無効"
-            {...field}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              const value =
-                e.target.value === "" ? "" : parseFloat(e.target.value);
-              field.onChange(value);
-            }}
-          />
-        )}
-      />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Controller
-          name="autoSaveIntervalSeconds"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              label="自動保存間隔(秒)"
-              type="number"
-              error={errors.autoSaveIntervalSeconds?.message}
-              helperText="-1で無効"
-              {...field}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const value =
-                  e.target.value === "" ? "" : parseInt(e.target.value);
-                field.onChange(value);
-              }}
-            />
-          )}
-        />
-
-        <Controller
-          name="saveOnExit"
-          control={control}
-          render={({ field }) => (
-            <CheckboxField
-              label="セッション終了時に保存"
-              checked={field.value}
-              onCheckedChange={field.onChange}
-            />
-          )}
-        />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {" "}
-        <Controller
-          name="idleRestartIntervalSeconds"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              label="アイドル時の自動再起動間隔(秒)"
-              type="number"
-              error={errors.idleRestartIntervalSeconds?.message}
-              helperText="-1で無効"
-              {...field}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const value =
-                  e.target.value === "" ? "" : parseInt(e.target.value);
-                field.onChange(value);
-              }}
-            />
-          )}
-        />
-        <Controller
-          name="forcedRestartIntervalSeconds"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              label="forcedRestartInterval(秒)"
-              type="number"
-              error={errors.forcedRestartIntervalSeconds?.message}
-              helperText="-1で無効"
-              {...field}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const value =
-                  e.target.value === "" ? "" : parseInt(e.target.value);
-                field.onChange(value);
-              }}
-            />
-          )}
-        />
-        <Controller
-          name="autoSleep"
-          control={control}
-          render={({ field }) => (
-            <CheckboxField
-              label="自動スリープ"
-              checked={field.value}
-              onCheckedChange={field.onChange}
-            />
-          )}
-        />
-        <Controller
-          name="autoRecover"
-          control={control}
-          render={({ field }) => (
-            <CheckboxField
-              label="autoRecover"
-              checked={field.value}
-              onCheckedChange={field.onChange}
-            />
-          )}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Controller
-          name="forcePort"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              label="forcePort"
-              type="number"
-              error={errors.forcePort?.message}
-              {...field}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const value =
-                  e.target.value === "" ? "" : parseInt(e.target.value);
-                field.onChange(value);
-              }}
-            />
-          )}
-        />
-
-        <Controller
-          name="mobileFriendly"
-          control={control}
-          render={({ field }) => (
-            <CheckboxField
-              label="mobileFriendly"
-              checked={field.value}
-              onCheckedChange={field.onChange}
-            />
-          )}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Controller
-          name="keepOriginalRoles"
-          control={control}
-          render={({ field }) => (
-            <CheckboxField
-              label="keepOriginalRoles"
-              checked={field.value}
-              onCheckedChange={field.onChange}
-            />
-          )}
-        />
-
-        <Controller
-          name="useCustomJoinVerifier"
-          control={control}
-          render={({ field }) => (
-            <CheckboxField
-              label="useCustomJoinVerifier"
-              checked={field.value}
-              onCheckedChange={field.onChange}
-            />
-          )}
-        />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <UserSearchField
-            hostId={hostId}
-            onUserSelect={handleAutoInviteSelect}
-            placeholder="ユーザーを検索して追加"
-            label="自動招待ユーザ"
-          />
-          {autoInviteFields.length > 0 && (
-            <div className="space-y-2 rounded-md border p-2">
-              {autoInviteFields.map((field, index) => (
-                <div
-                  key={field.id}
-                  className="flex items-center gap-2 p-2 rounded-md border bg-muted/50"
-                >
-                  <ResoniteUserIcon
-                    iconUrl={field.iconUrl}
-                    alt={`${field.userName}のアイコン`}
-                    className="h-8 w-8"
+        {worldSource === "url" ? (
+          <div className="grid grid-cols-12 gap-2">
+            <div className="col-span-10">
+              <Controller
+                name="worldUrl"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    label="レコードURL"
+                    error={errors.worldUrl?.message}
+                    {...field}
                   />
-                  <span className="flex-1 text-sm">{field.userName}</span>
-                  <Controller
-                    name={`autoInviteUsernames.${index}.joinAllowedOnly`}
-                    control={control}
-                    render={({ field: checkboxField }) => (
-                      <div className="flex items-center gap-1.5">
-                        <Checkbox
-                          id={`joinAllowedOnly-${index}`}
-                          checked={checkboxField.value}
-                          onCheckedChange={checkboxField.onChange}
-                        />
-                        <Label
-                          htmlFor={`joinAllowedOnly-${index}`}
-                          className="text-sm"
-                        >
-                          参加許可のみ
-                        </Label>
-                      </div>
-                    )}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeAutoInvite(index)}
-                    title="削除"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                )}
+              />
             </div>
-          )}
-        </div>
-
+            <div className="col-span-2 flex items-end">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleFetchInfo}
+                disabled={isPendingFetchInfo || !hostId || !worldUrl}
+              >
+                情報取得
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Controller
+            name="worldTemplate"
+            control={control}
+            render={({ field }) => (
+              <SelectField
+                label="ワールドテンプレート"
+                options={[
+                  { id: "grid", label: "Grid" },
+                  { id: "platform", label: "Platform" },
+                  { id: "blank", label: "Blank" },
+                ]}
+                selectedId={field.value}
+                onChange={(option) => field.onChange(option.id)}
+                error={errors.worldTemplate?.message}
+              />
+            )}
+          />
+        )}
         <Controller
-          name="autoInviteMessage"
+          name="name"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="セッション名"
+              error={errors.name?.message}
+              {...field}
+            />
+          )}
+        />
+        <Controller
+          name="description"
           control={control}
           render={({ field }) => (
             <TextareaField
-              label="招待メッセージ"
-              error={errors.autoInviteMessage?.message}
+              label="説明"
+              error={errors.description?.message}
               {...field}
             />
           )}
         />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <UserSearchField
-            hostId={hostId}
-            onUserSelect={handleDefaultUserRoleSelect}
-            placeholder="ユーザーを検索して追加"
-            label="デフォルトユーザーロール"
-          />
-          {defaultUserRoleFields.length > 0 && (
-            <div className="space-y-2 rounded-md border p-2">
-              {defaultUserRoleFields.map((field, index) => (
-                <div
-                  key={field.id}
-                  className="flex items-center gap-2 p-2 rounded-md border bg-muted/50"
-                >
-                  <ResoniteUserIcon
-                    iconUrl={field.iconUrl}
-                    alt={`${field.userName}のアイコン`}
-                    className="h-8 w-8"
-                  />
-                  <span className="flex-1 text-sm">{field.userName}</span>
-                  <Controller
-                    name={`defaultUserRoles.${index}.role`}
-                    control={control}
-                    render={({ field: roleField }) => (
-                      <SelectField
-                        options={UserRoles.map((r) => r)}
-                        selectedId={roleField.value}
-                        onChange={(option) => roleField.onChange(option.id)}
-                        minWidth="7rem"
-                      />
-                    )}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeDefaultUserRole(index)}
-                    title="削除"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
+        <Controller
+          name="tags"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="タグ"
+              error={errors.tags?.message}
+              {...field}
+              helperText="カンマ区切りで入力してください"
+            />
           )}
+        />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Controller
+            name="maxUsers"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                label="最大ユーザー数"
+                type="number"
+                error={errors.maxUsers?.message}
+                {...field}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value =
+                    e.target.value === "" ? "" : parseInt(e.target.value);
+                  field.onChange(value);
+                }}
+              />
+            )}
+          />
+
+          <Controller
+            name="accessLevel"
+            control={control}
+            render={({ field }) => (
+              <SelectField
+                label="アクセスレベル"
+                options={AccessLevels.map((l) => l)}
+                selectedId={`${field.value}`}
+                onChange={(option) => field.onChange(option.value as number)}
+                error={errors.accessLevel?.message}
+              />
+            )}
+          />
+
+          <Controller
+            name="hideFromPublicListing"
+            control={control}
+            render={({ field }) => (
+              <CheckboxField
+                label="セッションリストから隠す"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
         </div>
-      </div>
+        <Controller
+          name="customSessionId"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="カスタムセッションID"
+              error={errors.customSessionId?.message}
+              {...field}
+            />
+          )}
+        />
 
-      <Controller
-        name="roleCloudVariable"
-        control={control}
-        render={({ field }) => (
-          <TextField
-            label="roleCloudVariable"
-            error={errors.roleCloudVariable?.message}
-            {...field}
+        <Controller
+          name="parentSessionIds"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="parentSessionIds"
+              error={errors.parentSessionIds?.message}
+              helperText="カンマ区切りで入力してください"
+              {...field}
+            />
+          )}
+        />
+
+        <Controller
+          name="overrideCorrespondingWorldId"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="overrideCorrespondingWorldId"
+              error={errors.overrideCorrespondingWorldId?.message}
+              helperText="ownerId/id の形式で入力してください"
+              {...field}
+            />
+          )}
+        />
+
+        <Controller
+          name="awayKickMinutes"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="AFKキック時間(分)"
+              type="number"
+              error={errors.awayKickMinutes?.message}
+              helperText="-1で無効"
+              {...field}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const value =
+                  e.target.value === "" ? "" : parseFloat(e.target.value);
+                field.onChange(value);
+              }}
+            />
+          )}
+        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Controller
+            name="autoSaveIntervalSeconds"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                label="自動保存間隔(秒)"
+                type="number"
+                error={errors.autoSaveIntervalSeconds?.message}
+                helperText="-1で無効"
+                {...field}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value =
+                    e.target.value === "" ? "" : parseInt(e.target.value);
+                  field.onChange(value);
+                }}
+              />
+            )}
           />
-        )}
-      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Controller
+            name="saveOnExit"
+            control={control}
+            render={({ field }) => (
+              <CheckboxField
+                label="セッション終了時に保存"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {" "}
+          <Controller
+            name="idleRestartIntervalSeconds"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                label="アイドル時の自動再起動間隔(秒)"
+                type="number"
+                error={errors.idleRestartIntervalSeconds?.message}
+                helperText="-1で無効"
+                {...field}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value =
+                    e.target.value === "" ? "" : parseInt(e.target.value);
+                  field.onChange(value);
+                }}
+              />
+            )}
+          />
+          <Controller
+            name="forcedRestartIntervalSeconds"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                label="forcedRestartInterval(秒)"
+                type="number"
+                error={errors.forcedRestartIntervalSeconds?.message}
+                helperText="-1で無効"
+                {...field}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value =
+                    e.target.value === "" ? "" : parseInt(e.target.value);
+                  field.onChange(value);
+                }}
+              />
+            )}
+          />
+          <Controller
+            name="autoSleep"
+            control={control}
+            render={({ field }) => (
+              <CheckboxField
+                label="自動スリープ"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
+          <Controller
+            name="autoRecover"
+            control={control}
+            render={({ field }) => (
+              <CheckboxField
+                label="autoRecover"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Controller
+            name="forcePort"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                label="forcePort"
+                type="number"
+                error={errors.forcePort?.message}
+                {...field}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value =
+                    e.target.value === "" ? "" : parseInt(e.target.value);
+                  field.onChange(value);
+                }}
+              />
+            )}
+          />
+
+          <Controller
+            name="mobileFriendly"
+            control={control}
+            render={({ field }) => (
+              <CheckboxField
+                label="mobileFriendly"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Controller
+            name="keepOriginalRoles"
+            control={control}
+            render={({ field }) => (
+              <CheckboxField
+                label="keepOriginalRoles"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
+
+          <Controller
+            name="useCustomJoinVerifier"
+            control={control}
+            render={({ field }) => (
+              <CheckboxField
+                label="useCustomJoinVerifier"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <UserSearchField
+              hostId={hostId}
+              onUserSelect={handleAutoInviteSelect}
+              placeholder="ユーザーを検索して追加"
+              label="自動招待ユーザ"
+            />
+            {autoInviteFields.length > 0 && (
+              <div className="space-y-2 rounded-md border p-2">
+                {autoInviteFields.map((field, index) => (
+                  <div
+                    key={field.id}
+                    className="flex items-center gap-2 p-2 rounded-md border bg-muted/50"
+                  >
+                    <ResoniteUserIcon
+                      iconUrl={field.iconUrl}
+                      alt={`${field.userName}のアイコン`}
+                      className="h-8 w-8"
+                    />
+                    <span className="flex-1 text-sm">{field.userName}</span>
+                    <Controller
+                      name={`autoInviteUsernames.${index}.joinAllowedOnly`}
+                      control={control}
+                      render={({ field: checkboxField }) => (
+                        <div className="flex items-center gap-1.5">
+                          <Checkbox
+                            id={`joinAllowedOnly-${index}`}
+                            checked={checkboxField.value}
+                            onCheckedChange={checkboxField.onChange}
+                          />
+                          <Label
+                            htmlFor={`joinAllowedOnly-${index}`}
+                            className="text-sm"
+                          >
+                            参加許可のみ
+                          </Label>
+                        </div>
+                      )}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeAutoInvite(index)}
+                      title="削除"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <Controller
+            name="autoInviteMessage"
+            control={control}
+            render={({ field }) => (
+              <TextareaField
+                label="招待メッセージ"
+                error={errors.autoInviteMessage?.message}
+                {...field}
+              />
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <UserSearchField
+              hostId={hostId}
+              onUserSelect={handleDefaultUserRoleSelect}
+              placeholder="ユーザーを検索して追加"
+              label="デフォルトユーザーロール"
+            />
+            {defaultUserRoleFields.length > 0 && (
+              <div className="space-y-2 rounded-md border p-2">
+                {defaultUserRoleFields.map((field, index) => (
+                  <div
+                    key={field.id}
+                    className="flex items-center gap-2 p-2 rounded-md border bg-muted/50"
+                  >
+                    <ResoniteUserIcon
+                      iconUrl={field.iconUrl}
+                      alt={`${field.userName}のアイコン`}
+                      className="h-8 w-8"
+                    />
+                    <span className="flex-1 text-sm">{field.userName}</span>
+                    <Controller
+                      name={`defaultUserRoles.${index}.role`}
+                      control={control}
+                      render={({ field: roleField }) => (
+                        <SelectField
+                          options={UserRoles.map((r) => r)}
+                          selectedId={roleField.value}
+                          onChange={(option) => roleField.onChange(option.id)}
+                          minWidth="7rem"
+                        />
+                      )}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeDefaultUserRole(index)}
+                      title="削除"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         <Controller
-          name="allowUserCloudVariable"
+          name="roleCloudVariable"
           control={control}
           render={({ field }) => (
             <TextField
-              label="allowUserCloudVariable"
-              error={errors.allowUserCloudVariable?.message}
+              label="roleCloudVariable"
+              error={errors.roleCloudVariable?.message}
               {...field}
             />
           )}
         />
 
-        <Controller
-          name="denyUserCloudVariable"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              label="denyUserCloudVariable"
-              error={errors.denyUserCloudVariable?.message}
-              {...field}
-            />
-          )}
-        />
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Controller
+            name="allowUserCloudVariable"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                label="allowUserCloudVariable"
+                error={errors.allowUserCloudVariable?.message}
+                {...field}
+              />
+            )}
+          />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Controller
-          name="requiredUserJoinCloudVariable"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              label="requiredUserJoinCloudVariable"
-              error={errors.requiredUserJoinCloudVariable?.message}
-              {...field}
-            />
-          )}
-        />
+          <Controller
+            name="denyUserCloudVariable"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                label="denyUserCloudVariable"
+                error={errors.denyUserCloudVariable?.message}
+                {...field}
+              />
+            )}
+          />
+        </div>
 
-        <Controller
-          name="requiredUserJoinCloudVariableDenyMessage"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              label="requiredUserJoinCloudVariableDenyMessage"
-              error={errors.requiredUserJoinCloudVariableDenyMessage?.message}
-              {...field}
-            />
-          )}
-        />
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Controller
+            name="requiredUserJoinCloudVariable"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                label="requiredUserJoinCloudVariable"
+                error={errors.requiredUserJoinCloudVariable?.message}
+                {...field}
+              />
+            )}
+          />
 
-      <div className="sticky bottom-0 border-t p-4 mt-8 bg-background">
-        <Button type="submit" disabled={Object.keys(errors).length > 0}>
-          セッション開始
-        </Button>
-      </div>
-    </form>
+          <Controller
+            name="requiredUserJoinCloudVariableDenyMessage"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                label="requiredUserJoinCloudVariableDenyMessage"
+                error={errors.requiredUserJoinCloudVariableDenyMessage?.message}
+                {...field}
+              />
+            )}
+          />
+        </div>
+
+        <div className="sticky bottom-0 border-t p-4 mt-8 bg-background">
+          <Button type="submit" disabled={Object.keys(errors).length > 0}>
+            セッション開始
+          </Button>
+        </div>
+      </form>
+    </>
   );
 }
