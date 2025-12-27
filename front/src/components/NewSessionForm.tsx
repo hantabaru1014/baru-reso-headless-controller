@@ -5,7 +5,11 @@ import {
   startWorld,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { Button, Checkbox, Label } from "./ui";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
+import {
+  searchParamsToFormValues,
+  DEFAULT_SESSION_FORM_VALUES,
+} from "../libs/sessionFormUtils";
 import { AccessLevels, UserRoles } from "../constants";
 import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { z } from "zod";
@@ -127,8 +131,15 @@ const processRecordId = (
   };
 };
 
+const removeUndefined = <T extends object>(obj: T): Partial<T> =>
+  Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined),
+  ) as Partial<T>;
+
 export default function NewSessionForm() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const prefillValues = searchParamsToFormValues(searchParams);
   const { mutateAsync: mutateStart } = useMutation(startWorld);
   const { mutateAsync: mutateFetchInfo, isPending: isPendingFetchInfo } =
     useMutation(fetchWorldInfo);
@@ -144,29 +155,8 @@ export default function NewSessionForm() {
     resolver: zodResolver(sessionFormSchema),
     mode: "onBlur",
     defaultValues: {
-      // 独自フィールド
-      worldSource: "url",
-
-      // WorldStartupParametersのフィールド
-      worldTemplate: "grid",
-      maxUsers: 15,
-      accessLevel: 1,
-      hideFromPublicListing: false,
-      tags: "",
-      autoInviteUsernames: [],
-      defaultUserRoles: [],
-      awayKickMinutes: -1,
-      idleRestartIntervalSeconds: -1,
-      saveOnExit: false,
-      autoSaveIntervalSeconds: -1,
-      autoSleep: false,
-      inviteRequestHandlerUsernames: "",
-      parentSessionIds: "",
-      autoRecover: false,
-      forcedRestartIntervalSeconds: -1,
-      useCustomJoinVerifier: false,
-      mobileFriendly: false,
-      keepOriginalRoles: false,
+      ...DEFAULT_SESSION_FORM_VALUES,
+      ...removeUndefined(prefillValues),
     },
   });
 
