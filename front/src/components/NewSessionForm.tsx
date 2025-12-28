@@ -34,11 +34,12 @@ import {
   UserSearchField,
   UserInfo,
 } from "./base";
-import { Trash2 } from "lucide-react";
+import { Trash2, Search, Download } from "lucide-react";
 import { ResoniteUserIcon } from "./ResoniteUserIcon";
 import { useAtomValue } from "jotai";
 import { sessionAtom } from "../atoms/sessionAtom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { WorldSearchDialog } from "./WorldSearchDialog";
 
 const sessionFormSchema = z
   .object({
@@ -156,6 +157,7 @@ export default function NewSessionForm() {
   const { mutateAsync: mutateFetchInfo, isPending: isPendingFetchInfo } =
     useMutation(fetchWorldInfo);
   const { data: hostList } = useQuery(listHeadlessHost);
+  const [worldSearchDialogOpen, setWorldSearchDialogOpen] = useState(false);
 
   const {
     control,
@@ -261,13 +263,14 @@ export default function NewSessionForm() {
     }
   };
 
-  const handleFetchInfo = async () => {
-    if (!hostId || !worldUrl) return;
+  const handleFetchInfo = async (url?: string) => {
+    const targetUrl = url ?? worldUrl;
+    if (!hostId || !targetUrl) return;
 
     try {
       const data = await mutateFetchInfo({
         hostId,
-        url: worldUrl,
+        url: targetUrl,
       });
       setValue("name", data.name);
       setValue("description", data.description || "");
@@ -275,6 +278,12 @@ export default function NewSessionForm() {
       toast.error(
         e instanceof Error ? e.message : "ワールド情報の取得に失敗しました",
       );
+    }
+  };
+
+  const handleWorldUrlBlur = () => {
+    if (hostId && worldUrl) {
+      handleFetchInfo();
     }
   };
 
@@ -412,31 +421,57 @@ export default function NewSessionForm() {
           )}
         />
         {worldSource === "url" ? (
-          <div className="grid grid-cols-12 gap-2">
-            <div className="col-span-10">
-              <Controller
-                name="worldUrl"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    label="レコードURL"
-                    error={errors.worldUrl?.message}
-                    {...field}
-                  />
-                )}
-              />
-            </div>
-            <div className="col-span-2 flex items-end">
+          <>
+            <div className="flex gap-2 items-center">
+              <div className="flex-grow">
+                <Controller
+                  name="worldUrl"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      label="レコードURL"
+                      error={errors.worldUrl?.message}
+                      {...field}
+                      onBlur={() => {
+                        field.onBlur();
+                        handleWorldUrlBlur();
+                      }}
+                    />
+                  )}
+                />
+              </div>
               <Button
+                type="button"
                 variant="outline"
                 size="lg"
-                onClick={handleFetchInfo}
+                className="shrink-0"
+                onClick={() => handleFetchInfo()}
                 disabled={isPendingFetchInfo || !hostId || !worldUrl}
               >
-                情報取得
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">情報取得</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="shrink-0"
+                onClick={() => setWorldSearchDialogOpen(true)}
+              >
+                <Search className="h-4 w-4" />
+                <span className="hidden sm:inline">ワールド検索</span>
               </Button>
             </div>
-          </div>
+            <WorldSearchDialog
+              open={worldSearchDialogOpen}
+              onClose={() => setWorldSearchDialogOpen(false)}
+              onSelect={(selectedWorldUrl) => {
+                setValue("worldUrl", selectedWorldUrl);
+                setWorldSearchDialogOpen(false);
+                handleFetchInfo(selectedWorldUrl);
+              }}
+            />
+          </>
         ) : (
           <Controller
             name="worldTemplate"

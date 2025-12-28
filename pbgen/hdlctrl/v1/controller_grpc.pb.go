@@ -42,6 +42,7 @@ const (
 	ControllerService_UpdateHeadlessAccountIcon_FullMethodName        = "/hdlctrl.v1.ControllerService/UpdateHeadlessAccountIcon"
 	ControllerService_FetchWorldInfo_FullMethodName                   = "/hdlctrl.v1.ControllerService/FetchWorldInfo"
 	ControllerService_SearchUserInfo_FullMethodName                   = "/hdlctrl.v1.ControllerService/SearchUserInfo"
+	ControllerService_SearchWorlds_FullMethodName                     = "/hdlctrl.v1.ControllerService/SearchWorlds"
 	ControllerService_GetResoniteUser_FullMethodName                  = "/hdlctrl.v1.ControllerService/GetResoniteUser"
 	ControllerService_GetFriendRequests_FullMethodName                = "/hdlctrl.v1.ControllerService/GetFriendRequests"
 	ControllerService_AcceptFriendRequests_FullMethodName             = "/hdlctrl.v1.ControllerService/AcceptFriendRequests"
@@ -92,6 +93,7 @@ type ControllerServiceClient interface {
 	// Cloud系
 	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(ctx context.Context, in *SearchUserInfoRequest, opts ...grpc.CallOption) (*v1.SearchUserInfoResponse, error)
+	SearchWorlds(ctx context.Context, in *SearchWorldsRequest, opts ...grpc.CallOption) (*SearchWorldsResponse, error)
 	GetResoniteUser(ctx context.Context, in *GetResoniteUserRequest, opts ...grpc.CallOption) (*GetResoniteUserResponse, error)
 	GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*GetFriendRequestsResponse, error)
 	AcceptFriendRequests(ctx context.Context, in *AcceptFriendRequestsRequest, opts ...grpc.CallOption) (*AcceptFriendRequestsResponse, error)
@@ -343,6 +345,16 @@ func (c *controllerServiceClient) SearchUserInfo(ctx context.Context, in *Search
 	return out, nil
 }
 
+func (c *controllerServiceClient) SearchWorlds(ctx context.Context, in *SearchWorldsRequest, opts ...grpc.CallOption) (*SearchWorldsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchWorldsResponse)
+	err := c.cc.Invoke(ctx, ControllerService_SearchWorlds_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *controllerServiceClient) GetResoniteUser(ctx context.Context, in *GetResoniteUserRequest, opts ...grpc.CallOption) (*GetResoniteUserResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetResoniteUserResponse)
@@ -562,6 +574,7 @@ type ControllerServiceServer interface {
 	// Cloud系
 	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*v1.FetchWorldInfoResponse, error)
 	SearchUserInfo(context.Context, *SearchUserInfoRequest) (*v1.SearchUserInfoResponse, error)
+	SearchWorlds(context.Context, *SearchWorldsRequest) (*SearchWorldsResponse, error)
 	GetResoniteUser(context.Context, *GetResoniteUserRequest) (*GetResoniteUserResponse, error)
 	GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*GetFriendRequestsResponse, error)
 	AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error)
@@ -658,6 +671,9 @@ func (UnimplementedControllerServiceServer) FetchWorldInfo(context.Context, *Fet
 }
 func (UnimplementedControllerServiceServer) SearchUserInfo(context.Context, *SearchUserInfoRequest) (*v1.SearchUserInfoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SearchUserInfo not implemented")
+}
+func (UnimplementedControllerServiceServer) SearchWorlds(context.Context, *SearchWorldsRequest) (*SearchWorldsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchWorlds not implemented")
 }
 func (UnimplementedControllerServiceServer) GetResoniteUser(context.Context, *GetResoniteUserRequest) (*GetResoniteUserResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetResoniteUser not implemented")
@@ -1133,6 +1149,24 @@ func _ControllerService_SearchUserInfo_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_SearchWorlds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchWorldsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).SearchWorlds(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_SearchWorlds_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).SearchWorlds(ctx, req.(*SearchWorldsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ControllerService_GetResoniteUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetResoniteUserRequest)
 	if err := dec(in); err != nil {
@@ -1569,6 +1603,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SearchUserInfo",
 			Handler:    _ControllerService_SearchUserInfo_Handler,
+		},
+		{
+			MethodName: "SearchWorlds",
+			Handler:    _ControllerService_SearchWorlds_Handler,
 		},
 		{
 			MethodName: "GetResoniteUser",
