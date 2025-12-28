@@ -667,6 +667,33 @@ func (c *ControllerService) GetResoniteUser(ctx context.Context, req *connect.Re
 	return res, nil
 }
 
+// SearchWorlds implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) SearchWorlds(ctx context.Context, req *connect.Request[hdlctrlv1.SearchWorldsRequest]) (*connect.Response[hdlctrlv1.SearchWorldsResponse], error) {
+	result, err := c.skyfrostClient.SearchWorlds(ctx, req.Msg.Query, req.Msg.FeaturedOnly, int(req.Msg.PageIndex))
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	records := make([]*hdlctrlv1.SearchWorldsResponse_WorldRecord, 0, len(result.Records))
+	for _, r := range result.Records {
+		records = append(records, &hdlctrlv1.SearchWorldsResponse_WorldRecord{
+			Id:           r.ID,
+			OwnerId:      r.OwnerID,
+			OwnerName:    r.OwnerName,
+			Name:         r.Name,
+			Description:  r.Description,
+			ThumbnailUrl: r.ThumbnailUri,
+			IsFeatured:   r.IsFeatured,
+		})
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.SearchWorldsResponse{
+		Records: records,
+		HasMore: result.HasMore,
+	})
+	return res, nil
+}
+
 // GetHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) GetHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.GetHeadlessHostRequest]) (*connect.Response[hdlctrlv1.GetHeadlessHostResponse], error) {
 	host, err := c.hhuc.HeadlessHostGet(ctx, req.Msg.HostId)

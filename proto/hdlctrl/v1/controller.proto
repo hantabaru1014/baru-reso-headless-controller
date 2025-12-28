@@ -33,6 +33,7 @@ service ControllerService {
   // Cloud系
   rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
   rpc SearchUserInfo(SearchUserInfoRequest) returns (headless.v1.SearchUserInfoResponse);
+  rpc SearchWorlds(SearchWorldsRequest) returns (SearchWorldsResponse);
   rpc GetResoniteUser(GetResoniteUserRequest) returns (GetResoniteUserResponse);
   rpc GetFriendRequests(GetFriendRequestsRequest) returns (GetFriendRequestsResponse);
   rpc AcceptFriendRequests(AcceptFriendRequestsRequest) returns (AcceptFriendRequestsResponse);
@@ -283,6 +284,26 @@ message BanUserResponse {}
 message FetchWorldInfoRequest {
   string host_id = 1;
   string url = 2;
+}
+
+message SearchWorldsRequest {
+  string query = 1;
+  bool featured_only = 2;
+  int32 page_index = 3;
+}
+
+message SearchWorldsResponse {
+  message WorldRecord {
+    string id = 1;
+    string owner_id = 2;
+    string owner_name = 3;
+    string name = 4;
+    string description = 5;
+    string thumbnail_url = 6;
+    bool is_featured = 7;
+  }
+  repeated WorldRecord records = 1;
+  bool has_more = 2;
 }
 
 message ListHeadlessHostRequest {}

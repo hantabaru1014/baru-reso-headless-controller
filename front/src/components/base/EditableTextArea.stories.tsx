@@ -61,3 +61,10 @@ export const WithError: Story = {
     await userEvent.click(canvas.getByTestId("editable-field-save-button"));
   },
 };
+
+export const RichText: Story = {
+  args: {
+    value: "<b>太字</b><i>斜体</i><br> <size=70%><u>下線</u> <s>取り消し線</s>",
+    richTextMode: "full",
+  },
+};

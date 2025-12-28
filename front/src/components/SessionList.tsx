@@ -13,6 +13,7 @@ import { ReactNode, useMemo, useState } from "react";
 import { Session, SessionStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "./base";
+import { RichText } from "./base/RichText";
 
 export default function SessionList() {
   const [filterState, setFilterState] = useState<{
@@ -48,6 +49,9 @@ export default function SessionList() {
       {
         accessorKey: "name",
         header: "セッション名",
+        cell: ({ cell }) => (
+          <RichText text={cell.getValue<string>()} ignoreLayoutTags />
+        ),
       },
       {
         accessorKey: "hostId",

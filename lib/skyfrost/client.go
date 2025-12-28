@@ -20,6 +20,8 @@ type Client interface {
 	UploadTextureRecord(ctx context.Context, credential, password, name, path string, imageData []byte) (recordId string, assetUri string, err error)
 	// UpdateUserProfile updates the user's profile
 	UpdateUserProfile(ctx context.Context, credential, password string, profile *UserProfile) error
+	// SearchWorlds searches for published worlds on Resonite
+	SearchWorlds(ctx context.Context, query string, featuredOnly bool, pageIndex int) (*SearchWorldsResult, error)
 }
 
 // DefaultClient is the default implementation of Client using real API calls
@@ -104,4 +106,9 @@ func (c *DefaultClient) UpdateUserProfile(ctx context.Context, credential, passw
 		return err
 	}
 	return userSession.UpdateUserProfile(ctx, profile)
+}
+
+// SearchWorlds implements Client.SearchWorlds
+func (c *DefaultClient) SearchWorlds(ctx context.Context, query string, featuredOnly bool, pageIndex int) (*SearchWorldsResult, error) {
+	return SearchWorlds(ctx, query, featuredOnly, pageIndex)
 }
