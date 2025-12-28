@@ -155,10 +155,13 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
     sessionId,
   });
   const { mutateAsync: mutateUpdateRole } = useMutation(updateUserRole);
-  const { mutateAsync: mutateKickUser } = useMutation(kickUser);
-  const { mutateAsync: mutateBanUser } = useMutation(banUser);
+  const { mutateAsync: mutateKickUser, isPending: isPendingKick } =
+    useMutation(kickUser);
+  const { mutateAsync: mutateBanUser, isPending: isPendingBan } =
+    useMutation(banUser);
   const [isOpenInviteDialog, setIsOpenInviteDialog] = useState(false);
   const [chatUserId, setChatUserId] = useState<string | null>(null);
+  const [actionUserId, setActionUserId] = useState<string | null>(null);
 
   const { data: hostData } = useQuery(getHeadlessHost, {
     hostId: hostId ?? "",
@@ -187,6 +190,7 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
   };
 
   const handleKickUser = async (userId: string) => {
+    setActionUserId(userId);
     try {
       await mutateKickUser({
         hostId,
@@ -204,10 +208,13 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : `${e}` };
+    } finally {
+      setActionUserId(null);
     }
   };
 
   const handleBanUser = async (userId: string) => {
+    setActionUserId(userId);
     try {
       await mutateBanUser({
         hostId,
@@ -225,6 +232,8 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : `${e}` };
+    } finally {
+      setActionUserId(null);
     }
   };
 
@@ -269,6 +278,10 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
                 variant="outline"
                 size="sm"
                 onClick={() => handleKickUser(row.original.id)}
+                disabled={
+                  (isPendingKick || isPendingBan) &&
+                  actionUserId === row.original.id
+                }
               >
                 Kick
               </Button>
@@ -276,6 +289,10 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
                 variant="destructive"
                 size="sm"
                 onClick={() => handleBanUser(row.original.id)}
+                disabled={
+                  (isPendingKick || isPendingBan) &&
+                  actionUserId === row.original.id
+                }
               >
                 Ban
               </Button>

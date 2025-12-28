@@ -15,6 +15,7 @@ export interface EditableFieldBaseProps {
   readonly?: boolean;
   disabled?: boolean;
   isLoading?: boolean;
+  isSaving?: boolean;
   helperText?: React.ReactNode;
   error?: string;
   children: React.ReactNode;
@@ -31,6 +32,7 @@ export function EditableFieldBase({
   readonly,
   disabled,
   isLoading,
+  isSaving,
   helperText,
   error,
   children,
@@ -62,6 +64,7 @@ export function EditableFieldBase({
                       onClick={onSave}
                       title="保存"
                       data-testid="editable-field-save-button"
+                      disabled={isSaving}
                     >
                       <Check className="h-4 w-4" />
                     </Button>
@@ -70,6 +73,7 @@ export function EditableFieldBase({
                       variant="ghost"
                       onClick={onCancel}
                       title="キャンセル"
+                      disabled={isSaving}
                     >
                       <X className="h-4 w-4" />
                     </Button>

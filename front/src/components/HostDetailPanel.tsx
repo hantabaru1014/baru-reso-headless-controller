@@ -52,8 +52,10 @@ function AllowedUrlHostsDialog({
   hosts: AllowedAccessEntryType[];
   onClose?: () => void;
 }) {
-  const { mutateAsync: allow } = useMutation(allowHostAccess);
-  const { mutateAsync: deny } = useMutation(denyHostAccess);
+  const { mutateAsync: allow, isPending: isPendingAllow } =
+    useMutation(allowHostAccess);
+  const { mutateAsync: deny, isPending: isPendingDeny } =
+    useMutation(denyHostAccess);
 
   const [hosts, setHosts] = useState<AllowedAccessEntryType[]>(initHosts);
   const [newUrl, setNewUrl] = useState("");
@@ -61,6 +63,7 @@ function AllowedUrlHostsDialog({
   const [newAccessType, setNewAccessType] = useState(
     AllowedAccessEntry_AccessType.HTTP,
   );
+  const [actionHost, setActionHost] = useState<string | null>(null);
 
   return (
     <Dialog onOpenChange={(open) => !open && onClose?.()}>
@@ -155,7 +158,7 @@ function AllowedUrlHostsDialog({
                     );
                   }
                 }}
-                disabled={!newUrl}
+                disabled={!newUrl || isPendingAllow}
               >
                 Add
               </Button>
@@ -174,6 +177,8 @@ function AllowedUrlHostsDialog({
                   <Button
                     variant="destructive"
                     onClick={async () => {
+                      const hostKey = `${host.host}:${host.port}:${host.accessType}`;
+                      setActionHost(hostKey);
                       try {
                         await deny({ hostId, request: host });
                         setHosts((prev) =>
@@ -190,8 +195,15 @@ function AllowedUrlHostsDialog({
                             ? e.message
                             : "ホストの削除に失敗しました",
                         );
+                      } finally {
+                        setActionHost(null);
                       }
                     }}
+                    disabled={
+                      isPendingDeny &&
+                      actionHost ===
+                        `${host.host}:${host.port}:${host.accessType}`
+                    }
                   >
                     Remove
                   </Button>
@@ -221,10 +233,13 @@ function AutoSpawnItemsDialog({
   items: string[];
   onClose?: () => void;
 }) {
-  const { mutateAsync: updateHost } = useMutation(updateHeadlessHostSettings);
+  const { mutateAsync: updateHost, isPending: isPendingUpdate } = useMutation(
+    updateHeadlessHostSettings,
+  );
 
   const [items, setItems] = useState<string[]>(initItems);
   const [newItemUri, setNewItemUri] = useState("");
+  const [actionItem, setActionItem] = useState<string | null>(null);
 
   return (
     <Dialog onOpenChange={(open) => !open && onClose?.()}>
@@ -262,7 +277,7 @@ function AutoSpawnItemsDialog({
                     );
                   }
                 }}
-                disabled={!newItemUri}
+                disabled={!newItemUri || isPendingUpdate}
               >
                 Add
               </Button>
@@ -279,6 +294,7 @@ function AutoSpawnItemsDialog({
                   <Button
                     variant="destructive"
                     onClick={async () => {
+                      setActionItem(item);
                       try {
                         await updateHost({
                           hostId,
@@ -292,8 +308,11 @@ function AutoSpawnItemsDialog({
                             ? e.message
                             : "アイテムの削除に失敗しました",
                         );
+                      } finally {
+                        setActionItem(null);
                       }
                     }}
+                    disabled={isPendingUpdate && actionItem === item}
                   >
                     Remove
                   </Button>

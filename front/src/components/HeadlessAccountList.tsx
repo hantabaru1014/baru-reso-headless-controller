@@ -52,8 +52,9 @@ function FriendRequestsDialog({
   const { data, isPending, refetch } = useQuery(getFriendRequests, {
     headlessAccountId: accountId,
   });
-  const { mutateAsync: mutateAcceptFriendRequest } =
+  const { mutateAsync: mutateAcceptFriendRequest, isPending: isPendingAccept } =
     useMutation(acceptFriendRequests);
+  const [acceptingUserId, setAcceptingUserId] = useState<string | null>(null);
 
   const columns: ColumnDef<UserInfo>[] = [
     {
@@ -76,23 +77,26 @@ function FriendRequestsDialog({
       cell: ({ row }) => (
         <Button
           onClick={async () => {
+            setAcceptingUserId(row.original.id);
             try {
               await mutateAcceptFriendRequest({
                 headlessAccountId: accountId,
                 targetUserId: row.original.id,
               });
               refetch();
+              toast.success("フレンドリクエストを承認しました");
             } catch (e) {
               toast.error(
                 e instanceof Error
                   ? e.message
                   : "フレンドリクエストの承認に失敗しました",
               );
-              return;
+            } finally {
+              setAcceptingUserId(null);
             }
-            toast.success("フレンドリクエストを承認しました");
           }}
           className="w-full"
+          disabled={isPendingAccept && acceptingUserId === row.original.id}
         >
           承認
         </Button>
@@ -303,16 +307,15 @@ function StorageInfoTip({ accountId }: { accountId: string }) {
 
 export default function HeadlessAccountList() {
   const { data, isPending, refetch } = useQuery(listHeadlessAccounts);
-  const { mutateAsync: mutateDeleteAccount } = useMutation(
-    deleteHeadlessAccount,
-  );
-  const { mutateAsync: mutateRefetchAccountInfo } = useMutation(
-    refetchHeadlessAccountInfo,
-  );
+  const { mutateAsync: mutateDeleteAccount, isPending: isPendingDelete } =
+    useMutation(deleteHeadlessAccount);
+  const { mutateAsync: mutateRefetchAccountInfo, isPending: isPendingRefetch } =
+    useMutation(refetchHeadlessAccountInfo);
   const { mutateAsync: mutateUpdateIcon, isPending: isUpdatingIcon } =
     useMutation(updateHeadlessAccountIcon);
   const [updateDialogAccountId, setUpdateDialogAccountId] = useState<string>();
   const [isOpenNewAccountDialog, setIsOpenNewAccountDialog] = useState(false);
+  const [actionAccountId, setActionAccountId] = useState<string | null>(null);
   const [iconChangeAccount, setIconChangeAccount] = useState<{
     userId: string;
     iconUrl: string;
@@ -341,6 +344,7 @@ export default function HeadlessAccountList() {
 
   const handleRefetchInfo = useCallback(
     async (accountId: string) => {
+      setActionAccountId(accountId);
       try {
         await mutateRefetchAccountInfo({ accountId });
         toast.success("アカウント情報を再取得しました");
@@ -351,6 +355,8 @@ export default function HeadlessAccountList() {
             ? e.message
             : "アカウント情報の再取得に失敗しました",
         );
+      } finally {
+        setActionAccountId(null);
       }
     },
     [mutateRefetchAccountInfo, refetch],
@@ -358,6 +364,7 @@ export default function HeadlessAccountList() {
 
   const handleDeleteAccount = useCallback(
     async (accountId: string) => {
+      setActionAccountId(accountId);
       try {
         await mutateDeleteAccount({ accountId });
         toast.success("アカウントを削除しました");
@@ -366,6 +373,8 @@ export default function HeadlessAccountList() {
         toast.error(
           e instanceof Error ? e.message : "アカウントの削除に失敗しました",
         );
+      } finally {
+        setActionAccountId(null);
       }
     },
     [mutateDeleteAccount, refetch],
@@ -438,11 +447,17 @@ export default function HeadlessAccountList() {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleRefetchInfo(row.original.userId)}
+                disabled={
+                  isPendingRefetch && actionAccountId === row.original.userId
+                }
               >
                 名前とアイコンの再取得
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleDeleteAccount(row.original.userId)}
+                disabled={
+                  isPendingDelete && actionAccountId === row.original.userId
+                }
               >
                 削除
               </DropdownMenuItem>
@@ -456,6 +471,9 @@ export default function HeadlessAccountList() {
       handleRefetchInfo,
       handleDeleteAccount,
       handleChangeIcon,
+      isPendingRefetch,
+      isPendingDelete,
+      actionAccountId,
     ],
   );
 

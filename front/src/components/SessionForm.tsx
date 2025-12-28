@@ -35,7 +35,8 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
   const { mutateAsync: mutateSaveExtra } = useMutation(
     updateSessionExtraSettings,
   );
-  const { mutateAsync: mutateDelete } = useMutation(deleteEndedSession);
+  const { mutateAsync: mutateDelete, isPending: isPendingDelete } =
+    useMutation(deleteEndedSession);
   const navigate = useNavigate();
 
   const hostId = data?.session?.hostId;
@@ -185,7 +186,11 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                   </Button>
                 )}
               <Button onClick={handleOpenWithSameSettings}>同設定で開始</Button>
-              <Button variant="destructive" onClick={handleDeleteSession}>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteSession}
+                disabled={isPendingDelete}
+              >
                 削除
               </Button>
             </div>

@@ -153,7 +153,8 @@ export default function NewSessionForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const prefillValues = searchParamsToFormValues(searchParams);
-  const { mutateAsync: mutateStart } = useMutation(startWorld);
+  const { mutateAsync: mutateStart, isPending: isPendingStart } =
+    useMutation(startWorld);
   const { mutateAsync: mutateFetchInfo, isPending: isPendingFetchInfo } =
     useMutation(fetchWorldInfo);
   const { data: hostList } = useQuery(listHeadlessHost);
@@ -961,7 +962,10 @@ export default function NewSessionForm() {
         </div>
 
         <div className="sticky bottom-0 border-t p-4 mt-8 bg-background">
-          <Button type="submit" disabled={Object.keys(errors).length > 0}>
+          <Button
+            type="submit"
+            disabled={Object.keys(errors).length > 0 || isPendingStart}
+          >
             セッション開始
           </Button>
         </div>
