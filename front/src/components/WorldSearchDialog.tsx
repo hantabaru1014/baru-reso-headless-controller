@@ -15,7 +15,7 @@ import { Search, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { ScrollBase } from "./base";
 import { useDebounce } from "../hooks/useDebounce";
 import { resolveUrl } from "@/libs/skyfrostUtils";
-import { RichText } from "./RichText";
+import { RichText } from "./base/RichText";
 
 interface WorldSearchDialogProps {
   open: boolean;
