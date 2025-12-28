@@ -1,7 +1,9 @@
 import { cn } from "@/libs/cssUtils";
+import { hasRichTextTags } from "@/libs/richTextUtils";
 import { Input } from "../ui";
 import { EditableFieldBase, EditableFieldBaseProps } from "./EditableFieldBase";
 import { ComponentProps, useId, useState } from "react";
+import { RichText } from "./RichText";
 
 export function EditableTextField(
   props: Omit<ComponentProps<typeof Input>, "onChange" | "readOnly"> &
@@ -10,6 +12,7 @@ export function EditableTextField(
       "label" | "readonly" | "isLoading" | "helperText"
     > & {
       onSave: (value: string) => Promise<{ ok: boolean; error?: string }>;
+      richTextMode?: "raw" | "ignoreLayoutTags" | "full";
     },
 ) {
   const [isEditing, setIsEditing] = useState(false);
@@ -53,16 +56,31 @@ export function EditableTextField(
       error={error}
     >
       {isEditing ? (
-        <Input
-          {...props}
-          id={id}
-          value={isEditing ? editingValue : props.value}
-          onChange={(e) => setEditingValue(e.target.value)}
-          readOnly={props.readonly || !isEditing}
-          className={cn(error && "border-destructive")}
-        />
-      ) : (
+        <div className="w-full space-y-2">
+          <Input
+            {...props}
+            id={id}
+            value={isEditing ? editingValue : props.value}
+            onChange={(e) => setEditingValue(e.target.value)}
+            readOnly={props.readonly || !isEditing}
+            className={cn(error && "border-destructive")}
+          />
+          {props.richTextMode !== "raw" && hasRichTextTags(editingValue) && (
+            <div className="rounded border bg-muted/50 px-2 py-1 text-sm">
+              <RichText
+                text={editingValue}
+                ignoreLayoutTags={props.richTextMode === "ignoreLayoutTags"}
+              />
+            </div>
+          )}
+        </div>
+      ) : props.richTextMode === "raw" ? (
         <span>{props.value}</span>
+      ) : (
+        <RichText
+          text={props.value as string}
+          ignoreLayoutTags={props.richTextMode === "ignoreLayoutTags"}
+        />
       )}
     </EditableFieldBase>
   );

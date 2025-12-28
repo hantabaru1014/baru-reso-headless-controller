@@ -491,6 +491,15 @@ const ALL_TAGS_PATTERN =
   /<\/?(?:b|i|u|s|br|nobr|sub|sup|lowercase|uppercase|smallcaps|allcaps|color|alpha|size|mark|align|line-height|gradient|font|sprite|glyph|noparse|closeallblock|closeall)(?:[^>]*)>/gi;
 
 /**
+ * テキストにRichTextタグが含まれているかどうかを判定する
+ */
+export function hasRichTextTags(text: string): boolean {
+  if (!text) return false;
+  ALL_TAGS_PATTERN.lastIndex = 0; // グローバルフラグによるlastIndexをリセット
+  return ALL_TAGS_PATTERN.test(text);
+}
+
+/**
  * Resoniteのテキストからタグを除去してプレーンテキストを取得する
  */
 export function stripRichTextTags(text: string): string {

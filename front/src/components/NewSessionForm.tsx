@@ -498,6 +498,7 @@ export default function NewSessionForm() {
             <TextField
               label="セッション名"
               error={errors.name?.message}
+              richTextMode="full"
               {...field}
             />
           )}
@@ -509,6 +510,7 @@ export default function NewSessionForm() {
             <TextareaField
               label="説明"
               error={errors.description?.message}
+              richTextMode="full"
               {...field}
             />
           )}
