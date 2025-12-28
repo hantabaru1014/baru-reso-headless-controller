@@ -17,16 +17,22 @@ export function EditableTextField(
 ) {
   const [isEditing, setIsEditing] = useState(false);
   const [editingValue, setEditingValue] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
   const id = useId();
 
   const handleSave = async () => {
     setError(undefined);
-    const { ok, error: returnedErr } = await props.onSave(editingValue);
-    if (ok) {
-      setIsEditing(false);
-    } else {
-      setError(returnedErr);
+    setIsSaving(true);
+    try {
+      const { ok, error: returnedErr } = await props.onSave(editingValue);
+      if (ok) {
+        setIsEditing(false);
+      } else {
+        setError(returnedErr);
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -51,6 +57,7 @@ export function EditableTextField(
       onCancel={handleCancel}
       readonly={props.readonly}
       isLoading={props.isLoading}
+      isSaving={isSaving}
       helperText={props.helperText}
       disabled={props.disabled}
       error={error}
