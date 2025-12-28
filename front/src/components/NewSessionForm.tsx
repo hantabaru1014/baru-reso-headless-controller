@@ -875,7 +875,7 @@ export default function NewSessionForm() {
                       render={({ field: roleField }) => (
                         <SelectField
                           options={UserRoles.map((r) => r)}
-                          selectedId={roleField.value}
+                          selectedId={roleField.value ?? ""}
                           onChange={(option) => roleField.onChange(option.id)}
                           minWidth="7rem"
                         />
