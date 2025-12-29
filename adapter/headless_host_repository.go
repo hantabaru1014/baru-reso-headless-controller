@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 	"time"
@@ -489,37 +490,44 @@ func (h *HeadlessHostRepository) fetchHostInfo(ctx context.Context, host *entity
 }
 
 func (h *HeadlessHostRepository) dbToEntity(ctx context.Context, dbHost *db.Host, fetchOptions port.HeadlessHostFetchOptions) (*entity.HeadlessHost, error) {
-	connector, err := h.getConnector(dbHost.ConnectorType)
-	if err != nil {
-		return nil, errors.Wrap(err, 0)
-	}
-	status := connector.GetStatus(ctx, hostconnector.HostConnectString(dbHost.ConnectString))
+	// Use DB status directly (EventWatcher keeps it up to date)
+	status := entity.HeadlessHostStatus(dbHost.Status)
+
 	host := &entity.HeadlessHost{
 		ID:               dbHost.ID,
 		Name:             dbHost.Name,
 		AccountId:        dbHost.AccountID,
-		Status:           entity.HeadlessHostStatus(dbHost.Status),
+		Status:           status,
 		AutoUpdatePolicy: entity.HostAutoUpdatePolicy(dbHost.AutoUpdatePolicy),
 		InstanceId:       dbHost.InstanceCount,
 	}
 	if dbHost.Memo.Valid {
 		host.Memo = dbHost.Memo.String
 	}
+
+	// Only fetch live data if running
 	if status == entity.HeadlessHostStatus_RUNNING {
-		conn, err := connector.GetRpcClient(ctx, hostconnector.HostConnectString(dbHost.ConnectString))
+		connector, err := h.getConnector(dbHost.ConnectorType)
 		if err != nil {
 			return nil, errors.Wrap(err, 0)
 		}
-		err = h.fetchHostInfo(ctx, host, conn)
-		if err == nil {
-			startupConfig, err := conn.GetStartupConfigToRestore(ctx, &headlessv1.GetStartupConfigToRestoreRequest{
-				IncludeStartWorlds: fetchOptions.IncludeStartWorlds,
-			})
+		conn, err := connector.GetRpcClient(ctx, hostconnector.HostConnectString(dbHost.ConnectString))
+		if err != nil {
+			// RPC connection failed - EventWatcher will update status if container actually crashed
+			slog.Warn("Failed to connect to running host RPC", "hostID", dbHost.ID, "error", err)
+		} else {
+			err = h.fetchHostInfo(ctx, host, conn)
 			if err == nil {
-				host.HostSettings = *converter.HeadlessHostSettingsProtoToEntity(startupConfig.StartupConfig)
+				startupConfig, err := conn.GetStartupConfigToRestore(ctx, &headlessv1.GetStartupConfigToRestoreRequest{
+					IncludeStartWorlds: fetchOptions.IncludeStartWorlds,
+				})
+				if err == nil {
+					host.HostSettings = *converter.HeadlessHostSettingsProtoToEntity(startupConfig.StartupConfig)
+				}
 			}
 		}
 	} else {
+		// Load settings from DB for non-running hosts
 		if dbHost.LastStartupConfig != nil {
 			parsed := &headlessv1.StartupConfig{}
 			if err := protojson.Unmarshal(dbHost.LastStartupConfig, parsed); err != nil {
@@ -530,15 +538,6 @@ func (h *HeadlessHostRepository) dbToEntity(ctx context.Context, dbHost *db.Host
 		account, err := h.q.GetHeadlessAccount(ctx, dbHost.AccountID)
 		if err == nil {
 			host.AccountName = account.LastDisplayName.String
-		}
-	}
-	if status != entity.HeadlessHostStatus_UNKNOWN {
-		host.Status = status
-		if dbHost.Status != int32(status) {
-			_ = h.q.UpdateHostStatus(ctx, db.UpdateHostStatusParams{
-				ID:     dbHost.ID,
-				Status: int32(status),
-			})
 		}
 	}
 

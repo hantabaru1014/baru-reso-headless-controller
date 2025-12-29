@@ -20,6 +20,7 @@ type Server struct {
 	userService       *rpc.UserService
 	controllerService *rpc.ControllerService
 	imageChecker      *worker.ImageChecker
+	eventWatcher      *worker.EventWatcher
 	httpServer        *http.Server
 }
 
@@ -27,11 +28,13 @@ func NewServer(
 	userService *rpc.UserService,
 	controllerService *rpc.ControllerService,
 	imageChecker *worker.ImageChecker,
+	eventWatcher *worker.EventWatcher,
 ) *Server {
 	return &Server{
 		userService:       userService,
 		controllerService: controllerService,
 		imageChecker:      imageChecker,
+		eventWatcher:      eventWatcher,
 	}
 }
 
@@ -53,6 +56,7 @@ func spaFileHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 	s.imageChecker.Start()
+	s.eventWatcher.Start()
 
 	router := mux.NewRouter()
 
@@ -87,6 +91,7 @@ func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 // Shutdown は現在進行中のリクエストを完了させてからサーバーを停止する
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.imageChecker.Stop()
+	s.eventWatcher.Stop()
 
 	if s.httpServer != nil {
 		return s.httpServer.Shutdown(ctx)

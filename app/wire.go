@@ -36,6 +36,7 @@ func InitializeServer() *Server {
 
 		// worker
 		worker.NewImageChecker,
+		worker.NewEventWatcher,
 
 		// usecase
 		usecase.NewHeadlessHostUsecase,

@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
@@ -440,4 +441,103 @@ func (d *DockerHostConnector) getContainer(ctx context.Context, container_id str
 		return nil, errors.Errorf("found several containers")
 	}
 	return &containers[0], nil
+}
+
+// ContainerEventType represents Docker container events we care about
+type ContainerEventType string
+
+const (
+	ContainerEventStart   ContainerEventType = "start"
+	ContainerEventStop    ContainerEventType = "stop"
+	ContainerEventDie     ContainerEventType = "die"
+	ContainerEventKill    ContainerEventType = "kill"
+	ContainerEventOOM     ContainerEventType = "oom"
+	ContainerEventRestart ContainerEventType = "restart"
+	ContainerEventDestroy ContainerEventType = "destroy"
+)
+
+// ContainerEvent wraps relevant event information
+type ContainerEvent struct {
+	ContainerID string
+	Action      ContainerEventType
+	ExitCode    string // from event attributes, empty if not applicable
+}
+
+// SubscribeEvents starts listening to Docker container events.
+// Returns two channels: events and errors.
+// The caller should handle reconnection by calling SubscribeEvents again on error.
+func (d *DockerHostConnector) SubscribeEvents(ctx context.Context) (<-chan ContainerEvent, <-chan error, error) {
+	cli, err := d.newDockerClient()
+	if err != nil {
+		return nil, nil, errors.Errorf("failed to create docker client: %w", err)
+	}
+
+	eventsChan, errChan := cli.Events(ctx, events.ListOptions{
+		Filters: filters.NewArgs(
+			filters.Arg("type", "container"),
+			filters.Arg("event", "start"),
+			filters.Arg("event", "stop"),
+			filters.Arg("event", "die"),
+			filters.Arg("event", "kill"),
+			filters.Arg("event", "oom"),
+			filters.Arg("event", "restart"),
+			filters.Arg("event", "destroy"),
+		),
+	})
+
+	outChan := make(chan ContainerEvent, 100)
+	outErrChan := make(chan error, 1)
+
+	go func() {
+		defer cli.Close()
+		defer close(outChan)
+		defer close(outErrChan)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event, ok := <-eventsChan:
+				if !ok {
+					return
+				}
+				outChan <- ContainerEvent{
+					ContainerID: event.Actor.ID,
+					Action:      ContainerEventType(event.Action),
+					ExitCode:    event.Actor.Attributes["exitCode"],
+				}
+			case err, ok := <-errChan:
+				if !ok {
+					return
+				}
+				if err != nil {
+					outErrChan <- err
+				}
+				return
+			}
+		}
+	}()
+
+	return outChan, outErrChan, nil
+}
+
+// ListAllContainerStatuses returns current status of all containers matching our image.
+func (d *DockerHostConnector) ListAllContainerStatuses(ctx context.Context) (map[string]entity.HeadlessHostStatus, error) {
+	cli, err := d.newDockerClient()
+	if err != nil {
+		return nil, errors.Errorf("failed to create docker client: %w", err)
+	}
+
+	containers, err := cli.ContainerList(ctx, container.ListOptions{
+		All:     true,
+		Filters: filters.NewArgs(filters.Arg("ancestor", imageName)),
+	})
+	if err != nil {
+		return nil, errors.Errorf("failed to list containers: %w", err)
+	}
+
+	result := make(map[string]entity.HeadlessHostStatus)
+	for _, c := range containers {
+		result[c.ID] = containerStatusToEntityStatus(c.State, c.Status)
+	}
+	return result, nil
 }

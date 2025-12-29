@@ -31,7 +31,8 @@ func InitializeServer() *Server {
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
 	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, defaultClient)
 	imageChecker := worker.NewImageChecker(dockerHostConnector, sessionUsecase)
-	server := NewServer(userService, controllerService, imageChecker)
+	eventWatcher := worker.NewEventWatcher(dockerHostConnector, queries)
+	server := NewServer(userService, controllerService, imageChecker, eventWatcher)
 	return server
 }
 

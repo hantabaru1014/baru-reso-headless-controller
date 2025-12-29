@@ -1073,11 +1073,6 @@ func TestControllerService_UpdateHeadlessHostSettings(t *testing.T) {
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_EXITED)
 
-		// Mock HostConnector to return exited status
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_EXITED)
-
 		newName := "UpdatedHost"
 		newTickRate := float32(120)
 
@@ -1105,11 +1100,6 @@ func TestControllerService_UpdateHeadlessHostSettings(t *testing.T) {
 		// Create test account and running host
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test2", "RunningHost", entity.HeadlessHostStatus_RUNNING)
-
-		// Mock HostConnector - GetStatus returns RUNNING
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_RUNNING)
 
 		// Mock RPC calls - GetRpcClient is called twice: once in dbToEntity, once before UpdateHostSettings
 		setup.mockHostConnector.EXPECT().
@@ -1550,11 +1540,6 @@ func TestControllerService_GetHeadlessHost(t *testing.T) {
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_EXITED)
 
-		// Mock HostConnector to return exited status
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_EXITED)
-
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostRequest{
 			HostId: host.ID,
 		})
@@ -1596,12 +1581,6 @@ func TestControllerService_ListHeadlessHost(t *testing.T) {
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
 		testutil.CreateTestHeadlessHost(t, setup.queries, "U-test1", "Host1", entity.HeadlessHostStatus_EXITED)
 		testutil.CreateTestHeadlessHost(t, setup.queries, "U-test2", "Host2", entity.HeadlessHostStatus_EXITED)
-
-		// Mock HostConnector to return statuses
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_EXITED).
-			Times(2)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessHostRequest{})
 
