@@ -12,10 +12,14 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"google.golang.org/protobuf/proto"
 )
+
+// gRPC call timeout (configurable via environment variable)
+var grpcCallTimeout = lib.GetEnvDuration("GRPC_CALL_TIMEOUT", 10*time.Second)
 
 type SaveMode int32
 
@@ -247,7 +251,9 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 	var hdlSessions []*headlessv1.Session
 	sessionHostIdMap := make(map[string]string)
 	if filter.HostID != nil {
-		ss, err := u.getHostSessions(ctx, *filter.HostID)
+		timeoutCtx, cancel := context.WithTimeout(ctx, grpcCallTimeout)
+		defer cancel()
+		ss, err := u.getHostSessions(timeoutCtx, *filter.HostID)
 		if err == nil {
 			hdlSessions = ss
 		}
@@ -259,15 +265,42 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 		if err != nil {
 			return nil, errors.Wrap(err, 0)
 		}
+
+		// Parallel fetch sessions from all hosts
+		type hostSessionResult struct {
+			hostID   string
+			sessions []*headlessv1.Session
+			err      error
+		}
+
+		resultChan := make(chan hostSessionResult, len(hosts))
+		var wg sync.WaitGroup
+
 		for _, h := range hosts {
-			ss, err := u.getHostSessions(ctx, h.ID)
-			if err != nil {
+			wg.Add(1)
+			go func(hostID string) {
+				defer wg.Done()
+				timeoutCtx, cancel := context.WithTimeout(ctx, grpcCallTimeout)
+				defer cancel()
+				ss, err := u.getHostSessions(timeoutCtx, hostID)
+				resultChan <- hostSessionResult{hostID: hostID, sessions: ss, err: err}
+			}(h.ID)
+		}
+
+		go func() {
+			wg.Wait()
+			close(resultChan)
+		}()
+
+		for result := range resultChan {
+			if result.err != nil {
 				// hostIdの指定がないときはエラーになったやつは無視する
+				slog.Warn("Failed to get sessions from host", "host_id", result.hostID, "error", result.err)
 				continue
 			}
-			hdlSessions = append(hdlSessions, ss...)
-			for _, s := range ss {
-				sessionHostIdMap[s.Id] = h.ID
+			hdlSessions = append(hdlSessions, result.sessions...)
+			for _, s := range result.sessions {
+				sessionHostIdMap[s.Id] = result.hostID
 			}
 		}
 	}

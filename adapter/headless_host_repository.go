@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -17,11 +18,14 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/protobuf/encoding/protojson"
 )
+
+var grpcCallTimeout = lib.GetEnvDuration("GRPC_CALL_TIMEOUT", 10*time.Second)
 
 var _ port.HeadlessHostRepository = (*HeadlessHostRepository)(nil)
 
@@ -152,15 +156,60 @@ func (h *HeadlessHostRepository) ListAll(ctx context.Context, fetchOptions port.
 	if err != nil {
 		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
-	var result entity.HeadlessHostList
-	for _, host := range hosts {
-		// TODO: getContainerが毎回Listしているので呼び出しを最適化したい
-		entityHost, err := h.dbToEntity(ctx, &host, fetchOptions)
-		if err != nil {
-			return nil, errors.Wrap(err, 0)
-		}
-		result = append(result, entityHost)
+
+	// Parallel fetch with timeout context
+	type hostResult struct {
+		index int
+		host  *entity.HeadlessHost
+		err   error
 	}
+
+	resultChan := make(chan hostResult, len(hosts))
+	var wg sync.WaitGroup
+
+	for i, host := range hosts {
+		wg.Add(1)
+		go func(index int, dbHost db.Host) {
+			defer wg.Done()
+			// Use timeout context for each host fetch
+			timeoutCtx, cancel := context.WithTimeout(ctx, grpcCallTimeout)
+			defer cancel()
+
+			entityHost, err := h.dbToEntity(timeoutCtx, &dbHost, fetchOptions)
+			resultChan <- hostResult{index: index, host: entityHost, err: err}
+		}(i, host)
+	}
+
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	// Collect results, keeping order and logging errors
+	result := make(entity.HeadlessHostList, len(hosts))
+	successCount := 0
+	for r := range resultChan {
+		if r.err != nil {
+			slog.Warn("Failed to fetch host info", "host_id", hosts[r.index].ID, "error", r.err)
+			// Create a minimal host entity with basic info from DB
+			result[r.index] = &entity.HeadlessHost{
+				ID:               hosts[r.index].ID,
+				Name:             hosts[r.index].Name,
+				AccountId:        hosts[r.index].AccountID,
+				Status:           entity.HeadlessHostStatus_UNKNOWN,
+				AutoUpdatePolicy: entity.HostAutoUpdatePolicy(hosts[r.index].AutoUpdatePolicy),
+				InstanceId:       hosts[r.index].InstanceCount,
+			}
+			if hosts[r.index].Memo.Valid {
+				result[r.index].Memo = hosts[r.index].Memo.String
+			}
+		} else {
+			result[r.index] = r.host
+			successCount++
+		}
+	}
+
+	slog.Debug("ListAll completed", "total", len(hosts), "success", successCount)
 	return result, nil
 }
 
@@ -465,24 +514,46 @@ func (h *HeadlessHostRepository) getConnector(connector_type string) (hostconnec
 }
 
 func (h *HeadlessHostRepository) fetchHostInfo(ctx context.Context, host *entity.HeadlessHost, client headlessv1.HeadlessControlServiceClient) error {
-	info, err := client.GetAbout(ctx, &headlessv1.GetAboutRequest{})
-	if err != nil {
-		return errors.Wrap(err, 0)
+	var wg sync.WaitGroup
+	var aboutErr, accountErr, statusErr error
+	var info *headlessv1.GetAboutResponse
+	var accountInfo *headlessv1.GetAccountInfoResponse
+	var status *headlessv1.GetStatusResponse
+
+	wg.Add(3)
+
+	go func() {
+		defer wg.Done()
+		info, aboutErr = client.GetAbout(ctx, &headlessv1.GetAboutRequest{})
+	}()
+
+	go func() {
+		defer wg.Done()
+		accountInfo, accountErr = client.GetAccountInfo(ctx, &headlessv1.GetAccountInfoRequest{})
+	}()
+
+	go func() {
+		defer wg.Done()
+		// TODO: ライフタイムが全く別物なのでentityから外す
+		status, statusErr = client.GetStatus(ctx, &headlessv1.GetStatusRequest{})
+	}()
+
+	wg.Wait()
+
+	if aboutErr != nil {
+		return errors.Wrap(aboutErr, 0)
 	}
 	host.ResoniteVersion = info.ResoniteVersion
 	host.AppVersion = info.AppVersion
 
-	accountInfo, err := client.GetAccountInfo(ctx, &headlessv1.GetAccountInfoRequest{})
-	if err != nil {
-		return errors.Wrap(err, 0)
+	if accountErr != nil {
+		return errors.Wrap(accountErr, 0)
 	}
 	host.AccountId = accountInfo.UserId
 	host.AccountName = accountInfo.DisplayName
 
-	// TODO: ライフタイムが全く別物なのでentityから外す
-	status, err := client.GetStatus(ctx, &headlessv1.GetStatusRequest{})
-	if err != nil {
-		return errors.Wrap(err, 0)
+	if statusErr != nil {
+		return errors.Wrap(statusErr, 0)
 	}
 	host.Fps = status.Fps
 
