@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
@@ -33,7 +34,25 @@ var (
 	imageName              = os.Getenv("HEADLESS_IMAGE_NAME")
 	fluentdAddress         = os.Getenv("CONTAINER_LOGS_FLUENTD_ADDRESS")
 	containerNotFoundError = errors.New("container not found")
+
+	// gRPC timeout settings (configurable via environment variables)
+	grpcConnectTimeout = getEnvDuration("GRPC_CONNECT_TIMEOUT", 5*time.Second)
+	grpcCallTimeout    = getEnvDuration("GRPC_CALL_TIMEOUT", 10*time.Second)
 )
+
+func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
+	if v := os.Getenv(key); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			return d
+		}
+	}
+	return defaultValue
+}
+
+// GetGRPCCallTimeout returns the configured gRPC call timeout for use in RPC contexts
+func GetGRPCCallTimeout() time.Duration {
+	return grpcCallTimeout
+}
 
 var _ HostConnector = (*DockerHostConnector)(nil)
 
@@ -70,7 +89,12 @@ func (d *DockerHostConnector) GetRpcClient(ctx context.Context, connect_string H
 		return nil, errors.Errorf("specific container is not running")
 	}
 	address := fmt.Sprintf("localhost:%d", port)
-	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithConnectParams(grpc.ConnectParams{
+			MinConnectTimeout: grpcConnectTimeout,
+		}),
+	)
 	if err != nil {
 		return nil, errors.New(err)
 	}
