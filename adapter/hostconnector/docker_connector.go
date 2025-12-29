@@ -535,10 +535,11 @@ func (d *DockerHostConnector) ListAllContainerStatuses(ctx context.Context) (map
 	if err != nil {
 		return nil, errors.Errorf("failed to create docker client: %w", err)
 	}
-
+	if imageName == "" {
+		return nil, errors.Errorf("HEADLESS_IMAGE_NAME environment variable is not set")
+	}
 	containers, err := cli.ContainerList(ctx, container.ListOptions{
-		All:     true,
-		Filters: filters.NewArgs(filters.Arg("ancestor", imageName)),
+		All: true,
 	})
 	if err != nil {
 		return nil, errors.Errorf("failed to list containers: %w", err)
@@ -546,7 +547,12 @@ func (d *DockerHostConnector) ListAllContainerStatuses(ctx context.Context) (map
 
 	result := make(map[string]entity.HeadlessHostStatus)
 	for _, c := range containers {
-		result[c.ID] = containerStatusToEntityStatus(c.State, c.Status)
+		// Filter by image name prefix (imageName:tag format)
+		if !strings.HasPrefix(c.Image, imageName+":") && c.Image != imageName {
+			continue
+		}
+		status := containerStatusToEntityStatus(c.State, c.Status)
+		result[c.ID] = status
 	}
 	return result, nil
 }
