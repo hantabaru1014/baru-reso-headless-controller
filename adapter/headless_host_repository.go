@@ -221,21 +221,13 @@ func (h *HeadlessHostRepository) ListRunningByAccount(ctx context.Context, accou
 	}
 	var result entity.HeadlessHostList
 	for _, host := range hosts {
-		connector, err := h.getConnector(host.ConnectorType)
-		if err != nil {
-			return nil, errors.Wrap(err, 0)
-		}
-		status := connector.GetStatus(ctx, hostconnector.HostConnectString(host.ConnectString))
-		host := &entity.HeadlessHost{
+		result = append(result, &entity.HeadlessHost{
 			ID:               host.ID,
 			Name:             host.Name,
 			AccountId:        host.AccountID,
-			Status:           status,
+			Status:           entity.HeadlessHostStatus(host.Status),
 			AutoUpdatePolicy: entity.HostAutoUpdatePolicy(host.AutoUpdatePolicy),
-		}
-		if status == entity.HeadlessHostStatus_RUNNING {
-			result = append(result, host)
-		}
+		})
 	}
 
 	return result, nil
@@ -265,12 +257,12 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 		return errors.Wrap(err, 0)
 	}
 	connectStr := hostconnector.HostConnectString(dbHost.ConnectString)
+	wasRunning := dbHost.Status == int32(entity.HeadlessHostStatus_RUNNING)
 	_ = h.q.UpdateHostStatus(ctx, db.UpdateHostStatusParams{
 		ID:     id,
 		Status: int32(entity.HeadlessHostStatus_STOPPING),
 	})
-	status := connector.GetStatus(ctx, connectStr)
-	if status == entity.HeadlessHostStatus_RUNNING {
+	if wasRunning {
 		err = connector.Stop(ctx, connectStr, timeoutSeconds)
 		if err != nil {
 			return errors.Wrap(err, 0)
