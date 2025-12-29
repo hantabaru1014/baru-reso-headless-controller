@@ -36,23 +36,8 @@ var (
 	containerNotFoundError = errors.New("container not found")
 
 	// gRPC timeout settings (configurable via environment variables)
-	grpcConnectTimeout = getEnvDuration("GRPC_CONNECT_TIMEOUT", 5*time.Second)
-	grpcCallTimeout    = getEnvDuration("GRPC_CALL_TIMEOUT", 10*time.Second)
+	grpcConnectTimeout = lib.GetEnvDuration("GRPC_CONNECT_TIMEOUT", 5*time.Second)
 )
-
-func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
-	if v := os.Getenv(key); v != "" {
-		if d, err := time.ParseDuration(v); err == nil {
-			return d
-		}
-	}
-	return defaultValue
-}
-
-// GetGRPCCallTimeout returns the configured gRPC call timeout for use in RPC contexts
-func GetGRPCCallTimeout() time.Duration {
-	return grpcCallTimeout
-}
 
 var _ HostConnector = (*DockerHostConnector)(nil)
 

@@ -11,12 +11,15 @@ import (
 	"time"
 
 	"github.com/go-errors/errors"
-	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"google.golang.org/protobuf/proto"
 )
+
+// gRPC call timeout (configurable via environment variable)
+var grpcCallTimeout = lib.GetEnvDuration("GRPC_CALL_TIMEOUT", 10*time.Second)
 
 type SaveMode int32
 
@@ -248,7 +251,7 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 	var hdlSessions []*headlessv1.Session
 	sessionHostIdMap := make(map[string]string)
 	if filter.HostID != nil {
-		timeoutCtx, cancel := context.WithTimeout(ctx, hostconnector.GetGRPCCallTimeout())
+		timeoutCtx, cancel := context.WithTimeout(ctx, grpcCallTimeout)
 		defer cancel()
 		ss, err := u.getHostSessions(timeoutCtx, *filter.HostID)
 		if err == nil {
@@ -277,7 +280,7 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 			wg.Add(1)
 			go func(hostID string) {
 				defer wg.Done()
-				timeoutCtx, cancel := context.WithTimeout(ctx, hostconnector.GetGRPCCallTimeout())
+				timeoutCtx, cancel := context.WithTimeout(ctx, grpcCallTimeout)
 				defer cancel()
 				ss, err := u.getHostSessions(timeoutCtx, hostID)
 				resultChan <- hostSessionResult{hostID: hostID, sessions: ss, err: err}
