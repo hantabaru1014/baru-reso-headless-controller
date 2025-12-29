@@ -3,8 +3,6 @@ package worker
 import (
 	"context"
 	"log/slog"
-	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -12,6 +10,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -30,25 +29,11 @@ func NewEventWatcher(
 	dc *hostconnector.DockerHostConnector,
 	q *db.Queries,
 ) *EventWatcher {
-	reconnectDelay := 5 * time.Second
-	if envDelay := os.Getenv("EVENT_WATCHER_RECONNECT_DELAY_SEC"); envDelay != "" {
-		if seconds, err := strconv.Atoi(envDelay); err == nil && seconds > 0 {
-			reconnectDelay = time.Duration(seconds) * time.Second
-		}
-	}
-
-	maxReconnectWait := 5 * time.Minute
-	if envMax := os.Getenv("EVENT_WATCHER_MAX_RECONNECT_WAIT_SEC"); envMax != "" {
-		if seconds, err := strconv.Atoi(envMax); err == nil && seconds > 0 {
-			maxReconnectWait = time.Duration(seconds) * time.Second
-		}
-	}
-
 	return &EventWatcher{
 		dc:               dc,
 		q:                q,
-		reconnectDelay:   reconnectDelay,
-		maxReconnectWait: maxReconnectWait,
+		reconnectDelay:   lib.GetEnvDuration("EVENT_WATCHER_RECONNECT_DELAY", 5*time.Second),
+		maxReconnectWait: lib.GetEnvDuration("EVENT_WATCHER_MAX_RECONNECT_WAIT", 5*time.Minute),
 	}
 }
 
