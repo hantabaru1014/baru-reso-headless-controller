@@ -55,3 +55,6 @@ DELETE FROM hosts WHERE id = $1;
 
 -- name: IncrementHostInstanceCount :one
 UPDATE hosts SET instance_count = instance_count + 1 WHERE id = $1 RETURNING instance_count;
+
+-- name: GetHostByContainerID :one
+SELECT * FROM hosts WHERE connect_string LIKE $1 || ':%' LIMIT 1;

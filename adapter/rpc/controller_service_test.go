@@ -669,11 +669,6 @@ func TestControllerService_AcceptFriendRequests(t *testing.T) {
 		// Create test host in database
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-friend", "TestHost", entity.HeadlessHostStatus_RUNNING)
 
-		// Mock HostConnector to return running status
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_RUNNING)
-
 		// Mock HostConnector to return RPC client
 		setup.mockHostConnector.EXPECT().
 			GetRpcClient(gomock.Any(), gomock.Any()).
@@ -729,11 +724,6 @@ func TestControllerService_AcceptFriendRequests(t *testing.T) {
 
 		// Create test host
 		testutil.CreateTestHeadlessHost(t, setup.queries, "U-rpcfail", "TestHost2", entity.HeadlessHostStatus_RUNNING)
-
-		// Mock HostConnector to return running status
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_RUNNING)
 
 		// Mock HostConnector to return error when getting RPC client
 		setup.mockHostConnector.EXPECT().
@@ -851,12 +841,6 @@ func TestControllerService_StartHeadlessHost(t *testing.T) {
 				return hostconnector.HostConnectString("test-container"), nil
 			})
 
-		// Mock HostConnector to get status after start
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_RUNNING).
-			AnyTimes()
-
 		imageTag := "latest"
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.StartHeadlessHostRequest{
 			HeadlessAccountId: "U-test",
@@ -875,11 +859,6 @@ func TestControllerService_StartHeadlessHost(t *testing.T) {
 		assert.Equal(t, "TestHost", host.Name)
 		assert.Equal(t, "U-test", host.AccountID)
 		assert.Equal(t, int32(1), host.InstanceCount, "Instance count should be 1 after first start")
-
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_EXITED).
-			AnyTimes()
 
 		setup.mockHostConnector.EXPECT().
 			GetRpcClient(gomock.Any(), gomock.Any()).
@@ -963,12 +942,6 @@ func TestControllerService_RestartHeadlessHost(t *testing.T) {
 				{Tag: "latest", IsPreRelease: false},
 			}, nil).
 			Times(1)
-
-		// Mock HostConnector - GetStatus (called multiple times)
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_RUNNING).
-			AnyTimes()
 
 		// Mock HostConnector - GetRpcClient (may be called multiple times)
 		setup.mockHostConnector.EXPECT().
@@ -1073,11 +1046,6 @@ func TestControllerService_UpdateHeadlessHostSettings(t *testing.T) {
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_EXITED)
 
-		// Mock HostConnector to return exited status
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_EXITED)
-
 		newName := "UpdatedHost"
 		newTickRate := float32(120)
 
@@ -1105,11 +1073,6 @@ func TestControllerService_UpdateHeadlessHostSettings(t *testing.T) {
 		// Create test account and running host
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test2", "RunningHost", entity.HeadlessHostStatus_RUNNING)
-
-		// Mock HostConnector - GetStatus returns RUNNING
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_RUNNING)
 
 		// Mock RPC calls - GetRpcClient is called twice: once in dbToEntity, once before UpdateHostSettings
 		setup.mockHostConnector.EXPECT().
@@ -1550,11 +1513,6 @@ func TestControllerService_GetHeadlessHost(t *testing.T) {
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_EXITED)
 
-		// Mock HostConnector to return exited status
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_EXITED)
-
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostRequest{
 			HostId: host.ID,
 		})
@@ -1596,12 +1554,6 @@ func TestControllerService_ListHeadlessHost(t *testing.T) {
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
 		testutil.CreateTestHeadlessHost(t, setup.queries, "U-test1", "Host1", entity.HeadlessHostStatus_EXITED)
 		testutil.CreateTestHeadlessHost(t, setup.queries, "U-test2", "Host2", entity.HeadlessHostStatus_EXITED)
-
-		// Mock HostConnector to return statuses
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_EXITED).
-			Times(2)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessHostRequest{})
 
@@ -2786,12 +2738,6 @@ func TestControllerService_SearchSessions(t *testing.T) {
 		testutil.CreateTestSession(t, setup.queries, host.ID, "Session1", entity.SessionStatus_RUNNING)
 		testutil.CreateTestSession(t, setup.queries, host.ID, "Session2", entity.SessionStatus_RUNNING)
 
-		// Mock HostConnector - GetStatus
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_RUNNING).
-			AnyTimes()
-
 		// Mock HostConnector - GetRpcClient (called when fetching host info)
 		setup.mockHostConnector.EXPECT().
 			GetRpcClient(gomock.Any(), gomock.Any()).
@@ -2988,10 +2934,6 @@ func TestControllerService_ListContacts(t *testing.T) {
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-contact1", "contact@example.test", "password")
 		testutil.CreateTestHeadlessHost(t, setup.queries, "U-contact1", "TestHost", entity.HeadlessHostStatus_RUNNING)
 
-		// Mock HostConnector to return running status
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_RUNNING)
 
 		// Mock HostConnector to return RPC client
 		setup.mockHostConnector.EXPECT().
@@ -3052,10 +2994,6 @@ func TestControllerService_GetContactMessages(t *testing.T) {
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-msg1", "msg@example.test", "password")
 		testutil.CreateTestHeadlessHost(t, setup.queries, "U-msg1", "TestHost", entity.HeadlessHostStatus_RUNNING)
 
-		// Mock HostConnector to return running status
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_RUNNING)
 
 		// Mock HostConnector to return RPC client
 		setup.mockHostConnector.EXPECT().
@@ -3123,10 +3061,6 @@ func TestControllerService_SendContactMessage(t *testing.T) {
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-send1", "send@example.test", "password")
 		testutil.CreateTestHeadlessHost(t, setup.queries, "U-send1", "TestHost", entity.HeadlessHostStatus_RUNNING)
 
-		// Mock HostConnector to return running status
-		setup.mockHostConnector.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(entity.HeadlessHostStatus_RUNNING)
 
 		// Mock HostConnector to return RPC client
 		setup.mockHostConnector.EXPECT().

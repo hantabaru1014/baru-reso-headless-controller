@@ -120,6 +120,33 @@ func (q *Queries) GetHost(ctx context.Context, id string) (Host, error) {
 	return i, err
 }
 
+const getHostByContainerID = `-- name: GetHostByContainerID :one
+SELECT id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count FROM hosts WHERE connect_string LIKE $1 || ':%' LIMIT 1
+`
+
+func (q *Queries) GetHostByContainerID(ctx context.Context, dollar_1 pgtype.Text) (Host, error) {
+	row := q.db.QueryRow(ctx, getHostByContainerID, dollar_1)
+	var i Host
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Status,
+		&i.AccountID,
+		&i.OwnerID,
+		&i.LastStartupConfig,
+		&i.LastStartupConfigSchemaVersion,
+		&i.ConnectorType,
+		&i.ConnectString,
+		&i.StartedAt,
+		&i.Memo,
+		&i.AutoUpdatePolicy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.InstanceCount,
+	)
+	return i, err
+}
+
 const incrementHostInstanceCount = `-- name: IncrementHostInstanceCount :one
 UPDATE hosts SET instance_count = instance_count + 1 WHERE id = $1 RETURNING instance_count
 `
