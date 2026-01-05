@@ -7,6 +7,7 @@ buf := go run github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
 wire := go run github.com/google/wire/cmd/wire@latest
 sqlc := go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 mockgen := go run go.uber.org/mock/mockgen@latest
+gotestsum := go run gotest.tools/gotestsum@latest
 
 .PHONY: install.tools
 install.tools:
@@ -81,4 +82,4 @@ test.setup:
 
 .PHONY: test
 test:
-	go test -v ./...
+	$(gotestsum) --format dots -- ./...
