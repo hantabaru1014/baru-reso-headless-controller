@@ -83,3 +83,7 @@ test.setup:
 .PHONY: test
 test:
 	$(gotestsum) --format dots -- ./...
+
+.PHONY: lint
+lint:
+	go tool golangci-lint run ./... --fix
