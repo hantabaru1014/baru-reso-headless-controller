@@ -35,22 +35,28 @@ func (s *UserSession) GetContacts(ctx context.Context) ([]Contact, error) {
 	if err != nil {
 		return nil, errors.Errorf("failed to make request URL: %w", err)
 	}
+
 	req, err := s.makeApiRequest(ctx, http.MethodGet, reqUrl, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("failed to get contacts: %s", resp.Status)
 	}
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	var contacts []Contact
 	if err := json.Unmarshal(respBody, &contacts); err != nil {
 		return nil, errors.Errorf("failed to decode contacts: %w", err)

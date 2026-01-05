@@ -40,6 +40,7 @@ func (ic *ImageChecker) Start() {
 	_, err := ic.scheduler.Every(ic.interval).Do(ic.checkNewImages)
 	if err != nil {
 		slog.Error("Failed to schedule image check", "error", err)
+
 		return
 	}
 
@@ -54,16 +55,18 @@ func (ic *ImageChecker) Stop() {
 }
 
 func (ic *ImageChecker) checkNewImages() {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute) //nolint:mnd // reasonable timeout for image check
 	defer cancel()
 
 	var lastTag *string
 	if ic.lastTag != nil {
 		lastTag = &ic.lastTag.Tag
 	}
+
 	tags, err := ic.dc.ListContainerTags(ctx, lastTag)
 	if err != nil {
 		slog.Error("Failed to list container tags", "error", err)
+
 		return
 	}
 
@@ -83,6 +86,7 @@ func (ic *ImageChecker) checkNewImages() {
 		// 必要に応じて新しいイメージをプル
 		if ic.autoPullNewImage {
 			slog.Info("Pulling latest container image", "tag", newestTag)
+
 			if _, err := ic.dc.PullContainerImage(ctx, newestTag.Tag); err != nil {
 				slog.Error("Failed to pull container image", "tag", newestTag, "error", err)
 			} else {

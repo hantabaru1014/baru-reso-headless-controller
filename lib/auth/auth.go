@@ -13,6 +13,12 @@ import (
 
 var secretKey string
 
+const (
+	minSecretKeyLength   = 10
+	defaultTokenTTL      = 30 * time.Minute
+	defaultRefreshTTL    = 3 * 24 * time.Hour
+)
+
 func Init(jwtSecret string) {
 	secretKey = jwtSecret
 }
@@ -25,13 +31,15 @@ type AuthClaims struct {
 }
 
 func GenerateToken(claims AuthClaims, tokenTTL time.Duration) (string, error) {
-	if len(secretKey) < 10 {
+	if len(secretKey) < minSecretKeyLength {
 		return "", errors.New("invalid jwt secret key")
 	}
+
 	claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(tokenTTL))
 	claims.IssuedAt = jwt.NewNumericDate(time.Now())
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
 	ss, err := token.SignedString([]byte(secretKey))
 	if err != nil {
 		return "", errors.Wrap(err, 0)
@@ -43,11 +51,12 @@ func GenerateToken(claims AuthClaims, tokenTTL time.Duration) (string, error) {
 // GenerateTokensWithDefaultTTL generates a token and a refreshToken with default TTLs.
 // The token will expire in 30 minutes and the refreshToken will expire in 3 days.
 func GenerateTokensWithDefaultTTL(claims AuthClaims) (string, string, error) {
-	token, err := GenerateToken(claims, 30*time.Minute)
+	token, err := GenerateToken(claims, defaultTokenTTL)
 	if err != nil {
 		return "", "", errors.Wrap(err, 0)
 	}
-	refreshToken, err := GenerateToken(claims, 3*24*time.Hour)
+
+	refreshToken, err := GenerateToken(claims, defaultRefreshTTL)
 	if err != nil {
 		return "", "", errors.Wrap(err, 0)
 	}
@@ -56,13 +65,14 @@ func GenerateTokensWithDefaultTTL(claims AuthClaims) (string, string, error) {
 }
 
 func ParseToken(tokenString string) (*AuthClaims, error) {
-	if len(secretKey) < 10 {
+	if len(secretKey) < minSecretKeyLength {
 		return nil, errors.New("invalid jwt secret key")
 	}
+
 	token, err := jwt.ParseWithClaims(
 		tokenString,
 		&AuthClaims{},
-		func(token *jwt.Token) (interface{}, error) {
+		func(token *jwt.Token) (any, error) {
 			return []byte(secretKey), nil
 		},
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}),
@@ -71,10 +81,12 @@ func ParseToken(tokenString string) (*AuthClaims, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	claims, ok := token.Claims.(*AuthClaims)
 	if !ok {
 		return nil, errors.New("invalid claims")
 	}
+
 	return claims, nil
 }
 
@@ -87,14 +99,17 @@ func ValidateToken(ctx context.Context, req connect.AnyRequest) (*AuthClaims, er
 	if len(token) <= len("Bearer ") {
 		err := connect.NewError(connect.CodeUnauthenticated, errors.New("token required"))
 		err.Meta().Add("WWW-Authenticate", "Bearer realm=\"token_required\"")
+
 		return nil, err
 	}
+
 	token = token[len("Bearer "):]
 
 	claims, err := ParseToken(token)
 	if err != nil {
 		connectErr := connect.NewError(connect.CodeUnauthenticated, err)
 		connectErr.Meta().Add("WWW-Authenticate", "Bearer error=\"invalid_token\"")
+
 		return nil, connectErr
 	}
 
@@ -112,32 +127,38 @@ func NewAuthInterceptor() connect.UnaryInterceptorFunc {
 			if err != nil {
 				return nil, err
 			}
+
 			ctx = context.WithValue(ctx, AuthClaimsKey, claims)
 
 			res, err := next(ctx, req)
 			if err != nil {
 				return nil, err
 			}
+
 			SetSuccessResponseHeader(res)
+
 			return res, nil
 		})
 	}
+
 	return connect.UnaryInterceptorFunc(i)
 }
 
 // NewOptionalAuthInterceptor は認証情報があればコンテキストにセットするが、
-// なくてもエラーにしないインターセプター
+// なくてもエラーにしないインターセプター.
 func NewOptionalAuthInterceptor() connect.UnaryInterceptorFunc {
 	return func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			token := req.Header().Get("authorization")
 			if len(token) > len("Bearer ") {
 				token = token[len("Bearer "):]
+
 				claims, err := ParseToken(token)
 				if err == nil {
 					ctx = context.WithValue(ctx, AuthClaimsKey, claims)
 				}
 			}
+
 			return next(ctx, req)
 		}
 	}
@@ -148,6 +169,7 @@ func HashPassword(password string) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, 0)
 	}
+
 	return string(hash), nil
 }
 
@@ -162,5 +184,6 @@ func GetAuthClaimsFromContext(ctx context.Context) (*AuthClaims, error) {
 	if !ok {
 		return nil, errors.New("認証されていません")
 	}
+
 	return claims, nil
 }

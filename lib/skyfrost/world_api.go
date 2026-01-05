@@ -13,7 +13,7 @@ import (
 
 const maxWorldSearchCount = 20
 
-// WorldRecord represents a world record from the Resonite API
+// WorldRecord represents a world record from the Resonite API.
 type WorldRecord struct {
 	ID           string
 	OwnerID      string
@@ -24,13 +24,13 @@ type WorldRecord struct {
 	IsFeatured   bool
 }
 
-// SearchWorldsResult represents the result of a world search
+// SearchWorldsResult represents the result of a world search.
 type SearchWorldsResult struct {
 	Records []WorldRecord
 	HasMore bool
 }
 
-// searchWorldsRequest is the request body for the records/pagedSearch API
+// searchWorldsRequest is the request body for the records/pagedSearch API.
 type searchWorldsRequest struct {
 	RecordType    string   `json:"recordType"`
 	Count         int      `json:"count"`
@@ -45,7 +45,7 @@ type searchWorldsRequest struct {
 	ExcludedTags  []string `json:"excludedTags"`
 }
 
-// searchWorldsResponse is the response from the records/pagedSearch API
+// searchWorldsResponse is the response from the records/pagedSearch API.
 type searchWorldsResponse struct {
 	Records []struct {
 		ID          string `json:"id"`
@@ -64,13 +64,16 @@ type searchWorldsResponse struct {
 // Based on go.resonite.com search implementation:
 // - "+term" -> required tag
 // - "-term" -> excluded tag
-// - "term" -> optional tag
-func parseSearchTerms(query string) (optional, required, excluded []string) {
-	terms := strings.Fields(strings.TrimSpace(query))
-	for _, term := range terms {
+// - "term" -> optional tag.
+func parseSearchTerms(query string) ([]string, []string, []string) {
+	var optional, required, excluded []string
+
+	terms := strings.FieldsSeq(strings.TrimSpace(query))
+	for term := range terms {
 		if len(term) == 0 {
 			continue
 		}
+
 		switch term[0] {
 		case '+':
 			if len(term) > 1 {
@@ -84,10 +87,11 @@ func parseSearchTerms(query string) (optional, required, excluded []string) {
 			optional = append(optional, term)
 		}
 	}
-	return
+
+	return optional, required, excluded
 }
 
-// SearchWorlds searches for published worlds on Resonite
+// SearchWorlds searches for published worlds on Resonite.
 func SearchWorlds(ctx context.Context, query string, featuredOnly bool, pageIndex int) (*SearchWorldsResult, error) {
 	optionalTags, requiredTags, excludedTags := parseSearchTerms(query)
 
@@ -114,6 +118,7 @@ func SearchWorlds(ctx context.Context, query string, featuredOnly bool, pageInde
 	if err != nil {
 		return nil, errors.Errorf("failed to create request: %w", err)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
@@ -138,6 +143,7 @@ func SearchWorlds(ctx context.Context, query string, featuredOnly bool, pageInde
 	}
 
 	records := make([]WorldRecord, 0, len(searchResp.Records))
+
 	for _, r := range searchResp.Records {
 		isFeatured := false
 		if len(r.Submissions) > 0 {

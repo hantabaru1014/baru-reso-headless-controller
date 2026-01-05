@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"os"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -18,23 +19,30 @@ func NewMigrateCommand() *cobra.Command {
 			d, err := iofs.New(db.MigrationFiles, "migrations")
 			if err != nil {
 				cmd.PrintErrln(err)
+
 				return
 			}
+
 			m, err := migrate.NewWithSourceInstance("iofs", d, os.Getenv("DB_URL"))
 			if err != nil {
 				cmd.PrintErrln(err)
+
 				return
 			}
+
 			err = m.Up()
 			if err != nil {
-				if err != migrate.ErrNoChange {
+				if !errors.Is(err, migrate.ErrNoChange) {
 					cmd.PrintErrln(err)
+
 					return
 				} else {
 					cmd.Println("No changed")
+
 					return
 				}
 			}
+
 			cmd.Println("Migrated successfully")
 		},
 	}

@@ -34,7 +34,9 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostStart(ctx context.Context, params p
 	if err != nil {
 		return "", errors.Wrap(err, 0)
 	}
+
 	params.ContainerImageTag = tag
+
 	return hhuc.hhrepo.Start(ctx, port.HostConnectorType_DOCKER, params, userId)
 }
 
@@ -43,6 +45,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostList(ctx context.Context) (entity.H
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	return hosts, nil
 }
 
@@ -51,30 +54,12 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostGet(ctx context.Context, id string)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	return host, nil
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostDelete(ctx context.Context, id string) error {
 	return hhuc.hhrepo.Delete(ctx, id)
-}
-
-func (hhuc *HeadlessHostUsecase) markSessionsAsEnded(ctx context.Context, sessions entity.SessionList) error {
-	// FIXME: 仮の実装. session usecaseにまとめられるようにする
-	now := time.Now()
-	for _, s := range sessions {
-		s.EndedAt = &now
-		s.Status = entity.SessionStatus_ENDED
-		if s.CurrentState != nil && s.CurrentState.WorldUrl != "" {
-			s.StartupParameters.LoadWorld = &headlessv1.WorldStartupParameters_LoadWorldUrl{
-				LoadWorldUrl: s.CurrentState.WorldUrl,
-			}
-		}
-		err := hhuc.srepo.Upsert(ctx, s)
-		if err != nil {
-			return errors.Wrap(err, 0)
-		}
-	}
-	return nil
 }
 
 // HeadlessHostRestart restarts the headless host with the specified ID.
@@ -98,6 +83,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 	}
 
 	status := entity.SessionStatus_RUNNING
+
 	sessions, err := hhuc.huc.SearchSessions(ctx, SearchSessionsFilter{
 		HostID: &host.ID,
 		Status: &status,
@@ -105,6 +91,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	err = hhuc.markSessionsAsEnded(ctx, sessions)
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -116,6 +103,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 		StartupConfig:     converter.HeadlessHostSettingsToStartupConfigProto(&host.HostSettings),
 		HeadlessAccount:   *account,
 	}
+
 	err = hhuc.hhrepo.Restart(ctx, host.ID, startupConfig, timeoutSeconds)
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -144,6 +132,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostGetLogs(ctx context.Context, params
 	if fetchLimit <= 0 {
 		fetchLimit = 100
 	}
+
 	fetchLimit++ // 1件多く取得して has_more 判定
 
 	logs, err := hhuc.hhrepo.GetLogs(ctx, port.GetLogsParams{
@@ -169,13 +158,14 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostGetLogs(ctx context.Context, params
 		HasMoreAfter:  false,
 	}
 
-	if params.BeforeID > 0 {
+	switch {
+	case params.BeforeID > 0:
 		// before_id 指定 = 古いログを取得中 → hasMore は「さらに古いログがある」
 		result.HasMoreBefore = hasMore
-	} else if params.AfterID > 0 {
+	case params.AfterID > 0:
 		// after_id 指定 = 新しいログを取得中 → hasMore は「さらに新しいログがある」
 		result.HasMoreAfter = hasMore
-	} else {
+	default:
 		// カーソルなし = 最新から取得 → hasMore は「古いログがある」
 		result.HasMoreBefore = hasMore
 	}
@@ -215,11 +205,13 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostGetInstances(ctx context.Context, h
 			IsCurrent:  ts.InstanceID == host.InstanceId,
 		})
 	}
+
 	return result, nil
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostShutdown(ctx context.Context, id string) error {
 	status := entity.SessionStatus_RUNNING
+
 	sessions, err := hhuc.huc.SearchSessions(ctx, SearchSessionsFilter{
 		HostID: &id,
 		Status: &status,
@@ -227,13 +219,14 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostShutdown(ctx context.Context, id st
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	err = hhuc.markSessionsAsEnded(ctx, sessions)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
 
 	// TODO: さすがにタイムアウト設定すべき？
-	err = hhuc.hhrepo.Stop(context.Background(), id, -1)
+	err = hhuc.hhrepo.Stop(ctx, id, -1)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -243,6 +236,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostShutdown(ctx context.Context, id st
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostKill(ctx context.Context, id string) error {
 	status := entity.SessionStatus_RUNNING
+
 	sessions, err := hhuc.huc.SearchSessions(ctx, SearchSessionsFilter{
 		HostID: &id,
 		Status: &status,
@@ -250,6 +244,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostKill(ctx context.Context, id string
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	err = hhuc.markSessionsAsEnded(ctx, sessions)
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -269,16 +264,43 @@ func (hhuc *HeadlessHostUsecase) resolveTagToUse(ctx context.Context, tagInput *
 		if err != nil {
 			return "", errors.Wrap(err, 0)
 		}
+
 		if len(tags) == 0 {
 			return "", errors.New("no available container image tags")
 		}
+
 		wantPreRelease := tagInput != nil && *tagInput == "latestPreRelease"
 		for _, tag := range slices.Backward(tags) {
 			if tag.IsPreRelease == wantPreRelease {
 				return tag.Tag, nil
 			}
 		}
+
 		return "", errors.New("no available container image tags")
 	}
+
 	return *tagInput, nil
+}
+
+func (hhuc *HeadlessHostUsecase) markSessionsAsEnded(ctx context.Context, sessions entity.SessionList) error {
+	// FIXME: 仮の実装. session usecaseにまとめられるようにする
+	now := time.Now()
+	for _, s := range sessions {
+		s.EndedAt = &now
+
+		s.Status = entity.SessionStatus_ENDED
+
+		if s.CurrentState != nil && s.CurrentState.GetWorldUrl() != "" {
+			s.StartupParameters.LoadWorld = &headlessv1.WorldStartupParameters_LoadWorldUrl{
+				LoadWorldUrl: s.CurrentState.GetWorldUrl(),
+			}
+		}
+
+		err := hhuc.srepo.Upsert(ctx, s)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+	}
+
+	return nil
 }

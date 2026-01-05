@@ -21,14 +21,19 @@ func NewHostCommand(hu *usecase.HeadlessHostUsecase) *cobra.Command {
 			hosts, err := hu.HeadlessHostList(cmd.Context())
 			if err != nil {
 				cmd.PrintErrln("Failed to list hosts:", err)
+
 				return
 			}
+
 			if len(hosts) == 0 {
 				cmd.Println("No hosts found")
+
 				return
 			}
+
 			for _, host := range hosts {
-				status := "UNKNOWN"
+				var status string
+
 				switch host.Status {
 				case entity.HeadlessHostStatus_STARTING:
 					status = "STARTING"
@@ -40,7 +45,10 @@ func NewHostCommand(hu *usecase.HeadlessHostUsecase) *cobra.Command {
 					status = "EXITED"
 				case entity.HeadlessHostStatus_CRASHED:
 					status = "CRASHED"
+				case entity.HeadlessHostStatus_UNKNOWN:
+					status = "UNKNOWN"
 				}
+
 				cmd.Printf("ID: %s, Name: %s, Status: %s\n", host.ID, host.Name, status)
 			}
 		},
@@ -53,33 +61,40 @@ func NewHostCommand(hu *usecase.HeadlessHostUsecase) *cobra.Command {
 			timeout, err := cmd.Flags().GetInt("timeout")
 			if err != nil {
 				cmd.PrintErrln("Invalid timeout value:", err)
+
 				return
 			}
 
 			hosts, err := hu.HeadlessHostList(cmd.Context())
 			if err != nil {
 				cmd.PrintErrln("Failed to list hosts:", err)
+
 				return
 			}
 
 			var wg sync.WaitGroup
 			for _, host := range hosts {
 				wg.Add(1)
+
 				go func(h *entity.HeadlessHost) {
 					defer wg.Done()
+
 					err := hu.HeadlessHostRestart(cmd.Context(), h.ID, nil, true, timeout)
 					if err != nil {
 						cmd.PrintErrf("Failed to restart host %s: %v\n", h.Name, err)
+
 						return
 					}
+
 					cmd.Printf("Host %s restarted successfully\n", h.Name)
 				}(host)
 			}
+
 			wg.Wait()
 			cmd.Println("All hosts restarted successfully")
 		},
 	}
-	restartAllHostsCmd.Flags().Int("timeout", 600, "Timeout in seconds for restart operation")
+	restartAllHostsCmd.Flags().Int("timeout", 600, "Timeout in seconds for restart operation") //nolint:mnd // default timeout
 
 	shutdownAllHostsCmd := &cobra.Command{
 		Use:   "shutdown-all",
@@ -88,21 +103,28 @@ func NewHostCommand(hu *usecase.HeadlessHostUsecase) *cobra.Command {
 			hosts, err := hu.HeadlessHostList(cmd.Context())
 			if err != nil {
 				cmd.PrintErrln("Failed to list hosts:", err)
+
 				return
 			}
+
 			var wg sync.WaitGroup
 			for _, host := range hosts {
 				wg.Add(1)
+
 				go func(h *entity.HeadlessHost) {
 					defer wg.Done()
+
 					err := hu.HeadlessHostShutdown(cmd.Context(), h.ID)
 					if err != nil {
 						cmd.PrintErrf("Failed to shutdown host %s: %v\n", h.Name, err)
+
 						return
 					}
+
 					cmd.Printf("Host %s shutdown successfully\n", h.Name)
 				}(host)
 			}
+
 			wg.Wait()
 			cmd.Println("All hosts shutdown successfully")
 		},

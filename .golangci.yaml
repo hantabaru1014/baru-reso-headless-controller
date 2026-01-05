@@ -1,0 +1,49 @@
+version: "2"
+linters:
+  default: all
+  disable:
+    - godox
+    - lll
+    - wsl # deprecated
+    - depguard # インポート制限 - 設定なしでは全インポートがブロックされる
+    - exhaustruct # 全フィールド初期化必須 - 外部ライブラリの構造体にも適用される
+    - varnamelen # 変数名の長さ - i, ctx 等の慣用的な短い名前も対象
+    - funlen # 関数の長さ - 既存コードの大幅な分割が必要
+    - revive # export-loop-ref等の誤検知が多い
+    - dupl # 重複コード検出 - 意図的な重複も検出される
+    - goconst # 定数化提案 - 文字列の定数化は過剰
+    - gochecknoglobals # グローバル変数禁止 - 設定変数等で必要
+    - gochecknoinits # init関数禁止 - 初期化で必要な場合がある
+    - ireturn # インターフェース返却禁止 - 設計パターンで必要
+    - tagliatelle # 構造体タグの命名規則 - 外部APIとの互換性で必要
+    - gosmopolitan # i18n/l10nアンチパターン - 日本語コメント等で誤検知
+    - testpackage # _testパッケージ必須 - 内部テストで不要
+    - interfacebloat # インターフェースのメソッド数制限
+    - maintidx # メンテナンス指標
+    - gocognit # 認知的複雑度
+    - gocyclo # 循環的複雑度 (cyclopと重複)
+    - nakedret # 裸のreturn
+    - nlreturn # return前の空行
+    - noinlineerr # インラインエラーハンドリング禁止
+    - embeddedstructfieldcheck # 埋め込み構造体の位置
+    - grouper # グループ化
+    - goheader # ファイルヘッダー
+    - paralleltest # 並列テスト必須 - 既存テストの大幅変更が必要
+    - err113 # 動的エラー禁止 - errors.New/fmt.Errorfを許可
+    - wrapcheck # エラーラッピング必須 - 内部パッケージ間では不要
+    - nestif # ネスト複雑度 - 既存コードの大幅なリファクタリングが必要
+    - nilnil # nil戻り値チェック - テストモック等で必要な場合がある
+  settings:
+    cyclop:
+      max-complexity: 30
+    errcheck:
+      exclude-functions:
+        - (*github.com/rs/zerolog.Event).Msg
+        - (*github.com/rs/zerolog.Event).Msgf
+        - (*github.com/rs/zerolog.Event).Send
+        - (*os.File).Close
+        - (*net.Listener).Close
+        - (io.Closer).Close
+        - (*net/http.Response).Body.Close
+        - (*github.com/docker/docker/client.Client).Close
+        - (*github.com/golang-migrate/migrate/v4.Migrate).Close

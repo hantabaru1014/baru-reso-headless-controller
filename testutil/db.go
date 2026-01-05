@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -13,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// GetTestDBURL returns the test database URL by appending "_test" to the database name
+// GetTestDBURL returns the test database URL by appending "_test" to the database name.
 func GetTestDBURL() string {
 	dbURL := os.Getenv("DB_URL")
 	if dbURL == "" {
@@ -27,7 +28,7 @@ func GetTestDBURL() string {
 	return testDBURL
 }
 
-// SetupTestDB creates a connection pool for the test database
+// SetupTestDB creates a connection pool for the test database.
 func SetupTestDB(t *testing.T) (*db.Queries, *pgxpool.Pool) {
 	t.Helper()
 
@@ -45,11 +46,12 @@ func SetupTestDB(t *testing.T) (*db.Queries, *pgxpool.Pool) {
 	return db.New(pool), pool
 }
 
-// RunMigrations runs all database migrations for the test database
+// RunMigrations runs all database migrations for the test database.
 func RunMigrations(t *testing.T) {
 	t.Helper()
 
 	testDBURL := GetTestDBURL()
+
 	m, err := migrate.New(
 		"file://db/migrations",
 		testDBURL,
@@ -57,15 +59,16 @@ func RunMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create migrate instance: %v", err)
 	}
+
 	defer m.Close()
 
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		t.Fatalf("failed to run migrations: %v", err)
 	}
 }
 
 // CleanupTables truncates all tables in the test database
-// Automatically detects all tables in the public schema (excluding migrations table)
+// Automatically detects all tables in the public schema (excluding migrations table).
 func CleanupTables(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 
@@ -85,11 +88,15 @@ func CleanupTables(t *testing.T, pool *pgxpool.Pool) {
 	defer rows.Close()
 
 	var tables []string
+
 	for rows.Next() {
 		var tableName string
-		if err := rows.Scan(&tableName); err != nil {
+
+		err := rows.Scan(&tableName)
+		if err != nil {
 			t.Fatalf("failed to scan table name: %v", err)
 		}
+
 		tables = append(tables, tableName)
 	}
 

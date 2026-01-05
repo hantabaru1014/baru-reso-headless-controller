@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -74,11 +75,13 @@ func TestGenerateTokensWithDefaultTTL(t *testing.T) {
 
 			// 29分後はまだ有効
 			time.Sleep(29 * time.Minute)
+
 			_, err = ParseToken(token)
 			require.NoError(t, err)
 
 			// 31分後は期限切れ
 			time.Sleep(2 * time.Minute)
+
 			_, err = ParseToken(token)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "expired")
@@ -96,11 +99,13 @@ func TestGenerateTokensWithDefaultTTL(t *testing.T) {
 
 			// 2日後はまだ有効
 			time.Sleep(2 * 24 * time.Hour)
+
 			_, err = ParseToken(refreshToken)
 			require.NoError(t, err)
 
 			// 3日+1分後は期限切れ
 			time.Sleep(24*time.Hour + 1*time.Minute)
+
 			_, err = ParseToken(refreshToken)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "expired")
@@ -180,7 +185,8 @@ func TestValidateToken(t *testing.T) {
 		_, err := ValidateToken(context.Background(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok)
 		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
@@ -200,7 +206,8 @@ func TestValidateToken(t *testing.T) {
 		_, err := ValidateToken(context.Background(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok)
 		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
@@ -222,12 +229,14 @@ func TestValidateToken(t *testing.T) {
 
 			// 31分後は期限切れ
 			time.Sleep(31 * time.Minute)
+
 			req2 := connect.NewRequest(&struct{}{})
 			req2.Header().Set("authorization", "Bearer "+token)
 			_, err = ValidateToken(context.Background(), req2)
 			require.Error(t, err)
 
-			connectErr, ok := err.(*connect.Error)
+			connectErr := &connect.Error{}
+			ok := errors.As(err, &connectErr)
 			require.True(t, ok)
 			assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 		})
@@ -249,20 +258,18 @@ func TestNewAuthInterceptor(t *testing.T) {
 		req := connect.NewRequest(&struct{}{})
 		req.Header().Set("authorization", "Bearer "+token)
 
-		var capturedCtx context.Context
 		next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			capturedCtx = ctx
+			// コンテキストにclaimsがセットされていることを確認
+			ctxClaims, err := GetAuthClaimsFromContext(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, claims.UserID, ctxClaims.UserID)
+
 			return connect.NewResponse(&struct{}{}), nil
 		}
 
 		handler := interceptor(next)
 		_, err = handler(context.Background(), req)
 		require.NoError(t, err)
-
-		// コンテキストにclaimsがセットされていることを確認
-		ctxClaims, err := GetAuthClaimsFromContext(capturedCtx)
-		require.NoError(t, err)
-		assert.Equal(t, claims.UserID, ctxClaims.UserID)
 	})
 
 	t.Run("失敗: トークンなしでリクエストが拒否", func(t *testing.T) {
@@ -270,6 +277,7 @@ func TestNewAuthInterceptor(t *testing.T) {
 
 		next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			t.Fatal("should not reach here")
+
 			return nil, nil
 		}
 
@@ -277,7 +285,8 @@ func TestNewAuthInterceptor(t *testing.T) {
 		_, err := handler(context.Background(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok)
 		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
@@ -288,6 +297,7 @@ func TestNewAuthInterceptor(t *testing.T) {
 
 		next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			t.Fatal("should not reach here")
+
 			return nil, nil
 		}
 
@@ -313,6 +323,7 @@ func TestNewAuthInterceptor(t *testing.T) {
 
 			next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 				t.Fatal("should not reach here")
+
 				return nil, nil
 			}
 
@@ -320,7 +331,8 @@ func TestNewAuthInterceptor(t *testing.T) {
 			_, err = handler(context.Background(), req)
 			require.Error(t, err)
 
-			connectErr, ok := err.(*connect.Error)
+			connectErr := &connect.Error{}
+			ok := errors.As(err, &connectErr)
 			require.True(t, ok)
 			assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 		})
@@ -342,57 +354,51 @@ func TestNewOptionalAuthInterceptor(t *testing.T) {
 		req := connect.NewRequest(&struct{}{})
 		req.Header().Set("authorization", "Bearer "+token)
 
-		var capturedCtx context.Context
 		next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			capturedCtx = ctx
+			// コンテキストにclaimsがセットされていることを確認
+			ctxClaims, err := GetAuthClaimsFromContext(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, claims.UserID, ctxClaims.UserID)
+
 			return connect.NewResponse(&struct{}{}), nil
 		}
 
 		handler := interceptor(next)
 		_, err = handler(context.Background(), req)
 		require.NoError(t, err)
-
-		// コンテキストにclaimsがセットされていることを確認
-		ctxClaims, err := GetAuthClaimsFromContext(capturedCtx)
-		require.NoError(t, err)
-		assert.Equal(t, claims.UserID, ctxClaims.UserID)
 	})
 
 	t.Run("成功: トークンなしでもリクエストが通過（claimsなし）", func(t *testing.T) {
 		req := connect.NewRequest(&struct{}{})
 
-		var capturedCtx context.Context
 		next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			capturedCtx = ctx
+			// コンテキストにclaimsがセットされていないことを確認
+			_, err := GetAuthClaimsFromContext(ctx)
+			require.Error(t, err)
+
 			return connect.NewResponse(&struct{}{}), nil
 		}
 
 		handler := interceptor(next)
 		_, err := handler(context.Background(), req)
 		require.NoError(t, err)
-
-		// コンテキストにclaimsがセットされていないことを確認
-		_, err = GetAuthClaimsFromContext(capturedCtx)
-		require.Error(t, err)
 	})
 
 	t.Run("成功: 無効なトークンでもリクエストが通過（claimsなし）", func(t *testing.T) {
 		req := connect.NewRequest(&struct{}{})
 		req.Header().Set("authorization", "Bearer invalid-token")
 
-		var capturedCtx context.Context
 		next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			capturedCtx = ctx
+			// 無効なトークンなのでclaimsはセットされない
+			_, err := GetAuthClaimsFromContext(ctx)
+			require.Error(t, err)
+
 			return connect.NewResponse(&struct{}{}), nil
 		}
 
 		handler := interceptor(next)
 		_, err := handler(context.Background(), req)
 		require.NoError(t, err)
-
-		// 無効なトークンなのでclaimsはセットされない
-		_, err = GetAuthClaimsFromContext(capturedCtx)
-		require.Error(t, err)
 	})
 
 	t.Run("成功: Bearer のみでもリクエストが通過", func(t *testing.T) {
@@ -402,6 +408,7 @@ func TestNewOptionalAuthInterceptor(t *testing.T) {
 		nextCalled := false
 		next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			nextCalled = true
+
 			return connect.NewResponse(&struct{}{}), nil
 		}
 
@@ -426,19 +433,17 @@ func TestNewOptionalAuthInterceptor(t *testing.T) {
 			req := connect.NewRequest(&struct{}{})
 			req.Header().Set("authorization", "Bearer "+token)
 
-			var capturedCtx context.Context
 			next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-				capturedCtx = ctx
+				// 期限切れトークンなのでclaimsはセットされない
+				_, err = GetAuthClaimsFromContext(ctx)
+				require.Error(t, err)
+
 				return connect.NewResponse(&struct{}{}), nil
 			}
 
 			handler := interceptor(next)
 			_, err = handler(context.Background(), req)
 			require.NoError(t, err)
-
-			// 期限切れトークンなのでclaimsはセットされない
-			_, err = GetAuthClaimsFromContext(capturedCtx)
-			require.Error(t, err)
 		})
 	})
 }

@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -30,23 +31,30 @@ func (s *UserSession) GetStorage(ctx context.Context, ownerId string) (*StorageI
 	if err != nil {
 		return nil, errors.Errorf("failed to make request URL: %w", err)
 	}
+
 	req, err := s.makeApiRequest(ctx, http.MethodGet, reqUrl, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("failed to login: %s", resp.Status)
 	}
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	storageInfo := &StorageInfo{}
+
 	err = json.Unmarshal(respBody, storageInfo)
 	if err != nil {
 		return nil, errors.Errorf("failed to parse storage info: %w", err)
@@ -55,7 +63,7 @@ func (s *UserSession) GetStorage(ctx context.Context, ownerId string) (*StorageI
 	return storageInfo, nil
 }
 
-// RecordVersion represents version information for a record
+// RecordVersion represents version information for a record.
 type RecordVersion struct {
 	GlobalVersion          int    `json:"globalVersion"`
 	LocalVersion           int    `json:"localVersion"`
@@ -63,13 +71,13 @@ type RecordVersion struct {
 	LastModifyingMachineId string `json:"lastModifyingMachineId"`
 }
 
-// DBAsset represents an asset in the manifest
+// DBAsset represents an asset in the manifest.
 type DBAsset struct {
 	Hash  string `json:"hash"`
 	Bytes int64  `json:"bytes"`
 }
 
-// Record represents a Resonite record
+// Record represents a Resonite record.
 type Record struct {
 	Id                   string        `json:"id"`
 	OwnerId              string        `json:"ownerId"`
@@ -95,7 +103,7 @@ type Record struct {
 	AssetManifest        []DBAsset     `json:"assetManifest,omitempty"`
 }
 
-// RecordPreprocessStatus represents the status of record preprocessing
+// RecordPreprocessStatus represents the status of record preprocessing.
 type RecordPreprocessStatus struct {
 	Id          string      `json:"id"`
 	OwnerId     string      `json:"ownerId"`
@@ -106,7 +114,7 @@ type RecordPreprocessStatus struct {
 	ResultDiffs []AssetDiff `json:"resultDiffs,omitempty"`
 }
 
-// AssetDiffState represents the state of an asset diff
+// AssetDiffState represents the state of an asset diff.
 type AssetDiffState int
 
 const (
@@ -115,7 +123,7 @@ const (
 	AssetDiffStateRemoved   AssetDiffState = 2
 )
 
-// AssetDiff represents the difference status of an asset
+// AssetDiff represents the difference status of an asset.
 type AssetDiff struct {
 	Hash       string         `json:"hash"`
 	Bytes      int64          `json:"bytes"`
@@ -123,7 +131,7 @@ type AssetDiff struct {
 	IsUploaded bool           `json:"isUploaded"`
 }
 
-// AssetUploadData represents the response from starting an asset upload
+// AssetUploadData represents the response from starting an asset upload.
 type AssetUploadData struct {
 	Hash                 string       `json:"hash"`
 	Variant              string       `json:"variant,omitempty"`
@@ -142,32 +150,33 @@ type AssetUploadData struct {
 	LastChunkSize        int64        `json:"lastChunkSize,omitempty"`
 }
 
-// AssetChunk represents a chunk of an uploaded asset
+// AssetChunk represents a chunk of an uploaded asset.
 type AssetChunk struct {
 	Index int    `json:"index"`
 	Key   string `json:"key"`
 }
 
-// machineID is generated once per process and reused for all record versioning
+// machineID is generated once per process and reused for all record versioning.
 var machineID = "M-" + uuid.New().String()
 
-// GenerateRecordID generates a new record ID
+// GenerateRecordID generates a new record ID.
 func GenerateRecordID() string {
 	return "R-" + uuid.New().String()
 }
 
-// GetMachineID returns the machine ID for record versioning (same value for the lifetime of the process)
+// GetMachineID returns the machine ID for record versioning (same value for the lifetime of the process).
 func GetMachineID() string {
 	return machineID
 }
 
-// ComputeAssetHash computes the SHA256 hash of data
+// ComputeAssetHash computes the SHA256 hash of data.
 func ComputeAssetHash(data []byte) string {
 	hashBytes := sha256.Sum256(data)
+
 	return hex.EncodeToString(hashBytes[:])
 }
 
-// PreprocessRecord starts preprocessing a record to determine which assets need uploading
+// PreprocessRecord starts preprocessing a record to determine which assets need uploading.
 func (s *UserSession) PreprocessRecord(ctx context.Context, record *Record) (*RecordPreprocessStatus, error) {
 	ownerType := "users"
 	if len(record.OwnerId) > 0 && record.OwnerId[0] == 'G' {
@@ -188,6 +197,7 @@ func (s *UserSession) PreprocessRecord(ctx context.Context, record *Record) (*Re
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
@@ -198,6 +208,7 @@ func (s *UserSession) PreprocessRecord(ctx context.Context, record *Record) (*Re
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
+
 		return nil, errors.Errorf("failed to preprocess record: %s - %s", resp.Status, string(respBody))
 	}
 
@@ -214,7 +225,7 @@ func (s *UserSession) PreprocessRecord(ctx context.Context, record *Record) (*Re
 	return &status, nil
 }
 
-// GetPreprocessStatus gets the current status of record preprocessing
+// GetPreprocessStatus gets the current status of record preprocessing.
 func (s *UserSession) GetPreprocessStatus(ctx context.Context, ownerId, recordId, preprocessId string) (*RecordPreprocessStatus, error) {
 	ownerType := "users"
 	if len(ownerId) > 0 && ownerId[0] == 'G' {
@@ -239,6 +250,7 @@ func (s *UserSession) GetPreprocessStatus(ctx context.Context, ownerId, recordId
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
+
 		return nil, errors.Errorf("failed to get preprocess status: %s - %s", resp.Status, string(respBody))
 	}
 
@@ -255,9 +267,9 @@ func (s *UserSession) GetPreprocessStatus(ctx context.Context, ownerId, recordId
 	return &status, nil
 }
 
-// WaitForPreprocess waits for preprocessing to complete and returns asset diffs
+// WaitForPreprocess waits for preprocessing to complete and returns asset diffs.
 func (s *UserSession) WaitForPreprocess(ctx context.Context, ownerId, recordId, preprocessId string) ([]AssetDiff, error) {
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		status, err := s.GetPreprocessStatus(ctx, ownerId, recordId, preprocessId)
 		if err != nil {
 			return nil, err
@@ -281,7 +293,7 @@ func (s *UserSession) WaitForPreprocess(ctx context.Context, ownerId, recordId, 
 	return nil, errors.Errorf("preprocess timeout")
 }
 
-// StartAssetUpload initiates an asset upload
+// StartAssetUpload initiates an asset upload.
 func (s *UserSession) StartAssetUpload(ctx context.Context, ownerId, hash string, totalBytes int64) (*AssetUploadData, error) {
 	ownerType := "users"
 	if len(ownerId) > 0 && ownerId[0] == 'G' {
@@ -292,6 +304,7 @@ func (s *UserSession) StartAssetUpload(ctx context.Context, ownerId, hash string
 	if err != nil {
 		return nil, errors.Errorf("failed to make request URL: %w", err)
 	}
+
 	reqUrl = fmt.Sprintf("%s?size=%d", reqUrl, totalBytes)
 
 	req, err := s.makeApiRequest(ctx, http.MethodPost, reqUrl, nil)
@@ -311,11 +324,13 @@ func (s *UserSession) StartAssetUpload(ctx context.Context, ownerId, hash string
 		if bytes.Contains(respBody, []byte("AlreadyUploaded")) {
 			return nil, nil // Already uploaded, skip
 		}
+
 		return nil, errors.Errorf("failed to start asset upload: %s - %s", resp.Status, string(respBody))
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
+
 		return nil, errors.Errorf("failed to start asset upload: %s - %s", resp.Status, string(respBody))
 	}
 
@@ -332,21 +347,20 @@ func (s *UserSession) StartAssetUpload(ctx context.Context, ownerId, hash string
 	return &uploadData, nil
 }
 
-// UploadAssetChunks uploads asset data in chunks
+// UploadAssetChunks uploads asset data in chunks.
 func (s *UserSession) UploadAssetChunks(ctx context.Context, uploadData *AssetUploadData, data []byte) ([]AssetChunk, error) {
 	var chunks []AssetChunk
+
 	offset := int64(0)
 
-	for i := 0; i < uploadData.TotalChunks; i++ {
+	for i := range uploadData.TotalChunks {
 		chunkSize := uploadData.ChunkSize
 		if i == uploadData.TotalChunks-1 && uploadData.LastChunkSize > 0 {
 			chunkSize = uploadData.LastChunkSize
 		}
 
-		end := offset + chunkSize
-		if end > int64(len(data)) {
-			end = int64(len(data))
-		}
+		end := min(offset+chunkSize, int64(len(data)))
+
 		chunkData := data[offset:end]
 		offset = end
 
@@ -356,12 +370,12 @@ func (s *UserSession) UploadAssetChunks(ctx context.Context, uploadData *AssetUp
 		}
 
 		req.Header.Set("Upload-Key", uploadData.UploadKey)
-		req.Header.Set("Content-Length", fmt.Sprintf("%d", len(chunkData)))
+		req.Header.Set("Content-Length", strconv.Itoa(len(chunkData)))
 
 		if uploadData.IsDirectUpload {
 			req.Header.Set("Upload-Timestamp", uploadData.CreatedOn)
 		} else {
-			req.Header.Set("Part-Number", fmt.Sprintf("%d", i+1))
+			req.Header.Set("Part-Number", strconv.Itoa(i+1))
 		}
 
 		resp, err := http.DefaultClient.Do(req)
@@ -370,7 +384,7 @@ func (s *UserSession) UploadAssetChunks(ctx context.Context, uploadData *AssetUp
 		}
 
 		respBody, readErr := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			return nil, errors.Errorf("failed to upload chunk %d: %s - %s", i, resp.Status, string(respBody))
@@ -387,10 +401,13 @@ func (s *UserSession) UploadAssetChunks(ctx context.Context, uploadData *AssetUp
 				var etagResp struct {
 					ETag string `json:"ETag"`
 				}
-				if err := json.Unmarshal(respBody, &etagResp); err == nil {
+
+				err := json.Unmarshal(respBody, &etagResp)
+				if err == nil {
 					etag = etagResp.ETag
 				}
 			}
+
 			chunks = append(chunks, AssetChunk{Index: i, Key: etag})
 		}
 	}
@@ -398,7 +415,7 @@ func (s *UserSession) UploadAssetChunks(ctx context.Context, uploadData *AssetUp
 	return chunks, nil
 }
 
-// FinalizeAssetUpload finalizes a multipart asset upload
+// FinalizeAssetUpload finalizes a multipart asset upload.
 func (s *UserSession) FinalizeAssetUpload(ctx context.Context, ownerId string, uploadData *AssetUploadData, chunks []AssetChunk) error {
 	ownerType := "users"
 	if len(ownerId) > 0 && ownerId[0] == 'G' {
@@ -411,6 +428,7 @@ func (s *UserSession) FinalizeAssetUpload(ctx context.Context, ownerId string, u
 	}
 
 	uploadData.Chunks = chunks
+
 	body, err := json.Marshal(uploadData)
 	if err != nil {
 		return errors.Errorf("failed to marshal upload data: %w", err)
@@ -420,6 +438,7 @@ func (s *UserSession) FinalizeAssetUpload(ctx context.Context, ownerId string, u
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
@@ -430,20 +449,21 @@ func (s *UserSession) FinalizeAssetUpload(ctx context.Context, ownerId string, u
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
+
 		return errors.Errorf("failed to finalize upload: %s - %s", resp.Status, string(respBody))
 	}
 
 	return nil
 }
 
-// WaitForAssetUpload waits for an asset upload to complete
+// WaitForAssetUpload waits for an asset upload to complete.
 func (s *UserSession) WaitForAssetUpload(ctx context.Context, ownerId, hash, uploadId string) error {
 	ownerType := "users"
 	if len(ownerId) > 0 && ownerId[0] == 'G' {
 		ownerType = "groups"
 	}
 
-	for i := 0; i < 120; i++ {
+	for range 120 {
 		reqUrl, err := url.JoinPath(API_BASE_URL, ownerType, ownerId, "assets", hash, "upload", uploadId)
 		if err != nil {
 			return errors.Errorf("failed to make request URL: %w", err)
@@ -460,7 +480,8 @@ func (s *UserSession) WaitForAssetUpload(ctx context.Context, ownerId, hash, upl
 		}
 
 		respBody, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
+
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
@@ -491,7 +512,7 @@ func (s *UserSession) WaitForAssetUpload(ctx context.Context, ownerId, hash, upl
 	return errors.Errorf("upload timeout")
 }
 
-// UploadAsset uploads a single asset and returns the resdb:// URL
+// UploadAsset uploads a single asset and returns the resdb:// URL.
 func (s *UserSession) UploadAsset(ctx context.Context, ownerId string, data []byte) (string, error) {
 	hash := ComputeAssetHash(data)
 	totalBytes := int64(len(data))
@@ -504,7 +525,7 @@ func (s *UserSession) UploadAsset(ctx context.Context, ownerId string, data []by
 
 	// If nil, asset already exists
 	if uploadData == nil {
-		return fmt.Sprintf("resdb:///%s", hash), nil
+		return "resdb:///" + hash, nil
 	}
 
 	// Upload chunks
@@ -515,7 +536,8 @@ func (s *UserSession) UploadAsset(ctx context.Context, ownerId string, data []by
 
 	// Finalize if multipart
 	if !uploadData.IsDirectUpload {
-		if err := s.FinalizeAssetUpload(ctx, ownerId, uploadData, chunks); err != nil {
+		err := s.FinalizeAssetUpload(ctx, ownerId, uploadData, chunks)
+		if err != nil {
 			return "", err
 		}
 	}
@@ -525,10 +547,10 @@ func (s *UserSession) UploadAsset(ctx context.Context, ownerId string, data []by
 		return "", err
 	}
 
-	return fmt.Sprintf("resdb:///%s", hash), nil
+	return "resdb:///" + hash, nil
 }
 
-// UpsertRecord creates or updates a record
+// UpsertRecord creates or updates a record.
 func (s *UserSession) UpsertRecord(ctx context.Context, record *Record) error {
 	ownerType := "users"
 	if len(record.OwnerId) > 0 && record.OwnerId[0] == 'G' {
@@ -539,7 +561,8 @@ func (s *UserSession) UpsertRecord(ctx context.Context, record *Record) error {
 	if err != nil {
 		return errors.Errorf("failed to make request URL: %w", err)
 	}
-	reqUrl = reqUrl + "?ensureFolder=true"
+
+	reqUrl += "?ensureFolder=true"
 
 	body, err := json.Marshal(record)
 	if err != nil {
@@ -550,6 +573,7 @@ func (s *UserSession) UpsertRecord(ctx context.Context, record *Record) error {
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
@@ -560,6 +584,7 @@ func (s *UserSession) UpsertRecord(ctx context.Context, record *Record) error {
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
+
 		return errors.Errorf("failed to upsert record: %s - %s", resp.Status, string(respBody))
 	}
 
@@ -567,21 +592,21 @@ func (s *UserSession) UpsertRecord(ctx context.Context, record *Record) error {
 }
 
 // UploadTextureRecord uploads a texture image and creates a record for it
-// Returns the record ID and asset URI
-func (s *UserSession) UploadTextureRecord(ctx context.Context, name string, path string, imageData []byte) (recordId string, assetUri string, err error) {
+// Returns the record ID and asset URI.
+func (s *UserSession) UploadTextureRecord(ctx context.Context, name string, path string, imageData []byte) (string, string, error) {
 	ownerId := s.UserId
 	hash := ComputeAssetHash(imageData)
 	totalBytes := int64(len(imageData))
 
 	// Create record
-	recordId = GenerateRecordID()
+	recordId := GenerateRecordID()
 	machineId := GetMachineID()
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	record := &Record{
 		Id:       recordId,
 		OwnerId:  ownerId,
-		AssetUri: fmt.Sprintf("resdb:///%s", hash),
+		AssetUri: "resdb:///" + hash,
 		Version: RecordVersion{
 			GlobalVersion:          0,
 			LocalVersion:           1,
@@ -632,7 +657,8 @@ func (s *UserSession) UploadTextureRecord(ctx context.Context, name string, path
 
 				// Finalize if multipart
 				if !uploadData.IsDirectUpload {
-					if err := s.FinalizeAssetUpload(ctx, ownerId, uploadData, chunks); err != nil {
+					err := s.FinalizeAssetUpload(ctx, ownerId, uploadData, chunks)
+					if err != nil {
 						return "", "", errors.Errorf("failed to finalize upload: %w", err)
 					}
 				}

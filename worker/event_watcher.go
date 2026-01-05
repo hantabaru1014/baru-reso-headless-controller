@@ -47,6 +47,7 @@ func (ew *EventWatcher) Start() {
 
 	// Start event listener with reconnection
 	ew.wg.Add(1)
+
 	go ew.watchEvents(ctx)
 
 	slog.Debug("Event watcher started")
@@ -56,6 +57,7 @@ func (ew *EventWatcher) Stop() {
 	if ew.cancel != nil {
 		ew.cancel()
 	}
+
 	ew.wg.Wait()
 	slog.Debug("Event watcher stopped")
 }
@@ -67,6 +69,7 @@ func (ew *EventWatcher) syncAllStatuses(ctx context.Context) {
 	statuses, err := ew.dc.ListAllContainerStatuses(ctx)
 	if err != nil {
 		slog.Error("Failed to list container statuses", "error", err)
+
 		return
 	}
 
@@ -74,6 +77,7 @@ func (ew *EventWatcher) syncAllStatuses(ctx context.Context) {
 	hosts, err := ew.q.ListHosts(ctx)
 	if err != nil {
 		slog.Error("Failed to list hosts", "error", err)
+
 		return
 	}
 
@@ -128,12 +132,14 @@ func (ew *EventWatcher) watchEvents(ctx context.Context) {
 		if err != nil {
 			slog.Error("Failed to subscribe to Docker events", "error", err)
 			time.Sleep(reconnectWait)
-			reconnectWait = min(reconnectWait*2, ew.maxReconnectWait)
+			reconnectWait = min(reconnectWait*2, ew.maxReconnectWait) //nolint:mnd // exponential backoff
+
 			continue
 		}
 
 		// Reset reconnect delay on successful connection
 		reconnectWait = ew.reconnectDelay
+
 		slog.Info("Connected to Docker events stream")
 
 		// Process events
@@ -146,13 +152,16 @@ func (ew *EventWatcher) watchEvents(ctx context.Context) {
 				if !ok {
 					// Channel closed, need to reconnect
 					slog.Warn("Docker events channel closed, reconnecting...")
+
 					break eventLoop
 				}
+
 				ew.handleEvent(ctx, event)
 			case err := <-errChan:
 				slog.Error("Docker events error, reconnecting...", "error", err)
 				time.Sleep(reconnectWait)
-				reconnectWait = min(reconnectWait*2, ew.maxReconnectWait)
+				reconnectWait = min(reconnectWait*2, ew.maxReconnectWait) //nolint:mnd // exponential backoff
+
 				break eventLoop
 			}
 		}
@@ -161,9 +170,10 @@ func (ew *EventWatcher) watchEvents(ctx context.Context) {
 
 func (ew *EventWatcher) handleEvent(ctx context.Context, event hostconnector.ContainerEvent) {
 	shortID := event.ContainerID
-	if len(shortID) > 12 {
+	if len(shortID) > 12 { //nolint:mnd // docker short ID length
 		shortID = shortID[:12]
 	}
+
 	slog.Debug("Received container event",
 		"containerID", shortID,
 		"action", event.Action)
@@ -192,6 +202,7 @@ func (ew *EventWatcher) handleEvent(ctx context.Context, event hostconnector.Con
 	if err != nil {
 		slog.Error("Failed to update host status from event",
 			"hostID", host.ID, "error", err)
+
 		return
 	}
 
@@ -212,6 +223,7 @@ func (ew *EventWatcher) eventToStatus(event hostconnector.ContainerEvent) entity
 		if event.ExitCode == "0" {
 			return entity.HeadlessHostStatus_EXITED
 		}
+
 		return entity.HeadlessHostStatus_CRASHED
 	case hostconnector.ContainerEventKill, hostconnector.ContainerEventOOM:
 		return entity.HeadlessHostStatus_CRASHED
@@ -223,11 +235,12 @@ func (ew *EventWatcher) eventToStatus(event hostconnector.ContainerEvent) entity
 	}
 }
 
-// extractContainerID extracts container ID from connect_string format "containerID:port"
+// extractContainerID extracts container ID from connect_string format "containerID:port".
 func extractContainerID(connectString string) string {
 	parts := strings.Split(connectString, ":")
 	if len(parts) >= 1 && len(parts[0]) > 0 {
 		return parts[0]
 	}
+
 	return ""
 }

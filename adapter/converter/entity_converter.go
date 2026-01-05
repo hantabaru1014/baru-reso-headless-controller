@@ -26,17 +26,20 @@ func HeadlessHostEntityToProto(e *entity.HeadlessHost) *hdlctrlv1.HeadlessHost {
 
 func HeadlessHostSettingsToProto(e *entity.HeadlessHostSettings) *hdlctrlv1.HeadlessHostSettings {
 	allowedUrlHosts := make([]*headlessv1.AllowedAccessEntry, 0, len(e.AllowedUrlHosts))
+
 	for _, entry := range e.AllowedUrlHosts {
 		types := make([]headlessv1.AllowedAccessEntry_AccessType, 0, len(entry.AccessTypes))
 		for _, accessType := range entry.AccessTypes {
 			types = append(types, headlessv1.AllowedAccessEntry_AccessType(accessType))
 		}
+
 		allowedUrlHosts = append(allowedUrlHosts, &headlessv1.AllowedAccessEntry{
 			Host:        entry.Host,
 			Ports:       entry.Ports,
 			AccessTypes: types,
 		})
 	}
+
 	return &hdlctrlv1.HeadlessHostSettings{
 		UniverseId:                  e.UniverseID,
 		TickRate:                    e.TickRate,
@@ -49,17 +52,20 @@ func HeadlessHostSettingsToProto(e *entity.HeadlessHostSettings) *hdlctrlv1.Head
 
 func HeadlessHostSettingsToStartupConfigProto(e *entity.HeadlessHostSettings) *headlessv1.StartupConfig {
 	allowedUrlHosts := make([]*headlessv1.AllowedAccessEntry, 0, len(e.AllowedUrlHosts))
+
 	for _, entry := range e.AllowedUrlHosts {
 		types := make([]headlessv1.AllowedAccessEntry_AccessType, 0, len(entry.AccessTypes))
 		for _, accessType := range entry.AccessTypes {
 			types = append(types, headlessv1.AllowedAccessEntry_AccessType(accessType))
 		}
+
 		allowedUrlHosts = append(allowedUrlHosts, &headlessv1.AllowedAccessEntry{
 			Host:        entry.Host,
 			Ports:       entry.Ports,
 			AccessTypes: types,
 		})
 	}
+
 	return &headlessv1.StartupConfig{
 		UniverseId:                  e.UniverseID,
 		TickRate:                    &e.TickRate,
@@ -71,33 +77,38 @@ func HeadlessHostSettingsToStartupConfigProto(e *entity.HeadlessHostSettings) *h
 }
 
 func HeadlessHostSettingsProtoToEntity(proto *headlessv1.StartupConfig) *entity.HeadlessHostSettings {
-	allowedUrlHosts := make([]entity.HostAllowedAccessEntry, 0, len(proto.AllowedUrlHosts))
-	for _, entry := range proto.AllowedUrlHosts {
-		types := make([]entity.HostAllowedAccessType, 0, len(entry.AccessTypes))
-		for _, accessType := range entry.AccessTypes {
+	allowedUrlHosts := make([]entity.HostAllowedAccessEntry, 0, len(proto.GetAllowedUrlHosts()))
+
+	for _, entry := range proto.GetAllowedUrlHosts() {
+		types := make([]entity.HostAllowedAccessType, 0, len(entry.GetAccessTypes()))
+		for _, accessType := range entry.GetAccessTypes() {
 			types = append(types, entity.HostAllowedAccessType(accessType))
 		}
+
 		allowedUrlHosts = append(allowedUrlHosts, entity.HostAllowedAccessEntry{
-			Host:        entry.Host,
-			Ports:       entry.Ports,
+			Host:        entry.GetHost(),
+			Ports:       entry.GetPorts(),
 			AccessTypes: types,
 		})
 	}
+
 	tickRate := float32(0)
 	if proto.TickRate != nil {
-		tickRate = *proto.TickRate
+		tickRate = proto.GetTickRate()
 	}
+
 	maxConcurrentAssetTransfers := int32(0)
 	if proto.MaxConcurrentAssetTransfers != nil {
-		maxConcurrentAssetTransfers = *proto.MaxConcurrentAssetTransfers
+		maxConcurrentAssetTransfers = proto.GetMaxConcurrentAssetTransfers()
 	}
+
 	return &entity.HeadlessHostSettings{
 		UniverseID:                  proto.UniverseId,
 		TickRate:                    tickRate,
 		MaxConcurrentAssetTransfers: maxConcurrentAssetTransfers,
 		UsernameOverride:            proto.UsernameOverride,
 		AllowedUrlHosts:             allowedUrlHosts,
-		StartWorlds:                 proto.StartWorlds,
+		StartWorlds:                 proto.GetStartWorlds(),
 	}
 }
 
@@ -116,8 +127,10 @@ func SessionEntityToProto(e *entity.Session) *hdlctrlv1.Session {
 	if e.StartedAt != nil {
 		d.StartedAt = timestamppb.New(*e.StartedAt)
 	}
+
 	if e.EndedAt != nil {
 		d.EndedAt = timestamppb.New(*e.EndedAt)
 	}
+
 	return d
 }

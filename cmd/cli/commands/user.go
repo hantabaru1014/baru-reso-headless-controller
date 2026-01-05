@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"fmt"
-
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/spf13/cobra"
@@ -25,16 +23,19 @@ func NewUserCommand(uu *usecase.UserUsecase, skyfrostClient skyfrost.Client) *co
 			if err != nil {
 				cmd.PrintErrln("Failed to validate Resonite ID:", err)
 				cmd.PrintErrln("Please check if the Resonite ID is correct.")
+
 				return
 			}
 
 			token, err := uu.CreateRegistrationToken(cmd.Context(), resoniteId)
 			if err != nil {
 				cmd.PrintErrln("Failed to create registration token:", err)
+
 				return
 			}
 
-			registrationUrl := fmt.Sprintf("https://<your base URL>/register/%s", token)
+			registrationUrl := "https://<your base URL>/register/" + token
+
 			cmd.Println("Registration link generated successfully!")
 			cmd.Println("for Resonite User:", userInfo.UserName, "(ID:", userInfo.ID+")")
 			cmd.Println("Valid for: 24 hours")
@@ -46,18 +47,22 @@ func NewUserCommand(uu *usecase.UserUsecase, skyfrostClient skyfrost.Client) *co
 	createUserCmd := &cobra.Command{
 		Use:   "create <id> <password> <resoniteId>",
 		Short: "Create a user directly (deprecated, use 'invite' instead)",
-		Args:  cobra.ExactArgs(3),
+		Args:  cobra.ExactArgs(3), //nolint:mnd // 3 required args: id, password, resoniteId
 		Run: func(cmd *cobra.Command, args []string) {
 			err := uu.CreateUser(cmd.Context(), args[0], args[1], args[2])
 			if err != nil {
 				cmd.PrintErrln(err)
+
 				return
 			}
+
 			_, err = uu.GetUserWithPassword(cmd.Context(), args[0], args[1])
 			if err != nil {
 				cmd.PrintErrln("Failed validate created user:", err)
+
 				return
 			}
+
 			cmd.Println("User created successfully")
 		},
 	}
@@ -70,12 +75,15 @@ func NewUserCommand(uu *usecase.UserUsecase, skyfrostClient skyfrost.Client) *co
 			err := uu.DeleteUser(cmd.Context(), args[0])
 			if err != nil {
 				cmd.PrintErrln(err)
+
 				return
 			}
+
 			cmd.Println("User deleted successfully")
 		},
 	}
 
 	cmd.AddCommand(inviteCmd, createUserCmd, deleteUserCmd)
+
 	return cmd
 }

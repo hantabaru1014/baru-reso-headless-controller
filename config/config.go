@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -64,23 +65,24 @@ func LoadEnvConfig() (*EnvConfig, error) {
 	cfg.Docker.GHCRAuthToken = os.Getenv("GHCR_AUTH_TOKEN")
 	cfg.Docker.HeadlessRegistryAuth = os.Getenv("HEADLESS_REGISTRY_AUTH")
 
-	cfg.GRPC.ConnectTimeout = getEnvDuration("GRPC_CONNECT_TIMEOUT", 5*time.Second)
-	cfg.GRPC.CallTimeout = getEnvDuration("GRPC_CALL_TIMEOUT", 10*time.Second)
+	cfg.GRPC.ConnectTimeout = getEnvDuration("GRPC_CONNECT_TIMEOUT", 5*time.Second)   //nolint:mnd // default
+	cfg.GRPC.CallTimeout = getEnvDuration("GRPC_CALL_TIMEOUT", 10*time.Second)        //nolint:mnd // default
 
-	cfg.Worker.ImageCheckInterval = getEnvDurationSec("IMAGE_CHECK_INTERVAL_SEC", 15*time.Second)
+	cfg.Worker.ImageCheckInterval = getEnvDurationSec("IMAGE_CHECK_INTERVAL_SEC", 15*time.Second)      //nolint:mnd // default
 	cfg.Worker.AutoPullNewImage = os.Getenv("AUTO_PULL_NEW_IMAGE") == "true"
-	cfg.Worker.EventReconnectDelay = getEnvDuration("EVENT_WATCHER_RECONNECT_DELAY", 5*time.Second)
-	cfg.Worker.EventMaxReconnectWait = getEnvDuration("EVENT_WATCHER_MAX_RECONNECT_WAIT", 5*time.Minute)
+	cfg.Worker.EventReconnectDelay = getEnvDuration("EVENT_WATCHER_RECONNECT_DELAY", 5*time.Second)    //nolint:mnd // default
+	cfg.Worker.EventMaxReconnectWait = getEnvDuration("EVENT_WATCHER_MAX_RECONNECT_WAIT", 5*time.Minute) //nolint:mnd // default
 
 	cfg.Server.Host = getEnvWithDefault("HOST", ":8014")
 	cfg.Server.FrontDevMode = os.Getenv("FDEV") == "true"
 	cfg.Server.FrontDevURL = getEnvWithDefault("FDEV_URL", "http://localhost:5173")
-	cfg.Server.ShutdownTimeout = getEnvDuration("SHUTDOWN_TIMEOUT", 10*time.Second)
+	cfg.Server.ShutdownTimeout = getEnvDuration("SHUTDOWN_TIMEOUT", 10*time.Second) //nolint:mnd // default
 
 	portMin, portMax, err := parseSessionPortEnv()
 	if err != nil {
 		return nil, err
 	}
+
 	cfg.Server.SessionPortMin = portMin
 	cfg.Server.SessionPortMax = portMax
 
@@ -89,13 +91,15 @@ func LoadEnvConfig() (*EnvConfig, error) {
 
 func (c *EnvConfig) Validate() error {
 	if c.Auth.JWTSecret == "" {
-		return fmt.Errorf("JWT_SECRET is required")
+		return errors.New("JWT_SECRET is required")
 	}
+
 	if c.Database.URL == "" {
-		return fmt.Errorf("DB_URL is required")
+		return errors.New("DB_URL is required")
 	}
+
 	if c.Docker.HeadlessImageName == "" {
-		return fmt.Errorf("HEADLESS_IMAGE_NAME is required")
+		return errors.New("HEADLESS_IMAGE_NAME is required")
 	}
 
 	return nil
@@ -105,6 +109,7 @@ func getEnvWithDefault(key, defaultValue string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
 	}
+
 	return defaultValue
 }
 
@@ -114,6 +119,7 @@ func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 			return d
 		}
 	}
+
 	return defaultValue
 }
 
@@ -123,6 +129,7 @@ func getEnvDurationSec(key string, defaultValue time.Duration) time.Duration {
 			return time.Duration(seconds) * time.Second
 		}
 	}
+
 	return defaultValue
 }
 
@@ -133,25 +140,30 @@ func parseSessionPortEnv() (int, int, error) {
 
 	if portMinStr != "" && portMaxStr != "" {
 		var err error
+
 		portMin, err = strconv.Atoi(portMinStr)
 		if err != nil {
 			return 0, 0, fmt.Errorf("invalid SESSION_PORT_MIN: %s", portMinStr)
 		}
+
 		portMax, err = strconv.Atoi(portMaxStr)
 		if err != nil {
 			return 0, 0, fmt.Errorf("invalid SESSION_PORT_MAX: %s", portMaxStr)
 		}
+
 		if portMin < 1024 || portMin > 65535 {
 			return 0, 0, fmt.Errorf("SESSION_PORT_MIN(%d) must be between 1024 and 65535", portMin)
 		}
+
 		if portMax < 1 || portMax > 65535 {
 			return 0, 0, fmt.Errorf("SESSION_PORT_MAX(%d) must be between 1 and 65535", portMax)
 		}
+
 		if portMin > portMax {
 			return 0, 0, fmt.Errorf("invalid port range: SESSION_PORT_MIN(%d) > SESSION_PORT_MAX(%d)", portMin, portMax)
 		}
 	} else if (portMinStr != "" && portMaxStr == "") || (portMinStr == "" && portMaxStr != "") {
-		return 0, 0, fmt.Errorf("SESSION_PORT_MIN and SESSION_PORT_MAX must both be set or both be unset")
+		return 0, 0, errors.New("SESSION_PORT_MIN and SESSION_PORT_MAX must both be set or both be unset")
 	}
 
 	return portMin, portMax, nil

@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// Client is an interface for Resonite API client operations
+// Client is an interface for Resonite API client operations.
 type Client interface {
 	// UserLogin logs in with the given credentials and returns a user session
 	UserLogin(ctx context.Context, credential, password string) (*UserSession, error)
@@ -17,27 +17,82 @@ type Client interface {
 	GetContacts(ctx context.Context, credential, password string) ([]Contact, error)
 	// UploadTextureRecord uploads a texture image and creates a record for it
 	// Returns the record ID and asset URI
-	UploadTextureRecord(ctx context.Context, credential, password, name, path string, imageData []byte) (recordId string, assetUri string, err error)
+	UploadTextureRecord(ctx context.Context, credential, password, name, path string, imageData []byte) (string, string, error)
 	// UpdateUserProfile updates the user's profile
 	UpdateUserProfile(ctx context.Context, credential, password string, profile *UserProfile) error
 	// SearchWorlds searches for published worlds on Resonite
 	SearchWorlds(ctx context.Context, query string, featuredOnly bool, pageIndex int) (*SearchWorldsResult, error)
 }
 
-// DefaultClient is the default implementation of Client using real API calls
+// DefaultClient is the default implementation of Client using real API calls.
 type DefaultClient struct {
 	mu       sync.RWMutex
 	sessions map[string]*UserSession // key: credential
 }
 
-// NewDefaultClient creates a new DefaultClient
+// NewDefaultClient creates a new DefaultClient.
 func NewDefaultClient() *DefaultClient {
 	return &DefaultClient{
 		sessions: make(map[string]*UserSession),
 	}
 }
 
-// getOrLogin returns a cached session if valid, otherwise logs in and caches the new session
+// UserLogin implements Client.UserLogin.
+func (c *DefaultClient) UserLogin(ctx context.Context, credential, password string) (*UserSession, error) {
+	return UserLogin(ctx, credential, password)
+}
+
+// FetchUserInfo implements Client.FetchUserInfo.
+func (c *DefaultClient) FetchUserInfo(ctx context.Context, resoniteID string) (*UserInfo, error) {
+	return FetchUserInfo(ctx, resoniteID)
+}
+
+// GetStorageInfo implements Client.GetStorageInfo.
+func (c *DefaultClient) GetStorageInfo(ctx context.Context, credential, password, ownerId string) (*StorageInfo, error) {
+	userSession, err := c.getOrLogin(ctx, credential, password)
+	if err != nil {
+		return nil, err
+	}
+
+	return userSession.GetStorage(ctx, ownerId)
+}
+
+// GetContacts implements Client.GetContacts.
+func (c *DefaultClient) GetContacts(ctx context.Context, credential, password string) ([]Contact, error) {
+	userSession, err := c.getOrLogin(ctx, credential, password)
+	if err != nil {
+		return nil, err
+	}
+
+	return userSession.GetContacts(ctx)
+}
+
+// UploadTextureRecord implements Client.UploadTextureRecord.
+func (c *DefaultClient) UploadTextureRecord(ctx context.Context, credential, password, name, path string, imageData []byte) (string, string, error) {
+	userSession, err := c.getOrLogin(ctx, credential, password)
+	if err != nil {
+		return "", "", err
+	}
+
+	return userSession.UploadTextureRecord(ctx, name, path, imageData)
+}
+
+// UpdateUserProfile implements Client.UpdateUserProfile.
+func (c *DefaultClient) UpdateUserProfile(ctx context.Context, credential, password string, profile *UserProfile) error {
+	userSession, err := c.getOrLogin(ctx, credential, password)
+	if err != nil {
+		return err
+	}
+
+	return userSession.UpdateUserProfile(ctx, profile)
+}
+
+// SearchWorlds implements Client.SearchWorlds.
+func (c *DefaultClient) SearchWorlds(ctx context.Context, query string, featuredOnly bool, pageIndex int) (*SearchWorldsResult, error) {
+	return SearchWorlds(ctx, query, featuredOnly, pageIndex)
+}
+
+// getOrLogin returns a cached session if valid, otherwise logs in and caches the new session.
 func (c *DefaultClient) getOrLogin(ctx context.Context, credential, password string) (*UserSession, error) {
 	// まずRead lockでキャッシュを確認
 	c.mu.RLock()
@@ -60,55 +115,4 @@ func (c *DefaultClient) getOrLogin(ctx context.Context, credential, password str
 	c.mu.Unlock()
 
 	return newSession, nil
-}
-
-// UserLogin implements Client.UserLogin
-func (c *DefaultClient) UserLogin(ctx context.Context, credential, password string) (*UserSession, error) {
-	return UserLogin(ctx, credential, password)
-}
-
-// FetchUserInfo implements Client.FetchUserInfo
-func (c *DefaultClient) FetchUserInfo(ctx context.Context, resoniteID string) (*UserInfo, error) {
-	return FetchUserInfo(ctx, resoniteID)
-}
-
-// GetStorageInfo implements Client.GetStorageInfo
-func (c *DefaultClient) GetStorageInfo(ctx context.Context, credential, password, ownerId string) (*StorageInfo, error) {
-	userSession, err := c.getOrLogin(ctx, credential, password)
-	if err != nil {
-		return nil, err
-	}
-	return userSession.GetStorage(ctx, ownerId)
-}
-
-// GetContacts implements Client.GetContacts
-func (c *DefaultClient) GetContacts(ctx context.Context, credential, password string) ([]Contact, error) {
-	userSession, err := c.getOrLogin(ctx, credential, password)
-	if err != nil {
-		return nil, err
-	}
-	return userSession.GetContacts(ctx)
-}
-
-// UploadTextureRecord implements Client.UploadTextureRecord
-func (c *DefaultClient) UploadTextureRecord(ctx context.Context, credential, password, name, path string, imageData []byte) (recordId string, assetUri string, err error) {
-	userSession, err := c.getOrLogin(ctx, credential, password)
-	if err != nil {
-		return "", "", err
-	}
-	return userSession.UploadTextureRecord(ctx, name, path, imageData)
-}
-
-// UpdateUserProfile implements Client.UpdateUserProfile
-func (c *DefaultClient) UpdateUserProfile(ctx context.Context, credential, password string, profile *UserProfile) error {
-	userSession, err := c.getOrLogin(ctx, credential, password)
-	if err != nil {
-		return err
-	}
-	return userSession.UpdateUserProfile(ctx, profile)
-}
-
-// SearchWorlds implements Client.SearchWorlds
-func (c *DefaultClient) SearchWorlds(ctx context.Context, query string, featuredOnly bool, pageIndex int) (*SearchWorldsResult, error) {
-	return SearchWorlds(ctx, query, featuredOnly, pageIndex)
 }

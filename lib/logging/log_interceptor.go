@@ -29,8 +29,10 @@ func NewErrorLogInterceptor() connect.UnaryInterceptorFunc {
 					}
 				}
 			}
+
 			return res, err
 		})
 	}
+
 	return connect.UnaryInterceptorFunc(i)
 }
