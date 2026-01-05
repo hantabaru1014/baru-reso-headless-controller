@@ -92,4 +92,6 @@ jobs:
       - name: Run tests
         env:
           DB_URL: postgres://postgres:postgres@localhost:5432/brhcdb?sslmode=disable
+          JWT_SECRET: test-jwt-secret-for-ci-testing
+          HEADLESS_IMAGE_NAME: ghcr.io/hantabaru1014/baru-reso-headless-container
         run: make test
