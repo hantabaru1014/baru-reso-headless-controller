@@ -1,37 +1,20 @@
-
-BUF_VERSION := v1.54.0
-BIN_DIR := $(shell pwd)/bin
-
-# tools
-buf := go run github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
-wire := go run github.com/google/wire/cmd/wire@latest
-sqlc := go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest
-mockgen := go run go.uber.org/mock/mockgen@latest
-gotestsum := go run gotest.tools/gotestsum@latest
-
-.PHONY: install.tools
-install.tools:
-	mkdir -p $(BIN_DIR);
-	@GOBIN=$(BIN_DIR) go install github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION);
-	@GOBIN=$(BIN_DIR) go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest;
-
 .PHONY: gen.proto
 gen.proto:
-	$(buf) generate
+	go tool buf generate
 
 .PHONY: gen.wire
 gen.wire:
-	$(wire) ./app
+	go tool wire ./app
 
 .PHONY: gen.sqlc
 gen.sqlc:
 	# https://github.com/sqlc-dev/sqlc/issues/3916
-	CGO_CFLAGS="-DHAVE_STRCHRNUL" $(sqlc) generate
+	CGO_CFLAGS="-DHAVE_STRCHRNUL" go tool sqlc generate
 
 .PHONY: lint.proto
 lint.proto:
-	$(buf) format -w
-	$(buf) lint
+	go tool buf format -w
+	go tool buf lint
 
 .PHONY: build.cli
 build.cli:
@@ -53,18 +36,18 @@ gen.mock:
 	@echo "Generating new mock files..."
 	@mkdir -p adapter/hostconnector/mock
 	@mkdir -p lib/skyfrost/mock
-	$(mockgen) -source=adapter/hostconnector/host_connector.go -destination=adapter/hostconnector/mock/mock_host_connector.go -package=mock
-	$(mockgen) -package=mock -destination=adapter/hostconnector/mock/mock_rpc_client.go github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1 HeadlessControlServiceClient
-	$(mockgen) -source=lib/skyfrost/client.go -destination=lib/skyfrost/mock/mock_client.go -package=mock
+	go tool mockgen -source=adapter/hostconnector/host_connector.go -destination=adapter/hostconnector/mock/mock_host_connector.go -package=mock
+	go tool mockgen -package=mock -destination=adapter/hostconnector/mock/mock_rpc_client.go github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1 HeadlessControlServiceClient
+	go tool mockgen -source=lib/skyfrost/client.go -destination=lib/skyfrost/mock/mock_client.go -package=mock
 	@echo "Mock generation complete!"
 
 .PHONY: migrate.up
 migrate.up:
-	@$(BIN_DIR)/migrate -path db/migrations -database "$(DB_URL)" up
+	@go tool migrate -path db/migrations -database "$(DB_URL)" up
 	@DB_NAME=$$(echo "$(DB_URL)" | sed 's/.*\/\([^?]*\).*/\1/'); \
 	TEST_DB_NAME=$${DB_NAME}_test; \
 	TEST_DB_URL=$$(echo "$(DB_URL)" | sed "s/$$DB_NAME/$$TEST_DB_NAME/"); \
-	$(BIN_DIR)/migrate -path db/migrations -database "$$TEST_DB_URL" up
+	go tool migrate -path db/migrations -database "$$TEST_DB_URL" up
 
 .PHONY: test.setup
 test.setup:
@@ -78,11 +61,11 @@ test.setup:
 	(echo "Creating test database $$TEST_DB_NAME..." && \
 	docker compose -f docker-compose.db.yml exec -T db psql -U postgres -d postgres -c "CREATE DATABASE $$TEST_DB_NAME"); \
 	echo "Running migrations..."; \
-	$(BIN_DIR)/migrate -path db/migrations -database "$$TEST_DB_URL" up
+	go tool migrate -path db/migrations -database "$$TEST_DB_URL" up
 
 .PHONY: test
 test:
-	$(gotestsum) --format dots -- ./...
+	go tool gotestsum --format dots -- ./...
 
 .PHONY: lint
 lint:
