@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"errors"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -28,6 +29,7 @@ func TestUserService_GetTokenByPassword(t *testing.T) {
 	// Setup service
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+
 	mockSkyfrost := skyfrostmock.NewMockClient(ctrl)
 	uu := usecase.NewUserUsecase(queries, mockSkyfrost)
 	service := NewUserService(uu)
@@ -40,8 +42,8 @@ func TestUserService_GetTokenByPassword(t *testing.T) {
 
 		res, err := service.GetTokenByPassword(t.Context(), req)
 		require.NoError(t, err)
-		assert.NotEmpty(t, res.Msg.Token)
-		assert.NotEmpty(t, res.Msg.RefreshToken)
+		assert.NotEmpty(t, res.Msg.GetToken())
+		assert.NotEmpty(t, res.Msg.GetRefreshToken())
 	})
 
 	t.Run("失敗: 間違ったパスワード", func(t *testing.T) {
@@ -53,7 +55,8 @@ func TestUserService_GetTokenByPassword(t *testing.T) {
 		_, err := service.GetTokenByPassword(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
 	})
@@ -67,7 +70,8 @@ func TestUserService_GetTokenByPassword(t *testing.T) {
 		_, err := service.GetTokenByPassword(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
 	})
@@ -86,6 +90,7 @@ func TestUserService_RefreshToken(t *testing.T) {
 	// Setup service
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+
 	mockSkyfrost := skyfrostmock.NewMockClient(ctrl)
 	uu := usecase.NewUserUsecase(queries, mockSkyfrost)
 	service := NewUserService(uu)
@@ -107,15 +112,15 @@ func TestUserService_RefreshToken(t *testing.T) {
 
 			// Create refresh request with the token
 			refreshReq := connect.NewRequest(&hdlctrlv1.RefreshTokenRequest{})
-			refreshReq.Header().Set("Authorization", "Bearer "+initialRes.Msg.RefreshToken)
+			refreshReq.Header().Set("Authorization", "Bearer "+initialRes.Msg.GetRefreshToken())
 
 			res, err := service.RefreshToken(t.Context(), refreshReq)
 			require.NoError(t, err)
-			assert.NotEmpty(t, res.Msg.Token)
-			assert.NotEmpty(t, res.Msg.RefreshToken)
+			assert.NotEmpty(t, res.Msg.GetToken())
+			assert.NotEmpty(t, res.Msg.GetRefreshToken())
 
 			// Verify the new token is different from the old one
-			assert.NotEqual(t, initialRes.Msg.Token, res.Msg.Token)
+			assert.NotEqual(t, initialRes.Msg.GetToken(), res.Msg.GetToken())
 
 			// Verify response headers
 			assert.NotEmpty(t, res.Header().Get("WWW-Authenticate"))
@@ -154,7 +159,7 @@ func TestUserService_RefreshToken(t *testing.T) {
 
 			// Try to refresh with expired token
 			refreshReq := connect.NewRequest(&hdlctrlv1.RefreshTokenRequest{})
-			refreshReq.Header().Set("Authorization", "Bearer "+initialRes.Msg.RefreshToken)
+			refreshReq.Header().Set("Authorization", "Bearer "+initialRes.Msg.GetRefreshToken())
 
 			_, err = service.RefreshToken(t.Context(), refreshReq)
 			require.Error(t, err)

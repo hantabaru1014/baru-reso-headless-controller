@@ -30,7 +30,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var containerNotFoundError = errors.New("container not found")
+var ErrContainerNotFound = errors.New("container not found")
 
 var _ HostConnector = (*DockerHostConnector)(nil)
 
@@ -39,16 +39,25 @@ type DockerHostConnector struct {
 	grpcCfg   *config.GRPCConfig
 }
 
+func NewDockerHostConnector(dockerCfg *config.DockerConfig, grpcCfg *config.GRPCConfig) *DockerHostConnector {
+	return &DockerHostConnector{
+		dockerCfg: dockerCfg,
+		grpcCfg:   grpcCfg,
+	}
+}
+
 // GetStatus implements HostConnector.
 func (d *DockerHostConnector) GetStatus(ctx context.Context, connect_string HostConnectString) entity.HeadlessHostStatus {
 	id, _, err := parseConnectString(connect_string)
 	if err != nil {
 		return entity.HeadlessHostStatus_UNKNOWN
 	}
+
 	container, err := d.getContainer(ctx, id)
 	if err != nil {
 		return entity.HeadlessHostStatus_UNKNOWN
 	}
+
 	return containerStatusToEntityStatus(container.State, container.Status)
 }
 
@@ -58,17 +67,22 @@ func (d *DockerHostConnector) GetRpcClient(ctx context.Context, connect_string H
 	if err != nil {
 		return nil, err
 	}
+
 	container, err := d.getContainer(ctx, id)
 	if err != nil {
-		if errors.Is(err, containerNotFoundError) {
+		if errors.Is(err, ErrContainerNotFound) {
 			return nil, errors.WrapPrefix(domain.ErrNotFound, "grpc client (docker container)", 0)
 		}
+
 		return nil, errors.Errorf("failed to get container: %w", err)
 	}
+
 	if container.State != "running" {
 		return nil, errors.Errorf("specific container is not running")
 	}
+
 	address := fmt.Sprintf("localhost:%d", port)
+
 	conn, err := grpc.NewClient(address,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithConnectParams(grpc.ConnectParams{
@@ -78,6 +92,7 @@ func (d *DockerHostConnector) GetRpcClient(ctx context.Context, connect_string H
 	if err != nil {
 		return nil, errors.New(err)
 	}
+
 	return headlessv1.NewHeadlessControlServiceClient(conn), nil
 }
 
@@ -88,9 +103,10 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 	}
 
 	imageNameParts := strings.Split(d.dockerCfg.HeadlessImageName, "/")
-	if len(imageNameParts) != 3 {
+	if len(imageNameParts) != 3 { //nolint:mnd // registry/user/image format
 		return nil, errors.Errorf("invalid image name format: %s", d.dockerCfg.HeadlessImageName)
 	}
+
 	registryName := imageNameParts[0]
 	userImagePair := strings.Join(imageNameParts[1:], "/")
 
@@ -104,7 +120,7 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 			url = fmt.Sprintf("%s?last=%s", url, *currentLastTag)
 		}
 
-		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
 			return nil, errors.Errorf("failed to create request: %w", err)
 		}
@@ -113,7 +129,8 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 			if d.dockerCfg.GHCRAuthToken == "" {
 				return nil, errors.Errorf("GHCR_AUTH_TOKEN is not set")
 			}
-			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", base64.StdEncoding.EncodeToString([]byte(d.dockerCfg.GHCRAuthToken))))
+
+			req.Header.Set("Authorization", "Bearer "+base64.StdEncoding.EncodeToString([]byte(d.dockerCfg.GHCRAuthToken)))
 		}
 
 		resp, err := client.Do(req)
@@ -122,18 +139,22 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
+			_ = resp.Body.Close()
+
 			return nil, errors.Errorf("failed to get tags: %s", resp.Status)
 		}
 
 		var tagsResp tagsResponse
 		if err := json.NewDecoder(resp.Body).Decode(&tagsResp); err != nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
+
 			return nil, errors.Errorf("failed to decode response: %w", err)
 		}
-		resp.Body.Close()
+
+		_ = resp.Body.Close()
 
 		tags := make(port.ContainerImageList, 0, len(tagsResp.Tags))
+
 		for _, tag := range tagsResp.Tags {
 			info := parseTag(tag)
 			if info.IsVersioned {
@@ -145,6 +166,7 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 				})
 			}
 		}
+
 		allTags = append(allTags, tags...)
 
 		if len(tagsResp.Tags) > 0 {
@@ -166,6 +188,7 @@ func (d *DockerHostConnector) PullContainerImage(ctx context.Context, tag string
 
 	registryAuth := base64.StdEncoding.EncodeToString([]byte(d.dockerCfg.HeadlessRegistryAuth))
 	refStr := fmt.Sprintf("%s:%s", d.dockerCfg.HeadlessImageName, tag)
+
 	reader, err := cli.ImagePull(ctx, refStr, image.PullOptions{
 		All:          false,
 		RegistryAuth: registryAuth,
@@ -173,8 +196,11 @@ func (d *DockerHostConnector) PullContainerImage(ctx context.Context, tag string
 	if err != nil {
 		return "", errors.New(err)
 	}
+
 	buf := new(bytes.Buffer)
-	io.Copy(buf, reader)
+	if _, err := io.Copy(buf, reader); err != nil {
+		return "", errors.Errorf("failed to read pull response: %w", err)
+	}
 
 	return buf.String(), nil
 }
@@ -185,6 +211,7 @@ func (d *DockerHostConnector) Start(ctx context.Context, params HostStartParams)
 	if err != nil {
 		return "", errors.Errorf("failed to create docker client: %w", err)
 	}
+
 	imageTag := params.ContainerImageTag
 	if !d.isAvailableTag(ctx, imageTag) {
 		_, err := d.PullContainerImage(ctx, imageTag)
@@ -192,35 +219,43 @@ func (d *DockerHostConnector) Start(ctx context.Context, params HostStartParams)
 			return "", errors.Errorf("failed to pull container image: %w", err)
 		}
 	}
+
 	port, err := getFreePort()
 	if err != nil {
 		return "", errors.Errorf("failed to get free port: %w", err)
 	}
+
 	var startupConfig *string
+
 	if params.StartupConfig != nil {
 		configJson, err := protojson.Marshal(params.StartupConfig)
 		if err != nil {
 			return "", errors.Errorf("failed to marshal startup config: %w", err)
 		}
+
 		str := string(configJson)
 		startupConfig = &str
 	}
+
 	envs := []string{
-		fmt.Sprintf("RpcHostUrl=%s", fmt.Sprintf("http://localhost:%d", port)),
-		fmt.Sprintf("HeadlessUserCredential=%s", params.HeadlessAccount.Credential),
-		fmt.Sprintf("HeadlessUserPassword=%s", params.HeadlessAccount.Password),
+		"RpcHostUrl=" + fmt.Sprintf("http://localhost:%d", port),
+		"HeadlessUserCredential=" + params.HeadlessAccount.Credential,
+		"HeadlessUserPassword=" + params.HeadlessAccount.Password,
 	}
 	if startupConfig != nil {
-		envs = append(envs, fmt.Sprintf("StartupConfig=%s", *startupConfig))
+		envs = append(envs, "StartupConfig="+*startupConfig)
 	}
+
 	config := container.Config{
 		Env:   envs,
 		Image: fmt.Sprintf("%s:%s", d.dockerCfg.HeadlessImageName, imageTag),
 	}
+
 	fluentdAddr := d.dockerCfg.FluentdAddress
 	if fluentdAddr == "" {
 		fluentdAddr = "localhost:24224"
 	}
+
 	hostConfig := container.HostConfig{
 		NetworkMode: "host",
 		LogConfig: container.LogConfig{
@@ -231,10 +266,12 @@ func (d *DockerHostConnector) Start(ctx context.Context, params HostStartParams)
 			},
 		},
 	}
+
 	createResp, err := cli.ContainerCreate(ctx, &config, &hostConfig, nil, nil, "")
 	if err != nil {
 		return "", errors.Errorf("failed to create container: %w", err)
 	}
+
 	err = cli.ContainerStart(ctx, createResp.ID, container.StartOptions{})
 	if err != nil {
 		return "", errors.Errorf("failed to start container: %w", err)
@@ -249,10 +286,12 @@ func (d *DockerHostConnector) Stop(ctx context.Context, connect_string HostConne
 	if err != nil {
 		return err
 	}
+
 	cli, err := d.newDockerClient()
 	if err != nil {
 		return errors.Errorf("failed to create docker client: %w", err)
 	}
+
 	err = cli.ContainerStop(ctx, id, container.StopOptions{
 		Timeout: &timeoutSeconds,
 	})
@@ -269,10 +308,12 @@ func (d *DockerHostConnector) Kill(ctx context.Context, connect_string HostConne
 	if err != nil {
 		return err
 	}
+
 	cli, err := d.newDockerClient()
 	if err != nil {
 		return errors.Errorf("failed to create docker client: %w", err)
 	}
+
 	err = cli.ContainerKill(ctx, id, "SIGKILL")
 	if err != nil {
 		return errors.Errorf("failed to kill container: %w", err)
@@ -287,17 +328,21 @@ func (d *DockerHostConnector) Remove(ctx context.Context, connect_string HostCon
 	if err != nil {
 		return err
 	}
+
 	_, err = d.getContainer(ctx, id)
 	if err != nil {
-		if errors.Is(err, containerNotFoundError) {
+		if errors.Is(err, ErrContainerNotFound) {
 			return nil
 		}
+
 		return errors.Errorf("failed to get container: %w", err)
 	}
+
 	cli, err := d.newDockerClient()
 	if err != nil {
 		return errors.Errorf("failed to create docker client: %w", err)
 	}
+
 	err = cli.ContainerRemove(ctx, id, container.RemoveOptions{
 		Force: true,
 	})
@@ -308,22 +353,17 @@ func (d *DockerHostConnector) Remove(ctx context.Context, connect_string HostCon
 	return nil
 }
 
-func NewDockerHostConnector(dockerCfg *config.DockerConfig, grpcCfg *config.GRPCConfig) *DockerHostConnector {
-	return &DockerHostConnector{
-		dockerCfg: dockerCfg,
-		grpcCfg:   grpcCfg,
-	}
-}
-
 func parseConnectString(connect_string HostConnectString) (string, int, error) {
 	splitted := strings.Split(string(connect_string), ":")
-	if len(splitted) != 2 {
+	if len(splitted) != 2 { //nolint:mnd // id:port format
 		return "", 0, errors.Errorf("invalid connect string format: %s", connect_string)
 	}
+
 	port, err := strconv.Atoi(splitted[1])
 	if err != nil {
 		return "", 0, errors.Errorf("invalid port format: %s", splitted[1])
 	}
+
 	return splitted[0], port, nil
 }
 
@@ -335,14 +375,17 @@ type TagInfo struct {
 	AppVersion      string
 }
 
-// TODO: imageに情報を埋め込んだらタグ名からパースするのをやめる
+// TODO: imageに情報を埋め込んだらタグ名からパースするのをやめる.
 func parseTag(tag string) TagInfo {
 	trimmed := strings.TrimPrefix(tag, "prerelease-")
 	splitted := strings.Split(trimmed, "-")
+
 	appVersion := "v0.0.0"
-	if len(splitted) == 2 {
+
+	if len(splitted) == 2 { //nolint:mnd // version-appVersion format
 		appVersion = splitted[1]
 	}
+
 	if len(splitted) > 0 && lib.ValidateResoniteVersionString(splitted[0]) {
 		return TagInfo{
 			Tag:             tag,
@@ -361,45 +404,25 @@ func parseTag(tag string) TagInfo {
 	}
 }
 
-// 指定したタグがローカルに存在するかどうかを確認する
-func (d *DockerHostConnector) isAvailableTag(ctx context.Context, tag string) bool {
-	cli, err := d.newDockerClient()
+func getFreePort() (int, error) {
+	a, err := net.ResolveTCPAddr("tcp", "localhost:0")
 	if err != nil {
-		return false
+		return 0, err
 	}
-	images, err := cli.ImageList(ctx, image.ListOptions{
-		All:     true,
-		Filters: filters.NewArgs(filters.Arg("reference", d.dockerCfg.HeadlessImageName)),
-	})
-	if err != nil {
-		return false
-	}
-	for _, img := range slices.Backward(images) {
-		for _, repoTag := range img.RepoTags {
-			if strings.HasPrefix(repoTag, d.dockerCfg.HeadlessImageName) {
-				splitted := strings.Split(repoTag, ":")
-				if len(splitted) != 2 {
-					continue
-				}
-				if splitted[1] == tag {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
 
-func getFreePort() (port int, err error) {
-	var a *net.TCPAddr
-	if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
-		var l *net.TCPListener
-		if l, err = net.ListenTCP("tcp", a); err == nil {
-			defer l.Close()
-			return l.Addr().(*net.TCPAddr).Port, nil
-		}
+	l, err := net.ListenTCP("tcp", a)
+	if err != nil {
+		return 0, err
 	}
-	return
+
+	defer func() { _ = l.Close() }()
+
+	tcpAddr, ok := l.Addr().(*net.TCPAddr)
+	if !ok {
+		return 0, errors.New("failed to get TCP address")
+	}
+
+	return tcpAddr.Port, nil
 }
 
 func containerStatusToEntityStatus(state, status string) entity.HeadlessHostStatus {
@@ -419,36 +442,7 @@ func containerStatusToEntityStatus(state, status string) entity.HeadlessHostStat
 	}
 }
 
-func (d *DockerHostConnector) newDockerClient() (*client.Client, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, errors.Wrap(err, 0)
-	}
-	return cli, nil
-}
-
-func (d *DockerHostConnector) getContainer(ctx context.Context, container_id string) (*container.Summary, error) {
-	cli, err := d.newDockerClient()
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	containers, err := cli.ContainerList(ctx, container.ListOptions{
-		All:     true,
-		Filters: filters.NewArgs(filters.Arg("id", container_id)),
-	})
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	if len(containers) == 0 {
-		return nil, containerNotFoundError
-	}
-	if len(containers) > 1 {
-		return nil, errors.Errorf("found several containers")
-	}
-	return &containers[0], nil
-}
-
-// ContainerEventType represents Docker container events we care about
+// ContainerEventType represents Docker container events we care about.
 type ContainerEventType string
 
 const (
@@ -461,7 +455,7 @@ const (
 	ContainerEventDestroy ContainerEventType = "destroy"
 )
 
-// ContainerEvent wraps relevant event information
+// ContainerEvent wraps relevant event information.
 type ContainerEvent struct {
 	ContainerID string
 	Action      ContainerEventType
@@ -490,13 +484,14 @@ func (d *DockerHostConnector) SubscribeEvents(ctx context.Context) (<-chan Conta
 		),
 	})
 
-	outChan := make(chan ContainerEvent, 100)
+	outChan := make(chan ContainerEvent, 100) //nolint:mnd // buffer size for event channel
 	outErrChan := make(chan error, 1)
 
 	go func() {
 		defer cli.Close()
 		defer close(outChan)
 		defer close(outErrChan)
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -505,6 +500,7 @@ func (d *DockerHostConnector) SubscribeEvents(ctx context.Context) (<-chan Conta
 				if !ok {
 					return
 				}
+
 				outChan <- ContainerEvent{
 					ContainerID: event.Actor.ID,
 					Action:      ContainerEventType(event.Action),
@@ -514,9 +510,11 @@ func (d *DockerHostConnector) SubscribeEvents(ctx context.Context) (<-chan Conta
 				if !ok {
 					return
 				}
+
 				if err != nil {
 					outErrChan <- err
 				}
+
 				return
 			}
 		}
@@ -531,9 +529,11 @@ func (d *DockerHostConnector) ListAllContainerStatuses(ctx context.Context) (map
 	if err != nil {
 		return nil, errors.Errorf("failed to create docker client: %w", err)
 	}
+
 	if d.dockerCfg.HeadlessImageName == "" {
 		return nil, errors.Errorf("HEADLESS_IMAGE_NAME environment variable is not set")
 	}
+
 	containers, err := cli.ContainerList(ctx, container.ListOptions{
 		All: true,
 	})
@@ -542,13 +542,83 @@ func (d *DockerHostConnector) ListAllContainerStatuses(ctx context.Context) (map
 	}
 
 	result := make(map[string]entity.HeadlessHostStatus)
+
 	for _, c := range containers {
 		// Filter by image name prefix (imageName:tag format)
 		if !strings.HasPrefix(c.Image, d.dockerCfg.HeadlessImageName+":") && c.Image != d.dockerCfg.HeadlessImageName {
 			continue
 		}
+
 		status := containerStatusToEntityStatus(c.State, c.Status)
 		result[c.ID] = status
 	}
+
 	return result, nil
+}
+
+// 指定したタグがローカルに存在するかどうかを確認する.
+func (d *DockerHostConnector) isAvailableTag(ctx context.Context, tag string) bool {
+	cli, err := d.newDockerClient()
+	if err != nil {
+		return false
+	}
+
+	images, err := cli.ImageList(ctx, image.ListOptions{
+		All:     true,
+		Filters: filters.NewArgs(filters.Arg("reference", d.dockerCfg.HeadlessImageName)),
+	})
+	if err != nil {
+		return false
+	}
+
+	for _, img := range slices.Backward(images) {
+		for _, repoTag := range img.RepoTags {
+			if strings.HasPrefix(repoTag, d.dockerCfg.HeadlessImageName) {
+				splitted := strings.Split(repoTag, ":")
+				if len(splitted) != 2 { //nolint:mnd // image:tag format
+					continue
+				}
+
+				if splitted[1] == tag {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+func (d *DockerHostConnector) newDockerClient() (*client.Client, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	return cli, nil
+}
+
+func (d *DockerHostConnector) getContainer(ctx context.Context, container_id string) (*container.Summary, error) {
+	cli, err := d.newDockerClient()
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	containers, err := cli.ContainerList(ctx, container.ListOptions{
+		All:     true,
+		Filters: filters.NewArgs(filters.Arg("id", container_id)),
+	})
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	if len(containers) == 0 {
+		return nil, ErrContainerNotFound
+	}
+
+	if len(containers) > 1 {
+		return nil, errors.Errorf("found several containers")
+	}
+
+	return &containers[0], nil
 }

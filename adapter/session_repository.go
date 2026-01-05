@@ -25,8 +25,11 @@ func NewSessionRepository(q *db.Queries) *SessionRepository {
 
 // Upsert implements port.SessionRepository.
 func (r *SessionRepository) Upsert(ctx context.Context, session *entity.Session) error {
-	var err error
-	var startupParams []byte
+	var (
+		err           error
+		startupParams []byte
+	)
+
 	if session.StartupParameters != nil {
 		startupParams, err = protojson.Marshal(session.StartupParameters)
 		if err != nil {
@@ -40,18 +43,21 @@ func (r *SessionRepository) Upsert(ctx context.Context, session *entity.Session)
 	if session.StartedAt != nil {
 		startedAt.Time = *session.StartedAt
 	}
+
 	endedAt := pgtype.Timestamptz{
 		Valid: session.EndedAt != nil,
 	}
 	if session.EndedAt != nil {
 		endedAt.Time = *session.EndedAt
 	}
+
 	ownerId := pgtype.Text{
 		Valid: session.OwnerID != nil,
 	}
 	if session.OwnerID != nil {
 		ownerId.String = *session.OwnerID
 	}
+
 	memo := pgtype.Text{
 		Valid: session.Memo != "",
 	}
@@ -91,6 +97,7 @@ func (r *SessionRepository) Get(ctx context.Context, id string) (*entity.Session
 	if err != nil {
 		return nil, errors.WrapPrefix(convertDBErr(err), "session", 0)
 	}
+
 	return sessionToEntity(s)
 }
 
@@ -99,14 +106,18 @@ func (r *SessionRepository) ListAll(ctx context.Context) (entity.SessionList, er
 	if err != nil {
 		return nil, errors.WrapPrefix(convertDBErr(err), "session", 0)
 	}
+
 	result := make(entity.SessionList, 0, len(sessions))
+
 	for _, s := range sessions {
 		entity, err := sessionToEntity(s)
 		if err != nil {
 			return nil, errors.Wrap(err, 0)
 		}
+
 		result = append(result, entity)
 	}
+
 	return result, nil
 }
 
@@ -115,14 +126,18 @@ func (r *SessionRepository) ListByStatus(ctx context.Context, status entity.Sess
 	if err != nil {
 		return nil, errors.WrapPrefix(convertDBErr(err), "session", 0)
 	}
+
 	result := make(entity.SessionList, 0, len(sessions))
+
 	for _, s := range sessions {
 		entity, err := sessionToEntity(s)
 		if err != nil {
 			return nil, errors.Wrap(err, 0)
 		}
+
 		result = append(result, entity)
 	}
+
 	return result, nil
 }
 
@@ -131,18 +146,24 @@ func sessionToEntity(s db.Session) (*entity.Session, error) {
 	if s.StartedAt.Valid {
 		startedAt = &s.StartedAt.Time
 	}
+
 	var endedAt *time.Time
 	if s.EndedAt.Valid {
 		endedAt = &s.EndedAt.Time
 	}
+
 	startupParams := headlessv1.WorldStartupParameters{}
-	if err := protojson.Unmarshal(s.StartupParameters, &startupParams); err != nil {
+
+	err := protojson.Unmarshal(s.StartupParameters, &startupParams)
+	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	var ownerId *string
 	if s.OwnerID.Valid {
 		ownerId = &s.OwnerID.String
 	}
+
 	memo := ""
 	if s.Memo.Valid {
 		memo = s.Memo.String

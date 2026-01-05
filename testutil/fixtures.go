@@ -16,7 +16,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// CreateTestUser creates a test user in the database
+// CreateTestUser creates a test user in the database.
 func CreateTestUser(t *testing.T, queries *db.Queries, id, password string) db.User {
 	t.Helper()
 
@@ -46,7 +46,7 @@ func CreateTestUser(t *testing.T, queries *db.Queries, id, password string) db.U
 	return user
 }
 
-// CreateTestHeadlessAccount creates a test headless account in the database
+// CreateTestHeadlessAccount creates a test headless account in the database.
 func CreateTestHeadlessAccount(t *testing.T, queries *db.Queries, resoniteID, credential, password string) db.HeadlessAccount {
 	t.Helper()
 
@@ -72,7 +72,7 @@ func CreateTestHeadlessAccount(t *testing.T, queries *db.Queries, resoniteID, cr
 	return account
 }
 
-// CreateTestHeadlessHost creates a test headless host in the database
+// CreateTestHeadlessHost creates a test headless host in the database.
 func CreateTestHeadlessHost(t *testing.T, queries *db.Queries, accountID, name string, status entity.HeadlessHostStatus) db.Host {
 	t.Helper()
 
@@ -105,7 +105,7 @@ func CreateTestHeadlessHost(t *testing.T, queries *db.Queries, accountID, name s
 	return host
 }
 
-// CreateTestSession creates a test session in the database
+// CreateTestSession creates a test session in the database.
 func CreateTestSession(t *testing.T, queries *db.Queries, hostID, name string, status entity.SessionStatus) db.Session {
 	t.Helper()
 
@@ -132,9 +132,10 @@ func CreateTestSession(t *testing.T, queries *db.Queries, hostID, name string, s
 	return session
 }
 
-// InsertTestContainerLog inserts a test container log entry into the database
+// InsertTestContainerLog inserts a test container log entry into the database.
 func InsertTestContainerLog(t *testing.T, queries *db.Queries, hostID string, instanceID int32, ts time.Time, stream, logMsg string) {
 	t.Helper()
+
 	tag := fmt.Sprintf("headless-%s-%d", hostID, instanceID)
 	data, err := json.Marshal(map[string]string{
 		"log":    logMsg,

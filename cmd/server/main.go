@@ -53,9 +53,12 @@ func main() {
 	}
 
 	errCh := make(chan error, 1)
+
 	go func() {
 		slog.Info("Starting server", "address", cfg.Server.Host)
-		if err := s.ListenAndServe(cfg.Server.Host, frontURL); err != nil {
+
+		err := s.ListenAndServe(cfg.Server.Host, frontURL)
+		if err != nil {
 			errCh <- errors.Wrap(err, 0)
 		}
 	}()
@@ -78,7 +81,7 @@ func main() {
 	}
 }
 
-// applyFlagOverrides applies command-line flag values to config if explicitly set
+// applyFlagOverrides applies command-line flag values to config if explicitly set.
 func applyFlagOverrides(cfg *config.EnvConfig) {
 	flag.Visit(func(f *flag.Flag) {
 		switch f.Name {

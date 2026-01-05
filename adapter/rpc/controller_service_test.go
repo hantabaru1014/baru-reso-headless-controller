@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -116,12 +117,12 @@ func TestControllerService_ListHeadlessAccounts(t *testing.T) {
 		res, err := client.ListHeadlessAccounts(t.Context(), req)
 		require.NoError(t, err)
 
-		assert.Len(t, res.Msg.Accounts, 2)
+		assert.Len(t, res.Msg.GetAccounts(), 2)
 
 		// Verify account data
-		account1 := res.Msg.Accounts[0]
-		assert.NotEmpty(t, account1.UserId)
-		assert.NotEmpty(t, account1.UserName)
+		account1 := res.Msg.GetAccounts()[0]
+		assert.NotEmpty(t, account1.GetUserId())
+		assert.NotEmpty(t, account1.GetUserName())
 	})
 }
 
@@ -129,6 +130,7 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 	t.Run("成功: 有効な認証情報でアカウント作成", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Mock skyfrost client to return successful login
@@ -162,6 +164,7 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 	t.Run("失敗: 無効な認証情報でアカウント作成", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Mock skyfrost client to return login error
@@ -177,7 +180,8 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 		_, err := client.CreateHeadlessAccount(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -185,6 +189,7 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 	t.Run("失敗: 既に存在するアカウントを作成", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create initial account
@@ -211,7 +216,8 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 		_, err := client.CreateHeadlessAccount(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -221,6 +227,7 @@ func TestControllerService_DeleteHeadlessAccount(t *testing.T) {
 	t.Run("成功: ヘッドレスアカウントを削除", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account
@@ -242,6 +249,7 @@ func TestControllerService_DeleteHeadlessAccount(t *testing.T) {
 	t.Run("成功: 存在しないアカウントを削除（何も起こらない）", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// DeleteHeadlessAccountは:execで実装されているため、
@@ -260,6 +268,7 @@ func TestControllerService_ListHeadlessHostImageTags(t *testing.T) {
 	t.Run("成功: イメージタグ一覧を取得", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Mock HostConnector to return test tags
@@ -285,24 +294,25 @@ func TestControllerService_ListHeadlessHostImageTags(t *testing.T) {
 		res, err := client.ListHeadlessHostImageTags(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.Len(t, res.Msg.Tags, 2)
+		assert.Len(t, res.Msg.GetTags(), 2)
 
 		// Verify first tag
-		assert.Equal(t, "2024.1.1-v1.0.0", res.Msg.Tags[0].Tag)
-		assert.Equal(t, "2024.1.1", res.Msg.Tags[0].ResoniteVersion)
-		assert.False(t, res.Msg.Tags[0].IsPrerelease)
-		assert.Equal(t, "v1.0.0", res.Msg.Tags[0].AppVersion)
+		assert.Equal(t, "2024.1.1-v1.0.0", res.Msg.GetTags()[0].GetTag())
+		assert.Equal(t, "2024.1.1", res.Msg.GetTags()[0].GetResoniteVersion())
+		assert.False(t, res.Msg.GetTags()[0].GetIsPrerelease())
+		assert.Equal(t, "v1.0.0", res.Msg.GetTags()[0].GetAppVersion())
 
 		// Verify second tag
-		assert.Equal(t, "prerelease-2024.1.2-v1.1.0", res.Msg.Tags[1].Tag)
-		assert.Equal(t, "2024.1.2", res.Msg.Tags[1].ResoniteVersion)
-		assert.True(t, res.Msg.Tags[1].IsPrerelease)
-		assert.Equal(t, "v1.1.0", res.Msg.Tags[1].AppVersion)
+		assert.Equal(t, "prerelease-2024.1.2-v1.1.0", res.Msg.GetTags()[1].GetTag())
+		assert.Equal(t, "2024.1.2", res.Msg.GetTags()[1].GetResoniteVersion())
+		assert.True(t, res.Msg.GetTags()[1].GetIsPrerelease())
+		assert.Equal(t, "v1.1.0", res.Msg.GetTags()[1].GetAppVersion())
 	})
 
 	t.Run("失敗: コネクタでエラー発生", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Mock HostConnector to return error
@@ -315,7 +325,8 @@ func TestControllerService_ListHeadlessHostImageTags(t *testing.T) {
 		_, err := client.ListHeadlessHostImageTags(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -325,6 +336,7 @@ func TestControllerService_Authentication(t *testing.T) {
 	t.Run("失敗: 認証トークンなしでRPCメソッドを呼び出し", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Try to call a method without authentication
@@ -344,6 +356,7 @@ func TestControllerService_Authentication(t *testing.T) {
 	t.Run("失敗: 無効なトークンでRPCメソッドを呼び出し", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Try to call with invalid token
@@ -364,6 +377,7 @@ func TestControllerService_Authentication(t *testing.T) {
 	t.Run("成功: 有効なトークンでRPCメソッドを呼び出し", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test headless account
@@ -389,6 +403,7 @@ func TestControllerService_Authentication(t *testing.T) {
 	t.Run("失敗: 別のメソッドでも認証が必要", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Test another method to ensure all methods require auth
@@ -405,6 +420,7 @@ func TestControllerService_Authentication(t *testing.T) {
 	t.Run("失敗: セッション操作でも認証が必要", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Test session-related method
@@ -425,6 +441,7 @@ func TestControllerService_UpdateHeadlessAccountCredentials(t *testing.T) {
 	t.Run("成功: 認証情報を更新", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account
@@ -462,6 +479,7 @@ func TestControllerService_UpdateHeadlessAccountCredentials(t *testing.T) {
 	t.Run("成功: 存在しないアカウントの認証情報を更新（何も起こらない）", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Mock skyfrost to return successful login
@@ -491,6 +509,7 @@ func TestControllerService_UpdateHeadlessAccountCredentials(t *testing.T) {
 	t.Run("失敗: 無効な新しい認証情報", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account
@@ -510,7 +529,8 @@ func TestControllerService_UpdateHeadlessAccountCredentials(t *testing.T) {
 		_, err := client.UpdateHeadlessAccountCredentials(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -520,6 +540,7 @@ func TestControllerService_GetHeadlessAccountStorageInfo(t *testing.T) {
 	t.Run("成功: ストレージ情報を取得", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account
@@ -540,13 +561,14 @@ func TestControllerService_GetHeadlessAccountStorageInfo(t *testing.T) {
 		res, err := client.GetHeadlessAccountStorageInfo(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.Equal(t, int64(1024*1024*100), res.Msg.StorageUsedBytes)
-		assert.Equal(t, int64(1024*1024*500), res.Msg.StorageQuotaBytes)
+		assert.Equal(t, int64(1024*1024*100), res.Msg.GetStorageUsedBytes())
+		assert.Equal(t, int64(1024*1024*500), res.Msg.GetStorageQuotaBytes())
 	})
 
 	t.Run("失敗: 存在しないアカウント", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessAccountStorageInfoRequest{
@@ -556,7 +578,8 @@ func TestControllerService_GetHeadlessAccountStorageInfo(t *testing.T) {
 		_, err := client.GetHeadlessAccountStorageInfo(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -564,6 +587,7 @@ func TestControllerService_GetHeadlessAccountStorageInfo(t *testing.T) {
 	t.Run("失敗: ストレージ情報の取得に失敗", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account
@@ -581,7 +605,8 @@ func TestControllerService_GetHeadlessAccountStorageInfo(t *testing.T) {
 		_, err := client.GetHeadlessAccountStorageInfo(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -591,6 +616,7 @@ func TestControllerService_RefetchHeadlessAccountInfo(t *testing.T) {
 	t.Run("成功: アカウント情報を再取得", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account
@@ -623,6 +649,7 @@ func TestControllerService_RefetchHeadlessAccountInfo(t *testing.T) {
 	t.Run("失敗: 存在しないアカウント", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Mock skyfrost to return error for non-existent user
@@ -637,7 +664,8 @@ func TestControllerService_RefetchHeadlessAccountInfo(t *testing.T) {
 		_, err := client.RefetchHeadlessAccountInfo(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -645,6 +673,7 @@ func TestControllerService_RefetchHeadlessAccountInfo(t *testing.T) {
 	t.Run("失敗: ユーザー情報の取得に失敗", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account
@@ -662,7 +691,8 @@ func TestControllerService_RefetchHeadlessAccountInfo(t *testing.T) {
 		_, err := client.RefetchHeadlessAccountInfo(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -672,6 +702,7 @@ func TestControllerService_AcceptFriendRequests(t *testing.T) {
 	t.Run("成功: フレンドリクエストを承認", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account
@@ -707,6 +738,7 @@ func TestControllerService_AcceptFriendRequests(t *testing.T) {
 	t.Run("失敗: 起動中のホストがない", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 		// Create test account
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-nohost", "nohost@example.test", "password")
@@ -721,7 +753,8 @@ func TestControllerService_AcceptFriendRequests(t *testing.T) {
 		_, err := client.AcceptFriendRequests(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
 	})
@@ -729,6 +762,7 @@ func TestControllerService_AcceptFriendRequests(t *testing.T) {
 	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 		// Create test account
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-rpcfail", "rpcfail@example.test", "password")
@@ -749,7 +783,8 @@ func TestControllerService_AcceptFriendRequests(t *testing.T) {
 		_, err := client.AcceptFriendRequests(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -759,6 +794,7 @@ func TestControllerService_GetFriendRequests(t *testing.T) {
 	t.Run("成功: フレンドリクエストを取得", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account
@@ -789,12 +825,13 @@ func TestControllerService_GetFriendRequests(t *testing.T) {
 		res, err := client.GetFriendRequests(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.Len(t, res.Msg.RequestedContacts, 2)
+		assert.Len(t, res.Msg.GetRequestedContacts(), 2)
 	})
 
 	t.Run("失敗: 存在しないアカウント", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetFriendRequestsRequest{
@@ -804,7 +841,8 @@ func TestControllerService_GetFriendRequests(t *testing.T) {
 		_, err := client.GetFriendRequests(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -812,6 +850,7 @@ func TestControllerService_GetFriendRequests(t *testing.T) {
 	t.Run("失敗: コンタクト取得に失敗", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account
@@ -829,7 +868,8 @@ func TestControllerService_GetFriendRequests(t *testing.T) {
 		_, err := client.GetFriendRequests(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
@@ -840,6 +880,7 @@ func TestControllerService_StartHeadlessHost(t *testing.T) {
 	t.Run("成功: ホストを起動", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account
@@ -849,6 +890,7 @@ func TestControllerService_StartHeadlessHost(t *testing.T) {
 			Start(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, params hostconnector.HostStartParams) (hostconnector.HostConnectString, error) {
 				assert.Equal(t, int32(1), params.InstanceId, "Initial start should have InstanceId=1")
+
 				return hostconnector.HostConnectString("test-container"), nil
 			})
 
@@ -862,10 +904,10 @@ func TestControllerService_StartHeadlessHost(t *testing.T) {
 		res, err := client.StartHeadlessHost(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.NotEmpty(t, res.Msg.HostId)
+		assert.NotEmpty(t, res.Msg.GetHostId())
 
 		// Verify host was created in database
-		host, err := setup.queries.GetHost(t.Context(), res.Msg.HostId)
+		host, err := setup.queries.GetHost(t.Context(), res.Msg.GetHostId())
 		require.NoError(t, err)
 		assert.Equal(t, "TestHost", host.Name)
 		assert.Equal(t, "U-test", host.AccountID)
@@ -907,17 +949,18 @@ func TestControllerService_StartHeadlessHost(t *testing.T) {
 			AnyTimes()
 
 		getReq := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostRequest{
-			HostId: res.Msg.HostId,
+			HostId: res.Msg.GetHostId(),
 		})
 
 		getRes, err := client.GetHeadlessHost(t.Context(), getReq)
 		require.NoError(t, err)
-		assert.Equal(t, int32(1), getRes.Msg.Host.InstanceId, "RPC response should include instance_id=1")
+		assert.Equal(t, int32(1), getRes.Msg.GetHost().GetInstanceId(), "RPC response should include instance_id=1")
 	})
 
 	t.Run("失敗: 存在しないアカウント", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		imageTag := "latest"
@@ -930,7 +973,8 @@ func TestControllerService_StartHeadlessHost(t *testing.T) {
 		_, err := client.StartHeadlessHost(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -940,6 +984,7 @@ func TestControllerService_RestartHeadlessHost(t *testing.T) {
 	t.Run("成功: ホストを再起動", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account and host
@@ -1012,6 +1057,7 @@ func TestControllerService_RestartHeadlessHost(t *testing.T) {
 			Start(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, params hostconnector.HostStartParams) (hostconnector.HostConnectString, error) {
 				assert.Equal(t, int32(2), params.InstanceId, "Restart should have InstanceId=2")
+
 				return hostconnector.HostConnectString("test-container-restarted"), nil
 			}).
 			Times(1)
@@ -1032,6 +1078,7 @@ func TestControllerService_RestartHeadlessHost(t *testing.T) {
 	t.Run("失敗: 存在しないホスト", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.RestartHeadlessHostRequest{
@@ -1041,7 +1088,8 @@ func TestControllerService_RestartHeadlessHost(t *testing.T) {
 		_, err := client.RestartHeadlessHost(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
@@ -1051,6 +1099,7 @@ func TestControllerService_UpdateHeadlessHostSettings(t *testing.T) {
 	t.Run("成功: 停止中のホストの設定を更新", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account and host
@@ -1079,6 +1128,7 @@ func TestControllerService_UpdateHeadlessHostSettings(t *testing.T) {
 	t.Run("成功: 実行中のホストの設定を更新", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account and running host
@@ -1134,6 +1184,7 @@ func TestControllerService_UpdateHeadlessHostSettings(t *testing.T) {
 	t.Run("失敗: 存在しないホスト", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.UpdateHeadlessHostSettingsRequest{
@@ -1143,7 +1194,8 @@ func TestControllerService_UpdateHeadlessHostSettings(t *testing.T) {
 		_, err := client.UpdateHeadlessHostSettings(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
@@ -1153,6 +1205,7 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 	t.Run("成功: ログを取得", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account and host
@@ -1172,16 +1225,17 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 		res, err := client.GetHeadlessHostLogs(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.Len(t, res.Msg.Logs, 2)
-		assert.Equal(t, "Log line 1", res.Msg.Logs[0].Body)
-		assert.False(t, res.Msg.Logs[0].IsError)
-		assert.Equal(t, "Error line", res.Msg.Logs[1].Body)
-		assert.True(t, res.Msg.Logs[1].IsError)
+		assert.Len(t, res.Msg.GetLogs(), 2)
+		assert.Equal(t, "Log line 1", res.Msg.GetLogs()[0].GetBody())
+		assert.False(t, res.Msg.GetLogs()[0].GetIsError())
+		assert.Equal(t, "Error line", res.Msg.GetLogs()[1].GetBody())
+		assert.True(t, res.Msg.GetLogs()[1].GetIsError())
 	})
 
 	t.Run("成功: ログが存在しない場合は空のリストを返す", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account and host (no logs inserted)
@@ -1196,12 +1250,13 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 		res, err := client.GetHeadlessHostLogs(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.Len(t, res.Msg.Logs, 0)
+		assert.Empty(t, res.Msg.GetLogs())
 	})
 
 	t.Run("成功: limitパラメータでログ件数を制限", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test3", "test3@example.test", "password")
@@ -1209,7 +1264,7 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 
 		// Insert 5 logs
 		baseTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime.Add(time.Duration(i)*time.Second), "stdout", fmt.Sprintf("Log line %d", i+1))
 		}
 
@@ -1221,14 +1276,15 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 
 		res, err := client.GetHeadlessHostLogs(t.Context(), req)
 		require.NoError(t, err)
-		assert.Len(t, res.Msg.Logs, 3)
-		assert.True(t, res.Msg.HasMoreBefore, "should have more logs before")
-		assert.False(t, res.Msg.HasMoreAfter, "should not have more logs after (initial fetch)")
+		assert.Len(t, res.Msg.GetLogs(), 3)
+		assert.True(t, res.Msg.GetHasMoreBefore(), "should have more logs before")
+		assert.False(t, res.Msg.GetHasMoreAfter(), "should not have more logs after (initial fetch)")
 	})
 
 	t.Run("成功: beforeIdカーソルで古いログを取得", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test4", "test4@example.test", "password")
@@ -1247,16 +1303,19 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 		})
 		allLogsRes, err := client.GetHeadlessHostLogs(t.Context(), allLogsReq)
 		require.NoError(t, err)
-		require.Len(t, allLogsRes.Msg.Logs, 3)
+		require.Len(t, allLogsRes.Msg.GetLogs(), 3)
 
 		// Find the middle log's ID (logs are returned in chronological order: Old, Middle, New)
 		var middleLogId int64
-		for _, log := range allLogsRes.Msg.Logs {
-			if log.Body == "Middle log" {
-				middleLogId = log.Id
+
+		for _, log := range allLogsRes.Msg.GetLogs() {
+			if log.GetBody() == "Middle log" {
+				middleLogId = log.GetId()
+
 				break
 			}
 		}
+
 		require.NotZero(t, middleLogId, "should find middle log")
 
 		// Use beforeId cursor to get logs before "Middle log"
@@ -1268,14 +1327,15 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 
 		res, err := client.GetHeadlessHostLogs(t.Context(), req)
 		require.NoError(t, err)
-		assert.Len(t, res.Msg.Logs, 1)
-		assert.Equal(t, "Old log", res.Msg.Logs[0].Body)
-		assert.False(t, res.Msg.HasMoreBefore, "no more older logs")
+		assert.Len(t, res.Msg.GetLogs(), 1)
+		assert.Equal(t, "Old log", res.Msg.GetLogs()[0].GetBody())
+		assert.False(t, res.Msg.GetHasMoreBefore(), "no more older logs")
 	})
 
 	t.Run("成功: afterIdカーソルで新しいログを取得", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test5", "test5@example.test", "password")
@@ -1294,16 +1354,19 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 		})
 		allLogsRes, err := client.GetHeadlessHostLogs(t.Context(), allLogsReq)
 		require.NoError(t, err)
-		require.Len(t, allLogsRes.Msg.Logs, 3)
+		require.Len(t, allLogsRes.Msg.GetLogs(), 3)
 
 		// Find the middle log's ID (logs are returned in chronological order: Old, Middle, New)
 		var middleLogId int64
-		for _, log := range allLogsRes.Msg.Logs {
-			if log.Body == "Middle log" {
-				middleLogId = log.Id
+
+		for _, log := range allLogsRes.Msg.GetLogs() {
+			if log.GetBody() == "Middle log" {
+				middleLogId = log.GetId()
+
 				break
 			}
 		}
+
 		require.NotZero(t, middleLogId, "should find middle log")
 
 		// Use afterId cursor to get logs after "Middle log"
@@ -1315,14 +1378,15 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 
 		res, err := client.GetHeadlessHostLogs(t.Context(), req)
 		require.NoError(t, err)
-		assert.Len(t, res.Msg.Logs, 1)
-		assert.Equal(t, "New log", res.Msg.Logs[0].Body)
-		assert.False(t, res.Msg.HasMoreAfter, "no more newer logs")
+		assert.Len(t, res.Msg.GetLogs(), 1)
+		assert.Equal(t, "New log", res.Msg.GetLogs()[0].GetBody())
+		assert.False(t, res.Msg.GetHasMoreAfter(), "no more newer logs")
 	})
 
 	t.Run("成功: 異なるinstanceIdでログを分離", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test6", "test6@example.test", "password")
@@ -1341,8 +1405,8 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 		})
 		res1, err := client.GetHeadlessHostLogs(t.Context(), req1)
 		require.NoError(t, err)
-		assert.Len(t, res1.Msg.Logs, 1)
-		assert.Equal(t, "Current instance log", res1.Msg.Logs[0].Body)
+		assert.Len(t, res1.Msg.GetLogs(), 1)
+		assert.Equal(t, "Current instance log", res1.Msg.GetLogs()[0].GetBody())
 
 		// Request previous instance logs
 		req2 := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
@@ -1351,13 +1415,14 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 		})
 		res2, err := client.GetHeadlessHostLogs(t.Context(), req2)
 		require.NoError(t, err)
-		assert.Len(t, res2.Msg.Logs, 1)
-		assert.Equal(t, "Previous instance log", res2.Msg.Logs[0].Body)
+		assert.Len(t, res2.Msg.GetLogs(), 1)
+		assert.Equal(t, "Previous instance log", res2.Msg.GetLogs()[0].GetBody())
 	})
 
 	t.Run("成功: has_more_afterフラグが正しく設定される", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test7", "test7@example.test", "password")
@@ -1365,7 +1430,7 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 
 		// Insert 5 logs
 		baseTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime.Add(time.Duration(i)*time.Minute), "stdout", fmt.Sprintf("Log %d", i+1))
 		}
 
@@ -1376,10 +1441,10 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 		})
 		allLogsRes, err := client.GetHeadlessHostLogs(t.Context(), allLogsReq)
 		require.NoError(t, err)
-		require.Len(t, allLogsRes.Msg.Logs, 5)
+		require.Len(t, allLogsRes.Msg.GetLogs(), 5)
 
 		// Get the first log's ID (oldest, "Log 1")
-		firstLogId := allLogsRes.Msg.Logs[0].Id
+		firstLogId := allLogsRes.Msg.GetLogs()[0].GetId()
 		require.NotZero(t, firstLogId, "should have first log ID")
 
 		// Use afterId cursor with limit to trigger has_more_after
@@ -1392,9 +1457,9 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 
 		res, err := client.GetHeadlessHostLogs(t.Context(), req)
 		require.NoError(t, err)
-		assert.Len(t, res.Msg.Logs, 2)
-		assert.True(t, res.Msg.HasMoreAfter, "should have more logs after")
-		assert.False(t, res.Msg.HasMoreBefore, "should not have has_more_before with after cursor")
+		assert.Len(t, res.Msg.GetLogs(), 2)
+		assert.True(t, res.Msg.GetHasMoreAfter(), "should have more logs after")
+		assert.False(t, res.Msg.GetHasMoreBefore(), "should not have has_more_before with after cursor")
 	})
 }
 
@@ -1402,6 +1467,7 @@ func TestControllerService_ShutdownHeadlessHost(t *testing.T) {
 	t.Run("成功: ホストをシャットダウン", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account and host
@@ -1446,6 +1512,7 @@ func TestControllerService_ShutdownHeadlessHost(t *testing.T) {
 	t.Run("失敗: 存在しないホスト", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ShutdownHeadlessHostRequest{
@@ -1455,7 +1522,8 @@ func TestControllerService_ShutdownHeadlessHost(t *testing.T) {
 		_, err := client.ShutdownHeadlessHost(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
@@ -1465,6 +1533,7 @@ func TestControllerService_KillHeadlessHost(t *testing.T) {
 	t.Run("成功: ホストを強制停止", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account and host
@@ -1499,6 +1568,7 @@ func TestControllerService_KillHeadlessHost(t *testing.T) {
 	t.Run("失敗: 存在しないホスト", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.KillHeadlessHostRequest{
@@ -1508,7 +1578,8 @@ func TestControllerService_KillHeadlessHost(t *testing.T) {
 		_, err := client.KillHeadlessHost(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
@@ -1518,6 +1589,7 @@ func TestControllerService_GetHeadlessHost(t *testing.T) {
 	t.Run("成功: ホストの詳細を取得", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account and host
@@ -1531,14 +1603,15 @@ func TestControllerService_GetHeadlessHost(t *testing.T) {
 		res, err := client.GetHeadlessHost(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.NotNil(t, res.Msg.Host)
-		assert.Equal(t, host.ID, res.Msg.Host.Id)
-		assert.Equal(t, "TestHost", res.Msg.Host.Name)
+		assert.NotNil(t, res.Msg.GetHost())
+		assert.Equal(t, host.ID, res.Msg.GetHost().GetId())
+		assert.Equal(t, "TestHost", res.Msg.GetHost().GetName())
 	})
 
 	t.Run("失敗: 存在しないホスト", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostRequest{
@@ -1548,7 +1621,8 @@ func TestControllerService_GetHeadlessHost(t *testing.T) {
 		_, err := client.GetHeadlessHost(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
@@ -1558,6 +1632,7 @@ func TestControllerService_ListHeadlessHost(t *testing.T) {
 	t.Run("成功: ホスト一覧を取得", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test accounts and hosts
@@ -1571,7 +1646,7 @@ func TestControllerService_ListHeadlessHost(t *testing.T) {
 		res, err := client.ListHeadlessHost(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.Len(t, res.Msg.Hosts, 2)
+		assert.Len(t, res.Msg.GetHosts(), 2)
 	})
 }
 
@@ -1579,6 +1654,7 @@ func TestControllerService_DeleteHeadlessHost(t *testing.T) {
 	t.Run("成功: ホストを削除", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account and host
@@ -1614,7 +1690,7 @@ func TestControllerService_DeleteHeadlessHost(t *testing.T) {
 
 		// Verify host was deleted from database
 		_, err = setup.queries.GetHost(t.Context(), host.ID)
-		assert.Error(t, err)
+		require.Error(t, err)
 
 		// Verify container logs were also deleted
 		logsAfter1, err := setup.queries.GetContainerLogsByTag(t.Context(), db.GetContainerLogsByTagParams{
@@ -1635,6 +1711,7 @@ func TestControllerService_DeleteHeadlessHost(t *testing.T) {
 	t.Run("成功: 存在しないホストを削除（何も起こらない）", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.DeleteHeadlessHostRequest{
@@ -1651,6 +1728,7 @@ func TestControllerService_AllowHostAccess(t *testing.T) {
 	t.Run("成功: ホストアクセスを許可", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
@@ -1677,6 +1755,7 @@ func TestControllerService_AllowHostAccess(t *testing.T) {
 	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
@@ -1695,7 +1774,8 @@ func TestControllerService_AllowHostAccess(t *testing.T) {
 		_, err := client.AllowHostAccess(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -1703,6 +1783,7 @@ func TestControllerService_AllowHostAccess(t *testing.T) {
 	t.Run("失敗: RPC呼び出しに失敗", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test3", "test3@example.test", "password")
@@ -1724,7 +1805,8 @@ func TestControllerService_AllowHostAccess(t *testing.T) {
 		_, err := client.AllowHostAccess(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -1734,6 +1816,7 @@ func TestControllerService_DenyHostAccess(t *testing.T) {
 	t.Run("成功: ホストアクセスを拒否", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
@@ -1760,6 +1843,7 @@ func TestControllerService_DenyHostAccess(t *testing.T) {
 	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
@@ -1777,7 +1861,8 @@ func TestControllerService_DenyHostAccess(t *testing.T) {
 		_, err := client.DenyHostAccess(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -1787,6 +1872,7 @@ func TestControllerService_BanUser(t *testing.T) {
 	t.Run("成功: ユーザーをBANする", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
@@ -1814,6 +1900,7 @@ func TestControllerService_BanUser(t *testing.T) {
 	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test2", "TestHost2", entity.HeadlessHostStatus_RUNNING)
@@ -1832,7 +1919,8 @@ func TestControllerService_BanUser(t *testing.T) {
 		_, err := client.BanUser(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -1842,6 +1930,7 @@ func TestControllerService_KickUser(t *testing.T) {
 	t.Run("成功: ユーザーをキックする", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
@@ -1870,6 +1959,7 @@ func TestControllerService_KickUser(t *testing.T) {
 	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
@@ -1889,7 +1979,8 @@ func TestControllerService_KickUser(t *testing.T) {
 		_, err := client.KickUser(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -1899,6 +1990,7 @@ func TestControllerService_SearchUserInfo(t *testing.T) {
 	t.Run("成功: ユーザー情報を検索", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
@@ -1929,13 +2021,14 @@ func TestControllerService_SearchUserInfo(t *testing.T) {
 		res, err := client.SearchUserInfo(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.Len(t, res.Msg.Users, 1)
-		assert.Equal(t, "U-found", res.Msg.Users[0].Id)
+		assert.Len(t, res.Msg.GetUsers(), 1)
+		assert.Equal(t, "U-found", res.Msg.GetUsers()[0].GetId())
 	})
 
 	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
@@ -1955,7 +2048,8 @@ func TestControllerService_SearchUserInfo(t *testing.T) {
 		_, err := client.SearchUserInfo(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -1965,6 +2059,7 @@ func TestControllerService_FetchWorldInfo(t *testing.T) {
 	t.Run("成功: ワールド情報を取得", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
@@ -1989,12 +2084,13 @@ func TestControllerService_FetchWorldInfo(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.Equal(t, "TestWorld", res.Msg.Name)
+		assert.Equal(t, "TestWorld", res.Msg.GetName())
 	})
 
 	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
@@ -2012,7 +2108,8 @@ func TestControllerService_FetchWorldInfo(t *testing.T) {
 		_, err := client.FetchWorldInfo(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -2020,6 +2117,7 @@ func TestControllerService_FetchWorldInfo(t *testing.T) {
 	t.Run("失敗: ワールドが見つからない", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test3", "test3@example.test", "password")
@@ -2041,7 +2139,8 @@ func TestControllerService_FetchWorldInfo(t *testing.T) {
 		_, err := client.FetchWorldInfo(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
@@ -2051,6 +2150,7 @@ func TestControllerService_GetSessionDetails(t *testing.T) {
 	t.Run("成功: セッション詳細を取得", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account and host
@@ -2084,13 +2184,14 @@ func TestControllerService_GetSessionDetails(t *testing.T) {
 		res, err := client.GetSessionDetails(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.Equal(t, session.ID, res.Msg.Session.Id)
-		assert.Equal(t, "TestSession", res.Msg.Session.Name)
+		assert.Equal(t, session.ID, res.Msg.GetSession().GetId())
+		assert.Equal(t, "TestSession", res.Msg.GetSession().GetName())
 	})
 
 	t.Run("失敗: 存在しないセッション", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetSessionDetailsRequest{
@@ -2100,7 +2201,8 @@ func TestControllerService_GetSessionDetails(t *testing.T) {
 		_, err := client.GetSessionDetails(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
@@ -2110,6 +2212,7 @@ func TestControllerService_ListUsersInSession(t *testing.T) {
 	t.Run("成功: セッション内のユーザーリストを取得", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
@@ -2136,13 +2239,14 @@ func TestControllerService_ListUsersInSession(t *testing.T) {
 		res, err := client.ListUsersInSession(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.Len(t, res.Msg.Users, 2)
-		assert.Equal(t, "U-user1", res.Msg.Users[0].Id)
+		assert.Len(t, res.Msg.GetUsers(), 2)
+		assert.Equal(t, "U-user1", res.Msg.GetUsers()[0].GetId())
 	})
 
 	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
@@ -2160,7 +2264,8 @@ func TestControllerService_ListUsersInSession(t *testing.T) {
 		_, err := client.ListUsersInSession(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -2170,6 +2275,7 @@ func TestControllerService_SaveSessionWorld(t *testing.T) {
 	t.Run("成功: セッションのワールドを保存", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account, host, and session
@@ -2208,13 +2314,14 @@ func TestControllerService_SaveSessionWorld(t *testing.T) {
 		res, err := client.SaveSessionWorld(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.NotNil(t, res.Msg.SavedRecordUrl)
-		assert.Equal(t, "resrec:///U-test/R-test-world", *res.Msg.SavedRecordUrl)
+		assert.NotNil(t, res.Msg.GetSavedRecordUrl())
+		assert.Equal(t, "resrec:///U-test/R-test-world", res.Msg.GetSavedRecordUrl())
 	})
 
 	t.Run("失敗: 存在しないセッション", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.SaveSessionWorldRequest{
@@ -2225,7 +2332,8 @@ func TestControllerService_SaveSessionWorld(t *testing.T) {
 		_, err := client.SaveSessionWorld(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -2233,6 +2341,7 @@ func TestControllerService_SaveSessionWorld(t *testing.T) {
 	t.Run("失敗: 無効なセーブモード", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.SaveSessionWorldRequest{
@@ -2243,7 +2352,8 @@ func TestControllerService_SaveSessionWorld(t *testing.T) {
 		_, err := client.SaveSessionWorld(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
 	})
@@ -2253,6 +2363,7 @@ func TestControllerService_UpdateSessionParameters(t *testing.T) {
 	t.Run("成功: セッションパラメータを更新", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account, host, and session
@@ -2279,6 +2390,7 @@ func TestControllerService_UpdateSessionParameters(t *testing.T) {
 
 		// Mock RPC call to update parameters
 		maxUsers := int32(16)
+
 		setup.mockRpcClient.EXPECT().
 			UpdateSessionParameters(gomock.Any(), gomock.Any()).
 			Return(&headlessv1.UpdateSessionParametersResponse{}, nil)
@@ -2298,6 +2410,7 @@ func TestControllerService_UpdateSessionParameters(t *testing.T) {
 	t.Run("失敗: 存在しないセッション", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.UpdateSessionParametersRequest{
@@ -2309,7 +2422,8 @@ func TestControllerService_UpdateSessionParameters(t *testing.T) {
 		_, err := client.UpdateSessionParameters(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
 	})
@@ -2319,6 +2433,7 @@ func TestControllerService_UpdateUserRole(t *testing.T) {
 	t.Run("成功: ユーザーのロールを更新", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
@@ -2346,12 +2461,13 @@ func TestControllerService_UpdateUserRole(t *testing.T) {
 		res, err := client.UpdateUserRole(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.Equal(t, "Admin", res.Msg.Role)
+		assert.Equal(t, "Admin", res.Msg.GetRole())
 	})
 
 	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
@@ -2373,7 +2489,8 @@ func TestControllerService_UpdateUserRole(t *testing.T) {
 		_, err := client.UpdateUserRole(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -2383,6 +2500,7 @@ func TestControllerService_StartWorld(t *testing.T) {
 	t.Run("成功: ワールドを起動", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account and host
@@ -2415,13 +2533,14 @@ func TestControllerService_StartWorld(t *testing.T) {
 		res, err := client.StartWorld(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.NotNil(t, res.Msg.OpenedSession)
-		assert.Equal(t, "session-new", res.Msg.OpenedSession.Id)
+		assert.NotNil(t, res.Msg.GetOpenedSession())
+		assert.Equal(t, "session-new", res.Msg.GetOpenedSession().GetId())
 	})
 
 	t.Run("失敗: 存在しないホスト", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		worldUrl := "resrec:///U-test/R-12345"
@@ -2435,7 +2554,8 @@ func TestControllerService_StartWorld(t *testing.T) {
 		_, err := client.StartWorld(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
@@ -2447,6 +2567,7 @@ func TestControllerService_StartWorld(t *testing.T) {
 
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account and host
@@ -2464,9 +2585,10 @@ func TestControllerService_StartWorld(t *testing.T) {
 			StartWorld(gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx any, req *headlessv1.StartWorldRequest, opts ...any) (*headlessv1.StartWorldResponse, error) {
 				// forcePortが自動割り当てされていることを確認
-				assert.NotEqual(t, uint32(0), req.Parameters.ForcePort, "ForcePort should be auto-assigned")
-				assert.GreaterOrEqual(t, req.Parameters.ForcePort, uint32(30000), "ForcePort should be >= 30000")
-				assert.LessOrEqual(t, req.Parameters.ForcePort, uint32(30100), "ForcePort should be <= 30100")
+				assert.NotEqual(t, uint32(0), req.GetParameters().GetForcePort(), "ForcePort should be auto-assigned")
+				assert.GreaterOrEqual(t, req.GetParameters().GetForcePort(), uint32(30000), "ForcePort should be >= 30000")
+				assert.LessOrEqual(t, req.GetParameters().GetForcePort(), uint32(30100), "ForcePort should be <= 30100")
+
 				return &headlessv1.StartWorldResponse{
 					OpenedSession: &headlessv1.Session{
 						Id:   "session-new",
@@ -2487,8 +2609,8 @@ func TestControllerService_StartWorld(t *testing.T) {
 		res, err := client.StartWorld(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.NotNil(t, res.Msg.OpenedSession)
-		assert.Equal(t, "session-new", res.Msg.OpenedSession.Id)
+		assert.NotNil(t, res.Msg.GetOpenedSession())
+		assert.Equal(t, "session-new", res.Msg.GetOpenedSession().GetId())
 	})
 
 	t.Run("成功: forcePortが明示的に指定された場合、その値を使用", func(t *testing.T) {
@@ -2498,6 +2620,7 @@ func TestControllerService_StartWorld(t *testing.T) {
 
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account and host
@@ -2512,11 +2635,13 @@ func TestControllerService_StartWorld(t *testing.T) {
 		// Mock RPC call to start world
 		// 明示的に指定したforcePortがそのまま使用されることを検証
 		expectedPort := uint32(40000)
+
 		setup.mockRpcClient.EXPECT().
 			StartWorld(gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx any, req *headlessv1.StartWorldRequest, opts ...any) (*headlessv1.StartWorldResponse, error) {
 				// 明示的に指定したポートが使われていることを確認
-				assert.Equal(t, expectedPort, req.Parameters.ForcePort, "ForcePort should be the explicitly specified value")
+				assert.Equal(t, expectedPort, req.GetParameters().GetForcePort(), "ForcePort should be the explicitly specified value")
+
 				return &headlessv1.StartWorldResponse{
 					OpenedSession: &headlessv1.Session{
 						Id:   "session-new",
@@ -2537,8 +2662,8 @@ func TestControllerService_StartWorld(t *testing.T) {
 		res, err := client.StartWorld(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.NotNil(t, res.Msg.OpenedSession)
-		assert.Equal(t, "session-new", res.Msg.OpenedSession.Id)
+		assert.NotNil(t, res.Msg.GetOpenedSession())
+		assert.Equal(t, "session-new", res.Msg.GetOpenedSession().GetId())
 	})
 
 	t.Run("成功: 環境変数が未設定の場合、forcePortは自動割り当てされない", func(t *testing.T) {
@@ -2548,6 +2673,7 @@ func TestControllerService_StartWorld(t *testing.T) {
 
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account and host
@@ -2565,7 +2691,8 @@ func TestControllerService_StartWorld(t *testing.T) {
 			StartWorld(gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx any, req *headlessv1.StartWorldRequest, opts ...any) (*headlessv1.StartWorldResponse, error) {
 				// forcePortが自動割り当てされていないことを確認（0のまま）
-				assert.Equal(t, uint32(0), req.Parameters.ForcePort, "ForcePort should not be auto-assigned when env vars are not set")
+				assert.Equal(t, uint32(0), req.GetParameters().GetForcePort(), "ForcePort should not be auto-assigned when env vars are not set")
+
 				return &headlessv1.StartWorldResponse{
 					OpenedSession: &headlessv1.Session{
 						Id:   "session-new",
@@ -2586,8 +2713,8 @@ func TestControllerService_StartWorld(t *testing.T) {
 		res, err := client.StartWorld(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.NotNil(t, res.Msg.OpenedSession)
-		assert.Equal(t, "session-new", res.Msg.OpenedSession.Id)
+		assert.NotNil(t, res.Msg.GetOpenedSession())
+		assert.Equal(t, "session-new", res.Msg.GetOpenedSession().GetId())
 	})
 }
 
@@ -2595,6 +2722,7 @@ func TestControllerService_InviteUser(t *testing.T) {
 	t.Run("成功: ユーザーIDでユーザーを招待", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
@@ -2623,6 +2751,7 @@ func TestControllerService_InviteUser(t *testing.T) {
 	t.Run("成功: ユーザー名でユーザーを招待", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
@@ -2646,12 +2775,12 @@ func TestControllerService_InviteUser(t *testing.T) {
 		res, err := client.InviteUser(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-
 	})
 
 	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test3", "test3@example.test", "password")
@@ -2671,7 +2800,8 @@ func TestControllerService_InviteUser(t *testing.T) {
 		_, err := client.InviteUser(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
@@ -2681,6 +2811,7 @@ func TestControllerService_StopSession(t *testing.T) {
 	t.Run("成功: セッションを停止", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account, host, and session
@@ -2722,6 +2853,7 @@ func TestControllerService_StopSession(t *testing.T) {
 	t.Run("失敗: 存在しないセッション", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.StopSessionRequest{
@@ -2731,7 +2863,8 @@ func TestControllerService_StopSession(t *testing.T) {
 		_, err := client.StopSession(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
@@ -2741,6 +2874,7 @@ func TestControllerService_SearchSessions(t *testing.T) {
 	t.Run("成功: セッションを検索", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account, host, and sessions
@@ -2793,12 +2927,13 @@ func TestControllerService_SearchSessions(t *testing.T) {
 		res, err := client.SearchSessions(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.GreaterOrEqual(t, len(res.Msg.Sessions), 2)
+		assert.GreaterOrEqual(t, len(res.Msg.GetSessions()), 2)
 	})
 
 	t.Run("失敗: 無効な検索パラメータ", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.SearchSessionsRequest{
@@ -2811,7 +2946,8 @@ func TestControllerService_SearchSessions(t *testing.T) {
 		// This may or may not fail depending on usecase implementation
 		// For now, just verify it returns a response or error
 		if err != nil {
-			connectErr, ok := err.(*connect.Error)
+			connectErr := &connect.Error{}
+			ok := errors.As(err, &connectErr)
 			require.True(t, ok, "expected connect.Error")
 			assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
 		}
@@ -2820,6 +2956,7 @@ func TestControllerService_SearchSessions(t *testing.T) {
 	t.Run("成功: StatusとHostIDでAND検索", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account and two hosts
@@ -2848,10 +2985,11 @@ func TestControllerService_SearchSessions(t *testing.T) {
 		assert.NotNil(t, res.Msg)
 
 		// Should return only ENDED sessions from Host1 (2 sessions)
-		assert.Len(t, res.Msg.Sessions, 2)
-		for _, session := range res.Msg.Sessions {
-			assert.Equal(t, host1.ID, session.HostId, "Session should belong to Host1")
-			assert.Equal(t, hdlctrlv1.SessionStatus_SESSION_STATUS_ENDED, session.Status, "Session should be ENDED")
+		assert.Len(t, res.Msg.GetSessions(), 2)
+
+		for _, session := range res.Msg.GetSessions() {
+			assert.Equal(t, host1.ID, session.GetHostId(), "Session should belong to Host1")
+			assert.Equal(t, hdlctrlv1.SessionStatus_SESSION_STATUS_ENDED, session.GetStatus(), "Session should be ENDED")
 		}
 	})
 }
@@ -2860,6 +2998,7 @@ func TestControllerService_DeleteEndedSession(t *testing.T) {
 	t.Run("成功: 存在しないセッション（何も起こらない）", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.DeleteEndedSessionRequest{
@@ -2875,6 +3014,7 @@ func TestControllerService_UpdateSessionExtraSettings(t *testing.T) {
 	t.Run("成功: セッションの追加設定を更新", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test account, host, and session
@@ -2918,6 +3058,7 @@ func TestControllerService_UpdateSessionExtraSettings(t *testing.T) {
 	t.Run("失敗: 存在しないセッション", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		autoUpgrade := true
@@ -2929,7 +3070,8 @@ func TestControllerService_UpdateSessionExtraSettings(t *testing.T) {
 		_, err := client.UpdateSessionExtraSettings(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
@@ -2939,6 +3081,7 @@ func TestControllerService_ListContacts(t *testing.T) {
 	t.Run("成功: コンタクト一覧を取得", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test headless account and host
@@ -2967,14 +3110,15 @@ func TestControllerService_ListContacts(t *testing.T) {
 
 		res, err := client.ListContacts(t.Context(), req)
 		require.NoError(t, err)
-		assert.Len(t, res.Msg.Contacts, 2)
-		assert.Equal(t, "U-friend1", res.Msg.Contacts[0].Id)
-		assert.Equal(t, "Friend1", res.Msg.Contacts[0].Name)
+		assert.Len(t, res.Msg.GetContacts(), 2)
+		assert.Equal(t, "U-friend1", res.Msg.GetContacts()[0].GetId())
+		assert.Equal(t, "Friend1", res.Msg.GetContacts()[0].GetName())
 	})
 
 	t.Run("失敗: 起動中のホストがない", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test headless account without running host
@@ -2988,7 +3132,8 @@ func TestControllerService_ListContacts(t *testing.T) {
 		_, err := client.ListContacts(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
 	})
@@ -2998,6 +3143,7 @@ func TestControllerService_GetContactMessages(t *testing.T) {
 	t.Run("成功: メッセージ履歴を取得", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test headless account and host
@@ -3029,17 +3175,18 @@ func TestControllerService_GetContactMessages(t *testing.T) {
 
 		res, err := client.GetContactMessages(t.Context(), req)
 		require.NoError(t, err)
-		assert.Len(t, res.Msg.Messages, 2)
-		assert.Equal(t, "Hello", res.Msg.Messages[0].Content)
-		assert.False(t, res.Msg.Messages[0].IsOwnMessage) // Message from friend
-		assert.True(t, res.Msg.Messages[1].IsOwnMessage)  // Message from self
-		assert.True(t, res.Msg.HasMoreBefore)
-		assert.False(t, res.Msg.HasMoreAfter)
+		assert.Len(t, res.Msg.GetMessages(), 2)
+		assert.Equal(t, "Hello", res.Msg.GetMessages()[0].GetContent())
+		assert.False(t, res.Msg.GetMessages()[0].GetIsOwnMessage()) // Message from friend
+		assert.True(t, res.Msg.GetMessages()[1].GetIsOwnMessage())  // Message from self
+		assert.True(t, res.Msg.GetHasMoreBefore())
+		assert.False(t, res.Msg.GetHasMoreAfter())
 	})
 
 	t.Run("失敗: 起動中のホストがない", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test headless account without running host
@@ -3054,7 +3201,8 @@ func TestControllerService_GetContactMessages(t *testing.T) {
 		_, err := client.GetContactMessages(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
 	})
@@ -3064,6 +3212,7 @@ func TestControllerService_SendContactMessage(t *testing.T) {
 	t.Run("成功: メッセージを送信", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test headless account and host
@@ -3094,6 +3243,7 @@ func TestControllerService_SendContactMessage(t *testing.T) {
 	t.Run("失敗: 起動中のホストがない", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
+
 		client := setupAuthenticatedClient(t, setup.service)
 
 		// Create test headless account without running host
@@ -3108,7 +3258,8 @@ func TestControllerService_SendContactMessage(t *testing.T) {
 		_, err := client.SendContactMessage(t.Context(), req)
 		require.Error(t, err)
 
-		connectErr, ok := err.(*connect.Error)
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
 	})

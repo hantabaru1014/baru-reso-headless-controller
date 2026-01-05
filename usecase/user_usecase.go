@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -11,6 +12,12 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/jackc/pgx/v5/pgtype"
+)
+
+const (
+	registrationTokenLength = 32
+	registrationTokenTTL    = 24 * time.Hour
+	minPasswordLength       = 8
 )
 
 type UserUsecase struct {
@@ -49,6 +56,7 @@ func (u *UserUsecase) GetUserWithPassword(ctx context.Context, id, password stri
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	err = auth.ComparePasswordAndHash(password, user.Password)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
@@ -64,12 +72,13 @@ func (u *UserUsecase) DeleteUser(ctx context.Context, id string) error {
 // CreateRegistrationToken creates a registration token for the given resonite ID.
 // The token is valid for 24 hours.
 func (u *UserUsecase) CreateRegistrationToken(ctx context.Context, resoniteId string) (string, error) {
-	token, err := generateSecureToken(32)
+	token, err := generateSecureToken(registrationTokenLength)
 	if err != nil {
 		return "", errors.Wrap(err, 0)
 	}
 
-	expiresAt := time.Now().Add(24 * time.Hour)
+	expiresAt := time.Now().Add(registrationTokenTTL)
+
 	err = u.queries.CreateRegistrationToken(ctx, db.CreateRegistrationTokenParams{
 		Token:      token,
 		ResoniteID: resoniteId,
@@ -92,6 +101,7 @@ func (u *UserUsecase) ValidateRegistrationToken(ctx context.Context, token strin
 	userInfo, err := u.skyfrostClient.FetchUserInfo(ctx, regToken.ResoniteID)
 	if err != nil {
 		// ユーザー情報が取得できなくてもResonite IDだけで返す
+		//nolint:nilerr // intentional: return partial result with only ResoniteID
 		return &skyfrost.UserInfo{
 			ID: regToken.ResoniteID,
 		}, nil
@@ -149,6 +159,7 @@ func generateSecureToken(length int) (string, error) {
 	if _, err := rand.Read(bytes); err != nil {
 		return "", err
 	}
+
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
@@ -157,16 +168,20 @@ func (u *UserUsecase) ChangePassword(ctx context.Context, userID, currentPasswor
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	if err := auth.ComparePasswordAndHash(currentPassword, user.Password); err != nil {
 		return errors.New("現在のパスワードが正しくありません")
 	}
-	if len(newPassword) < 8 {
-		return errors.New("パスワードは8文字以上である必要があります")
+
+	if len(newPassword) < minPasswordLength {
+		return errors.New(fmt.Sprintf("パスワードは%d文字以上である必要があります", minPasswordLength))
 	}
+
 	passwordHash, err := auth.HashPassword(newPassword)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	return u.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
 		ID:       userID,
 		Password: passwordHash,

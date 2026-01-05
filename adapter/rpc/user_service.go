@@ -20,6 +20,12 @@ type UserService struct {
 	uu *usecase.UserUsecase
 }
 
+func NewUserService(uu *usecase.UserUsecase) *UserService {
+	return &UserService{
+		uu: uu,
+	}
+}
+
 // RefreshToken implements hdlctrlv1connect.UserServiceHandler.
 func (u *UserService) RefreshToken(ctx context.Context, req *connect.Request[hdlctrlv1.RefreshTokenRequest]) (*connect.Response[hdlctrlv1.TokenSetResponse], error) {
 	claims, err := auth.ValidateToken(ctx, req)
@@ -31,6 +37,7 @@ func (u *UserService) RefreshToken(ctx context.Context, req *connect.Request[hdl
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	res := connect.NewResponse(&hdlctrlv1.TokenSetResponse{
 		Token:        token,
 		RefreshToken: refreshToken,
@@ -42,10 +49,11 @@ func (u *UserService) RefreshToken(ctx context.Context, req *connect.Request[hdl
 
 // GetTokenByPassword implements hdlctrlv1connect.UserServiceHandler.
 func (u *UserService) GetTokenByPassword(ctx context.Context, req *connect.Request[hdlctrlv1.GetTokenByPasswordRequest]) (*connect.Response[hdlctrlv1.TokenSetResponse], error) {
-	user, err := u.uu.GetUserWithPassword(ctx, req.Msg.Id, req.Msg.Password)
+	user, err := u.uu.GetUserWithPassword(ctx, req.Msg.GetId(), req.Msg.GetPassword())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid id or password"))
 	}
+
 	token, refreshToken, err := auth.GenerateTokensWithDefaultTTL(auth.AuthClaims{
 		UserID:     user.ID,
 		ResoniteID: user.ResoniteID.String,
@@ -54,17 +62,21 @@ func (u *UserService) GetTokenByPassword(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	res := connect.NewResponse(&hdlctrlv1.TokenSetResponse{
 		Token:        token,
 		RefreshToken: refreshToken,
 	})
+
 	return res, nil
 }
 
 // ValidateRegistrationToken implements hdlctrlv1connect.UserServiceHandler.
 func (u *UserService) ValidateRegistrationToken(ctx context.Context, req *connect.Request[hdlctrlv1.ValidateRegistrationTokenRequest]) (*connect.Response[hdlctrlv1.ValidateRegistrationTokenResponse], error) {
-	userInfo, err := u.uu.ValidateRegistrationToken(ctx, req.Msg.Token)
+	userInfo, err := u.uu.ValidateRegistrationToken(ctx, req.Msg.GetToken())
 	if err != nil {
+		// トークンが無効な場合はエラーを返さずValid=falseを返す
+		//nolint:nilerr // intentional: return Valid=false instead of error for invalid token
 		return connect.NewResponse(&hdlctrlv1.ValidateRegistrationTokenResponse{
 			Valid:            false,
 			ResoniteId:       "",
@@ -83,7 +95,7 @@ func (u *UserService) ValidateRegistrationToken(ctx context.Context, req *connec
 
 // RegisterWithToken implements hdlctrlv1connect.UserServiceHandler.
 func (u *UserService) RegisterWithToken(ctx context.Context, req *connect.Request[hdlctrlv1.RegisterWithTokenRequest]) (*connect.Response[hdlctrlv1.TokenSetResponse], error) {
-	user, err := u.uu.RegisterWithToken(ctx, req.Msg.Token, req.Msg.UserId, req.Msg.Password)
+	user, err := u.uu.RegisterWithToken(ctx, req.Msg.GetToken(), req.Msg.GetUserId(), req.Msg.GetPassword())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("registration failed: invalid token or user already exists"))
 	}
@@ -109,17 +121,13 @@ func (u *UserService) ChangePassword(ctx context.Context, req *connect.Request[h
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
-	err = u.uu.ChangePassword(ctx, claims.UserID, req.Msg.CurrentPassword, req.Msg.NewPassword)
+
+	err = u.uu.ChangePassword(ctx, claims.UserID, req.Msg.GetCurrentPassword(), req.Msg.GetNewPassword())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	return connect.NewResponse(&hdlctrlv1.ChangePasswordResponse{}), nil
-}
 
-func NewUserService(uu *usecase.UserUsecase) *UserService {
-	return &UserService{
-		uu: uu,
-	}
+	return connect.NewResponse(&hdlctrlv1.ChangePasswordResponse{}), nil
 }
 
 func (u *UserService) NewHandler() (string, http.Handler) {
@@ -127,5 +135,6 @@ func (u *UserService) NewHandler() (string, http.Handler) {
 		logging.NewErrorLogInterceptor(),
 		auth.NewOptionalAuthInterceptor(),
 	)
+
 	return hdlctrlv1connect.NewUserServiceHandler(u, interceptors)
 }

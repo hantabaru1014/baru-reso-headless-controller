@@ -50,15 +50,17 @@ func ProcessIconImage(data []byte) ([]byte, error) {
 
 	// Otherwise, process the image (for backwards compatibility or direct API calls)
 	var cropRect image.Rectangle
-	if width > height {
+
+	switch {
+	case width > height:
 		// Landscape: crop from center horizontally
-		offset := (width - height) / 2
+		offset := (width - height) / 2 //nolint:mnd // center calculation
 		cropRect = image.Rect(offset, 0, offset+height, height)
-	} else if height > width {
+	case height > width:
 		// Portrait: crop from center vertically
-		offset := (height - width) / 2
+		offset := (height - width) / 2 //nolint:mnd // center calculation
 		cropRect = image.Rect(0, offset, width, offset+width)
-	} else {
+	default:
 		// Already square
 		cropRect = bounds
 	}

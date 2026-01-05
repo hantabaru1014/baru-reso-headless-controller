@@ -17,6 +17,7 @@ func main() {
 		slog.Error("Failed to load config", "error", err)
 		os.Exit(1)
 	}
+
 	if err := cfg.Validate(); err != nil {
 		slog.Error("Invalid config", "error", err)
 		os.Exit(1)

@@ -33,12 +33,21 @@ type HeadlessHostRepository struct {
 	grpcCfg   *config.GRPCConfig
 }
 
+func NewHeadlessHostRepository(q *db.Queries, connector hostconnector.HostConnector, grpcCfg *config.GRPCConfig) *HeadlessHostRepository {
+	return &HeadlessHostRepository{
+		q:         q,
+		connector: connector,
+		grpcCfg:   grpcCfg,
+	}
+}
+
 // UpdateHostSettings implements port.HeadlessHostRepository.
 func (h *HeadlessHostRepository) UpdateHostSettings(ctx context.Context, id string, settings *entity.HeadlessHostSettings) error {
 	json, err := protojson.Marshal(converter.HeadlessHostSettingsToStartupConfigProto(settings))
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	return h.q.UpdateHostLastStartupConfig(ctx, db.UpdateHostLastStartupConfigParams{
 		ID:                id,
 		LastStartupConfig: json,
@@ -51,6 +60,7 @@ func (h *HeadlessHostRepository) Find(ctx context.Context, id string, fetchOptio
 	if err != nil {
 		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
+
 	return h.dbToEntity(ctx, &host, fetchOptions)
 }
 
@@ -75,37 +85,19 @@ func (h *HeadlessHostRepository) GetLogs(ctx context.Context, params port.GetLog
 	}
 
 	logs := make(port.LogLineList, 0, len(rows))
+
 	for _, row := range rows {
 		logLine, err := h.parseContainerLogRow(row)
 		if err != nil {
 			continue
 		}
+
 		logs = append(logs, logLine)
 	}
 
 	slices.Reverse(logs) // 時系列順に反転
+
 	return logs, nil
-}
-
-func (h *HeadlessHostRepository) parseContainerLogRow(row db.GetContainerLogsByTagRow) (*port.LogLine, error) {
-	var data struct {
-		Log    string `json:"log"`
-		Stream string `json:"stream"` // "stdout" or "stderr"
-	}
-	if err := json.Unmarshal(row.Data, &data); err != nil {
-		return nil, err
-	}
-
-	if !row.Ts.Valid || !row.ID.Valid {
-		return nil, errors.New("invalid row data")
-	}
-
-	return &port.LogLine{
-		ID:        row.ID.Int64,
-		Timestamp: row.Ts.Time.Unix(),
-		IsError:   data.Stream == "stderr",
-		Body:      strings.TrimSuffix(data.Log, "\n"),
-	}, nil
 }
 
 // GetInstanceTimestamps implements port.HeadlessHostRepository.
@@ -116,16 +108,20 @@ func (h *HeadlessHostRepository) GetInstanceTimestamps(ctx context.Context, host
 	}
 
 	result := make(port.InstanceTimestampList, 0, len(rows))
+
 	for _, row := range rows {
 		var firstLogAt, lastLogAt *int64
+
 		if ts, ok := row.FirstLogAt.(time.Time); ok {
 			unix := ts.Unix()
 			firstLogAt = &unix
 		}
+
 		if ts, ok := row.LastLogAt.(time.Time); ok {
 			unix := ts.Unix()
 			lastLogAt = &unix
 		}
+
 		result = append(result, &port.InstanceTimestamp{
 			InstanceID: row.InstanceID,
 			FirstLogAt: firstLogAt,
@@ -133,6 +129,7 @@ func (h *HeadlessHostRepository) GetInstanceTimestamps(ctx context.Context, host
 			LogCount:   row.LogCount,
 		})
 	}
+
 	return result, nil
 }
 
@@ -142,10 +139,12 @@ func (h *HeadlessHostRepository) GetRpcClient(ctx context.Context, id string) (h
 	if err != nil {
 		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
+
 	connector, err := h.getConnector(host.ConnectorType)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	return connector.GetRpcClient(ctx, hostconnector.HostConnectString(host.ConnectString))
 }
 
@@ -164,10 +163,12 @@ func (h *HeadlessHostRepository) ListAll(ctx context.Context, fetchOptions port.
 	}
 
 	resultChan := make(chan hostResult, len(hosts))
+
 	var wg sync.WaitGroup
 
 	for i, host := range hosts {
 		wg.Add(1)
+
 		go func(index int, dbHost db.Host) {
 			defer wg.Done()
 			// Use timeout context for each host fetch
@@ -187,6 +188,7 @@ func (h *HeadlessHostRepository) ListAll(ctx context.Context, fetchOptions port.
 	// Collect results, keeping order and logging errors
 	result := make(entity.HeadlessHostList, len(hosts))
 	successCount := 0
+
 	for r := range resultChan {
 		if r.err != nil {
 			slog.Warn("Failed to fetch host info", "host_id", hosts[r.index].ID, "error", r.err)
@@ -209,6 +211,7 @@ func (h *HeadlessHostRepository) ListAll(ctx context.Context, fetchOptions port.
 	}
 
 	slog.Debug("ListAll completed", "total", len(hosts), "success", successCount)
+
 	return result, nil
 }
 
@@ -218,6 +221,7 @@ func (h *HeadlessHostRepository) ListRunningByAccount(ctx context.Context, accou
 	if err != nil {
 		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
+
 	var result entity.HeadlessHostList
 	for _, host := range hosts {
 		result = append(result, &entity.HeadlessHost{
@@ -251,22 +255,27 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 	if err != nil {
 		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
+
 	connector, err := h.getConnector(dbHost.ConnectorType)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	connectStr := hostconnector.HostConnectString(dbHost.ConnectString)
 	wasRunning := dbHost.Status == int32(entity.HeadlessHostStatus_RUNNING)
+
 	_ = h.q.UpdateHostStatus(ctx, db.UpdateHostStatusParams{
 		ID:     id,
 		Status: int32(entity.HeadlessHostStatus_STOPPING),
 	})
+
 	if wasRunning {
 		err = connector.Stop(ctx, connectStr, timeoutSeconds)
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
 	}
+
 	err = h.q.UpdateHostMemo(ctx, db.UpdateHostMemoParams{
 		ID: id,
 		Memo: pgtype.Text{
@@ -277,6 +286,7 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 	if err != nil {
 		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
+
 	err = h.q.UpdateHostAutoUpdatePolicy(ctx, db.UpdateHostAutoUpdatePolicyParams{
 		ID:               id,
 		AutoUpdatePolicy: int32(newStartupConfig.AutoUpdatePolicy),
@@ -284,14 +294,17 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 	if err != nil {
 		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
+
 	_ = h.q.UpdateHostStatus(ctx, db.UpdateHostStatusParams{
 		ID:     id,
 		Status: int32(entity.HeadlessHostStatus_STARTING),
 	})
+
 	instanceCount, err := h.q.IncrementHostInstanceCount(ctx, id)
 	if err != nil {
 		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
+
 	hostStartParams := hostconnector.HostStartParams{
 		ID:                id,
 		InstanceId:        instanceCount,
@@ -299,10 +312,12 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 		HeadlessAccount:   newStartupConfig.HeadlessAccount,
 		StartupConfig:     newStartupConfig.StartupConfig,
 	}
+
 	newConnectStr, err := connector.Start(ctx, hostStartParams)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	err = h.q.UpdateHostConnectString(ctx, db.UpdateHostConnectStringParams{
 		ID:            id,
 		ConnectString: string(newConnectStr),
@@ -310,14 +325,17 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 	if err != nil {
 		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
+
 	_ = h.q.UpdateHostStatus(ctx, db.UpdateHostStatusParams{
 		ID:     id,
 		Status: int32(entity.HeadlessHostStatus_RUNNING),
 	})
+
 	json, err := protojson.Marshal(newStartupConfig.StartupConfig)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	err = h.q.UpdateHostLastStartupConfig(ctx, db.UpdateHostLastStartupConfigParams{
 		ID:                id,
 		LastStartupConfig: json,
@@ -335,17 +353,21 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, connector port.HostC
 	if err != nil {
 		return "", errors.Wrap(err, 0)
 	}
+
 	json, err := protojson.Marshal(params.StartupConfig)
 	if err != nil {
 		return "", errors.Wrap(err, 0)
 	}
+
 	id := uniuri.New()
+
 	ownerId := pgtype.Text{
 		Valid: userId != nil,
 	}
 	if userId != nil {
 		ownerId.String = *userId
 	}
+
 	startParams := hostconnector.HostStartParams{
 		ID:                id,
 		InstanceId:        1,
@@ -353,10 +375,12 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, connector port.HostC
 		HeadlessAccount:   params.HeadlessAccount,
 		StartupConfig:     params.StartupConfig,
 	}
+
 	newConnectStr, err := connectorImpl.Start(ctx, startParams)
 	if err != nil {
 		return "", errors.Wrap(err, 0)
 	}
+
 	dbHost, err := h.q.CreateHost(ctx, db.CreateHostParams{
 		ID:                             id,
 		Name:                           params.Name,
@@ -391,28 +415,34 @@ func (h *HeadlessHostRepository) Stop(ctx context.Context, id string, timeoutSec
 	if err != nil {
 		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
+
 	connector, err := h.getConnector(dbHost.ConnectorType)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	_ = h.q.UpdateHostStatus(ctx, db.UpdateHostStatusParams{
 		ID:     dbHost.ID,
 		Status: int32(entity.HeadlessHostStatus_STOPPING),
 	})
+
 	client, err := connector.GetRpcClient(ctx, hostconnector.HostConnectString(dbHost.ConnectString))
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	startupConfig, err := client.GetStartupConfigToRestore(ctx, &headlessv1.GetStartupConfigToRestoreRequest{
 		IncludeStartWorlds: true,
 	})
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
-	json, err := protojson.Marshal(startupConfig.StartupConfig)
+
+	json, err := protojson.Marshal(startupConfig.GetStartupConfig())
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	err = h.q.UpdateHostLastStartupConfig(ctx, db.UpdateHostLastStartupConfigParams{
 		ID:                dbHost.ID,
 		LastStartupConfig: json,
@@ -440,10 +470,12 @@ func (h *HeadlessHostRepository) Kill(ctx context.Context, id string) error {
 	if err != nil {
 		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
+
 	connector, err := h.getConnector(dbHost.ConnectorType)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	_ = h.q.UpdateHostStatus(ctx, db.UpdateHostStatusParams{
 		ID:     dbHost.ID,
 		Status: int32(entity.HeadlessHostStatus_STOPPING),
@@ -469,6 +501,7 @@ func (h *HeadlessHostRepository) Delete(ctx context.Context, id string) error {
 		if errors.Is(convertDBErr(err), domain.ErrNotFound) {
 			return nil
 		}
+
 		return errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 
@@ -476,6 +509,7 @@ func (h *HeadlessHostRepository) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	err = connector.Remove(ctx, hostconnector.HostConnectString(dbHost.ConnectString))
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -485,15 +519,31 @@ func (h *HeadlessHostRepository) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	return h.q.DeleteHost(ctx, id)
 }
 
-func NewHeadlessHostRepository(q *db.Queries, connector hostconnector.HostConnector, grpcCfg *config.GRPCConfig) *HeadlessHostRepository {
-	return &HeadlessHostRepository{
-		q:         q,
-		connector: connector,
-		grpcCfg:   grpcCfg,
+func (h *HeadlessHostRepository) parseContainerLogRow(row db.GetContainerLogsByTagRow) (*port.LogLine, error) {
+	var data struct {
+		Log    string `json:"log"`
+		Stream string `json:"stream"` // "stdout" or "stderr"
 	}
+
+	err := json.Unmarshal(row.Data, &data)
+	if err != nil {
+		return nil, err
+	}
+
+	if !row.Ts.Valid || !row.ID.Valid {
+		return nil, errors.New("invalid row data")
+	}
+
+	return &port.LogLine{
+		ID:        row.ID.Int64,
+		Timestamp: row.Ts.Time.Unix(),
+		IsError:   data.Stream == "stderr",
+		Body:      strings.TrimSuffix(data.Log, "\n"),
+	}, nil
 }
 
 func (h *HeadlessHostRepository) getConnector(connector_type string) (hostconnector.HostConnector, error) {
@@ -506,21 +556,25 @@ func (h *HeadlessHostRepository) getConnector(connector_type string) (hostconnec
 }
 
 func (h *HeadlessHostRepository) fetchHostInfo(ctx context.Context, host *entity.HeadlessHost, client headlessv1.HeadlessControlServiceClient) error {
-	var wg sync.WaitGroup
-	var aboutErr, accountErr, statusErr error
-	var info *headlessv1.GetAboutResponse
-	var accountInfo *headlessv1.GetAccountInfoResponse
-	var status *headlessv1.GetStatusResponse
+	var (
+		wg                              sync.WaitGroup
+		aboutErr, accountErr, statusErr error
+		info                            *headlessv1.GetAboutResponse
+		accountInfo                     *headlessv1.GetAccountInfoResponse
+		status                          *headlessv1.GetStatusResponse
+	)
 
-	wg.Add(3)
+	wg.Add(3) //nolint:mnd // 3 goroutines for parallel fetch
 
 	go func() {
 		defer wg.Done()
+
 		info, aboutErr = client.GetAbout(ctx, &headlessv1.GetAboutRequest{})
 	}()
 
 	go func() {
 		defer wg.Done()
+
 		accountInfo, accountErr = client.GetAccountInfo(ctx, &headlessv1.GetAccountInfoRequest{})
 	}()
 
@@ -535,19 +589,22 @@ func (h *HeadlessHostRepository) fetchHostInfo(ctx context.Context, host *entity
 	if aboutErr != nil {
 		return errors.Wrap(aboutErr, 0)
 	}
-	host.ResoniteVersion = info.ResoniteVersion
-	host.AppVersion = info.AppVersion
+
+	host.ResoniteVersion = info.GetResoniteVersion()
+	host.AppVersion = info.GetAppVersion()
 
 	if accountErr != nil {
 		return errors.Wrap(accountErr, 0)
 	}
-	host.AccountId = accountInfo.UserId
-	host.AccountName = accountInfo.DisplayName
+
+	host.AccountId = accountInfo.GetUserId()
+	host.AccountName = accountInfo.GetDisplayName()
 
 	if statusErr != nil {
 		return errors.Wrap(statusErr, 0)
 	}
-	host.Fps = status.Fps
+
+	host.Fps = status.GetFps()
 
 	return nil
 }
@@ -574,6 +631,7 @@ func (h *HeadlessHostRepository) dbToEntity(ctx context.Context, dbHost *db.Host
 		if err != nil {
 			return nil, errors.Wrap(err, 0)
 		}
+
 		conn, err := connector.GetRpcClient(ctx, hostconnector.HostConnectString(dbHost.ConnectString))
 		if err != nil {
 			// RPC connection failed - EventWatcher will update status if container actually crashed
@@ -585,7 +643,7 @@ func (h *HeadlessHostRepository) dbToEntity(ctx context.Context, dbHost *db.Host
 					IncludeStartWorlds: fetchOptions.IncludeStartWorlds,
 				})
 				if err == nil {
-					host.HostSettings = *converter.HeadlessHostSettingsProtoToEntity(startupConfig.StartupConfig)
+					host.HostSettings = *converter.HeadlessHostSettingsProtoToEntity(startupConfig.GetStartupConfig())
 				}
 			}
 		}
@@ -593,11 +651,15 @@ func (h *HeadlessHostRepository) dbToEntity(ctx context.Context, dbHost *db.Host
 		// Load settings from DB for non-running hosts
 		if dbHost.LastStartupConfig != nil {
 			parsed := &headlessv1.StartupConfig{}
-			if err := protojson.Unmarshal(dbHost.LastStartupConfig, parsed); err != nil {
+
+			err := protojson.Unmarshal(dbHost.LastStartupConfig, parsed)
+			if err != nil {
 				return nil, errors.Wrap(err, 0)
 			}
+
 			host.HostSettings = *converter.HeadlessHostSettingsProtoToEntity(parsed)
 		}
+
 		account, err := h.q.GetHeadlessAccount(ctx, dbHost.AccountID)
 		if err == nil {
 			host.AccountName = account.LastDisplayName.String

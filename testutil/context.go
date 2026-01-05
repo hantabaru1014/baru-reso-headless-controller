@@ -10,17 +10,18 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 )
 
-// CreateAuthenticatedContext creates a context with authentication claims for testing
+// CreateAuthenticatedContext creates a context with authentication claims for testing.
 func CreateAuthenticatedContext(userID, resoniteID, iconURL string) context.Context {
 	claims := &auth.AuthClaims{
 		UserID:     userID,
 		ResoniteID: resoniteID,
 		IconUrl:    iconURL,
 	}
+
 	return context.WithValue(context.Background(), auth.AuthClaimsKey, claims)
 }
 
-// CreateAuthenticatedRequest creates a Connect request with authentication token for testing
+// CreateAuthenticatedRequest creates a Connect request with authentication token for testing.
 func CreateAuthenticatedRequest[T any](t *testing.T, msg *T, userID, resoniteID, iconURL string) *connect.Request[T] {
 	t.Helper()
 
@@ -43,15 +44,16 @@ func CreateAuthenticatedRequest[T any](t *testing.T, msg *T, userID, resoniteID,
 // Use this when the specific user identity doesn't matter for the test.
 func CreateDefaultAuthenticatedRequest[T any](t *testing.T, msg *T) *connect.Request[T] {
 	t.Helper()
+
 	return CreateAuthenticatedRequest(t, msg, "test@example.test", "U-test123", "https://example.test/icon.png")
 }
 
-// CreateUnauthenticatedRequest creates a Connect request without authentication for testing
+// CreateUnauthenticatedRequest creates a Connect request without authentication for testing.
 func CreateUnauthenticatedRequest[T any](msg *T) *connect.Request[T] {
 	return connect.NewRequest(msg)
 }
 
-// GetAuthClaimsFromRequest extracts auth claims from a Connect request for testing purposes
+// GetAuthClaimsFromRequest extracts auth claims from a Connect request for testing purposes.
 func GetAuthClaimsFromRequest[T any](t *testing.T, req *connect.Request[T]) *auth.AuthClaims {
 	t.Helper()
 
@@ -61,6 +63,7 @@ func GetAuthClaimsFromRequest[T any](t *testing.T, req *connect.Request[T]) *aut
 	}
 
 	token := authHeader[len("Bearer "):]
+
 	claims, err := auth.ParseToken(token)
 	if err != nil {
 		t.Fatalf("failed to parse token: %v", err)
@@ -69,16 +72,19 @@ func GetAuthClaimsFromRequest[T any](t *testing.T, req *connect.Request[T]) *aut
 	return claims
 }
 
-// CreateHTTPRequest creates a standard HTTP request for testing
-func CreateHTTPRequest(method, url string) *http.Request {
-	req, err := http.NewRequest(method, url, nil)
+// CreateHTTPRequest creates a standard HTTP request for testing.
+func CreateHTTPRequest(t *testing.T, method, url string) *http.Request {
+	t.Helper()
+
+	req, err := http.NewRequestWithContext(t.Context(), method, url, nil)
 	if err != nil {
 		panic(err)
 	}
+
 	return req
 }
 
-// ServiceHandler is an interface for services that can create HTTP handlers
+// ServiceHandler is an interface for services that can create HTTP handlers.
 type ServiceHandler interface {
 	NewHandler() (string, http.Handler)
 }

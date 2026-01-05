@@ -33,16 +33,25 @@ func FetchUserInfo(ctx context.Context, resoniteID string) (*UserInfo, error) {
 	if err != nil {
 		return nil, errors.Errorf("failed to make request URL: %w", err)
 	}
-	resp, err := http.Get(reqUrl)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqUrl, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
-	resp.Body.Close()
-	if resp.StatusCode > 299 {
+
+	if resp.StatusCode > 299 { //nolint:mnd // HTTP 2xx success range
 		return nil, errors.Errorf("failed to fetch user info: %s", body)
 	}
 
@@ -55,10 +64,12 @@ func FetchUserInfo(ctx context.Context, resoniteID string) (*UserInfo, error) {
 	if !idValue.Exists() {
 		return nil, errors.Errorf("failed to fetch user info: id not found")
 	}
+
 	userNameValue := gjson.Get(jsonBody, "username")
 	if !userNameValue.Exists() {
 		return nil, errors.Errorf("failed to fetch user info: username not found")
 	}
+
 	normalizedUserNameValue := gjson.Get(jsonBody, "normalizedUsername")
 	if !normalizedUserNameValue.Exists() {
 		return nil, errors.Errorf("failed to fetch user info: normalizedUsername not found")
@@ -69,7 +80,9 @@ func FetchUserInfo(ctx context.Context, resoniteID string) (*UserInfo, error) {
 		UserName:           userNameValue.String(),
 		NormalizedUserName: normalizedUserNameValue.String(),
 	}
+
 	iconUrlValue := gjson.Get(jsonBody, "profile.iconUrl")
+
 	if iconUrlValue.Exists() {
 		result.IconUrl = iconUrlValue.String()
 	}
@@ -83,7 +96,7 @@ type UserSession struct {
 	expire time.Time
 }
 
-// IsValid returns true if the session is still valid (not expired)
+// IsValid returns true if the session is still valid (not expired).
 func (s *UserSession) IsValid() bool {
 	// 有効期限の1分前には再ログインするようにする
 	return time.Now().Add(time.Minute).Before(s.expire)
@@ -94,12 +107,14 @@ func UserLogin(ctx context.Context, credential, password string) (*UserSession, 
 	if err != nil {
 		return nil, errors.Errorf("failed to make request URL: %w", err)
 	}
+
 	secretMachineId, err := uuid.NewRandom()
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
-	reqObj := map[string]interface{}{
-		"authentication": map[string]interface{}{
+
+	reqObj := map[string]any{
+		"authentication": map[string]any{
 			"$type":    "password",
 			"password": password,
 		},
@@ -111,27 +126,35 @@ func UserLogin(ctx context.Context, credential, password string) (*UserSession, 
 	} else {
 		reqObj["email"] = credential
 	}
+
 	reqBody, err := json.Marshal(reqObj)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqUrl, bytes.NewReader(reqBody))
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("UID", headerUidValue)
+	req.Header.Set("Uid", headerUidValue)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, errors.Errorf("failed to login: %w", err)
 	}
+
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
+
 		return nil, errors.Errorf("failed to login: %s", body)
 	}
+
 	defer resp.Body.Close()
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
@@ -142,10 +165,13 @@ func UserLogin(ctx context.Context, credential, password string) (*UserSession, 
 		Token  string `json:"token"`
 		Expire string `json:"expire"`
 	}
+
 	type RespJson struct {
 		Entity RespEntity `json:"entity"`
 	}
+
 	respEntity := &RespJson{}
+
 	err = json.Unmarshal(respBody, respEntity)
 	if err != nil {
 		return nil, errors.Errorf("failed to parse response: %w", err)
@@ -161,26 +187,12 @@ func UserLogin(ctx context.Context, credential, password string) (*UserSession, 
 		token:  respEntity.Entity.Token,
 		expire: expireTime,
 	}
+
 	return newSession, nil
 }
 
-func (s *UserSession) makeApiRequest(ctx context.Context, method string, url string, body io.Reader) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, method, url, body)
-	if err != nil {
-		return nil, errors.Wrap(err, 0)
-	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	req.Header.Set("Accept", "application/json")
-	authToken := fmt.Sprintf("res %s:%s", s.UserId, s.token)
-	req.Header.Set("Authorization", authToken)
-
-	return req, nil
-}
-
 // UpdateUserProfile updates the user's profile
-// PUT users/{userId}/profile
+// PUT users/{userId}/profile.
 func (s *UserSession) UpdateUserProfile(ctx context.Context, profile *UserProfile) error {
 	reqUrl, err := url.JoinPath(API_BASE_URL, "users", s.UserId, "profile")
 	if err != nil {
@@ -205,8 +217,27 @@ func (s *UserSession) UpdateUserProfile(ctx context.Context, profile *UserProfil
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+
 		return errors.Errorf("failed to update profile: %s - %s", resp.Status, string(body))
 	}
 
 	return nil
+}
+
+func (s *UserSession) makeApiRequest(ctx context.Context, method string, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	req.Header.Set("Accept", "application/json")
+
+	authToken := fmt.Sprintf("res %s:%s", s.UserId, s.token)
+	req.Header.Set("Authorization", authToken)
+
+	return req, nil
 }

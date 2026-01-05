@@ -6,10 +6,11 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// convertDBErr converts database errors to appropriate domain errors
+// convertDBErr converts database errors to appropriate domain errors.
 func convertDBErr(err error) error {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.ErrNotFound
 	}
+
 	return err
 }

@@ -27,10 +27,12 @@ func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, cred
 	if err != nil {
 		return errors.Errorf("failed to login: %w", err)
 	}
+
 	userInfo, err := u.skyfrostClient.FetchUserInfo(ctx, userSession.UserId)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	return u.queries.CreateHeadlessAccount(ctx, db.CreateHeadlessAccountParams{
 		ResoniteID:      userSession.UserId,
 		Credential:      credential,
@@ -45,13 +47,16 @@ func (u *HeadlessAccountUsecase) UpdateHeadlessAccountCredentials(ctx context.Co
 	if err != nil {
 		return errors.Errorf("failed to login: %w", err)
 	}
+
 	userInfo, err := u.skyfrostClient.FetchUserInfo(ctx, userSession.UserId)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
+
 	if resoniteID != userInfo.ID {
 		return errors.New("does not match resonite ID")
 	}
+
 	return u.queries.UpdateHeadlessAccountCredentials(ctx, db.UpdateHeadlessAccountCredentialsParams{
 		ResoniteID: resoniteID,
 		Credential: credential,
@@ -66,6 +71,7 @@ func (u *HeadlessAccountUsecase) ListHeadlessAccounts(ctx context.Context) ([]*e
 	}
 
 	res := make([]*entity.HeadlessAccount, 0, len(list))
+
 	for _, v := range list {
 		e := entity.HeadlessAccount{
 			ResoniteID: v.ResoniteID,
@@ -75,9 +81,11 @@ func (u *HeadlessAccountUsecase) ListHeadlessAccounts(ctx context.Context) ([]*e
 		if v.LastDisplayName.Valid {
 			e.LastDisplayName = &v.LastDisplayName.String
 		}
+
 		if v.LastIconUrl.Valid {
 			e.LastIconUrl = &v.LastIconUrl.String
 		}
+
 		res = append(res, &e)
 	}
 
@@ -98,6 +106,7 @@ func (u *HeadlessAccountUsecase) GetHeadlessAccount(ctx context.Context, resonit
 	if v.LastDisplayName.Valid {
 		e.LastDisplayName = &v.LastDisplayName.String
 	}
+
 	if v.LastIconUrl.Valid {
 		e.LastIconUrl = &v.LastIconUrl.String
 	}
@@ -114,6 +123,7 @@ func (u *HeadlessAccountUsecase) RefetchHeadlessAccountInfo(ctx context.Context,
 	if err != nil {
 		return errors.Errorf("failed to fetch user info: %w", err)
 	}
+
 	return u.queries.UpdateAccountInfo(ctx, db.UpdateAccountInfoParams{
 		ResoniteID:      resoniteID,
 		LastDisplayName: pgtype.Text{String: userInfo.UserName, Valid: true},
@@ -122,7 +132,7 @@ func (u *HeadlessAccountUsecase) RefetchHeadlessAccountInfo(ctx context.Context,
 }
 
 // UpdateHeadlessAccountIcon updates the headless account's profile icon
-// It processes the image, uploads it to Resonite cloud, and updates the profile
+// It processes the image, uploads it to Resonite cloud, and updates the profile.
 func (u *HeadlessAccountUsecase) UpdateHeadlessAccountIcon(ctx context.Context, resoniteID string, iconData []byte) (string, error) {
 	// Get account credentials from DB
 	account, err := u.queries.GetHeadlessAccount(ctx, resoniteID)

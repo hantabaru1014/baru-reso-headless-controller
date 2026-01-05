@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"time"
 
 	"github.com/go-errors/errors"
 	"github.com/gorilla/mux"
@@ -45,9 +46,11 @@ func spaFileHandler(w http.ResponseWriter, r *http.Request) {
 	if filePath == "" {
 		filePath = "index.html"
 	}
+
 	f, err := front.FrontAssets.Open(filePath)
 	if err == nil {
-		f.Close()
+		_ = f.Close()
+
 		http.ServeFileFS(w, r, front.FrontAssets, filePath)
 	} else {
 		http.ServeFileFS(w, r, front.FrontAssets, "index.html")
@@ -74,6 +77,7 @@ func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
+
 		proxy := httputil.NewSingleHostReverseProxy(rpURL)
 		router.NotFoundHandler = proxy
 	} else {
@@ -81,14 +85,15 @@ func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 	}
 
 	s.httpServer = &http.Server{
-		Addr:    addr,
-		Handler: h2c.NewHandler(router, &http2.Server{}),
+		Addr:              addr,
+		Handler:           h2c.NewHandler(router, &http2.Server{}),
+		ReadHeaderTimeout: 10 * time.Second, //nolint:mnd // standard timeout
 	}
 
 	return s.httpServer.ListenAndServe()
 }
 
-// Shutdown は現在進行中のリクエストを完了させてからサーバーを停止する
+// Shutdown は現在進行中のリクエストを完了させてからサーバーを停止する.
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.imageChecker.Stop()
 	s.eventWatcher.Stop()
@@ -96,5 +101,6 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	if s.httpServer != nil {
 		return s.httpServer.Shutdown(ctx)
 	}
+
 	return nil
 }
