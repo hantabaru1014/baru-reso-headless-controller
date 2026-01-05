@@ -15,23 +15,22 @@ import (
 	"github.com/dchest/uniuri"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/converter"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
+	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
-	"github.com/hantabaru1014/baru-reso-headless-controller/lib"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var grpcCallTimeout = lib.GetEnvDuration("GRPC_CALL_TIMEOUT", 10*time.Second)
-
 var _ port.HeadlessHostRepository = (*HeadlessHostRepository)(nil)
 
 type HeadlessHostRepository struct {
 	q         *db.Queries
 	connector hostconnector.HostConnector
+	grpcCfg   *config.GRPCConfig
 }
 
 // UpdateHostSettings implements port.HeadlessHostRepository.
@@ -172,7 +171,7 @@ func (h *HeadlessHostRepository) ListAll(ctx context.Context, fetchOptions port.
 		go func(index int, dbHost db.Host) {
 			defer wg.Done()
 			// Use timeout context for each host fetch
-			timeoutCtx, cancel := context.WithTimeout(ctx, grpcCallTimeout)
+			timeoutCtx, cancel := context.WithTimeout(ctx, h.grpcCfg.CallTimeout)
 			defer cancel()
 
 			entityHost, err := h.dbToEntity(timeoutCtx, &dbHost, fetchOptions)
@@ -489,10 +488,11 @@ func (h *HeadlessHostRepository) Delete(ctx context.Context, id string) error {
 	return h.q.DeleteHost(ctx, id)
 }
 
-func NewHeadlessHostRepository(q *db.Queries, connector hostconnector.HostConnector) *HeadlessHostRepository {
+func NewHeadlessHostRepository(q *db.Queries, connector hostconnector.HostConnector, grpcCfg *config.GRPCConfig) *HeadlessHostRepository {
 	return &HeadlessHostRepository{
 		q:         q,
 		connector: connector,
+		grpcCfg:   grpcCfg,
 	}
 }
 

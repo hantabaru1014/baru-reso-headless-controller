@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -12,9 +11,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var (
-	secretKey = os.Getenv("JWT_SECRET")
-)
+var secretKey string
+
+func Init(jwtSecret string) {
+	secretKey = jwtSecret
+}
 
 type AuthClaims struct {
 	UserID     string `json:"user_id"`
@@ -24,6 +25,9 @@ type AuthClaims struct {
 }
 
 func GenerateToken(claims AuthClaims, tokenTTL time.Duration) (string, error) {
+	if len(secretKey) < 10 {
+		return "", errors.New("invalid jwt secret key")
+	}
 	claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(tokenTTL))
 	claims.IssuedAt = jwt.NewNumericDate(time.Now())
 
@@ -52,6 +56,9 @@ func GenerateTokensWithDefaultTTL(claims AuthClaims) (string, string, error) {
 }
 
 func ParseToken(tokenString string) (*AuthClaims, error) {
+	if len(secretKey) < 10 {
+		return nil, errors.New("invalid jwt secret key")
+	}
 	token, err := jwt.ParseWithClaims(
 		tokenString,
 		&AuthClaims{},

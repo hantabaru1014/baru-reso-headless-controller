@@ -9,11 +9,9 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
@@ -21,6 +19,7 @@ import (
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/go-errors/errors"
+	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib"
@@ -31,18 +30,13 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var (
-	imageName              = os.Getenv("HEADLESS_IMAGE_NAME")
-	fluentdAddress         = os.Getenv("CONTAINER_LOGS_FLUENTD_ADDRESS")
-	containerNotFoundError = errors.New("container not found")
-
-	// gRPC timeout settings (configurable via environment variables)
-	grpcConnectTimeout = lib.GetEnvDuration("GRPC_CONNECT_TIMEOUT", 5*time.Second)
-)
+var containerNotFoundError = errors.New("container not found")
 
 var _ HostConnector = (*DockerHostConnector)(nil)
 
 type DockerHostConnector struct {
+	dockerCfg *config.DockerConfig
+	grpcCfg   *config.GRPCConfig
 }
 
 // GetStatus implements HostConnector.
@@ -78,7 +72,7 @@ func (d *DockerHostConnector) GetRpcClient(ctx context.Context, connect_string H
 	conn, err := grpc.NewClient(address,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithConnectParams(grpc.ConnectParams{
-			MinConnectTimeout: grpcConnectTimeout,
+			MinConnectTimeout: d.grpcCfg.ConnectTimeout,
 		}),
 	)
 	if err != nil {
@@ -93,9 +87,9 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 		Tags []string `json:"tags"`
 	}
 
-	imageNameParts := strings.Split(imageName, "/")
+	imageNameParts := strings.Split(d.dockerCfg.HeadlessImageName, "/")
 	if len(imageNameParts) != 3 {
-		return nil, errors.Errorf("invalid image name format: %s", imageName)
+		return nil, errors.Errorf("invalid image name format: %s", d.dockerCfg.HeadlessImageName)
 	}
 	registryName := imageNameParts[0]
 	userImagePair := strings.Join(imageNameParts[1:], "/")
@@ -116,11 +110,10 @@ func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *st
 		}
 
 		if registryName == "ghcr.io" {
-			authToken := os.Getenv("GHCR_AUTH_TOKEN")
-			if authToken == "" {
+			if d.dockerCfg.GHCRAuthToken == "" {
 				return nil, errors.Errorf("GHCR_AUTH_TOKEN is not set")
 			}
-			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", base64.StdEncoding.EncodeToString([]byte(authToken))))
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", base64.StdEncoding.EncodeToString([]byte(d.dockerCfg.GHCRAuthToken))))
 		}
 
 		resp, err := client.Do(req)
@@ -171,8 +164,8 @@ func (d *DockerHostConnector) PullContainerImage(ctx context.Context, tag string
 		return "", errors.New(err)
 	}
 
-	registryAuth := base64.StdEncoding.EncodeToString([]byte(os.Getenv("HEADLESS_REGISTRY_AUTH")))
-	refStr := fmt.Sprintf("%s:%s", imageName, tag)
+	registryAuth := base64.StdEncoding.EncodeToString([]byte(d.dockerCfg.HeadlessRegistryAuth))
+	refStr := fmt.Sprintf("%s:%s", d.dockerCfg.HeadlessImageName, tag)
 	reader, err := cli.ImagePull(ctx, refStr, image.PullOptions{
 		All:          false,
 		RegistryAuth: registryAuth,
@@ -222,9 +215,9 @@ func (d *DockerHostConnector) Start(ctx context.Context, params HostStartParams)
 	}
 	config := container.Config{
 		Env:   envs,
-		Image: fmt.Sprintf("%s:%s", imageName, imageTag),
+		Image: fmt.Sprintf("%s:%s", d.dockerCfg.HeadlessImageName, imageTag),
 	}
-	fluentdAddr := fluentdAddress
+	fluentdAddr := d.dockerCfg.FluentdAddress
 	if fluentdAddr == "" {
 		fluentdAddr = "localhost:24224"
 	}
@@ -315,8 +308,11 @@ func (d *DockerHostConnector) Remove(ctx context.Context, connect_string HostCon
 	return nil
 }
 
-func NewDockerHostConnector() *DockerHostConnector {
-	return &DockerHostConnector{}
+func NewDockerHostConnector(dockerCfg *config.DockerConfig, grpcCfg *config.GRPCConfig) *DockerHostConnector {
+	return &DockerHostConnector{
+		dockerCfg: dockerCfg,
+		grpcCfg:   grpcCfg,
+	}
 }
 
 func parseConnectString(connect_string HostConnectString) (string, int, error) {
@@ -373,14 +369,14 @@ func (d *DockerHostConnector) isAvailableTag(ctx context.Context, tag string) bo
 	}
 	images, err := cli.ImageList(ctx, image.ListOptions{
 		All:     true,
-		Filters: filters.NewArgs(filters.Arg("reference", imageName)),
+		Filters: filters.NewArgs(filters.Arg("reference", d.dockerCfg.HeadlessImageName)),
 	})
 	if err != nil {
 		return false
 	}
 	for _, img := range slices.Backward(images) {
 		for _, repoTag := range img.RepoTags {
-			if strings.HasPrefix(repoTag, imageName) {
+			if strings.HasPrefix(repoTag, d.dockerCfg.HeadlessImageName) {
 				splitted := strings.Split(repoTag, ":")
 				if len(splitted) != 2 {
 					continue
@@ -535,7 +531,7 @@ func (d *DockerHostConnector) ListAllContainerStatuses(ctx context.Context) (map
 	if err != nil {
 		return nil, errors.Errorf("failed to create docker client: %w", err)
 	}
-	if imageName == "" {
+	if d.dockerCfg.HeadlessImageName == "" {
 		return nil, errors.Errorf("HEADLESS_IMAGE_NAME environment variable is not set")
 	}
 	containers, err := cli.ContainerList(ctx, container.ListOptions{
@@ -548,7 +544,7 @@ func (d *DockerHostConnector) ListAllContainerStatuses(ctx context.Context) (map
 	result := make(map[string]entity.HeadlessHostStatus)
 	for _, c := range containers {
 		// Filter by image name prefix (imageName:tag format)
-		if !strings.HasPrefix(c.Image, imageName+":") && c.Image != imageName {
+		if !strings.HasPrefix(c.Image, d.dockerCfg.HeadlessImageName+":") && c.Image != d.dockerCfg.HeadlessImageName {
 			continue
 		}
 		status := containerStatusToEntityStatus(c.State, c.Status)

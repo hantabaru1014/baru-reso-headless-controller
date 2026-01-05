@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
+	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
-	"github.com/hantabaru1014/baru-reso-headless-controller/lib"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -28,12 +28,13 @@ type EventWatcher struct {
 func NewEventWatcher(
 	dc *hostconnector.DockerHostConnector,
 	q *db.Queries,
+	cfg *config.WorkerConfig,
 ) *EventWatcher {
 	return &EventWatcher{
 		dc:               dc,
 		q:                q,
-		reconnectDelay:   lib.GetEnvDuration("EVENT_WATCHER_RECONNECT_DELAY", 5*time.Second),
-		maxReconnectWait: lib.GetEnvDuration("EVENT_WATCHER_MAX_RECONNECT_WAIT", 5*time.Minute),
+		reconnectDelay:   cfg.EventReconnectDelay,
+		maxReconnectWait: cfg.EventMaxReconnectWait,
 	}
 }
 

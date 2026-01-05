@@ -10,8 +10,10 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	hostconnectormock "github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector/mock"
+	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	skyfrostmock "github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost/mock"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
@@ -44,6 +46,9 @@ func (s *controllerServiceTestSetup) Cleanup() {
 func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 	t.Helper()
 
+	// Initialize auth with test secret
+	auth.Init("test-jwt-secret-for-testing")
+
 	// Setup test database
 	queries, pool := testutil.SetupTestDB(t)
 	testutil.CleanupTables(t, pool)
@@ -54,13 +59,19 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 	mockSkyfrost := skyfrostmock.NewMockClient(ctrl)
 	mockRpcClient := hostconnectormock.NewMockHeadlessControlServiceClient(ctrl)
 
+	// Load env
+	cfg, err := config.LoadEnvConfig()
+	require.NoError(t, err)
+	err = cfg.Validate()
+	require.NoError(t, err)
+
 	// Setup repositories with real implementations
 	srepo := adapter.NewSessionRepository(queries)
-	hhrepo := adapter.NewHeadlessHostRepository(queries, mockHostConnector)
+	hhrepo := adapter.NewHeadlessHostRepository(queries, mockHostConnector, &cfg.GRPC)
 
 	// Setup usecases with real repositories
 	hauc := usecase.NewHeadlessAccountUsecase(queries, mockSkyfrost)
-	suc := usecase.NewSessionUsecase(srepo, hhrepo)
+	suc := usecase.NewSessionUsecase(srepo, hhrepo, &cfg.GRPC, &cfg.Server)
 	hhuc := usecase.NewHeadlessHostUsecase(hhrepo, srepo, suc, hauc)
 
 	// Setup service with real repositories
@@ -2934,7 +2945,6 @@ func TestControllerService_ListContacts(t *testing.T) {
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-contact1", "contact@example.test", "password")
 		testutil.CreateTestHeadlessHost(t, setup.queries, "U-contact1", "TestHost", entity.HeadlessHostStatus_RUNNING)
 
-
 		// Mock HostConnector to return RPC client
 		setup.mockHostConnector.EXPECT().
 			GetRpcClient(gomock.Any(), gomock.Any()).
@@ -2993,7 +3003,6 @@ func TestControllerService_GetContactMessages(t *testing.T) {
 		// Create test headless account and host
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-msg1", "msg@example.test", "password")
 		testutil.CreateTestHeadlessHost(t, setup.queries, "U-msg1", "TestHost", entity.HeadlessHostStatus_RUNNING)
-
 
 		// Mock HostConnector to return RPC client
 		setup.mockHostConnector.EXPECT().
@@ -3060,7 +3069,6 @@ func TestControllerService_SendContactMessage(t *testing.T) {
 		// Create test headless account and host
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-send1", "send@example.test", "password")
 		testutil.CreateTestHeadlessHost(t, setup.queries, "U-send1", "TestHost", entity.HeadlessHostStatus_RUNNING)
-
 
 		// Mock HostConnector to return RPC client
 		setup.mockHostConnector.EXPECT().

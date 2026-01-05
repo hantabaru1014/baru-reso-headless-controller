@@ -3,39 +3,32 @@ package worker
 import (
 	"context"
 	"log/slog"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/go-co-op/gocron"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
+	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
 
 type ImageChecker struct {
-	scheduler *gocron.Scheduler
-	dc        *hostconnector.DockerHostConnector
-	suc       *usecase.SessionUsecase
-	interval  time.Duration
-	lastTag   *port.ContainerImage
+	scheduler        *gocron.Scheduler
+	dc               *hostconnector.DockerHostConnector
+	suc              *usecase.SessionUsecase
+	interval         time.Duration
+	autoPullNewImage bool
+	lastTag          *port.ContainerImage
 }
 
-func NewImageChecker(dc *hostconnector.DockerHostConnector, suc *usecase.SessionUsecase) *ImageChecker {
-	// 環境変数から設定を読み込む (秒単位)
-	interval := 15 * time.Second // デフォルトは15秒に1回
-	if envInterval := os.Getenv("IMAGE_CHECK_INTERVAL_SEC"); envInterval != "" {
-		if seconds, err := strconv.Atoi(envInterval); err == nil && seconds > 0 {
-			interval = time.Duration(seconds) * time.Second
-		}
-	}
-
+func NewImageChecker(dc *hostconnector.DockerHostConnector, suc *usecase.SessionUsecase, cfg *config.WorkerConfig) *ImageChecker {
 	return &ImageChecker{
-		scheduler: gocron.NewScheduler(time.UTC),
-		dc:        dc,
-		suc:       suc,
-		interval:  interval,
-		lastTag:   nil,
+		scheduler:        gocron.NewScheduler(time.UTC),
+		dc:               dc,
+		suc:              suc,
+		interval:         cfg.ImageCheckInterval,
+		autoPullNewImage: cfg.AutoPullNewImage,
+		lastTag:          nil,
 	}
 }
 
@@ -88,7 +81,7 @@ func (ic *ImageChecker) checkNewImages() {
 		ic.lastTag = newestTag
 
 		// 必要に応じて新しいイメージをプル
-		if os.Getenv("AUTO_PULL_NEW_IMAGE") == "true" {
+		if ic.autoPullNewImage {
 			slog.Info("Pulling latest container image", "tag", newestTag)
 			if _, err := ic.dc.PullContainerImage(ctx, newestTag.Tag); err != nil {
 				slog.Error("Failed to pull container image", "tag", newestTag, "error", err)

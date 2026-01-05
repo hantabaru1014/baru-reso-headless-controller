@@ -7,9 +7,11 @@
 package app
 
 import (
+	"github.com/google/wire"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
+	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
@@ -18,34 +20,74 @@ import (
 
 // Injectors from wire.go:
 
-func InitializeServer() *Server {
-	queries := db.NewQueries()
+func InitializeServer(cfg *config.EnvConfig) *Server {
+	databaseConfig := ProvideDatabaseConfig(cfg)
+	queries := db.NewQueries(databaseConfig)
 	defaultClient := skyfrost.NewDefaultClient()
 	userUsecase := usecase.NewUserUsecase(queries, defaultClient)
 	userService := rpc.NewUserService(userUsecase)
-	dockerHostConnector := hostconnector.NewDockerHostConnector()
-	headlessHostRepository := adapter.NewHeadlessHostRepository(queries, dockerHostConnector)
+	dockerConfig := ProvideDockerConfig(cfg)
+	grpcConfig := ProvideGRPCConfig(cfg)
+	dockerHostConnector := hostconnector.NewDockerHostConnector(dockerConfig, grpcConfig)
+	headlessHostRepository := adapter.NewHeadlessHostRepository(queries, dockerHostConnector, grpcConfig)
 	sessionRepository := adapter.NewSessionRepository(queries)
-	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository)
+	serverConfig := ProvideServerConfig(cfg)
+	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, grpcConfig, serverConfig)
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
 	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, defaultClient)
-	imageChecker := worker.NewImageChecker(dockerHostConnector, sessionUsecase)
-	eventWatcher := worker.NewEventWatcher(dockerHostConnector, queries)
+	workerConfig := ProvideWorkerConfig(cfg)
+	imageChecker := worker.NewImageChecker(dockerHostConnector, sessionUsecase, workerConfig)
+	eventWatcher := worker.NewEventWatcher(dockerHostConnector, queries, workerConfig)
 	server := NewServer(userService, controllerService, imageChecker, eventWatcher)
 	return server
 }
 
-func InitializeCli() *Cli {
-	queries := db.NewQueries()
+func InitializeCli(cfg *config.EnvConfig) *Cli {
+	databaseConfig := ProvideDatabaseConfig(cfg)
+	queries := db.NewQueries(databaseConfig)
 	defaultClient := skyfrost.NewDefaultClient()
 	userUsecase := usecase.NewUserUsecase(queries, defaultClient)
-	dockerHostConnector := hostconnector.NewDockerHostConnector()
-	headlessHostRepository := adapter.NewHeadlessHostRepository(queries, dockerHostConnector)
+	dockerConfig := ProvideDockerConfig(cfg)
+	grpcConfig := ProvideGRPCConfig(cfg)
+	dockerHostConnector := hostconnector.NewDockerHostConnector(dockerConfig, grpcConfig)
+	headlessHostRepository := adapter.NewHeadlessHostRepository(queries, dockerHostConnector, grpcConfig)
 	sessionRepository := adapter.NewSessionRepository(queries)
-	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository)
+	serverConfig := ProvideServerConfig(cfg)
+	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, grpcConfig, serverConfig)
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
 	cli := NewCli(queries, userUsecase, headlessHostUsecase, defaultClient)
 	return cli
 }
+
+// wire.go:
+
+// Config providers
+func ProvideDatabaseConfig(cfg *config.EnvConfig) *config.DatabaseConfig {
+	return &cfg.Database
+}
+
+func ProvideDockerConfig(cfg *config.EnvConfig) *config.DockerConfig {
+	return &cfg.Docker
+}
+
+func ProvideGRPCConfig(cfg *config.EnvConfig) *config.GRPCConfig {
+	return &cfg.GRPC
+}
+
+func ProvideWorkerConfig(cfg *config.EnvConfig) *config.WorkerConfig {
+	return &cfg.Worker
+}
+
+func ProvideServerConfig(cfg *config.EnvConfig) *config.ServerConfig {
+	return &cfg.Server
+}
+
+var ConfigSet = wire.NewSet(
+	ProvideDatabaseConfig,
+	ProvideDockerConfig,
+	ProvideGRPCConfig,
+	ProvideWorkerConfig,
+	ProvideServerConfig,
+)
