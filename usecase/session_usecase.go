@@ -5,21 +5,16 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"os"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/go-errors/errors"
+	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
-	"github.com/hantabaru1014/baru-reso-headless-controller/lib"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"google.golang.org/protobuf/proto"
 )
-
-// gRPC call timeout (configurable via environment variable)
-var grpcCallTimeout = lib.GetEnvDuration("GRPC_CALL_TIMEOUT", 10*time.Second)
 
 type SaveMode int32
 
@@ -30,55 +25,21 @@ const (
 )
 
 type SessionUsecase struct {
-	sessionRepo  port.SessionRepository
-	hostRepo     port.HeadlessHostRepository
-	forcePortMin int
-	forcePortMax int
-	portMutex    sync.Mutex
+	sessionRepo     port.SessionRepository
+	hostRepo        port.HeadlessHostRepository
+	grpcCallTimeout time.Duration
+	forcePortMin    int
+	forcePortMax    int
+	portMutex       sync.Mutex
 }
 
-func parseSessionPortEnv() (int, int, error) {
-	portMin, portMax := 0, 0
-	portMinStr := os.Getenv("SESSION_PORT_MIN")
-	portMaxStr := os.Getenv("SESSION_PORT_MAX")
-	if portMinStr != "" && portMaxStr != "" {
-		var err error
-		portMin, err = strconv.Atoi(portMinStr)
-		if err != nil {
-			return 0, 0, fmt.Errorf("invalid SESSION_PORT_MIN: %s", portMinStr)
-		}
-		portMax, err = strconv.Atoi(portMaxStr)
-		if err != nil {
-			return 0, 0, fmt.Errorf("invalid SESSION_PORT_MAX: %s", portMaxStr)
-		}
-		// Validate portMin and portMax are within valid range
-		if portMin < 1024 || portMin > 65535 {
-			return 0, 0, fmt.Errorf("SESSION_PORT_MIN(%d) must be between 1024 and 65535", portMin)
-		}
-		if portMax < 1 || portMax > 65535 {
-			return 0, 0, fmt.Errorf("SESSION_PORT_MAX(%d) must be between 1 and 65535", portMax)
-		}
-		if portMin > portMax {
-			return 0, 0, fmt.Errorf("invalid port range: SESSION_PORT_MIN(%d) > SESSION_PORT_MAX(%d)", portMin, portMax)
-		}
-	} else if (portMinStr != "" && portMaxStr == "") || (portMinStr == "" && portMaxStr != "") {
-		return 0, 0, fmt.Errorf("SESSION_PORT_MIN and SESSION_PORT_MAX must both be set or both be unset")
-	}
-
-	return portMin, portMax, nil
-}
-
-func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.HeadlessHostRepository) *SessionUsecase {
-	portMin, portMax, err := parseSessionPortEnv()
-	if err != nil {
-		panic(fmt.Sprintf("failed to parse session port environment variables: %v", err))
-	}
-
+func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.HeadlessHostRepository, grpcCfg *config.GRPCConfig, serverCfg *config.ServerConfig) *SessionUsecase {
 	return &SessionUsecase{
-		sessionRepo:  sessionRepo,
-		hostRepo:     hostRepo,
-		forcePortMin: portMin,
-		forcePortMax: portMax,
+		sessionRepo:     sessionRepo,
+		hostRepo:        hostRepo,
+		grpcCallTimeout: grpcCfg.CallTimeout,
+		forcePortMin:    serverCfg.SessionPortMin,
+		forcePortMax:    serverCfg.SessionPortMax,
 	}
 }
 
@@ -251,7 +212,7 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 	var hdlSessions []*headlessv1.Session
 	sessionHostIdMap := make(map[string]string)
 	if filter.HostID != nil {
-		timeoutCtx, cancel := context.WithTimeout(ctx, grpcCallTimeout)
+		timeoutCtx, cancel := context.WithTimeout(ctx, u.grpcCallTimeout)
 		defer cancel()
 		ss, err := u.getHostSessions(timeoutCtx, *filter.HostID)
 		if err == nil {
@@ -280,7 +241,7 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 			wg.Add(1)
 			go func(hostID string) {
 				defer wg.Done()
-				timeoutCtx, cancel := context.WithTimeout(ctx, grpcCallTimeout)
+				timeoutCtx, cancel := context.WithTimeout(ctx, u.grpcCallTimeout)
 				defer cancel()
 				ss, err := u.getHostSessions(timeoutCtx, hostID)
 				resultChan <- hostSessionResult{hostID: hostID, sessions: ss, err: err}
