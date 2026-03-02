@@ -126,6 +126,11 @@ export const searchUserInfo = ControllerService.method.searchUserInfo;
 export const searchWorlds = ControllerService.method.searchWorlds;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.GetOwnWorlds
+ */
+export const getOwnWorlds = ControllerService.method.getOwnWorlds;
+
+/**
  * @generated from rpc hdlctrl.v1.ControllerService.GetResoniteUser
  */
 export const getResoniteUser = ControllerService.method.getResoniteUser;

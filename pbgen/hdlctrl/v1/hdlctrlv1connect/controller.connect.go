@@ -103,6 +103,9 @@ const (
 	// ControllerServiceSearchWorldsProcedure is the fully-qualified name of the ControllerService's
 	// SearchWorlds RPC.
 	ControllerServiceSearchWorldsProcedure = "/hdlctrl.v1.ControllerService/SearchWorlds"
+	// ControllerServiceGetOwnWorldsProcedure is the fully-qualified name of the ControllerService's
+	// GetOwnWorlds RPC.
+	ControllerServiceGetOwnWorldsProcedure = "/hdlctrl.v1.ControllerService/GetOwnWorlds"
 	// ControllerServiceGetResoniteUserProcedure is the fully-qualified name of the ControllerService's
 	// GetResoniteUser RPC.
 	ControllerServiceGetResoniteUserProcedure = "/hdlctrl.v1.ControllerService/GetResoniteUser"
@@ -190,6 +193,7 @@ type ControllerServiceClient interface {
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
 	SearchWorlds(context.Context, *connect.Request[v1.SearchWorldsRequest]) (*connect.Response[v1.SearchWorldsResponse], error)
+	GetOwnWorlds(context.Context, *connect.Request[v1.GetOwnWorldsRequest]) (*connect.Response[v1.GetOwnWorldsResponse], error)
 	GetResoniteUser(context.Context, *connect.Request[v1.GetResoniteUserRequest]) (*connect.Response[v1.GetResoniteUserResponse], error)
 	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v1.GetFriendRequestsResponse], error)
 	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
@@ -362,6 +366,12 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(controllerServiceMethods.ByName("SearchWorlds")),
 			connect.WithClientOptions(opts...),
 		),
+		getOwnWorlds: connect.NewClient[v1.GetOwnWorldsRequest, v1.GetOwnWorldsResponse](
+			httpClient,
+			baseURL+ControllerServiceGetOwnWorldsProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("GetOwnWorlds")),
+			connect.WithClientOptions(opts...),
+		),
 		getResoniteUser: connect.NewClient[v1.GetResoniteUserRequest, v1.GetResoniteUserResponse](
 			httpClient,
 			baseURL+ControllerServiceGetResoniteUserProcedure,
@@ -504,6 +514,7 @@ type controllerServiceClient struct {
 	fetchWorldInfo                   *connect.Client[v1.FetchWorldInfoRequest, v11.FetchWorldInfoResponse]
 	searchUserInfo                   *connect.Client[v1.SearchUserInfoRequest, v11.SearchUserInfoResponse]
 	searchWorlds                     *connect.Client[v1.SearchWorldsRequest, v1.SearchWorldsResponse]
+	getOwnWorlds                     *connect.Client[v1.GetOwnWorldsRequest, v1.GetOwnWorldsResponse]
 	getResoniteUser                  *connect.Client[v1.GetResoniteUserRequest, v1.GetResoniteUserResponse]
 	getFriendRequests                *connect.Client[v1.GetFriendRequestsRequest, v1.GetFriendRequestsResponse]
 	acceptFriendRequests             *connect.Client[v1.AcceptFriendRequestsRequest, v1.AcceptFriendRequestsResponse]
@@ -641,6 +652,11 @@ func (c *controllerServiceClient) SearchWorlds(ctx context.Context, req *connect
 	return c.searchWorlds.CallUnary(ctx, req)
 }
 
+// GetOwnWorlds calls hdlctrl.v1.ControllerService.GetOwnWorlds.
+func (c *controllerServiceClient) GetOwnWorlds(ctx context.Context, req *connect.Request[v1.GetOwnWorldsRequest]) (*connect.Response[v1.GetOwnWorldsResponse], error) {
+	return c.getOwnWorlds.CallUnary(ctx, req)
+}
+
 // GetResoniteUser calls hdlctrl.v1.ControllerService.GetResoniteUser.
 func (c *controllerServiceClient) GetResoniteUser(ctx context.Context, req *connect.Request[v1.GetResoniteUserRequest]) (*connect.Response[v1.GetResoniteUserResponse], error) {
 	return c.getResoniteUser.CallUnary(ctx, req)
@@ -764,6 +780,7 @@ type ControllerServiceHandler interface {
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v11.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v11.SearchUserInfoResponse], error)
 	SearchWorlds(context.Context, *connect.Request[v1.SearchWorldsRequest]) (*connect.Response[v1.SearchWorldsResponse], error)
+	GetOwnWorlds(context.Context, *connect.Request[v1.GetOwnWorldsRequest]) (*connect.Response[v1.GetOwnWorldsResponse], error)
 	GetResoniteUser(context.Context, *connect.Request[v1.GetResoniteUserRequest]) (*connect.Response[v1.GetResoniteUserResponse], error)
 	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v1.GetFriendRequestsResponse], error)
 	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
@@ -932,6 +949,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		connect.WithSchema(controllerServiceMethods.ByName("SearchWorlds")),
 		connect.WithHandlerOptions(opts...),
 	)
+	controllerServiceGetOwnWorldsHandler := connect.NewUnaryHandler(
+		ControllerServiceGetOwnWorldsProcedure,
+		svc.GetOwnWorlds,
+		connect.WithSchema(controllerServiceMethods.ByName("GetOwnWorlds")),
+		connect.WithHandlerOptions(opts...),
+	)
 	controllerServiceGetResoniteUserHandler := connect.NewUnaryHandler(
 		ControllerServiceGetResoniteUserProcedure,
 		svc.GetResoniteUser,
@@ -1094,6 +1117,8 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceSearchUserInfoHandler.ServeHTTP(w, r)
 		case ControllerServiceSearchWorldsProcedure:
 			controllerServiceSearchWorldsHandler.ServeHTTP(w, r)
+		case ControllerServiceGetOwnWorldsProcedure:
+			controllerServiceGetOwnWorldsHandler.ServeHTTP(w, r)
 		case ControllerServiceGetResoniteUserProcedure:
 			controllerServiceGetResoniteUserHandler.ServeHTTP(w, r)
 		case ControllerServiceGetFriendRequestsProcedure:
@@ -1231,6 +1256,10 @@ func (UnimplementedControllerServiceHandler) SearchUserInfo(context.Context, *co
 
 func (UnimplementedControllerServiceHandler) SearchWorlds(context.Context, *connect.Request[v1.SearchWorldsRequest]) (*connect.Response[v1.SearchWorldsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.SearchWorlds is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) GetOwnWorlds(context.Context, *connect.Request[v1.GetOwnWorldsRequest]) (*connect.Response[v1.GetOwnWorldsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.GetOwnWorlds is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) GetResoniteUser(context.Context, *connect.Request[v1.GetResoniteUserRequest]) (*connect.Response[v1.GetResoniteUserResponse], error) {

@@ -22,6 +22,8 @@ type Client interface {
 	UpdateUserProfile(ctx context.Context, credential, password string, profile *UserProfile) error
 	// SearchWorlds searches for published worlds on Resonite
 	SearchWorlds(ctx context.Context, query string, featuredOnly bool, pageIndex int) (*SearchWorldsResult, error)
+	// GetOwnWorlds gets worlds owned by the authenticated user
+	GetOwnWorlds(ctx context.Context, credential, password string, pageIndex int) (*SearchWorldsResult, error)
 }
 
 // DefaultClient is the default implementation of Client using real API calls.
@@ -90,6 +92,16 @@ func (c *DefaultClient) UpdateUserProfile(ctx context.Context, credential, passw
 // SearchWorlds implements Client.SearchWorlds.
 func (c *DefaultClient) SearchWorlds(ctx context.Context, query string, featuredOnly bool, pageIndex int) (*SearchWorldsResult, error) {
 	return SearchWorlds(ctx, query, featuredOnly, pageIndex)
+}
+
+// GetOwnWorlds implements Client.GetOwnWorlds.
+func (c *DefaultClient) GetOwnWorlds(ctx context.Context, credential, password string, pageIndex int) (*SearchWorldsResult, error) {
+	userSession, err := c.getOrLogin(ctx, credential, password)
+	if err != nil {
+		return nil, err
+	}
+
+	return userSession.SearchOwnWorlds(ctx, pageIndex)
 }
 
 // getOrLogin returns a cached session if valid, otherwise logs in and caches the new session.

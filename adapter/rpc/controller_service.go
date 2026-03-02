@@ -733,6 +733,44 @@ func (c *ControllerService) GetResoniteUser(ctx context.Context, req *connect.Re
 	return res, nil
 }
 
+// GetOwnWorlds implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) GetOwnWorlds(ctx context.Context, req *connect.Request[hdlctrlv1.GetOwnWorldsRequest]) (*connect.Response[hdlctrlv1.GetOwnWorldsResponse], error) {
+	host, err := c.hhuc.HeadlessHostGet(ctx, req.Msg.GetHostId())
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	account, err := c.hauc.GetHeadlessAccount(ctx, host.AccountId)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	result, err := c.skyfrostClient.GetOwnWorlds(ctx, account.Credential, account.Password, int(req.Msg.GetPageIndex()))
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to get own worlds: %w", err))
+	}
+
+	records := make([]*hdlctrlv1.SearchWorldsResponse_WorldRecord, 0, len(result.Records))
+	for _, r := range result.Records {
+		records = append(records, &hdlctrlv1.SearchWorldsResponse_WorldRecord{
+			Id:           r.ID,
+			OwnerId:      r.OwnerID,
+			OwnerName:    r.OwnerName,
+			Name:         r.Name,
+			Description:  r.Description,
+			ThumbnailUrl: r.ThumbnailUri,
+			IsFeatured:   r.IsFeatured,
+		})
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.GetOwnWorldsResponse{
+		Records: records,
+		HasMore: result.HasMore,
+	})
+
+	return res, nil
+}
+
 // SearchWorlds implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) SearchWorlds(ctx context.Context, req *connect.Request[hdlctrlv1.SearchWorldsRequest]) (*connect.Response[hdlctrlv1.SearchWorldsResponse], error) {
 	result, err := c.skyfrostClient.SearchWorlds(ctx, req.Msg.GetQuery(), req.Msg.GetFeaturedOnly(), int(req.Msg.GetPageIndex()))
