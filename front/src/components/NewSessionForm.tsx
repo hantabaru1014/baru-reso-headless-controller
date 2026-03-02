@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "./ui";
-import { useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import {
   searchParamsToFormValues,
   DEFAULT_SESSION_FORM_VALUES,
@@ -382,9 +382,14 @@ export default function NewSessionForm() {
               </Button>
             ))}
             {runningHosts.length === 0 && (
-              <p className="text-muted-foreground text-center py-4">
-                稼働中のホストがありません
-              </p>
+              <div className="text-center py-4 space-y-3">
+                <p className="text-muted-foreground">
+                  稼働中のホストがありません
+                </p>
+                <Button variant="outline" asChild>
+                  <Link to="/hosts">ホスト一覧へ</Link>
+                </Button>
+              </div>
             )}
           </div>
         </DialogContent>
