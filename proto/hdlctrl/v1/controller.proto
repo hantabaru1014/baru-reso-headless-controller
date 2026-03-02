@@ -34,6 +34,7 @@ service ControllerService {
   rpc FetchWorldInfo(FetchWorldInfoRequest) returns (headless.v1.FetchWorldInfoResponse);
   rpc SearchUserInfo(SearchUserInfoRequest) returns (headless.v1.SearchUserInfoResponse);
   rpc SearchWorlds(SearchWorldsRequest) returns (SearchWorldsResponse);
+  rpc GetOwnWorlds(GetOwnWorldsRequest) returns (GetOwnWorldsResponse);
   rpc GetResoniteUser(GetResoniteUserRequest) returns (GetResoniteUserResponse);
   rpc GetFriendRequests(GetFriendRequestsRequest) returns (GetFriendRequestsResponse);
   rpc AcceptFriendRequests(AcceptFriendRequestsRequest) returns (AcceptFriendRequestsResponse);
@@ -303,6 +304,16 @@ message SearchWorldsResponse {
     bool is_featured = 7;
   }
   repeated WorldRecord records = 1;
+  bool has_more = 2;
+}
+
+message GetOwnWorldsRequest {
+  string host_id = 1;
+  int32 page_index = 2;
+}
+
+message GetOwnWorldsResponse {
+  repeated SearchWorldsResponse.WorldRecord records = 1;
   bool has_more = 2;
 }
 

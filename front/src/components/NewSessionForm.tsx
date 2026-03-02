@@ -476,6 +476,7 @@ export default function NewSessionForm() {
                 setWorldSearchDialogOpen(false);
                 handleFetchInfo(selectedWorldUrl);
               }}
+              hostId={hostId}
             />
           </>
         ) : (

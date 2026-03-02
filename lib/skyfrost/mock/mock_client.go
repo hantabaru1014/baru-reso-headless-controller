@@ -71,6 +71,21 @@ func (mr *MockClientMockRecorder) GetContacts(ctx, credential, password any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContacts", reflect.TypeOf((*MockClient)(nil).GetContacts), ctx, credential, password)
 }
 
+// GetOwnWorlds mocks base method.
+func (m *MockClient) GetOwnWorlds(ctx context.Context, credential, password string, pageIndex int) (*skyfrost.SearchWorldsResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOwnWorlds", ctx, credential, password, pageIndex)
+	ret0, _ := ret[0].(*skyfrost.SearchWorldsResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOwnWorlds indicates an expected call of GetOwnWorlds.
+func (mr *MockClientMockRecorder) GetOwnWorlds(ctx, credential, password, pageIndex any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOwnWorlds", reflect.TypeOf((*MockClient)(nil).GetOwnWorlds), ctx, credential, password, pageIndex)
+}
+
 // GetStorageInfo mocks base method.
 func (m *MockClient) GetStorageInfo(ctx context.Context, credential, password, ownerId string) (*skyfrost.StorageInfo, error) {
 	m.ctrl.T.Helper()
