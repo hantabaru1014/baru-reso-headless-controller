@@ -82,7 +82,7 @@ export function EditableTextArea(
           )}
         </div>
       ) : (
-        <div className="flex field-sizing-content min-h-16 whitespace-pre">
+        <div className="flex field-sizing-content min-h-16 whitespace-pre-wrap">
           {props.richTextMode === "raw" ? (
             <span>{props.value}</span>
           ) : (

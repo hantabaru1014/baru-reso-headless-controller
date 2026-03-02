@@ -53,7 +53,9 @@ export function EditableFieldBase({
           <Skeleton className="h-9 w-full" />
         ) : (
           <>
-            <div className="flex-1 min-h-9 flex items-center">{children}</div>
+            <div className="flex-1 min-w-0 min-h-9 flex items-center">
+              {children}
+            </div>
             {!readonly && (
               <div className="flex flex-col items-end">
                 {editing ? (
