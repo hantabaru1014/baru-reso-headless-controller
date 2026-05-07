@@ -142,6 +142,26 @@ func (mr *MockHeadlessControlServiceClientMockRecorder) DenyHostAccess(ctx, in a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DenyHostAccess", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).DenyHostAccess), varargs...)
 }
 
+// DownloadSessionWorld mocks base method.
+func (m *MockHeadlessControlServiceClient) DownloadSessionWorld(ctx context.Context, in *headlessv1.DownloadSessionWorldRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[headlessv1.DownloadSessionWorldResponse], error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DownloadSessionWorld", varargs...)
+	ret0, _ := ret[0].(grpc.ServerStreamingClient[headlessv1.DownloadSessionWorldResponse])
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DownloadSessionWorld indicates an expected call of DownloadSessionWorld.
+func (mr *MockHeadlessControlServiceClientMockRecorder) DownloadSessionWorld(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DownloadSessionWorld", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).DownloadSessionWorld), varargs...)
+}
+
 // FetchWorldInfo mocks base method.
 func (m *MockHeadlessControlServiceClient) FetchWorldInfo(ctx context.Context, in *headlessv1.FetchWorldInfoRequest, opts ...grpc.CallOption) (*headlessv1.FetchWorldInfoResponse, error) {
 	m.ctrl.T.Helper()

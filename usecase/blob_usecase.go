@@ -128,7 +128,9 @@ func worldBinaryFormatExtension(f headlessv1.WorldBinaryFormat) string {
 		return "brson"
 	case headlessv1.WorldBinaryFormat_WORLD_BINARY_FORMAT_RESONITEPACKAGE:
 		return "resonitepackage"
-	default:
+	case headlessv1.WorldBinaryFormat_WORLD_BINARY_FORMAT_UNSPECIFIED:
 		return "bin"
 	}
+
+	return "bin"
 }
