@@ -13,6 +13,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/blobstore"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/worker"
@@ -20,7 +21,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitializeServer(cfg *config.EnvConfig) *Server {
+func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	databaseConfig := ProvideDatabaseConfig(cfg)
 	queries := db.NewQueries(databaseConfig)
 	defaultClient := skyfrost.NewDefaultClient()
@@ -35,12 +36,18 @@ func InitializeServer(cfg *config.EnvConfig) *Server {
 	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, grpcConfig, serverConfig)
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
-	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, defaultClient)
+	rustFSConfig := ProvideRustFSConfig(cfg)
+	minioClient, err := blobstore.NewMinioClient(rustFSConfig)
+	if err != nil {
+		return nil, err
+	}
+	blobUsecase := usecase.NewBlobUsecase(sessionRepository, headlessHostRepository, minioClient)
+	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, blobUsecase, defaultClient)
 	workerConfig := ProvideWorkerConfig(cfg)
 	imageChecker := worker.NewImageChecker(dockerHostConnector, sessionUsecase, workerConfig)
 	eventWatcher := worker.NewEventWatcher(dockerHostConnector, queries, workerConfig)
-	server := NewServer(userService, controllerService, imageChecker, eventWatcher)
-	return server
+	server := NewServer(userService, controllerService, imageChecker, eventWatcher, minioClient)
+	return server, nil
 }
 
 func InitializeCli(cfg *config.EnvConfig) *Cli {
@@ -84,10 +91,15 @@ func ProvideServerConfig(cfg *config.EnvConfig) *config.ServerConfig {
 	return &cfg.Server
 }
 
+func ProvideRustFSConfig(cfg *config.EnvConfig) *config.RustFSConfig {
+	return &cfg.RustFS
+}
+
 var ConfigSet = wire.NewSet(
 	ProvideDatabaseConfig,
 	ProvideDockerConfig,
 	ProvideGRPCConfig,
 	ProvideWorkerConfig,
 	ProvideServerConfig,
+	ProvideRustFSConfig,
 )

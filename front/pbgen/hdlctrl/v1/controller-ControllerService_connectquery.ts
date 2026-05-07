@@ -195,6 +195,11 @@ export const deleteEndedSession = ControllerService.method.deleteEndedSession;
 export const saveSessionWorld = ControllerService.method.saveSessionWorld;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.PrepareSessionWorldDownload
+ */
+export const prepareSessionWorldDownload = ControllerService.method.prepareSessionWorldDownload;
+
+/**
  * @generated from rpc hdlctrl.v1.ControllerService.InviteUser
  */
 export const inviteUser = ControllerService.method.inviteUser;

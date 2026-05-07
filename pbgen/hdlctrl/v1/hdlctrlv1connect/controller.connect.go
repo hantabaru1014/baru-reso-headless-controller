@@ -142,6 +142,9 @@ const (
 	// ControllerServiceSaveSessionWorldProcedure is the fully-qualified name of the ControllerService's
 	// SaveSessionWorld RPC.
 	ControllerServiceSaveSessionWorldProcedure = "/hdlctrl.v1.ControllerService/SaveSessionWorld"
+	// ControllerServicePrepareSessionWorldDownloadProcedure is the fully-qualified name of the
+	// ControllerService's PrepareSessionWorldDownload RPC.
+	ControllerServicePrepareSessionWorldDownloadProcedure = "/hdlctrl.v1.ControllerService/PrepareSessionWorldDownload"
 	// ControllerServiceInviteUserProcedure is the fully-qualified name of the ControllerService's
 	// InviteUser RPC.
 	ControllerServiceInviteUserProcedure = "/hdlctrl.v1.ControllerService/InviteUser"
@@ -208,6 +211,7 @@ type ControllerServiceClient interface {
 	StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error)
 	DeleteEndedSession(context.Context, *connect.Request[v1.DeleteEndedSessionRequest]) (*connect.Response[v1.DeleteEndedSessionResponse], error)
 	SaveSessionWorld(context.Context, *connect.Request[v1.SaveSessionWorldRequest]) (*connect.Response[v1.SaveSessionWorldResponse], error)
+	PrepareSessionWorldDownload(context.Context, *connect.Request[v1.PrepareSessionWorldDownloadRequest]) (*connect.Response[v1.PrepareSessionWorldDownloadResponse], error)
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	UpdateSessionParameters(context.Context, *connect.Request[v1.UpdateSessionParametersRequest]) (*connect.Response[v1.UpdateSessionParametersResponse], error)
@@ -444,6 +448,12 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(controllerServiceMethods.ByName("SaveSessionWorld")),
 			connect.WithClientOptions(opts...),
 		),
+		prepareSessionWorldDownload: connect.NewClient[v1.PrepareSessionWorldDownloadRequest, v1.PrepareSessionWorldDownloadResponse](
+			httpClient,
+			baseURL+ControllerServicePrepareSessionWorldDownloadProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("PrepareSessionWorldDownload")),
+			connect.WithClientOptions(opts...),
+		),
 		inviteUser: connect.NewClient[v1.InviteUserRequest, v1.InviteUserResponse](
 			httpClient,
 			baseURL+ControllerServiceInviteUserProcedure,
@@ -527,6 +537,7 @@ type controllerServiceClient struct {
 	stopSession                      *connect.Client[v1.StopSessionRequest, v1.StopSessionResponse]
 	deleteEndedSession               *connect.Client[v1.DeleteEndedSessionRequest, v1.DeleteEndedSessionResponse]
 	saveSessionWorld                 *connect.Client[v1.SaveSessionWorldRequest, v1.SaveSessionWorldResponse]
+	prepareSessionWorldDownload      *connect.Client[v1.PrepareSessionWorldDownloadRequest, v1.PrepareSessionWorldDownloadResponse]
 	inviteUser                       *connect.Client[v1.InviteUserRequest, v1.InviteUserResponse]
 	updateUserRole                   *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
 	updateSessionParameters          *connect.Client[v1.UpdateSessionParametersRequest, v1.UpdateSessionParametersResponse]
@@ -717,6 +728,11 @@ func (c *controllerServiceClient) SaveSessionWorld(ctx context.Context, req *con
 	return c.saveSessionWorld.CallUnary(ctx, req)
 }
 
+// PrepareSessionWorldDownload calls hdlctrl.v1.ControllerService.PrepareSessionWorldDownload.
+func (c *controllerServiceClient) PrepareSessionWorldDownload(ctx context.Context, req *connect.Request[v1.PrepareSessionWorldDownloadRequest]) (*connect.Response[v1.PrepareSessionWorldDownloadResponse], error) {
+	return c.prepareSessionWorldDownload.CallUnary(ctx, req)
+}
+
 // InviteUser calls hdlctrl.v1.ControllerService.InviteUser.
 func (c *controllerServiceClient) InviteUser(ctx context.Context, req *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error) {
 	return c.inviteUser.CallUnary(ctx, req)
@@ -795,6 +811,7 @@ type ControllerServiceHandler interface {
 	StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error)
 	DeleteEndedSession(context.Context, *connect.Request[v1.DeleteEndedSessionRequest]) (*connect.Response[v1.DeleteEndedSessionResponse], error)
 	SaveSessionWorld(context.Context, *connect.Request[v1.SaveSessionWorldRequest]) (*connect.Response[v1.SaveSessionWorldResponse], error)
+	PrepareSessionWorldDownload(context.Context, *connect.Request[v1.PrepareSessionWorldDownloadRequest]) (*connect.Response[v1.PrepareSessionWorldDownloadResponse], error)
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	UpdateSessionParameters(context.Context, *connect.Request[v1.UpdateSessionParametersRequest]) (*connect.Response[v1.UpdateSessionParametersResponse], error)
@@ -1027,6 +1044,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		connect.WithSchema(controllerServiceMethods.ByName("SaveSessionWorld")),
 		connect.WithHandlerOptions(opts...),
 	)
+	controllerServicePrepareSessionWorldDownloadHandler := connect.NewUnaryHandler(
+		ControllerServicePrepareSessionWorldDownloadProcedure,
+		svc.PrepareSessionWorldDownload,
+		connect.WithSchema(controllerServiceMethods.ByName("PrepareSessionWorldDownload")),
+		connect.WithHandlerOptions(opts...),
+	)
 	controllerServiceInviteUserHandler := connect.NewUnaryHandler(
 		ControllerServiceInviteUserProcedure,
 		svc.InviteUser,
@@ -1143,6 +1166,8 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceDeleteEndedSessionHandler.ServeHTTP(w, r)
 		case ControllerServiceSaveSessionWorldProcedure:
 			controllerServiceSaveSessionWorldHandler.ServeHTTP(w, r)
+		case ControllerServicePrepareSessionWorldDownloadProcedure:
+			controllerServicePrepareSessionWorldDownloadHandler.ServeHTTP(w, r)
 		case ControllerServiceInviteUserProcedure:
 			controllerServiceInviteUserHandler.ServeHTTP(w, r)
 		case ControllerServiceUpdateUserRoleProcedure:
@@ -1308,6 +1333,10 @@ func (UnimplementedControllerServiceHandler) DeleteEndedSession(context.Context,
 
 func (UnimplementedControllerServiceHandler) SaveSessionWorld(context.Context, *connect.Request[v1.SaveSessionWorldRequest]) (*connect.Response[v1.SaveSessionWorldResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.SaveSessionWorld is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) PrepareSessionWorldDownload(context.Context, *connect.Request[v1.PrepareSessionWorldDownloadRequest]) (*connect.Response[v1.PrepareSessionWorldDownloadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.PrepareSessionWorldDownload is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error) {

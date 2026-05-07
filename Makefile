@@ -33,12 +33,15 @@ gen.mock:
 	@echo "Cleaning up old mock files..."
 	@rm -rf adapter/hostconnector/mock
 	@rm -rf lib/skyfrost/mock
+	@rm -rf lib/blobstore/mock
 	@echo "Generating new mock files..."
 	@mkdir -p adapter/hostconnector/mock
 	@mkdir -p lib/skyfrost/mock
+	@mkdir -p lib/blobstore/mock
 	go tool mockgen -source=adapter/hostconnector/host_connector.go -destination=adapter/hostconnector/mock/mock_host_connector.go -package=mock
 	go tool mockgen -package=mock -destination=adapter/hostconnector/mock/mock_rpc_client.go github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1 HeadlessControlServiceClient
 	go tool mockgen -source=lib/skyfrost/client.go -destination=lib/skyfrost/mock/mock_client.go -package=mock
+	go tool mockgen -source=lib/blobstore/blobstore.go -destination=lib/blobstore/mock/mock_client.go -package=mock
 	@echo "Mock generation complete!"
 
 .PHONY: migrate.up

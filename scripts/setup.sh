@@ -19,6 +19,8 @@ chmod a+x brhcli
 JWT_SECRET="$(openssl rand -base64 32)"
 POSTGRES_PASSWORD="$(openssl rand -base64 32)"
 FLUENTBIT_PGSQL_PASSWORD="$(openssl rand -base64 32)"
+RUSTFS_ACCESS_KEY="$(openssl rand -hex 8)"
+RUSTFS_SECRET_KEY="$(openssl rand -base64 32)"
 DOCKER_GID="$(grep docker /etc/group | cut -d: -f3)"
 
 DEFAULT_IMAGE="ghcr.io/hantabaru1014/baru-reso-headless-container"
@@ -62,6 +64,14 @@ CONTAINER_LOGS_FLUENTD_ADDRESS=":24224"
 IMAGE_CHECK_INTERVAL_SEC=15
 # 新しいコンテナイメージを自動的にプルするか（デフォルト: false）
 AUTO_PULL_NEW_IMAGE=true
+
+# RustFS (S3互換ストレージ)
+RUSTFS_ACCESS_KEY="${RUSTFS_ACCESS_KEY}"
+RUSTFS_SECRET_KEY="${RUSTFS_SECRET_KEY}"
+RUSTFS_ENDPOINT="localhost:9000"
+RUSTFS_USE_SSL=false
+WORLD_DOWNLOADS_BUCKET_NAME="world-downloads"
+BLOB_TTL_DAYS=3
 EOF
 
 echo ""
