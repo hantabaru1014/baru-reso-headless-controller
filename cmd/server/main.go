@@ -44,7 +44,11 @@ func main() {
 
 	auth.Init(cfg.Auth.JWTSecret)
 
-	s := app.InitializeServer(cfg)
+	s, err := app.InitializeServer(cfg)
+	if err != nil {
+		slog.Error("Failed to initialize server", "error", err)
+		os.Exit(1)
+	}
 
 	frontURL := ""
 	if cfg.Server.FrontDevMode {

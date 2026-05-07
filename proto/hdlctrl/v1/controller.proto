@@ -51,6 +51,7 @@ service ControllerService {
   rpc StopSession(StopSessionRequest) returns (StopSessionResponse);
   rpc DeleteEndedSession(DeleteEndedSessionRequest) returns (DeleteEndedSessionResponse);
   rpc SaveSessionWorld(SaveSessionWorldRequest) returns (SaveSessionWorldResponse);
+  rpc PrepareSessionWorldDownload(PrepareSessionWorldDownloadRequest) returns (PrepareSessionWorldDownloadResponse);
   rpc InviteUser(InviteUserRequest) returns (InviteUserResponse);
   rpc UpdateUserRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse);
   rpc UpdateSessionParameters(UpdateSessionParametersRequest) returns (UpdateSessionParametersResponse);
@@ -399,6 +400,18 @@ message SaveSessionWorldRequest {
 
 message SaveSessionWorldResponse {
   optional string saved_record_url = 1;
+}
+
+message PrepareSessionWorldDownloadRequest {
+  string session_id = 1;
+  headless.v1.WorldBinaryFormat format = 2;
+}
+
+message PrepareSessionWorldDownloadResponse {
+  // ブラウザがそのままアクセス可能な相対 URL: /blobs/<uuid>
+  string download_url = 1;
+  // 推奨ファイル名 (ブラウザの Content-Disposition でも提供されるが、UI 表示用にも返す)
+  string filename = 2;
 }
 
 message InviteUserRequest {

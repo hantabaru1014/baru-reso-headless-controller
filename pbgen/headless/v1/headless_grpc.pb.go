@@ -40,6 +40,7 @@ const (
 	HeadlessControlService_AllowHostAccess_FullMethodName           = "/headless.v1.HeadlessControlService/AllowHostAccess"
 	HeadlessControlService_DenyHostAccess_FullMethodName            = "/headless.v1.HeadlessControlService/DenyHostAccess"
 	HeadlessControlService_GetStartupConfigToRestore_FullMethodName = "/headless.v1.HeadlessControlService/GetStartupConfigToRestore"
+	HeadlessControlService_DownloadSessionWorld_FullMethodName      = "/headless.v1.HeadlessControlService/DownloadSessionWorld"
 	HeadlessControlService_GetAccountInfo_FullMethodName            = "/headless.v1.HeadlessControlService/GetAccountInfo"
 	HeadlessControlService_FetchWorldInfo_FullMethodName            = "/headless.v1.HeadlessControlService/FetchWorldInfo"
 	HeadlessControlService_SearchUserInfo_FullMethodName            = "/headless.v1.HeadlessControlService/SearchUserInfo"
@@ -75,6 +76,7 @@ type HeadlessControlServiceClient interface {
 	AllowHostAccess(ctx context.Context, in *AllowHostAccessRequest, opts ...grpc.CallOption) (*AllowHostAccessResponse, error)
 	DenyHostAccess(ctx context.Context, in *DenyHostAccessRequest, opts ...grpc.CallOption) (*DenyHostAccessResponse, error)
 	GetStartupConfigToRestore(ctx context.Context, in *GetStartupConfigToRestoreRequest, opts ...grpc.CallOption) (*GetStartupConfigToRestoreResponse, error)
+	DownloadSessionWorld(ctx context.Context, in *DownloadSessionWorldRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DownloadSessionWorldResponse], error)
 	// Cloud系
 	GetAccountInfo(ctx context.Context, in *GetAccountInfoRequest, opts ...grpc.CallOption) (*GetAccountInfoResponse, error)
 	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*FetchWorldInfoResponse, error)
@@ -304,6 +306,25 @@ func (c *headlessControlServiceClient) GetStartupConfigToRestore(ctx context.Con
 	return out, nil
 }
 
+func (c *headlessControlServiceClient) DownloadSessionWorld(ctx context.Context, in *DownloadSessionWorldRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DownloadSessionWorldResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &HeadlessControlService_ServiceDesc.Streams[0], HeadlessControlService_DownloadSessionWorld_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[DownloadSessionWorldRequest, DownloadSessionWorldResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type HeadlessControlService_DownloadSessionWorldClient = grpc.ServerStreamingClient[DownloadSessionWorldResponse]
+
 func (c *headlessControlServiceClient) GetAccountInfo(ctx context.Context, in *GetAccountInfoRequest, opts ...grpc.CallOption) (*GetAccountInfoResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetAccountInfoResponse)
@@ -409,6 +430,7 @@ type HeadlessControlServiceServer interface {
 	AllowHostAccess(context.Context, *AllowHostAccessRequest) (*AllowHostAccessResponse, error)
 	DenyHostAccess(context.Context, *DenyHostAccessRequest) (*DenyHostAccessResponse, error)
 	GetStartupConfigToRestore(context.Context, *GetStartupConfigToRestoreRequest) (*GetStartupConfigToRestoreResponse, error)
+	DownloadSessionWorld(*DownloadSessionWorldRequest, grpc.ServerStreamingServer[DownloadSessionWorldResponse]) error
 	// Cloud系
 	GetAccountInfo(context.Context, *GetAccountInfoRequest) (*GetAccountInfoResponse, error)
 	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*FetchWorldInfoResponse, error)
@@ -490,6 +512,9 @@ func (UnimplementedHeadlessControlServiceServer) DenyHostAccess(context.Context,
 }
 func (UnimplementedHeadlessControlServiceServer) GetStartupConfigToRestore(context.Context, *GetStartupConfigToRestoreRequest) (*GetStartupConfigToRestoreResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetStartupConfigToRestore not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) DownloadSessionWorld(*DownloadSessionWorldRequest, grpc.ServerStreamingServer[DownloadSessionWorldResponse]) error {
+	return status.Error(codes.Unimplemented, "method DownloadSessionWorld not implemented")
 }
 func (UnimplementedHeadlessControlServiceServer) GetAccountInfo(context.Context, *GetAccountInfoRequest) (*GetAccountInfoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAccountInfo not implemented")
@@ -915,6 +940,17 @@ func _HeadlessControlService_GetStartupConfigToRestore_Handler(srv interface{}, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _HeadlessControlService_DownloadSessionWorld_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(DownloadSessionWorldRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(HeadlessControlServiceServer).DownloadSessionWorld(m, &grpc.GenericServerStream[DownloadSessionWorldRequest, DownloadSessionWorldResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type HeadlessControlService_DownloadSessionWorldServer = grpc.ServerStreamingServer[DownloadSessionWorldResponse]
+
 func _HeadlessControlService_GetAccountInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetAccountInfoRequest)
 	if err := dec(in); err != nil {
@@ -1183,6 +1219,12 @@ var HeadlessControlService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _HeadlessControlService_SendContactMessage_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "DownloadSessionWorld",
+			Handler:       _HeadlessControlService_DownloadSessionWorld_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "headless/v1/headless.proto",
 }

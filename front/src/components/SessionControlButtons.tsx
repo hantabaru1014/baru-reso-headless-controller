@@ -1,13 +1,15 @@
 import { Button } from "./ui/button";
 import { useNavigate } from "react-router";
 import {
+  prepareSessionWorldDownload,
   saveSessionWorld,
   stopSession,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { useMutation } from "@connectrpc/connect-query";
 import { toast } from "sonner";
-import { DropdownMenuItem } from "./ui/dropdown-menu";
+import { DropdownMenuItem, DropdownMenuSeparator } from "./ui/dropdown-menu";
 import { SaveSessionWorldRequest_SaveMode } from "../../pbgen/hdlctrl/v1/controller_pb";
+import { WorldBinaryFormat } from "../../pbgen/headless/v1/headless_pb";
 import { SplitButton } from "./base/SplitButton";
 
 export default function SessionControlButtons({
@@ -26,6 +28,8 @@ export default function SessionControlButtons({
     useMutation(saveSessionWorld);
   const { mutateAsync: mutateStop, isPending: isPendingStop } =
     useMutation(stopSession);
+  const { mutateAsync: mutatePrepareDownload, isPending: isPendingDownload } =
+    useMutation(prepareSessionWorldDownload);
 
   const handleSave = async (saveMode: SaveSessionWorldRequest_SaveMode) => {
     try {
@@ -52,6 +56,21 @@ export default function SessionControlButtons({
     }
   };
 
+  const handleDownload = async (format: WorldBinaryFormat) => {
+    try {
+      const res = await mutatePrepareDownload({ sessionId, format });
+      const a = document.createElement("a");
+      a.href = res.downloadUrl;
+      a.download = res.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success("ワールドのダウンロードを開始しました");
+    } catch (e) {
+      toast.error(`ワールドのダウンロード準備に失敗しました: ${e}`);
+    }
+  };
+
   return (
     <div className="flex items-center gap-2">
       <SplitButton
@@ -73,6 +92,33 @@ export default function SessionControlButtons({
               disabled={isPendingSave || !canSaveAs}
             >
               コピーして保存
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() =>
+                handleDownload(WorldBinaryFormat.WORLD_BINARY_FORMAT_7ZBSON)
+              }
+              disabled={isPendingDownload || !canSaveOverride}
+            >
+              ダウンロード (7zbson)
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                handleDownload(WorldBinaryFormat.WORLD_BINARY_FORMAT_BRSON)
+              }
+              disabled={isPendingDownload || !canSaveOverride}
+            >
+              ダウンロード (brson)
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                handleDownload(
+                  WorldBinaryFormat.WORLD_BINARY_FORMAT_RESONITEPACKAGE,
+                )
+              }
+              disabled={isPendingDownload || !canSaveOverride}
+            >
+              ダウンロード (resonitepackage)
             </DropdownMenuItem>
           </>
         }

@@ -9,6 +9,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/blobstore"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
@@ -36,15 +37,20 @@ func ProvideServerConfig(cfg *config.EnvConfig) *config.ServerConfig {
 	return &cfg.Server
 }
 
+func ProvideRustFSConfig(cfg *config.EnvConfig) *config.RustFSConfig {
+	return &cfg.RustFS
+}
+
 var ConfigSet = wire.NewSet(
 	ProvideDatabaseConfig,
 	ProvideDockerConfig,
 	ProvideGRPCConfig,
 	ProvideWorkerConfig,
 	ProvideServerConfig,
+	ProvideRustFSConfig,
 )
 
-func InitializeServer(cfg *config.EnvConfig) *Server {
+func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	wire.Build(
 		// config providers
 		ConfigSet,
@@ -59,6 +65,10 @@ func InitializeServer(cfg *config.EnvConfig) *Server {
 		// skyfrost client
 		skyfrost.NewDefaultClient,
 		wire.Bind(new(skyfrost.Client), new(*skyfrost.DefaultClient)),
+
+		// blob store
+		blobstore.NewMinioClient,
+		wire.Bind(new(blobstore.Client), new(*blobstore.MinioClient)),
 
 		// repository
 		wire.Bind(new(port.HeadlessHostRepository), new(*adapter.HeadlessHostRepository)),
@@ -75,6 +85,7 @@ func InitializeServer(cfg *config.EnvConfig) *Server {
 		usecase.NewUserUsecase,
 		usecase.NewHeadlessAccountUsecase,
 		usecase.NewSessionUsecase,
+		usecase.NewBlobUsecase,
 
 		// controller
 		rpc.NewUserService,
@@ -82,7 +93,7 @@ func InitializeServer(cfg *config.EnvConfig) *Server {
 
 		NewServer,
 	)
-	return &Server{}
+	return nil, nil
 }
 
 func InitializeCli(cfg *config.EnvConfig) *Cli {

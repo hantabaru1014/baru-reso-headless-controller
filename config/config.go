@@ -15,6 +15,7 @@ type EnvConfig struct {
 	GRPC     GRPCConfig
 	Worker   WorkerConfig
 	Server   ServerConfig
+	RustFS   RustFSConfig
 }
 
 type DatabaseConfig struct {
@@ -53,6 +54,15 @@ type ServerConfig struct {
 	SessionPortMax  int
 }
 
+type RustFSConfig struct {
+	Endpoint             string
+	AccessKey            string
+	SecretKey            string
+	UseSSL               bool
+	WorldDownloadsBucket string
+	BlobTTLDays          int
+}
+
 func LoadEnvConfig() (*EnvConfig, error) {
 	cfg := &EnvConfig{}
 
@@ -86,6 +96,13 @@ func LoadEnvConfig() (*EnvConfig, error) {
 	cfg.Server.SessionPortMin = portMin
 	cfg.Server.SessionPortMax = portMax
 
+	cfg.RustFS.Endpoint = os.Getenv("RUSTFS_ENDPOINT")
+	cfg.RustFS.AccessKey = os.Getenv("RUSTFS_ACCESS_KEY")
+	cfg.RustFS.SecretKey = os.Getenv("RUSTFS_SECRET_KEY")
+	cfg.RustFS.UseSSL = os.Getenv("RUSTFS_USE_SSL") == "true"
+	cfg.RustFS.WorldDownloadsBucket = os.Getenv("WORLD_DOWNLOADS_BUCKET_NAME")
+	cfg.RustFS.BlobTTLDays = getEnvInt("BLOB_TTL_DAYS", 3) //nolint:mnd // default
+
 	return cfg, nil
 }
 
@@ -100,6 +117,26 @@ func (c *EnvConfig) Validate() error {
 
 	if c.Docker.HeadlessImageName == "" {
 		return errors.New("HEADLESS_IMAGE_NAME is required")
+	}
+
+	if c.RustFS.Endpoint == "" {
+		return errors.New("RUSTFS_ENDPOINT is required")
+	}
+
+	if c.RustFS.AccessKey == "" {
+		return errors.New("RUSTFS_ACCESS_KEY is required")
+	}
+
+	if c.RustFS.SecretKey == "" {
+		return errors.New("RUSTFS_SECRET_KEY is required")
+	}
+
+	if c.RustFS.WorldDownloadsBucket == "" {
+		return errors.New("WORLD_DOWNLOADS_BUCKET_NAME is required")
+	}
+
+	if c.RustFS.BlobTTLDays <= 0 {
+		return errors.New("BLOB_TTL_DAYS must be a positive integer")
 	}
 
 	return nil
@@ -117,6 +154,16 @@ func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 	if v := os.Getenv(key); v != "" {
 		if d, err := time.ParseDuration(v); err == nil {
 			return d
+		}
+	}
+
+	return defaultValue
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
 		}
 	}
 

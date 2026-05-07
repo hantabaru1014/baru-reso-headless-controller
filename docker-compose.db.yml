@@ -25,5 +25,19 @@ services:
         source: "./fluentd/container-logs.yaml"
         target: "/fluent-bit/etc/fluent-bit.yaml"
 
+  rustfs:
+    image: rustfs/rustfs:latest
+    ports:
+      - "9000:9000"
+    environment:
+      - RUSTFS_VOLUMES=/data
+      - RUSTFS_ADDRESS=0.0.0.0:9000
+      - RUSTFS_ACCESS_KEY=${RUSTFS_ACCESS_KEY}
+      - RUSTFS_SECRET_KEY=${RUSTFS_SECRET_KEY}
+      - RUSTFS_CONSOLE_ENABLE=false
+    volumes:
+      - rustfs-data:/data
+
 volumes:
   db-data:
+  rustfs-data:

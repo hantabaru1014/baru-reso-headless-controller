@@ -2,16 +2,21 @@ package app
 
 import (
 	"context"
+	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"time"
 
-	"github.com/go-errors/errors"
+	pkgerrors "github.com/go-errors/errors"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
 	"github.com/hantabaru1014/baru-reso-headless-controller/front"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/blobstore"
 	"github.com/hantabaru1014/baru-reso-headless-controller/worker"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -22,6 +27,7 @@ type Server struct {
 	controllerService *rpc.ControllerService
 	imageChecker      *worker.ImageChecker
 	eventWatcher      *worker.EventWatcher
+	blobClient        blobstore.Client
 	httpServer        *http.Server
 }
 
@@ -30,12 +36,66 @@ func NewServer(
 	controllerService *rpc.ControllerService,
 	imageChecker *worker.ImageChecker,
 	eventWatcher *worker.EventWatcher,
+	blobClient blobstore.Client,
 ) *Server {
 	return &Server{
 		userService:       userService,
 		controllerService: controllerService,
 		imageChecker:      imageChecker,
 		eventWatcher:      eventWatcher,
+		blobClient:        blobClient,
+	}
+}
+
+// makeBlobHandler returns an HTTP handler that proxies blob downloads from
+// the blob store. The UUID in the path acts as the capability token — there
+// is no extra auth check, on the assumption that anyone with the UUID is
+// authorized to download. Object lifecycle in the blob store enforces TTL.
+func makeBlobHandler(blob blobstore.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uuidStr := mux.Vars(r)["uuid"]
+		if _, err := uuid.Parse(uuidStr); err != nil {
+			http.Error(w, "invalid uuid", http.StatusBadRequest)
+			return
+		}
+
+		rc, length, contentType, filename, err := blob.GetObject(r.Context(), uuidStr)
+		if err != nil {
+			if errors.Is(err, blobstore.ErrNotFound) {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+
+			slog.Error("failed to fetch blob", "error", err, "uuid", uuidStr)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+
+			return
+		}
+
+		defer func() { _ = rc.Close() }()
+
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
+
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Content-Length", strconv.FormatInt(length, 10))
+
+		if filename != "" {
+			w.Header().Set("Content-Disposition", `attachment; filename*=UTF-8''`+url.PathEscape(filename))
+		} else {
+			w.Header().Set("Content-Disposition", "attachment")
+		}
+
+		w.Header().Set("Cache-Control", "no-store")
+
+		if r.Method == http.MethodHead {
+			return
+		}
+
+		if _, err := io.Copy(w, rc); err != nil {
+			slog.Warn("failed to stream blob to client", "error", err, "uuid", uuidStr)
+		}
 	}
 }
 
@@ -58,6 +118,14 @@ func spaFileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) ListenAndServe(addr string, frontUrl string) error {
+	bucketCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second) //nolint:mnd // startup
+	if err := s.blobClient.EnsureBucket(bucketCtx); err != nil {
+		cancel()
+		return pkgerrors.Wrap(err, 0)
+	}
+
+	cancel()
+
 	s.imageChecker.Start()
 	s.eventWatcher.Start()
 
@@ -72,10 +140,12 @@ func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 		router.PathPrefix(p).Handler(h)
 	}
 
+	router.HandleFunc("/blobs/{uuid}", makeBlobHandler(s.blobClient)).Methods(http.MethodGet, http.MethodHead)
+
 	if len(frontUrl) > 0 {
 		rpURL, err := url.Parse(frontUrl)
 		if err != nil {
-			return errors.Wrap(err, 0)
+			return pkgerrors.Wrap(err, 0)
 		}
 
 		proxy := httputil.NewSingleHostReverseProxy(rpURL)

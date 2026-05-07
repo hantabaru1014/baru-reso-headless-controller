@@ -32,16 +32,18 @@ type ControllerService struct {
 	hhuc           *usecase.HeadlessHostUsecase
 	hauc           *usecase.HeadlessAccountUsecase
 	suc            *usecase.SessionUsecase
+	buc            *usecase.BlobUsecase
 	skyfrostClient skyfrost.Client
 }
 
-func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase, suc *usecase.SessionUsecase, skyfrostClient skyfrost.Client) *ControllerService {
+func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase, suc *usecase.SessionUsecase, buc *usecase.BlobUsecase, skyfrostClient skyfrost.Client) *ControllerService {
 	return &ControllerService{
 		hhrepo:         hhrepo,
 		srepo:          srepo,
 		hhuc:           hhuc,
 		hauc:           hauc,
 		suc:            suc,
+		buc:            buc,
 		skyfrostClient: skyfrostClient,
 	}
 }
@@ -900,6 +902,23 @@ func (c *ControllerService) SaveSessionWorld(ctx context.Context, req *connect.R
 	})
 
 	return res, nil
+}
+
+// PrepareSessionWorldDownload implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) PrepareSessionWorldDownload(ctx context.Context, req *connect.Request[hdlctrlv1.PrepareSessionWorldDownloadRequest]) (*connect.Response[hdlctrlv1.PrepareSessionWorldDownloadResponse], error) {
+	if req.Msg.GetFormat() == headlessv1.WorldBinaryFormat_WORLD_BINARY_FORMAT_UNSPECIFIED {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("format is required"))
+	}
+
+	url, filename, err := c.buc.PrepareSessionWorldDownload(ctx, req.Msg.GetSessionId(), req.Msg.GetFormat())
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.PrepareSessionWorldDownloadResponse{
+		DownloadUrl: url,
+		Filename:    filename,
+	}), nil
 }
 
 // UpdateSessionParameters implements hdlctrlv1connect.ControllerServiceHandler.

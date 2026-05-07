@@ -56,6 +56,7 @@ const (
 	ControllerService_StopSession_FullMethodName                      = "/hdlctrl.v1.ControllerService/StopSession"
 	ControllerService_DeleteEndedSession_FullMethodName               = "/hdlctrl.v1.ControllerService/DeleteEndedSession"
 	ControllerService_SaveSessionWorld_FullMethodName                 = "/hdlctrl.v1.ControllerService/SaveSessionWorld"
+	ControllerService_PrepareSessionWorldDownload_FullMethodName      = "/hdlctrl.v1.ControllerService/PrepareSessionWorldDownload"
 	ControllerService_InviteUser_FullMethodName                       = "/hdlctrl.v1.ControllerService/InviteUser"
 	ControllerService_UpdateUserRole_FullMethodName                   = "/hdlctrl.v1.ControllerService/UpdateUserRole"
 	ControllerService_UpdateSessionParameters_FullMethodName          = "/hdlctrl.v1.ControllerService/UpdateSessionParameters"
@@ -110,6 +111,7 @@ type ControllerServiceClient interface {
 	StopSession(ctx context.Context, in *StopSessionRequest, opts ...grpc.CallOption) (*StopSessionResponse, error)
 	DeleteEndedSession(ctx context.Context, in *DeleteEndedSessionRequest, opts ...grpc.CallOption) (*DeleteEndedSessionResponse, error)
 	SaveSessionWorld(ctx context.Context, in *SaveSessionWorldRequest, opts ...grpc.CallOption) (*SaveSessionWorldResponse, error)
+	PrepareSessionWorldDownload(ctx context.Context, in *PrepareSessionWorldDownloadRequest, opts ...grpc.CallOption) (*PrepareSessionWorldDownloadResponse, error)
 	InviteUser(ctx context.Context, in *InviteUserRequest, opts ...grpc.CallOption) (*InviteUserResponse, error)
 	UpdateUserRole(ctx context.Context, in *UpdateUserRoleRequest, opts ...grpc.CallOption) (*UpdateUserRoleResponse, error)
 	UpdateSessionParameters(ctx context.Context, in *UpdateSessionParametersRequest, opts ...grpc.CallOption) (*UpdateSessionParametersResponse, error)
@@ -487,6 +489,16 @@ func (c *controllerServiceClient) SaveSessionWorld(ctx context.Context, in *Save
 	return out, nil
 }
 
+func (c *controllerServiceClient) PrepareSessionWorldDownload(ctx context.Context, in *PrepareSessionWorldDownloadRequest, opts ...grpc.CallOption) (*PrepareSessionWorldDownloadResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PrepareSessionWorldDownloadResponse)
+	err := c.cc.Invoke(ctx, ControllerService_PrepareSessionWorldDownload_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *controllerServiceClient) InviteUser(ctx context.Context, in *InviteUserRequest, opts ...grpc.CallOption) (*InviteUserResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(InviteUserResponse)
@@ -602,6 +614,7 @@ type ControllerServiceServer interface {
 	StopSession(context.Context, *StopSessionRequest) (*StopSessionResponse, error)
 	DeleteEndedSession(context.Context, *DeleteEndedSessionRequest) (*DeleteEndedSessionResponse, error)
 	SaveSessionWorld(context.Context, *SaveSessionWorldRequest) (*SaveSessionWorldResponse, error)
+	PrepareSessionWorldDownload(context.Context, *PrepareSessionWorldDownloadRequest) (*PrepareSessionWorldDownloadResponse, error)
 	InviteUser(context.Context, *InviteUserRequest) (*InviteUserResponse, error)
 	UpdateUserRole(context.Context, *UpdateUserRoleRequest) (*UpdateUserRoleResponse, error)
 	UpdateSessionParameters(context.Context, *UpdateSessionParametersRequest) (*UpdateSessionParametersResponse, error)
@@ -726,6 +739,9 @@ func (UnimplementedControllerServiceServer) DeleteEndedSession(context.Context, 
 }
 func (UnimplementedControllerServiceServer) SaveSessionWorld(context.Context, *SaveSessionWorldRequest) (*SaveSessionWorldResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SaveSessionWorld not implemented")
+}
+func (UnimplementedControllerServiceServer) PrepareSessionWorldDownload(context.Context, *PrepareSessionWorldDownloadRequest) (*PrepareSessionWorldDownloadResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PrepareSessionWorldDownload not implemented")
 }
 func (UnimplementedControllerServiceServer) InviteUser(context.Context, *InviteUserRequest) (*InviteUserResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method InviteUser not implemented")
@@ -1417,6 +1433,24 @@ func _ControllerService_SaveSessionWorld_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_PrepareSessionWorldDownload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PrepareSessionWorldDownloadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).PrepareSessionWorldDownload(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_PrepareSessionWorldDownload_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).PrepareSessionWorldDownload(ctx, req.(*PrepareSessionWorldDownloadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ControllerService_InviteUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(InviteUserRequest)
 	if err := dec(in); err != nil {
@@ -1693,6 +1727,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SaveSessionWorld",
 			Handler:    _ControllerService_SaveSessionWorld_Handler,
+		},
+		{
+			MethodName: "PrepareSessionWorldDownload",
+			Handler:    _ControllerService_PrepareSessionWorldDownload_Handler,
 		},
 		{
 			MethodName: "InviteUser",

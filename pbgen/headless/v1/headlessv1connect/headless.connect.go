@@ -96,6 +96,9 @@ const (
 	// HeadlessControlServiceGetStartupConfigToRestoreProcedure is the fully-qualified name of the
 	// HeadlessControlService's GetStartupConfigToRestore RPC.
 	HeadlessControlServiceGetStartupConfigToRestoreProcedure = "/headless.v1.HeadlessControlService/GetStartupConfigToRestore"
+	// HeadlessControlServiceDownloadSessionWorldProcedure is the fully-qualified name of the
+	// HeadlessControlService's DownloadSessionWorld RPC.
+	HeadlessControlServiceDownloadSessionWorldProcedure = "/headless.v1.HeadlessControlService/DownloadSessionWorld"
 	// HeadlessControlServiceGetAccountInfoProcedure is the fully-qualified name of the
 	// HeadlessControlService's GetAccountInfo RPC.
 	HeadlessControlServiceGetAccountInfoProcedure = "/headless.v1.HeadlessControlService/GetAccountInfo"
@@ -145,6 +148,7 @@ type HeadlessControlServiceClient interface {
 	AllowHostAccess(context.Context, *connect.Request[v1.AllowHostAccessRequest]) (*connect.Response[v1.AllowHostAccessResponse], error)
 	DenyHostAccess(context.Context, *connect.Request[v1.DenyHostAccessRequest]) (*connect.Response[v1.DenyHostAccessResponse], error)
 	GetStartupConfigToRestore(context.Context, *connect.Request[v1.GetStartupConfigToRestoreRequest]) (*connect.Response[v1.GetStartupConfigToRestoreResponse], error)
+	DownloadSessionWorld(context.Context, *connect.Request[v1.DownloadSessionWorldRequest]) (*connect.ServerStreamForClient[v1.DownloadSessionWorldResponse], error)
 	// Cloud系
 	GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v1.FetchWorldInfoResponse], error)
@@ -293,6 +297,12 @@ func NewHeadlessControlServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(headlessControlServiceMethods.ByName("GetStartupConfigToRestore")),
 			connect.WithClientOptions(opts...),
 		),
+		downloadSessionWorld: connect.NewClient[v1.DownloadSessionWorldRequest, v1.DownloadSessionWorldResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceDownloadSessionWorldProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("DownloadSessionWorld")),
+			connect.WithClientOptions(opts...),
+		),
 		getAccountInfo: connect.NewClient[v1.GetAccountInfoRequest, v1.GetAccountInfoResponse](
 			httpClient,
 			baseURL+HeadlessControlServiceGetAccountInfoProcedure,
@@ -367,6 +377,7 @@ type headlessControlServiceClient struct {
 	allowHostAccess           *connect.Client[v1.AllowHostAccessRequest, v1.AllowHostAccessResponse]
 	denyHostAccess            *connect.Client[v1.DenyHostAccessRequest, v1.DenyHostAccessResponse]
 	getStartupConfigToRestore *connect.Client[v1.GetStartupConfigToRestoreRequest, v1.GetStartupConfigToRestoreResponse]
+	downloadSessionWorld      *connect.Client[v1.DownloadSessionWorldRequest, v1.DownloadSessionWorldResponse]
 	getAccountInfo            *connect.Client[v1.GetAccountInfoRequest, v1.GetAccountInfoResponse]
 	fetchWorldInfo            *connect.Client[v1.FetchWorldInfoRequest, v1.FetchWorldInfoResponse]
 	searchUserInfo            *connect.Client[v1.SearchUserInfoRequest, v1.SearchUserInfoResponse]
@@ -482,6 +493,11 @@ func (c *headlessControlServiceClient) GetStartupConfigToRestore(ctx context.Con
 	return c.getStartupConfigToRestore.CallUnary(ctx, req)
 }
 
+// DownloadSessionWorld calls headless.v1.HeadlessControlService.DownloadSessionWorld.
+func (c *headlessControlServiceClient) DownloadSessionWorld(ctx context.Context, req *connect.Request[v1.DownloadSessionWorldRequest]) (*connect.ServerStreamForClient[v1.DownloadSessionWorldResponse], error) {
+	return c.downloadSessionWorld.CallServerStream(ctx, req)
+}
+
 // GetAccountInfo calls headless.v1.HeadlessControlService.GetAccountInfo.
 func (c *headlessControlServiceClient) GetAccountInfo(ctx context.Context, req *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error) {
 	return c.getAccountInfo.CallUnary(ctx, req)
@@ -546,6 +562,7 @@ type HeadlessControlServiceHandler interface {
 	AllowHostAccess(context.Context, *connect.Request[v1.AllowHostAccessRequest]) (*connect.Response[v1.AllowHostAccessResponse], error)
 	DenyHostAccess(context.Context, *connect.Request[v1.DenyHostAccessRequest]) (*connect.Response[v1.DenyHostAccessResponse], error)
 	GetStartupConfigToRestore(context.Context, *connect.Request[v1.GetStartupConfigToRestoreRequest]) (*connect.Response[v1.GetStartupConfigToRestoreResponse], error)
+	DownloadSessionWorld(context.Context, *connect.Request[v1.DownloadSessionWorldRequest], *connect.ServerStream[v1.DownloadSessionWorldResponse]) error
 	// Cloud系
 	GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v1.FetchWorldInfoResponse], error)
@@ -690,6 +707,12 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 		connect.WithSchema(headlessControlServiceMethods.ByName("GetStartupConfigToRestore")),
 		connect.WithHandlerOptions(opts...),
 	)
+	headlessControlServiceDownloadSessionWorldHandler := connect.NewServerStreamHandler(
+		HeadlessControlServiceDownloadSessionWorldProcedure,
+		svc.DownloadSessionWorld,
+		connect.WithSchema(headlessControlServiceMethods.ByName("DownloadSessionWorld")),
+		connect.WithHandlerOptions(opts...),
+	)
 	headlessControlServiceGetAccountInfoHandler := connect.NewUnaryHandler(
 		HeadlessControlServiceGetAccountInfoProcedure,
 		svc.GetAccountInfo,
@@ -782,6 +805,8 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 			headlessControlServiceDenyHostAccessHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceGetStartupConfigToRestoreProcedure:
 			headlessControlServiceGetStartupConfigToRestoreHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceDownloadSessionWorldProcedure:
+			headlessControlServiceDownloadSessionWorldHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceGetAccountInfoProcedure:
 			headlessControlServiceGetAccountInfoHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceFetchWorldInfoProcedure:
@@ -889,6 +914,10 @@ func (UnimplementedHeadlessControlServiceHandler) DenyHostAccess(context.Context
 
 func (UnimplementedHeadlessControlServiceHandler) GetStartupConfigToRestore(context.Context, *connect.Request[v1.GetStartupConfigToRestoreRequest]) (*connect.Response[v1.GetStartupConfigToRestoreResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.GetStartupConfigToRestore is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) DownloadSessionWorld(context.Context, *connect.Request[v1.DownloadSessionWorldRequest], *connect.ServerStream[v1.DownloadSessionWorldResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.DownloadSessionWorld is not implemented"))
 }
 
 func (UnimplementedHeadlessControlServiceHandler) GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error) {

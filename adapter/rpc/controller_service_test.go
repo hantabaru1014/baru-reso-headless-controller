@@ -15,6 +15,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
+	blobstoremock "github.com/hantabaru1014/baru-reso-headless-controller/lib/blobstore/mock"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	skyfrostmock "github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost/mock"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
@@ -36,6 +37,7 @@ type controllerServiceTestSetup struct {
 	mockHostConnector *hostconnectormock.MockHostConnector
 	mockSkyfrost      *skyfrostmock.MockClient
 	mockRpcClient     *hostconnectormock.MockHeadlessControlServiceClient
+	mockBlobstore     *blobstoremock.MockClient
 	queries           *db.Queries
 	pool              *pgxpool.Pool
 }
@@ -59,6 +61,7 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 	mockHostConnector := hostconnectormock.NewMockHostConnector(ctrl)
 	mockSkyfrost := skyfrostmock.NewMockClient(ctrl)
 	mockRpcClient := hostconnectormock.NewMockHeadlessControlServiceClient(ctrl)
+	mockBlobstore := blobstoremock.NewMockClient(ctrl)
 
 	// Load env
 	cfg, err := config.LoadEnvConfig()
@@ -74,9 +77,10 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 	hauc := usecase.NewHeadlessAccountUsecase(queries, mockSkyfrost)
 	suc := usecase.NewSessionUsecase(srepo, hhrepo, &cfg.GRPC, &cfg.Server)
 	hhuc := usecase.NewHeadlessHostUsecase(hhrepo, srepo, suc, hauc)
+	buc := usecase.NewBlobUsecase(srepo, hhrepo, mockBlobstore)
 
 	// Setup service with real repositories
-	service := NewControllerService(hhrepo, srepo, hhuc, hauc, suc, mockSkyfrost)
+	service := NewControllerService(hhrepo, srepo, hhuc, hauc, suc, buc, mockSkyfrost)
 
 	return &controllerServiceTestSetup{
 		service:           service,
@@ -84,6 +88,7 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 		mockHostConnector: mockHostConnector,
 		mockSkyfrost:      mockSkyfrost,
 		mockRpcClient:     mockRpcClient,
+		mockBlobstore:     mockBlobstore,
 		queries:           queries,
 		pool:              pool,
 	}
