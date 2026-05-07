@@ -89,39 +89,8 @@ else
   NEEDS_CONTAINER_LOGS_SETUP=true
 fi
 
-echo "3. データベースマイグレーションを実行中..."
-./brhcli migrate
-
-# container_logsテーブルが新規作成された場合のみ、fluentbit関連のセットアップを実行
-if [ "$NEEDS_CONTAINER_LOGS_SETUP" = "true" ]; then
-  echo "4. fluentbitユーザーのパスワードを設定中..."
-  FLUENTBIT_PGSQL_PASSWORD="$(openssl rand -base64 32)"
-  docker compose -f docker-compose.db.yml exec -T db psql -U postgres -d brhcdb -c "ALTER USER fluentbit WITH PASSWORD '${FLUENTBIT_PGSQL_PASSWORD}';"
-  echo "FLUENTBIT_PGPASSWORD=\"${FLUENTBIT_PGSQL_PASSWORD}\"" >> .env
-  echo "   FLUENTBIT_PGPASSWORDを.envに追加しました"
-else
-  echo "4. container_logsテーブルは既に存在するため、fluentbit関連のセットアップをスキップします"
-
-  # FLUENTBIT_PGPASSWORDが.envに存在しない場合は警告
-  if ! grep -q "^FLUENTBIT_PGPASSWORD=" .env 2>/dev/null; then
-    echo "   ⚠️  警告: FLUENTBIT_PGPASSWORDが.envに見つかりません"
-    echo "   fluentdがPostgreSQLに接続できない可能性があります"
-    echo "   手動で.envにFLUENTBIT_PGPASSWORDを追加してください"
-  fi
-fi
-
-# fluentdコンテナの再起動
-echo "5. fluentdコンテナを再起動中..."
-if docker compose -f docker-compose.db.yml ps fluentd 2>/dev/null | grep -q "Up"; then
-  docker compose -f docker-compose.db.yml restart fluentd
-  echo "   fluentdコンテナを再起動しました"
-else
-  echo "   fluentdコンテナが停止しているため、起動します"
-  docker compose -f docker-compose.db.yml up -d fluentd
-fi
-
 # RustFS関連の.env項目を追加 (未設定の場合のみ)
-echo "6. RustFS関連の設定を確認中..."
+echo "3. RustFS関連の設定を確認中..."
 NEEDS_RUSTFS_SETUP=false
 if ! grep -q "^RUSTFS_ACCESS_KEY=" .env 2>/dev/null; then
   RUSTFS_ACCESS_KEY="$(openssl rand -hex 16)"
@@ -140,6 +109,37 @@ EOF
   NEEDS_RUSTFS_SETUP=true
 else
   echo "   RustFS関連の設定は既に存在します"
+fi
+
+echo "4. データベースマイグレーションを実行中..."
+./brhcli migrate
+
+# container_logsテーブルが新規作成された場合のみ、fluentbit関連のセットアップを実行
+if [ "$NEEDS_CONTAINER_LOGS_SETUP" = "true" ]; then
+  echo "5. fluentbitユーザーのパスワードを設定中..."
+  FLUENTBIT_PGSQL_PASSWORD="$(openssl rand -base64 32)"
+  docker compose -f docker-compose.db.yml exec -T db psql -U postgres -d brhcdb -c "ALTER USER fluentbit WITH PASSWORD '${FLUENTBIT_PGSQL_PASSWORD}';"
+  echo "FLUENTBIT_PGPASSWORD=\"${FLUENTBIT_PGSQL_PASSWORD}\"" >> .env
+  echo "   FLUENTBIT_PGPASSWORDを.envに追加しました"
+else
+  echo "5. container_logsテーブルは既に存在するため、fluentbit関連のセットアップをスキップします"
+
+  # FLUENTBIT_PGPASSWORDが.envに存在しない場合は警告
+  if ! grep -q "^FLUENTBIT_PGPASSWORD=" .env 2>/dev/null; then
+    echo "   ⚠️  警告: FLUENTBIT_PGPASSWORDが.envに見つかりません"
+    echo "   fluentdがPostgreSQLに接続できない可能性があります"
+    echo "   手動で.envにFLUENTBIT_PGPASSWORDを追加してください"
+  fi
+fi
+
+# fluentdコンテナの再起動
+echo "6. fluentdコンテナを再起動中..."
+if docker compose -f docker-compose.db.yml ps fluentd 2>/dev/null | grep -q "Up"; then
+  docker compose -f docker-compose.db.yml restart fluentd
+  echo "   fluentdコンテナを再起動しました"
+else
+  echo "   fluentdコンテナが停止しているため、起動します"
+  docker compose -f docker-compose.db.yml up -d fluentd
 fi
 
 # rustfsコンテナの起動
