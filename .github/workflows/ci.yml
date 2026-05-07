@@ -94,6 +94,10 @@ jobs:
           DB_URL: postgres://postgres:postgres@localhost:5432/brhcdb?sslmode=disable
           JWT_SECRET: test-jwt-secret-for-ci-testing
           HEADLESS_IMAGE_NAME: ghcr.io/hantabaru1014/baru-reso-headless-container
+          RUSTFS_ENDPOINT: localhost:9000
+          RUSTFS_ACCESS_KEY: test-access-key
+          RUSTFS_SECRET_KEY: test-secret-key
+          WORLD_DOWNLOADS_BUCKET_NAME: world-downloads
         run: go run gotest.tools/gotestsum@latest --junitfile report.xml --format testdox -- ./...
 
       - name: Test Report Summary
