@@ -240,7 +240,7 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 			dbSessions = filteredSessions
 		}
 
-		dbTotalCount = int32(len(dbSessions))
+		dbTotalCount = int32(len(dbSessions)) //nolint:gosec // G115: セッション件数は int32 範囲を超えない
 	}
 
 	// RUNNING以外のステータスでフィルタする場合は、headlessからのリアルタイム情報は不要
@@ -382,7 +382,7 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 
 	return &SearchSessionsResult{
 		Sessions:   sessions,
-		TotalCount: dbTotalCount + int32(len(sessions)-dbSessionCount),
+		TotalCount: dbTotalCount + int32(len(sessions)-dbSessionCount), //nolint:gosec // G115: セッション件数は int32 範囲を超えない
 	}, nil
 }
 

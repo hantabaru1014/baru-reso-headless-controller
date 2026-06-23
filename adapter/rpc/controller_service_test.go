@@ -1678,6 +1678,7 @@ func TestControllerService_ListHeadlessHost(t *testing.T) {
 		const totalHosts = 5
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
+
 		for i := 1; i <= totalHosts; i++ {
 			testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", fmt.Sprintf("Host%d", i), entity.HeadlessHostStatus_EXITED)
 		}
@@ -1716,6 +1717,7 @@ func TestControllerService_ListHeadlessHost(t *testing.T) {
 		})
 		_, err = client.ListHeadlessHost(t.Context(), req4)
 		require.Error(t, err)
+
 		connectErr := &connect.Error{}
 		ok := errors.As(err, &connectErr)
 		require.True(t, ok)
@@ -2955,6 +2957,7 @@ func TestControllerService_SearchSessions(t *testing.T) {
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
+
 		for i := 1; i <= totalSessions; i++ {
 			testutil.CreateTestSession(t, setup.queries, host.ID, fmt.Sprintf("Session%02d", i), entity.SessionStatus_RUNNING)
 		}

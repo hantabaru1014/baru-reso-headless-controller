@@ -36,7 +36,7 @@ const (
 // - page_size <= 0 はデフォルト 20
 // - page_size > 100 は 100 にクランプ
 // 返り値の pageIndex / pageSize はそのまま usecase に渡し、PageResponse にも詰めて返す。
-func normalizePageRequest(p *hdlctrlv1.PageRequest) (pageIndex, pageSize int32, err error) {
+func normalizePageRequest(p *hdlctrlv1.PageRequest) (int32, int32, error) {
 	if p == nil {
 		return 0, defaultPageSize, nil
 	}
@@ -45,15 +45,15 @@ func normalizePageRequest(p *hdlctrlv1.PageRequest) (pageIndex, pageSize int32, 
 		return 0, 0, connect.NewError(connect.CodeInvalidArgument, errors.New("page_index must be >= 0"))
 	}
 
-	ps := p.GetPageSize()
+	pageSize := p.GetPageSize()
 	switch {
-	case ps <= 0:
-		ps = defaultPageSize
-	case ps > maxPageSize:
-		ps = maxPageSize
+	case pageSize <= 0:
+		pageSize = defaultPageSize
+	case pageSize > maxPageSize:
+		pageSize = maxPageSize
 	}
 
-	return p.GetPageIndex(), ps, nil
+	return p.GetPageIndex(), pageSize, nil
 }
 
 type ControllerService struct {

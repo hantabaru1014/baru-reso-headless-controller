@@ -163,7 +163,7 @@ func (r *SessionRepository) ListPaged(ctx context.Context, opts port.SessionList
 		Sessions: make(entity.SessionList, 0, len(rows)),
 	}
 	if len(rows) > 0 {
-		result.TotalCount = int32(rows[0].TotalCount)
+		result.TotalCount = int32(rows[0].TotalCount) //nolint:gosec // G115: total_count はテーブル件数で int32 範囲を超えない
 	}
 
 	for _, row := range rows {

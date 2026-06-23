@@ -91,9 +91,7 @@ export function DataTablePaginationBar({
 
   if (totalCount === 0) {
     return (
-      <div className="flex justify-end text-sm text-muted-foreground">
-        0 件
-      </div>
+      <div className="flex justify-end text-sm text-muted-foreground">0 件</div>
     );
   }
 
