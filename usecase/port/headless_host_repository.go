@@ -46,6 +46,17 @@ type HeadlessHostFetchOptions struct {
 	IncludeStartWorlds bool
 }
 
+type HostListPageOptions struct {
+	PageIndex    int32
+	PageSize     int32
+	FetchOptions HeadlessHostFetchOptions
+}
+
+type HostListPageResult struct {
+	Hosts      entity.HeadlessHostList
+	TotalCount int32
+}
+
 type ContainerImage struct {
 	Tag             string
 	ResoniteVersion string
@@ -61,6 +72,7 @@ const HostConnectorType_DOCKER HostConnectorType = "docker"
 
 type HeadlessHostRepository interface {
 	ListAll(ctx context.Context, fetchOptions HeadlessHostFetchOptions) (entity.HeadlessHostList, error)
+	ListPaged(ctx context.Context, opts HostListPageOptions) (*HostListPageResult, error)
 	ListRunningByAccount(ctx context.Context, accountId string) (entity.HeadlessHostList, error)
 	Find(ctx context.Context, id string, fetchOptions HeadlessHostFetchOptions) (*entity.HeadlessHost, error)
 	GetRpcClient(ctx context.Context, id string) (headlessv1.HeadlessControlServiceClient, error)

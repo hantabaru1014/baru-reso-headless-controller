@@ -64,41 +64,8 @@ func (u *HeadlessAccountUsecase) UpdateHeadlessAccountCredentials(ctx context.Co
 	})
 }
 
-func (u *HeadlessAccountUsecase) ListHeadlessAccounts(ctx context.Context) ([]*entity.HeadlessAccount, error) {
-	list, err := u.queries.ListHeadlessAccounts(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, 0)
-	}
-
-	res := make([]*entity.HeadlessAccount, 0, len(list))
-
-	for _, v := range list {
-		e := entity.HeadlessAccount{
-			ResoniteID: v.ResoniteID,
-			Credential: v.Credential,
-			Password:   v.Password,
-		}
-		if v.LastDisplayName.Valid {
-			e.LastDisplayName = &v.LastDisplayName.String
-		}
-
-		if v.LastIconUrl.Valid {
-			e.LastIconUrl = &v.LastIconUrl.String
-		}
-
-		res = append(res, &e)
-	}
-
-	return res, nil
-}
-
-func (u *HeadlessAccountUsecase) GetHeadlessAccount(ctx context.Context, resoniteID string) (*entity.HeadlessAccount, error) {
-	v, err := u.queries.GetHeadlessAccount(ctx, resoniteID)
-	if err != nil {
-		return nil, errors.Wrap(err, 0)
-	}
-
-	e := entity.HeadlessAccount{
+func headlessAccountToEntity(v db.HeadlessAccount) *entity.HeadlessAccount {
+	e := &entity.HeadlessAccount{
 		ResoniteID: v.ResoniteID,
 		Credential: v.Credential,
 		Password:   v.Password,
@@ -111,7 +78,58 @@ func (u *HeadlessAccountUsecase) GetHeadlessAccount(ctx context.Context, resonit
 		e.LastIconUrl = &v.LastIconUrl.String
 	}
 
-	return &e, nil
+	return e
+}
+
+func (u *HeadlessAccountUsecase) ListHeadlessAccounts(ctx context.Context) ([]*entity.HeadlessAccount, error) {
+	list, err := u.queries.ListHeadlessAccounts(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	res := make([]*entity.HeadlessAccount, 0, len(list))
+	for _, v := range list {
+		res = append(res, headlessAccountToEntity(v))
+	}
+
+	return res, nil
+}
+
+type ListHeadlessAccountsPagedResult struct {
+	Accounts   []*entity.HeadlessAccount
+	TotalCount int32
+}
+
+func (u *HeadlessAccountUsecase) ListHeadlessAccountsPaged(ctx context.Context, pageIndex, pageSize int32) (*ListHeadlessAccountsPagedResult, error) {
+	rows, err := u.queries.ListHeadlessAccountsPaged(ctx, db.ListHeadlessAccountsPagedParams{
+		PageOffset: pageIndex * pageSize,
+		PageSize:   pageSize,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	result := &ListHeadlessAccountsPagedResult{
+		Accounts: make([]*entity.HeadlessAccount, 0, len(rows)),
+	}
+	if len(rows) > 0 {
+		result.TotalCount = int32(rows[0].TotalCount)
+	}
+
+	for _, row := range rows {
+		result.Accounts = append(result.Accounts, headlessAccountToEntity(row.HeadlessAccount))
+	}
+
+	return result, nil
+}
+
+func (u *HeadlessAccountUsecase) GetHeadlessAccount(ctx context.Context, resoniteID string) (*entity.HeadlessAccount, error) {
+	v, err := u.queries.GetHeadlessAccount(ctx, resoniteID)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	return headlessAccountToEntity(v), nil
 }
 
 func (u *HeadlessAccountUsecase) DeleteHeadlessAccount(ctx context.Context, resoniteID string) error {

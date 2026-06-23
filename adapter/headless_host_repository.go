@@ -155,7 +155,37 @@ func (h *HeadlessHostRepository) ListAll(ctx context.Context, fetchOptions port.
 		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 
-	// Parallel fetch with timeout context
+	return h.dbHostsToEntities(ctx, hosts, fetchOptions), nil
+}
+
+// ListPaged implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) ListPaged(ctx context.Context, opts port.HostListPageOptions) (*port.HostListPageResult, error) {
+	rows, err := h.q.ListHostsPaged(ctx, db.ListHostsPagedParams{
+		PageOffset: opts.PageIndex * opts.PageSize,
+		PageSize:   opts.PageSize,
+	})
+	if err != nil {
+		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
+	}
+
+	hosts := make([]db.Host, 0, len(rows))
+	for _, row := range rows {
+		hosts = append(hosts, row.Host)
+	}
+
+	result := &port.HostListPageResult{
+		Hosts: h.dbHostsToEntities(ctx, hosts, opts.FetchOptions),
+	}
+	if len(rows) > 0 {
+		result.TotalCount = int32(rows[0].TotalCount)
+	}
+
+	return result, nil
+}
+
+// dbHostsToEntities は db.Host のスライスを並列で entity.HeadlessHost に変換する。
+// 取得失敗時は DB の基本情報だけを持つ最小限の entity を返す。
+func (h *HeadlessHostRepository) dbHostsToEntities(ctx context.Context, hosts []db.Host, fetchOptions port.HeadlessHostFetchOptions) entity.HeadlessHostList {
 	type hostResult struct {
 		index int
 		host  *entity.HeadlessHost
@@ -185,14 +215,13 @@ func (h *HeadlessHostRepository) ListAll(ctx context.Context, fetchOptions port.
 		close(resultChan)
 	}()
 
-	// Collect results, keeping order and logging errors
 	result := make(entity.HeadlessHostList, len(hosts))
 	successCount := 0
 
 	for r := range resultChan {
 		if r.err != nil {
 			slog.Warn("Failed to fetch host info", "host_id", hosts[r.index].ID, "error", r.err)
-			// Create a minimal host entity with basic info from DB
+
 			result[r.index] = &entity.HeadlessHost{
 				ID:               hosts[r.index].ID,
 				Name:             hosts[r.index].Name,
@@ -210,9 +239,9 @@ func (h *HeadlessHostRepository) ListAll(ctx context.Context, fetchOptions port.
 		}
 	}
 
-	slog.Debug("ListAll completed", "total", len(hosts), "success", successCount)
+	slog.Debug("dbHostsToEntities completed", "total", len(hosts), "success", successCount)
 
-	return result, nil
+	return result
 }
 
 // ListRunningByAccount implements port.HeadlessHostRepository.

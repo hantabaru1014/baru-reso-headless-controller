@@ -141,6 +141,43 @@ func (r *SessionRepository) ListByStatus(ctx context.Context, status entity.Sess
 	return result, nil
 }
 
+func (r *SessionRepository) ListPaged(ctx context.Context, opts port.SessionListPageOptions) (*port.SessionListPageResult, error) {
+	params := db.ListSessionsPagedParams{
+		PageOffset: opts.PageIndex * opts.PageSize,
+		PageSize:   opts.PageSize,
+	}
+	if opts.Status != nil {
+		params.Status = pgtype.Int4{Int32: int32(*opts.Status), Valid: true}
+	}
+
+	if opts.HostID != nil {
+		params.HostID = pgtype.Text{String: *opts.HostID, Valid: true}
+	}
+
+	rows, err := r.q.ListSessionsPaged(ctx, params)
+	if err != nil {
+		return nil, errors.WrapPrefix(convertDBErr(err), "session", 0)
+	}
+
+	result := &port.SessionListPageResult{
+		Sessions: make(entity.SessionList, 0, len(rows)),
+	}
+	if len(rows) > 0 {
+		result.TotalCount = int32(rows[0].TotalCount)
+	}
+
+	for _, row := range rows {
+		s, err := sessionToEntity(row.Session)
+		if err != nil {
+			return nil, errors.Wrap(err, 0)
+		}
+
+		result.Sessions = append(result.Sessions, s)
+	}
+
+	return result, nil
+}
+
 func sessionToEntity(s db.Session) (*entity.Session, error) {
 	var startedAt *time.Time
 	if s.StartedAt.Valid {
