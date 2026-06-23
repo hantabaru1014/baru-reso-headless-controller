@@ -18,8 +18,6 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/front"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/blobstore"
 	"github.com/hantabaru1014/baru-reso-headless-controller/worker"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 type Server struct {
@@ -154,9 +152,14 @@ func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 		router.NotFoundHandler = http.HandlerFunc(spaFileHandler)
 	}
 
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+	protocols.SetUnencryptedHTTP2(true)
+
 	s.httpServer = &http.Server{
 		Addr:              addr,
-		Handler:           h2c.NewHandler(router, &http2.Server{}),
+		Handler:           router,
+		Protocols:         protocols,
 		ReadHeaderTimeout: 10 * time.Second, //nolint:mnd // standard timeout
 	}
 
