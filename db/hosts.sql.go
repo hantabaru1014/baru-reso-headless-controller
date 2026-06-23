@@ -238,6 +238,61 @@ func (q *Queries) ListHostsByStatus(ctx context.Context, status int32) ([]Host, 
 	return items, nil
 }
 
+const listHostsPaged = `-- name: ListHostsPaged :many
+SELECT hosts.id, hosts.name, hosts.status, hosts.account_id, hosts.owner_id, hosts.last_startup_config, hosts.last_startup_config_schema_version, hosts.connector_type, hosts.connect_string, hosts.started_at, hosts.memo, hosts.auto_update_policy, hosts.created_at, hosts.updated_at, hosts.instance_count, COUNT(*) OVER() AS total_count
+FROM hosts
+ORDER BY started_at DESC
+LIMIT $2::int OFFSET $1::int
+`
+
+type ListHostsPagedParams struct {
+	PageOffset int32
+	PageSize   int32
+}
+
+type ListHostsPagedRow struct {
+	Host       Host
+	TotalCount int64
+}
+
+// ページング付きホスト一覧。total_count は全行同じ値が入る。
+func (q *Queries) ListHostsPaged(ctx context.Context, arg ListHostsPagedParams) ([]ListHostsPagedRow, error) {
+	rows, err := q.db.Query(ctx, listHostsPaged, arg.PageOffset, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListHostsPagedRow
+	for rows.Next() {
+		var i ListHostsPagedRow
+		if err := rows.Scan(
+			&i.Host.ID,
+			&i.Host.Name,
+			&i.Host.Status,
+			&i.Host.AccountID,
+			&i.Host.OwnerID,
+			&i.Host.LastStartupConfig,
+			&i.Host.LastStartupConfigSchemaVersion,
+			&i.Host.ConnectorType,
+			&i.Host.ConnectString,
+			&i.Host.StartedAt,
+			&i.Host.Memo,
+			&i.Host.AutoUpdatePolicy,
+			&i.Host.CreatedAt,
+			&i.Host.UpdatedAt,
+			&i.Host.InstanceCount,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRunningHostsByAccount = `-- name: ListRunningHostsByAccount :many
 SELECT id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count FROM hosts WHERE account_id = $1 AND status = 2 ORDER BY started_at DESC
 `

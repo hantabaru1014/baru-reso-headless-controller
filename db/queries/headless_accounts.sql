@@ -4,6 +4,13 @@ SELECT * FROM headless_accounts WHERE resonite_id = $1;
 -- name: ListHeadlessAccounts :many
 SELECT * FROM headless_accounts ORDER BY resonite_id;
 
+-- name: ListHeadlessAccountsPaged :many
+-- ページング付きアカウント一覧。total_count は全行同じ値が入る。
+SELECT sqlc.embed(headless_accounts), COUNT(*) OVER() AS total_count
+FROM headless_accounts
+ORDER BY resonite_id
+LIMIT @page_size::int OFFSET @page_offset::int;
+
 -- name: CreateHeadlessAccount :exec
 INSERT INTO headless_accounts (resonite_id, credential, password, last_display_name, last_icon_url) VALUES ($1, $2, $3, $4, $5);
 

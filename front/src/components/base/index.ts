@@ -1,5 +1,6 @@
 export * from "./CheckboxField";
 export * from "./DataTable";
+export * from "./DataTablePaginationBar";
 export * from "./EditableFieldBase";
 export * from "./EditableSelectField";
 export * from "./EditableTextArea";

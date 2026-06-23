@@ -156,10 +156,13 @@ message CreateHeadlessAccountRequest {
 
 message CreateHeadlessAccountResponse {}
 
-message ListHeadlessAccountsRequest {}
+message ListHeadlessAccountsRequest {
+  PageRequest page = 1;
+}
 
 message ListHeadlessAccountsResponse {
   repeated HeadlessAccount accounts = 1;
+  PageResponse page = 2;
 }
 
 message ListHeadlessHostImageTagsRequest {}
@@ -318,10 +321,13 @@ message GetOwnWorldsResponse {
   bool has_more = 2;
 }
 
-message ListHeadlessHostRequest {}
+message ListHeadlessHostRequest {
+  PageRequest page = 1;
+}
 
 message ListHeadlessHostResponse {
   repeated HeadlessHost hosts = 1;
+  PageResponse page = 2;
 }
 
 message GetHeadlessHostRequest {
@@ -348,10 +354,12 @@ message SearchSessionsRequest {
     optional SessionStatus status = 2;
   }
   SearchParameters parameters = 1;
+  PageRequest page = 2;
 }
 
 message SearchSessionsResponse {
   repeated Session sessions = 1;
+  PageResponse page = 2;
 }
 
 message GetSessionDetailsRequest {
@@ -456,6 +464,23 @@ message ListUsersInSessionRequest {
 
 message ListUsersInSessionResponse {
   repeated headless.v1.UserInSession users = 1;
+}
+
+// 共通ページングメッセージ
+// page_index は 0 始まり。page_size 未指定 (=0) はサーバー側でデフォルト値が適用される。
+// 短時間で行の追加/削除が発生するとページ境界で重複/欠落が起こりうる (page_index ベース固有)。
+message PageRequest {
+  int32 page_index = 1;
+  int32 page_size = 2;
+}
+
+// total_count は全体件数。
+// page_index / page_size はサーバーがバリデーション・クランプ・デフォルト適用後に実際に使用した値。
+// クライアントは UI 状態の同期に利用できる。
+message PageResponse {
+  int32 total_count = 1;
+  int32 page_index = 2;
+  int32 page_size = 3;
 }
 
 // models

@@ -1,6 +1,13 @@
 -- name: ListHosts :many
 SELECT * FROM hosts ORDER BY started_at DESC;
 
+-- name: ListHostsPaged :many
+-- ページング付きホスト一覧。total_count は全行同じ値が入る。
+SELECT sqlc.embed(hosts), COUNT(*) OVER() AS total_count
+FROM hosts
+ORDER BY started_at DESC
+LIMIT @page_size::int OFFSET @page_offset::int;
+
 -- name: ListHostsByStatus :many
 SELECT * FROM hosts WHERE status = $1 ORDER BY started_at DESC;
 

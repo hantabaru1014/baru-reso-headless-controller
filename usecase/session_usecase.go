@@ -180,42 +180,72 @@ func (u *SessionUsecase) GetSession(ctx context.Context, id string) (*entity.Ses
 type SearchSessionsFilter struct {
 	HostID *string
 	Status *entity.SessionStatus
+	// PageSize == 0 はページング無効 (全件取得) として扱う。RPC handler は常に >0 で渡し、
+	// 内部呼び出し (HeadlessHostRestart/Shutdown/Kill の markSessionsAsEnded など) は
+	// 0 を渡して全件取得する。
+	PageIndex int32
+	PageSize  int32
 }
 
-func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessionsFilter) (entity.SessionList, error) {
-	var dbSessions entity.SessionList
+type SearchSessionsResult struct {
+	Sessions   entity.SessionList
+	TotalCount int32
+}
 
-	if filter.Status != nil {
-		s, err := u.sessionRepo.ListByStatus(ctx, *filter.Status)
+func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessionsFilter) (*SearchSessionsResult, error) {
+	var (
+		dbSessions   entity.SessionList
+		dbTotalCount int32
+	)
+
+	if filter.PageSize > 0 {
+		pageResult, err := u.sessionRepo.ListPaged(ctx, port.SessionListPageOptions{
+			HostID:    filter.HostID,
+			Status:    filter.Status,
+			PageIndex: filter.PageIndex,
+			PageSize:  filter.PageSize,
+		})
 		if err != nil {
 			return nil, errors.Wrap(err, 0)
 		}
 
-		dbSessions = s
+		dbSessions = pageResult.Sessions
+		dbTotalCount = pageResult.TotalCount
 	} else {
-		s, err := u.sessionRepo.ListAll(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, 0)
-		}
-
-		dbSessions = s
-	}
-
-	if filter.HostID != nil {
-		var filteredSessions entity.SessionList
-
-		for _, s := range dbSessions {
-			if s.HostID == *filter.HostID {
-				filteredSessions = append(filteredSessions, s)
+		if filter.Status != nil {
+			s, err := u.sessionRepo.ListByStatus(ctx, *filter.Status)
+			if err != nil {
+				return nil, errors.Wrap(err, 0)
 			}
+
+			dbSessions = s
+		} else {
+			s, err := u.sessionRepo.ListAll(ctx)
+			if err != nil {
+				return nil, errors.Wrap(err, 0)
+			}
+
+			dbSessions = s
 		}
 
-		dbSessions = filteredSessions
+		if filter.HostID != nil {
+			var filteredSessions entity.SessionList
+
+			for _, s := range dbSessions {
+				if s.HostID == *filter.HostID {
+					filteredSessions = append(filteredSessions, s)
+				}
+			}
+
+			dbSessions = filteredSessions
+		}
+
+		dbTotalCount = int32(len(dbSessions)) //nolint:gosec // G115: セッション件数は int32 範囲を超えない
 	}
 
 	// RUNNING以外のステータスでフィルタする場合は、headlessからのリアルタイム情報は不要
 	if filter.Status != nil && *filter.Status != entity.SessionStatus_RUNNING {
-		return dbSessions, nil
+		return &SearchSessionsResult{Sessions: dbSessions, TotalCount: dbTotalCount}, nil
 	}
 
 	var hdlSessions []*headlessv1.Session
@@ -327,6 +357,9 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 		sessions = append(sessions, dbSession)
 	}
 
+	// gRPC で見つかったが DB に無い session は append し、TotalCount にも加算してUI整合性を保つ。
+	dbSessionCount := len(sessions)
+
 	for _, s := range hdlSessionsMap {
 		startedAt := s.GetStartedAt().AsTime()
 		e := &entity.Session{
@@ -347,7 +380,10 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 		}
 	}
 
-	return sessions, nil
+	return &SearchSessionsResult{
+		Sessions:   sessions,
+		TotalCount: dbTotalCount + int32(len(sessions)-dbSessionCount), //nolint:gosec // G115: セッション件数は int32 範囲を超えない
+	}, nil
 }
 
 func updateStartupParamsByUpdateRequest(

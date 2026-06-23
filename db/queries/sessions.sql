@@ -38,5 +38,16 @@ SELECT * FROM sessions ORDER BY started_at DESC;
 -- name: ListSessionsByStatus :many
 SELECT * FROM sessions WHERE status = $1 ORDER BY started_at DESC;
 
+-- name: ListSessionsPaged :many
+-- ページング付きセッション一覧。
+-- status / host_id は nullable パラメータ (sqlc.narg)。NULL なら未指定として扱う。
+-- total_count は全行同じ値が入る。
+SELECT sqlc.embed(sessions), COUNT(*) OVER() AS total_count
+FROM sessions
+WHERE (sqlc.narg('status')::int IS NULL OR status = sqlc.narg('status')::int)
+  AND (sqlc.narg('host_id')::text IS NULL OR host_id = sqlc.narg('host_id')::text)
+ORDER BY started_at DESC
+LIMIT @page_size::int OFFSET @page_offset::int;
+
 -- name: DeleteSession :exec
 DELETE FROM sessions WHERE id = $1;

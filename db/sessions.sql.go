@@ -121,6 +121,70 @@ func (q *Queries) ListSessionsByStatus(ctx context.Context, status int32) ([]Ses
 	return items, nil
 }
 
+const listSessionsPaged = `-- name: ListSessionsPaged :many
+SELECT sessions.id, sessions.name, sessions.status, sessions.started_at, sessions.owner_id, sessions.ended_at, sessions.host_id, sessions.startup_parameters, sessions.startup_parameters_schema_version, sessions.auto_upgrade, sessions.memo, sessions.created_at, sessions.updated_at, COUNT(*) OVER() AS total_count
+FROM sessions
+WHERE ($1::int IS NULL OR status = $1::int)
+  AND ($2::text IS NULL OR host_id = $2::text)
+ORDER BY started_at DESC
+LIMIT $4::int OFFSET $3::int
+`
+
+type ListSessionsPagedParams struct {
+	Status     pgtype.Int4
+	HostID     pgtype.Text
+	PageOffset int32
+	PageSize   int32
+}
+
+type ListSessionsPagedRow struct {
+	Session    Session
+	TotalCount int64
+}
+
+// ページング付きセッション一覧。
+// status / host_id は nullable パラメータ (sqlc.narg)。NULL なら未指定として扱う。
+// total_count は全行同じ値が入る。
+func (q *Queries) ListSessionsPaged(ctx context.Context, arg ListSessionsPagedParams) ([]ListSessionsPagedRow, error) {
+	rows, err := q.db.Query(ctx, listSessionsPaged,
+		arg.Status,
+		arg.HostID,
+		arg.PageOffset,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSessionsPagedRow
+	for rows.Next() {
+		var i ListSessionsPagedRow
+		if err := rows.Scan(
+			&i.Session.ID,
+			&i.Session.Name,
+			&i.Session.Status,
+			&i.Session.StartedAt,
+			&i.Session.OwnerID,
+			&i.Session.EndedAt,
+			&i.Session.HostID,
+			&i.Session.StartupParameters,
+			&i.Session.StartupParametersSchemaVersion,
+			&i.Session.AutoUpgrade,
+			&i.Session.Memo,
+			&i.Session.CreatedAt,
+			&i.Session.UpdatedAt,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateSessionStatus = `-- name: UpdateSessionStatus :exec
 UPDATE sessions SET status = $2 WHERE id = $1
 `

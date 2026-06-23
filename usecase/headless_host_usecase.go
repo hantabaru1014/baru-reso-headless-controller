@@ -49,6 +49,19 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostList(ctx context.Context) (entity.H
 	return hosts, nil
 }
 
+func (hhuc *HeadlessHostUsecase) HeadlessHostListPaged(ctx context.Context, pageIndex, pageSize int32) (*port.HostListPageResult, error) {
+	result, err := hhuc.hhrepo.ListPaged(ctx, port.HostListPageOptions{
+		PageIndex:    pageIndex,
+		PageSize:     pageSize,
+		FetchOptions: port.HeadlessHostFetchOptions{},
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	return result, nil
+}
+
 func (hhuc *HeadlessHostUsecase) HeadlessHostGet(ctx context.Context, id string) (*entity.HeadlessHost, error) {
 	host, err := hhuc.hhrepo.Find(ctx, id, port.HeadlessHostFetchOptions{})
 	if err != nil {
@@ -92,7 +105,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 		return errors.Wrap(err, 0)
 	}
 
-	err = hhuc.markSessionsAsEnded(ctx, sessions)
+	err = hhuc.markSessionsAsEnded(ctx, sessions.Sessions)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -220,7 +233,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostShutdown(ctx context.Context, id st
 		return errors.Wrap(err, 0)
 	}
 
-	err = hhuc.markSessionsAsEnded(ctx, sessions)
+	err = hhuc.markSessionsAsEnded(ctx, sessions.Sessions)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -245,7 +258,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostKill(ctx context.Context, id string
 		return errors.Wrap(err, 0)
 	}
 
-	err = hhuc.markSessionsAsEnded(ctx, sessions)
+	err = hhuc.markSessionsAsEnded(ctx, sessions.Sessions)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}

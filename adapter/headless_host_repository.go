@@ -155,62 +155,30 @@ func (h *HeadlessHostRepository) ListAll(ctx context.Context, fetchOptions port.
 		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 
-	// Parallel fetch with timeout context
-	type hostResult struct {
-		index int
-		host  *entity.HeadlessHost
-		err   error
+	return h.dbHostsToEntities(ctx, hosts, fetchOptions), nil
+}
+
+// ListPaged implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) ListPaged(ctx context.Context, opts port.HostListPageOptions) (*port.HostListPageResult, error) {
+	rows, err := h.q.ListHostsPaged(ctx, db.ListHostsPagedParams{
+		PageOffset: opts.PageIndex * opts.PageSize,
+		PageSize:   opts.PageSize,
+	})
+	if err != nil {
+		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 
-	resultChan := make(chan hostResult, len(hosts))
-
-	var wg sync.WaitGroup
-
-	for i, host := range hosts {
-		wg.Add(1)
-
-		go func(index int, dbHost db.Host) {
-			defer wg.Done()
-			// Use timeout context for each host fetch
-			timeoutCtx, cancel := context.WithTimeout(ctx, h.grpcCfg.CallTimeout)
-			defer cancel()
-
-			entityHost, err := h.dbToEntity(timeoutCtx, &dbHost, fetchOptions)
-			resultChan <- hostResult{index: index, host: entityHost, err: err}
-		}(i, host)
+	hosts := make([]db.Host, 0, len(rows))
+	for _, row := range rows {
+		hosts = append(hosts, row.Host)
 	}
 
-	go func() {
-		wg.Wait()
-		close(resultChan)
-	}()
-
-	// Collect results, keeping order and logging errors
-	result := make(entity.HeadlessHostList, len(hosts))
-	successCount := 0
-
-	for r := range resultChan {
-		if r.err != nil {
-			slog.Warn("Failed to fetch host info", "host_id", hosts[r.index].ID, "error", r.err)
-			// Create a minimal host entity with basic info from DB
-			result[r.index] = &entity.HeadlessHost{
-				ID:               hosts[r.index].ID,
-				Name:             hosts[r.index].Name,
-				AccountId:        hosts[r.index].AccountID,
-				Status:           entity.HeadlessHostStatus_UNKNOWN,
-				AutoUpdatePolicy: entity.HostAutoUpdatePolicy(hosts[r.index].AutoUpdatePolicy),
-				InstanceId:       hosts[r.index].InstanceCount,
-			}
-			if hosts[r.index].Memo.Valid {
-				result[r.index].Memo = hosts[r.index].Memo.String
-			}
-		} else {
-			result[r.index] = r.host
-			successCount++
-		}
+	result := &port.HostListPageResult{
+		Hosts: h.dbHostsToEntities(ctx, hosts, opts.FetchOptions),
 	}
-
-	slog.Debug("ListAll completed", "total", len(hosts), "success", successCount)
+	if len(rows) > 0 {
+		result.TotalCount = int32(rows[0].TotalCount) //nolint:gosec // G115: total_count はテーブル件数で int32 範囲を超えない
+	}
 
 	return result, nil
 }
@@ -521,6 +489,67 @@ func (h *HeadlessHostRepository) Delete(ctx context.Context, id string) error {
 	}
 
 	return h.q.DeleteHost(ctx, id)
+}
+
+// dbHostsToEntities は db.Host のスライスを並列で entity.HeadlessHost に変換する。
+// 取得失敗時は DB の基本情報だけを持つ最小限の entity を返す。
+func (h *HeadlessHostRepository) dbHostsToEntities(ctx context.Context, hosts []db.Host, fetchOptions port.HeadlessHostFetchOptions) entity.HeadlessHostList {
+	type hostResult struct {
+		index int
+		host  *entity.HeadlessHost
+		err   error
+	}
+
+	resultChan := make(chan hostResult, len(hosts))
+
+	var wg sync.WaitGroup
+
+	for i, host := range hosts {
+		wg.Add(1)
+
+		go func(index int, dbHost db.Host) {
+			defer wg.Done()
+			// Use timeout context for each host fetch
+			timeoutCtx, cancel := context.WithTimeout(ctx, h.grpcCfg.CallTimeout)
+			defer cancel()
+
+			entityHost, err := h.dbToEntity(timeoutCtx, &dbHost, fetchOptions)
+			resultChan <- hostResult{index: index, host: entityHost, err: err}
+		}(i, host)
+	}
+
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	result := make(entity.HeadlessHostList, len(hosts))
+	successCount := 0
+
+	for r := range resultChan {
+		if r.err != nil {
+			slog.Warn("Failed to fetch host info", "host_id", hosts[r.index].ID, "error", r.err)
+
+			result[r.index] = &entity.HeadlessHost{
+				ID:               hosts[r.index].ID,
+				Name:             hosts[r.index].Name,
+				AccountId:        hosts[r.index].AccountID,
+				Status:           entity.HeadlessHostStatus_UNKNOWN,
+				AutoUpdatePolicy: entity.HostAutoUpdatePolicy(hosts[r.index].AutoUpdatePolicy),
+				InstanceId:       hosts[r.index].InstanceCount,
+			}
+			if hosts[r.index].Memo.Valid {
+				result[r.index].Memo = hosts[r.index].Memo.String
+			}
+		} else {
+			result[r.index] = r.host
+			successCount++
+		}
+	}
+
+	slog.Debug("dbHostsToEntities completed", "total", len(hosts), "success", successCount)
+
+	return result
 }
 
 func (h *HeadlessHostRepository) parseContainerLogRow(row db.GetContainerLogsByTagRow) (*port.LogLine, error) {

@@ -26,6 +26,36 @@ var _ hdlctrlv1connect.ControllerServiceHandler = (*ControllerService)(nil)
 
 const defaultRestartTimeoutSeconds = 10 * 60
 
+const (
+	defaultPageSize = 20
+	maxPageSize     = 100
+)
+
+// normalizePageRequest はクライアントから渡された PageRequest をサーバー側の規約に従って正規化する。
+// - page_index < 0 は CodeInvalidArgument
+// - page_size <= 0 はデフォルト 20
+// - page_size > 100 は 100 にクランプ
+// 返り値の pageIndex / pageSize はそのまま usecase に渡し、PageResponse にも詰めて返す。
+func normalizePageRequest(p *hdlctrlv1.PageRequest) (int32, int32, error) {
+	if p == nil {
+		return 0, defaultPageSize, nil
+	}
+
+	if p.GetPageIndex() < 0 {
+		return 0, 0, connect.NewError(connect.CodeInvalidArgument, errors.New("page_index must be >= 0"))
+	}
+
+	pageSize := p.GetPageSize()
+	switch {
+	case pageSize <= 0:
+		pageSize = defaultPageSize
+	case pageSize > maxPageSize:
+		pageSize = maxPageSize
+	}
+
+	return p.GetPageIndex(), pageSize, nil
+}
+
 type ControllerService struct {
 	hhrepo         port.HeadlessHostRepository
 	srepo          port.SessionRepository
@@ -130,14 +160,19 @@ func (c *ControllerService) CreateHeadlessAccount(ctx context.Context, req *conn
 
 // ListHeadlessAccounts implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) ListHeadlessAccounts(ctx context.Context, req *connect.Request[hdlctrlv1.ListHeadlessAccountsRequest]) (*connect.Response[hdlctrlv1.ListHeadlessAccountsResponse], error) {
-	list, err := c.hauc.ListHeadlessAccounts(ctx)
+	pageIndex, pageSize, err := normalizePageRequest(req.Msg.GetPage())
+	if err != nil {
+		return nil, err
+	}
+
+	pageResult, err := c.hauc.ListHeadlessAccountsPaged(ctx, pageIndex, pageSize)
 	if err != nil {
 		return nil, convertErr(err)
 	}
 
-	protoAccounts := make([]*hdlctrlv1.HeadlessAccount, 0, len(list))
+	protoAccounts := make([]*hdlctrlv1.HeadlessAccount, 0, len(pageResult.Accounts))
 
-	for _, account := range list {
+	for _, account := range pageResult.Accounts {
 		a := &hdlctrlv1.HeadlessAccount{
 			UserId: account.ResoniteID,
 		}
@@ -156,7 +191,14 @@ func (c *ControllerService) ListHeadlessAccounts(ctx context.Context, req *conne
 		protoAccounts = append(protoAccounts, a)
 	}
 
-	res := connect.NewResponse(&hdlctrlv1.ListHeadlessAccountsResponse{Accounts: protoAccounts})
+	res := connect.NewResponse(&hdlctrlv1.ListHeadlessAccountsResponse{
+		Accounts: protoAccounts,
+		Page: &hdlctrlv1.PageResponse{
+			TotalCount: pageResult.TotalCount,
+			PageIndex:  pageIndex,
+			PageSize:   pageSize,
+		},
+	})
 
 	return res, nil
 }
@@ -817,18 +859,28 @@ func (c *ControllerService) GetHeadlessHost(ctx context.Context, req *connect.Re
 
 // ListHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) ListHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.ListHeadlessHostRequest]) (*connect.Response[hdlctrlv1.ListHeadlessHostResponse], error) {
-	hosts, err := c.hhuc.HeadlessHostList(ctx)
+	pageIndex, pageSize, err := normalizePageRequest(req.Msg.GetPage())
+	if err != nil {
+		return nil, err
+	}
+
+	pageResult, err := c.hhuc.HeadlessHostListPaged(ctx, pageIndex, pageSize)
 	if err != nil {
 		return nil, convertErr(err)
 	}
 
-	protoHosts := make([]*hdlctrlv1.HeadlessHost, 0, len(hosts))
-	for _, host := range hosts {
+	protoHosts := make([]*hdlctrlv1.HeadlessHost, 0, len(pageResult.Hosts))
+	for _, host := range pageResult.Hosts {
 		protoHosts = append(protoHosts, converter.HeadlessHostEntityToProto(host))
 	}
 
 	res := connect.NewResponse(&hdlctrlv1.ListHeadlessHostResponse{
 		Hosts: protoHosts,
+		Page: &hdlctrlv1.PageResponse{
+			TotalCount: pageResult.TotalCount,
+			PageIndex:  pageIndex,
+			PageSize:   pageSize,
+		},
 	})
 
 	return res, nil
@@ -1011,27 +1063,39 @@ func (c *ControllerService) StopSession(ctx context.Context, req *connect.Reques
 
 // SearchSessions implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) SearchSessions(ctx context.Context, req *connect.Request[hdlctrlv1.SearchSessionsRequest]) (*connect.Response[hdlctrlv1.SearchSessionsResponse], error) {
-	filter := usecase.SearchSessionsFilter{
-		HostID: req.Msg.GetParameters().HostId,
+	pageIndex, pageSize, err := normalizePageRequest(req.Msg.GetPage())
+	if err != nil {
+		return nil, err
 	}
 
-	if req.Msg.Parameters.Status != nil {
+	filter := usecase.SearchSessionsFilter{
+		HostID:    req.Msg.GetParameters().HostId,
+		PageIndex: pageIndex,
+		PageSize:  pageSize,
+	}
+
+	if req.Msg.GetParameters() != nil && req.Msg.GetParameters().Status != nil {
 		s := entity.SessionStatus(int32(req.Msg.GetParameters().GetStatus().Number()))
 		filter.Status = &s
 	}
 
-	sessions, err := c.suc.SearchSessions(ctx, filter)
+	result, err := c.suc.SearchSessions(ctx, filter)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	protoSessions := make([]*hdlctrlv1.Session, 0, len(sessions))
-	for _, session := range sessions {
+	protoSessions := make([]*hdlctrlv1.Session, 0, len(result.Sessions))
+	for _, session := range result.Sessions {
 		protoSessions = append(protoSessions, converter.SessionEntityToProto(session))
 	}
 
 	res := connect.NewResponse(&hdlctrlv1.SearchSessionsResponse{
 		Sessions: protoSessions,
+		Page: &hdlctrlv1.PageResponse{
+			TotalCount: result.TotalCount,
+			PageIndex:  pageIndex,
+			PageSize:   pageSize,
+		},
 	})
 
 	return res, nil

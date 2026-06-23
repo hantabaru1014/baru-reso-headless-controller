@@ -112,22 +112,56 @@ func TestControllerService_ListHeadlessAccounts(t *testing.T) {
 
 	client := setupAuthenticatedClient(t, setup.service)
 
-	// Create test headless accounts
-	testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test1", "user1@example.test", "password1")
-	testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "user2@example.test", "password2")
+	// Create 25 test headless accounts for pagination
+	const totalAccounts = 25
+	for i := 1; i <= totalAccounts; i++ {
+		id := fmt.Sprintf("U-test%02d", i)
+		testutil.CreateTestHeadlessAccount(t, setup.queries, id, id+"@example.test", "password")
+	}
 
-	t.Run("成功: ヘッドレスアカウントのリストを取得", func(t *testing.T) {
+	t.Run("成功: ヘッドレスアカウントのリストを取得 (ページング検証)", func(t *testing.T) {
+		// page 未指定 -> デフォルト 20 件
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessAccountsRequest{})
 
 		res, err := client.ListHeadlessAccounts(t.Context(), req)
 		require.NoError(t, err)
 
-		assert.Len(t, res.Msg.GetAccounts(), 2)
+		assert.Len(t, res.Msg.GetAccounts(), 20)
+		require.NotNil(t, res.Msg.GetPage())
+		assert.Equal(t, int32(totalAccounts), res.Msg.GetPage().GetTotalCount())
+		assert.Equal(t, int32(0), res.Msg.GetPage().GetPageIndex())
+		assert.Equal(t, int32(20), res.Msg.GetPage().GetPageSize())
 
 		// Verify account data
 		account1 := res.Msg.GetAccounts()[0]
 		assert.NotEmpty(t, account1.GetUserId())
 		assert.NotEmpty(t, account1.GetUserName())
+
+		// page_index=1, page_size=20 -> 残り 5 件
+		req2 := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessAccountsRequest{
+			Page: &hdlctrlv1.PageRequest{PageIndex: 1, PageSize: 20},
+		})
+		res2, err := client.ListHeadlessAccounts(t.Context(), req2)
+		require.NoError(t, err)
+		assert.Len(t, res2.Msg.GetAccounts(), 5)
+		assert.Equal(t, int32(totalAccounts), res2.Msg.GetPage().GetTotalCount())
+
+		// page_size=50 -> 全件
+		req3 := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessAccountsRequest{
+			Page: &hdlctrlv1.PageRequest{PageIndex: 0, PageSize: 50},
+		})
+		res3, err := client.ListHeadlessAccounts(t.Context(), req3)
+		require.NoError(t, err)
+		assert.Len(t, res3.Msg.GetAccounts(), totalAccounts)
+
+		// page_size=150 -> 100 にクランプ。25件しかないので全件返るが PageSize は 100 として返る
+		req4 := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessAccountsRequest{
+			Page: &hdlctrlv1.PageRequest{PageIndex: 0, PageSize: 150},
+		})
+		res4, err := client.ListHeadlessAccounts(t.Context(), req4)
+		require.NoError(t, err)
+		assert.Len(t, res4.Msg.GetAccounts(), totalAccounts)
+		assert.Equal(t, int32(100), res4.Msg.GetPage().GetPageSize())
 	})
 }
 
@@ -1634,24 +1668,60 @@ func TestControllerService_GetHeadlessHost(t *testing.T) {
 }
 
 func TestControllerService_ListHeadlessHost(t *testing.T) {
-	t.Run("成功: ホスト一覧を取得", func(t *testing.T) {
+	t.Run("成功: ホスト一覧を取得 (ページング検証)", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
 		client := setupAuthenticatedClient(t, setup.service)
 
-		// Create test accounts and hosts
-		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test1", "test1@example.test", "password")
-		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
-		testutil.CreateTestHeadlessHost(t, setup.queries, "U-test1", "Host1", entity.HeadlessHostStatus_EXITED)
-		testutil.CreateTestHeadlessHost(t, setup.queries, "U-test2", "Host2", entity.HeadlessHostStatus_EXITED)
+		// Create 5 test hosts for pagination
+		const totalHosts = 5
 
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
+
+		for i := 1; i <= totalHosts; i++ {
+			testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", fmt.Sprintf("Host%d", i), entity.HeadlessHostStatus_EXITED)
+		}
+
+		// page 未指定 -> デフォルト 20 件 (5件しかないので全件返る)
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessHostRequest{})
-
 		res, err := client.ListHeadlessHost(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.Len(t, res.Msg.GetHosts(), 2)
+		assert.Len(t, res.Msg.GetHosts(), totalHosts)
+		require.NotNil(t, res.Msg.GetPage())
+		assert.Equal(t, int32(totalHosts), res.Msg.GetPage().GetTotalCount())
+		assert.Equal(t, int32(20), res.Msg.GetPage().GetPageSize())
+
+		// page_size=3 で 1 ページ目 -> 3 件
+		req2 := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessHostRequest{
+			Page: &hdlctrlv1.PageRequest{PageIndex: 0, PageSize: 3},
+		})
+		res2, err := client.ListHeadlessHost(t.Context(), req2)
+		require.NoError(t, err)
+		assert.Len(t, res2.Msg.GetHosts(), 3)
+		assert.Equal(t, int32(totalHosts), res2.Msg.GetPage().GetTotalCount())
+
+		// page_size=3, page_index=1 -> 残り 2 件
+		req3 := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessHostRequest{
+			Page: &hdlctrlv1.PageRequest{PageIndex: 1, PageSize: 3},
+		})
+		res3, err := client.ListHeadlessHost(t.Context(), req3)
+		require.NoError(t, err)
+		assert.Len(t, res3.Msg.GetHosts(), 2)
+		assert.Equal(t, int32(totalHosts), res3.Msg.GetPage().GetTotalCount())
+
+		// page_index=-1 -> CodeInvalidArgument
+		req4 := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessHostRequest{
+			Page: &hdlctrlv1.PageRequest{PageIndex: -1, PageSize: 20},
+		})
+		_, err = client.ListHeadlessHost(t.Context(), req4)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
+		require.True(t, ok)
+		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
 	})
 }
 
@@ -2876,17 +2946,21 @@ func TestControllerService_StopSession(t *testing.T) {
 }
 
 func TestControllerService_SearchSessions(t *testing.T) {
-	t.Run("成功: セッションを検索", func(t *testing.T) {
+	t.Run("成功: セッションを検索 (ページング検証)", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
 		client := setupAuthenticatedClient(t, setup.service)
 
-		// Create test account, host, and sessions
+		// Create test account, host, and 10 sessions for pagination
+		const totalSessions = 10
+
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
-		testutil.CreateTestSession(t, setup.queries, host.ID, "Session1", entity.SessionStatus_RUNNING)
-		testutil.CreateTestSession(t, setup.queries, host.ID, "Session2", entity.SessionStatus_RUNNING)
+
+		for i := 1; i <= totalSessions; i++ {
+			testutil.CreateTestSession(t, setup.queries, host.ID, fmt.Sprintf("Session%02d", i), entity.SessionStatus_RUNNING)
+		}
 
 		// Mock HostConnector - GetRpcClient (called when fetching host info)
 		setup.mockHostConnector.EXPECT().
@@ -2925,14 +2999,44 @@ func TestControllerService_SearchSessions(t *testing.T) {
 			}, nil).
 			AnyTimes()
 
+		// page 未指定 -> デフォルト 20 件 (10件しかないので全件)
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.SearchSessionsRequest{
 			Parameters: &hdlctrlv1.SearchSessionsRequest_SearchParameters{},
 		})
-
 		res, err := client.SearchSessions(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
-		assert.GreaterOrEqual(t, len(res.Msg.GetSessions()), 2)
+		assert.Len(t, res.Msg.GetSessions(), totalSessions)
+		require.NotNil(t, res.Msg.GetPage())
+		assert.Equal(t, int32(totalSessions), res.Msg.GetPage().GetTotalCount())
+		assert.Equal(t, int32(20), res.Msg.GetPage().GetPageSize())
+
+		// page_size=4 で 3 ページに分割
+		req2 := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.SearchSessionsRequest{
+			Parameters: &hdlctrlv1.SearchSessionsRequest_SearchParameters{},
+			Page:       &hdlctrlv1.PageRequest{PageIndex: 0, PageSize: 4},
+		})
+		res2, err := client.SearchSessions(t.Context(), req2)
+		require.NoError(t, err)
+		assert.Len(t, res2.Msg.GetSessions(), 4)
+		assert.Equal(t, int32(totalSessions), res2.Msg.GetPage().GetTotalCount())
+
+		req3 := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.SearchSessionsRequest{
+			Parameters: &hdlctrlv1.SearchSessionsRequest_SearchParameters{},
+			Page:       &hdlctrlv1.PageRequest{PageIndex: 1, PageSize: 4},
+		})
+		res3, err := client.SearchSessions(t.Context(), req3)
+		require.NoError(t, err)
+		assert.Len(t, res3.Msg.GetSessions(), 4)
+
+		req4 := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.SearchSessionsRequest{
+			Parameters: &hdlctrlv1.SearchSessionsRequest_SearchParameters{},
+			Page:       &hdlctrlv1.PageRequest{PageIndex: 2, PageSize: 4},
+		})
+		res4, err := client.SearchSessions(t.Context(), req4)
+		require.NoError(t, err)
+		assert.Len(t, res4.Msg.GetSessions(), 2)
+		assert.Equal(t, int32(totalSessions), res4.Msg.GetPage().GetTotalCount())
 	})
 
 	t.Run("失敗: 無効な検索パラメータ", func(t *testing.T) {
@@ -2991,11 +3095,26 @@ func TestControllerService_SearchSessions(t *testing.T) {
 
 		// Should return only ENDED sessions from Host1 (2 sessions)
 		assert.Len(t, res.Msg.GetSessions(), 2)
+		require.NotNil(t, res.Msg.GetPage())
+		assert.Equal(t, int32(2), res.Msg.GetPage().GetTotalCount())
 
 		for _, session := range res.Msg.GetSessions() {
 			assert.Equal(t, host1.ID, session.GetHostId(), "Session should belong to Host1")
 			assert.Equal(t, hdlctrlv1.SessionStatus_SESSION_STATUS_ENDED, session.GetStatus(), "Session should be ENDED")
 		}
+
+		// 同条件で page_size=1 -> 1件ずつ取れる
+		req2 := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.SearchSessionsRequest{
+			Parameters: &hdlctrlv1.SearchSessionsRequest_SearchParameters{
+				Status: &status,
+				HostId: &host1.ID,
+			},
+			Page: &hdlctrlv1.PageRequest{PageIndex: 0, PageSize: 1},
+		})
+		res2, err := client.SearchSessions(t.Context(), req2)
+		require.NoError(t, err)
+		assert.Len(t, res2.Msg.GetSessions(), 1)
+		assert.Equal(t, int32(2), res2.Msg.GetPage().GetTotalCount())
 	})
 }
 

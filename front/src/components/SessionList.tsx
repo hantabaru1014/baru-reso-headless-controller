@@ -9,11 +9,13 @@ import { AccessLevels } from "../constants";
 import { RefetchButton } from "./base/RefetchButton";
 import { sessionStatusToLabel } from "../libs/sessionUtils";
 import { SelectField } from "./base/SelectField";
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Session, SessionStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "./base";
 import { RichText } from "./base/RichText";
+import { keepPreviousData } from "@tanstack/react-query";
+import { usePaginationState } from "../hooks/usePaginationState";
 
 export default function SessionList() {
   const [filterState, setFilterState] = useState<{
@@ -27,13 +29,26 @@ export default function SessionList() {
   });
   const [filterHostId, setFilterHostId] = useState("ALL");
   const { data: hosts } = useQuery(listHeadlessHost);
-  const { data, isPending, refetch } = useQuery(searchSessions, {
-    parameters: {
-      status: filterState.value,
-      hostId: filterHostId === "ALL" ? undefined : filterHostId,
+  const { pageIndex, pageSize, setPageIndex, setPageSize, syncFromServer } =
+    usePaginationState({ defaultPageSize: 20 });
+  const { data, isPending, refetch } = useQuery(
+    searchSessions,
+    {
+      parameters: {
+        status: filterState.value,
+        hostId: filterHostId === "ALL" ? undefined : filterHostId,
+      },
+      page: { pageIndex, pageSize },
     },
-  });
+    { placeholderData: keepPreviousData },
+  );
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (data?.page) {
+      syncFromServer(data.page.pageIndex, data.page.pageSize);
+    }
+  }, [data?.page, syncFromServer]);
 
   const columns: ColumnDef<Session>[] = useMemo(() => {
     const hostNameMap =
@@ -105,13 +120,14 @@ export default function SessionList() {
               { label: "実行中", id: "RUNNING", value: SessionStatus.RUNNING },
               { label: "終了済み", id: "ENDED", value: SessionStatus.ENDED },
             ]}
-            onChange={(o) =>
+            onChange={(o) => {
               setFilterState({
                 label: o.label,
                 id: o.id,
                 value: o.value,
-              })
-            }
+              });
+              setPageIndex(0);
+            }}
             selectedId={filterState.id}
           />
           <SelectField
@@ -122,7 +138,10 @@ export default function SessionList() {
                 id: host.id,
               })) || [],
             )}
-            onChange={(o) => setFilterHostId(o.id)}
+            onChange={(o) => {
+              setFilterHostId(o.id);
+              setPageIndex(0);
+            }}
             selectedId={filterHostId}
           />
         </div>
@@ -138,6 +157,13 @@ export default function SessionList() {
         data={data?.sessions || []}
         isLoading={isPending}
         onClickRow={(row) => navigate(`/sessions/${row.id}`)}
+        pagination={{
+          pageIndex,
+          pageSize,
+          totalCount: data?.page?.totalCount ?? 0,
+          onPageIndexChange: setPageIndex,
+          onPageSizeChange: setPageSize,
+        }}
       />
     </div>
   );
