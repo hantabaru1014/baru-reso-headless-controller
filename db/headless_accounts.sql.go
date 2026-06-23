@@ -94,6 +94,53 @@ func (q *Queries) ListHeadlessAccounts(ctx context.Context) ([]HeadlessAccount, 
 	return items, nil
 }
 
+const listHeadlessAccountsPaged = `-- name: ListHeadlessAccountsPaged :many
+SELECT headless_accounts.resonite_id, headless_accounts.credential, headless_accounts.password, headless_accounts.last_display_name, headless_accounts.last_icon_url, headless_accounts.created_at, headless_accounts.updated_at, COUNT(*) OVER() AS total_count
+FROM headless_accounts
+ORDER BY resonite_id
+LIMIT $2::int OFFSET $1::int
+`
+
+type ListHeadlessAccountsPagedParams struct {
+	PageOffset int32
+	PageSize   int32
+}
+
+type ListHeadlessAccountsPagedRow struct {
+	HeadlessAccount HeadlessAccount
+	TotalCount      int64
+}
+
+// ページング付きアカウント一覧。total_count は全行同じ値が入る。
+func (q *Queries) ListHeadlessAccountsPaged(ctx context.Context, arg ListHeadlessAccountsPagedParams) ([]ListHeadlessAccountsPagedRow, error) {
+	rows, err := q.db.Query(ctx, listHeadlessAccountsPaged, arg.PageOffset, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListHeadlessAccountsPagedRow
+	for rows.Next() {
+		var i ListHeadlessAccountsPagedRow
+		if err := rows.Scan(
+			&i.HeadlessAccount.ResoniteID,
+			&i.HeadlessAccount.Credential,
+			&i.HeadlessAccount.Password,
+			&i.HeadlessAccount.LastDisplayName,
+			&i.HeadlessAccount.LastIconUrl,
+			&i.HeadlessAccount.CreatedAt,
+			&i.HeadlessAccount.UpdatedAt,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateAccountIconUrl = `-- name: UpdateAccountIconUrl :exec
 UPDATE headless_accounts SET last_icon_url = $2 WHERE resonite_id = $1
 `
