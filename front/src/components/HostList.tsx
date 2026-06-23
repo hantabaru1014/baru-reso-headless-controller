@@ -5,6 +5,9 @@ import {
   startHeadlessHost,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { ColumnDef } from "@tanstack/react-table";
+import { keepPreviousData } from "@tanstack/react-query";
+import { usePaginationState } from "../hooks/usePaginationState";
+import { useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -244,9 +247,21 @@ const columns: ColumnDef<HeadlessHost>[] = [
 ];
 
 export default function HostList() {
-  const { data, isPending, refetch } = useQuery(listHeadlessHost);
+  const { pageIndex, pageSize, setPageIndex, setPageSize, syncFromServer } =
+    usePaginationState({ defaultPageSize: 20 });
+  const { data, isPending, refetch } = useQuery(
+    listHeadlessHost,
+    { page: { pageIndex, pageSize } },
+    { placeholderData: keepPreviousData },
+  );
   const navigate = useNavigate();
   const [isNewHostDialogOpen, setIsNewHostDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (data?.page) {
+      syncFromServer(data.page.pageIndex, data.page.pageSize);
+    }
+  }, [data?.page, syncFromServer]);
 
   return (
     <div className="space-y-4">
@@ -261,6 +276,13 @@ export default function HostList() {
         data={data?.hosts ?? []}
         isLoading={isPending}
         onClickRow={(row) => navigate(`/hosts/${row.id}`)}
+        pagination={{
+          pageIndex,
+          pageSize,
+          totalCount: data?.page?.totalCount ?? 0,
+          onPageIndexChange: setPageIndex,
+          onPageSizeChange: setPageSize,
+        }}
       />
       <NewHostDialog
         open={isNewHostDialogOpen}

@@ -27,7 +27,9 @@ import {
   updateHeadlessAccountIcon,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { RefetchButton } from "./base/RefetchButton";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
+import { usePaginationState } from "../hooks/usePaginationState";
 import { toast } from "sonner";
 import { DataTable, TextField } from "./base";
 import { ColumnDef } from "@tanstack/react-table";
@@ -306,7 +308,20 @@ function StorageInfoTip({ accountId }: { accountId: string }) {
 }
 
 export default function HeadlessAccountList() {
-  const { data, isPending, refetch } = useQuery(listHeadlessAccounts);
+  const { pageIndex, pageSize, setPageIndex, setPageSize, syncFromServer } =
+    usePaginationState({ defaultPageSize: 20 });
+  const { data, isPending, refetch } = useQuery(
+    listHeadlessAccounts,
+    { page: { pageIndex, pageSize } },
+    { placeholderData: keepPreviousData },
+  );
+
+  useEffect(() => {
+    if (data?.page) {
+      syncFromServer(data.page.pageIndex, data.page.pageSize);
+    }
+  }, [data?.page, syncFromServer]);
+
   const { mutateAsync: mutateDeleteAccount, isPending: isPendingDelete } =
     useMutation(deleteHeadlessAccount);
   const { mutateAsync: mutateRefetchAccountInfo, isPending: isPendingRefetch } =
@@ -487,6 +502,13 @@ export default function HeadlessAccountList() {
         columns={columns}
         data={data?.accounts || []}
         isLoading={isPending}
+        pagination={{
+          pageIndex,
+          pageSize,
+          totalCount: data?.page?.totalCount ?? 0,
+          onPageIndexChange: setPageIndex,
+          onPageSizeChange: setPageSize,
+        }}
       />
       <NewAccountDialog
         open={isOpenNewAccountDialog}
