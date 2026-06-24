@@ -11,6 +11,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"google.golang.org/protobuf/proto"
@@ -25,22 +26,35 @@ const (
 )
 
 type SessionUsecase struct {
-	sessionRepo     port.SessionRepository
-	hostRepo        port.HeadlessHostRepository
-	grpcCallTimeout time.Duration
-	forcePortMin    int
-	forcePortMax    int
-	portMutex       sync.Mutex
+	sessionRepo       port.SessionRepository
+	hostRepo          port.HeadlessHostRepository
+	grpcCallTimeout   time.Duration
+	forcePortMin      int
+	forcePortMax      int
+	resoniteLinkTTL   time.Duration
+	portMutex         sync.Mutex
 }
 
-func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.HeadlessHostRepository, grpcCfg *config.GRPCConfig, serverCfg *config.ServerConfig) *SessionUsecase {
+func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.HeadlessHostRepository, grpcCfg *config.GRPCConfig, serverCfg *config.ServerConfig, linkCfg *config.ResoniteLinkConfig) *SessionUsecase {
 	return &SessionUsecase{
 		sessionRepo:     sessionRepo,
 		hostRepo:        hostRepo,
 		grpcCallTimeout: grpcCfg.CallTimeout,
 		forcePortMin:    serverCfg.SessionPortMin,
 		forcePortMax:    serverCfg.SessionPortMax,
+		resoniteLinkTTL: linkCfg.TokenTTL,
 	}
+}
+
+// IssueResoniteLinkToken は ResoniteLink WebSocket 接続用の短期 JWT を発行する.
+// セッションが存在することを確認した上で、claims に session_id と userID を含める.
+// TODO: owner-only enforcement - 現在は認証済みなら誰でも発行可能.
+func (u *SessionUsecase) IssueResoniteLinkToken(ctx context.Context, sessionID, userID string) (string, time.Time, error) {
+	if _, err := u.sessionRepo.Get(ctx, sessionID); err != nil {
+		return "", time.Time{}, errors.Wrap(err, 0)
+	}
+
+	return auth.GenerateResoniteLinkToken(userID, sessionID, u.resoniteLinkTTL)
 }
 
 func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId *string, params *headlessv1.WorldStartupParameters, memo *string) (*entity.Session, error) {

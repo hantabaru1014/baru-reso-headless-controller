@@ -16,6 +16,7 @@ require (
 	github.com/go-errors/errors v1.5.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/gorilla/mux v1.8.1
+	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/joho/godotenv v1.5.1
 	github.com/minio/minio-go/v7 v7.1.0
@@ -82,7 +83,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/sync v0.20.0
 	gotest.tools/v3 v3.5.1 // indirect
 )
 

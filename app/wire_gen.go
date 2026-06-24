@@ -10,6 +10,7 @@ import (
 	"github.com/google/wire"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/resonitelink"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
@@ -33,7 +34,8 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	headlessHostRepository := adapter.NewHeadlessHostRepository(queries, dockerHostConnector, grpcConfig)
 	sessionRepository := adapter.NewSessionRepository(queries)
 	serverConfig := ProvideServerConfig(cfg)
-	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, grpcConfig, serverConfig)
+	resoniteLinkConfig := ProvideResoniteLinkConfig(cfg)
+	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, grpcConfig, serverConfig, resoniteLinkConfig)
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
 	rustFSConfig := ProvideRustFSConfig(cfg)
@@ -46,7 +48,8 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	workerConfig := ProvideWorkerConfig(cfg)
 	imageChecker := worker.NewImageChecker(dockerHostConnector, sessionUsecase, workerConfig)
 	eventWatcher := worker.NewEventWatcher(dockerHostConnector, queries, workerConfig)
-	server := NewServer(userService, controllerService, imageChecker, eventWatcher, minioClient)
+	bridge := resonitelink.NewBridge(headlessHostRepository, sessionRepository, resoniteLinkConfig)
+	server := NewServer(userService, controllerService, imageChecker, eventWatcher, minioClient, bridge)
 	return server, nil
 }
 
@@ -61,7 +64,8 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 	headlessHostRepository := adapter.NewHeadlessHostRepository(queries, dockerHostConnector, grpcConfig)
 	sessionRepository := adapter.NewSessionRepository(queries)
 	serverConfig := ProvideServerConfig(cfg)
-	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, grpcConfig, serverConfig)
+	resoniteLinkConfig := ProvideResoniteLinkConfig(cfg)
+	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, grpcConfig, serverConfig, resoniteLinkConfig)
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
 	cli := NewCli(queries, userUsecase, headlessHostUsecase, defaultClient)
@@ -95,6 +99,10 @@ func ProvideRustFSConfig(cfg *config.EnvConfig) *config.RustFSConfig {
 	return &cfg.RustFS
 }
 
+func ProvideResoniteLinkConfig(cfg *config.EnvConfig) *config.ResoniteLinkConfig {
+	return &cfg.ResoniteLink
+}
+
 var ConfigSet = wire.NewSet(
 	ProvideDatabaseConfig,
 	ProvideDockerConfig,
@@ -102,4 +110,5 @@ var ConfigSet = wire.NewSet(
 	ProvideWorkerConfig,
 	ProvideServerConfig,
 	ProvideRustFSConfig,
+	ProvideResoniteLinkConfig,
 )

@@ -41,6 +41,7 @@ const (
 	HeadlessControlService_DenyHostAccess_FullMethodName            = "/headless.v1.HeadlessControlService/DenyHostAccess"
 	HeadlessControlService_GetStartupConfigToRestore_FullMethodName = "/headless.v1.HeadlessControlService/GetStartupConfigToRestore"
 	HeadlessControlService_DownloadSessionWorld_FullMethodName      = "/headless.v1.HeadlessControlService/DownloadSessionWorld"
+	HeadlessControlService_ResoniteLinkStream_FullMethodName        = "/headless.v1.HeadlessControlService/ResoniteLinkStream"
 	HeadlessControlService_GetAccountInfo_FullMethodName            = "/headless.v1.HeadlessControlService/GetAccountInfo"
 	HeadlessControlService_FetchWorldInfo_FullMethodName            = "/headless.v1.HeadlessControlService/FetchWorldInfo"
 	HeadlessControlService_SearchUserInfo_FullMethodName            = "/headless.v1.HeadlessControlService/SearchUserInfo"
@@ -77,6 +78,7 @@ type HeadlessControlServiceClient interface {
 	DenyHostAccess(ctx context.Context, in *DenyHostAccessRequest, opts ...grpc.CallOption) (*DenyHostAccessResponse, error)
 	GetStartupConfigToRestore(ctx context.Context, in *GetStartupConfigToRestoreRequest, opts ...grpc.CallOption) (*GetStartupConfigToRestoreResponse, error)
 	DownloadSessionWorld(ctx context.Context, in *DownloadSessionWorldRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DownloadSessionWorldResponse], error)
+	ResoniteLinkStream(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ResoniteLinkStreamRequest, ResoniteLinkStreamResponse], error)
 	// Cloud系
 	GetAccountInfo(ctx context.Context, in *GetAccountInfoRequest, opts ...grpc.CallOption) (*GetAccountInfoResponse, error)
 	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*FetchWorldInfoResponse, error)
@@ -325,6 +327,19 @@ func (c *headlessControlServiceClient) DownloadSessionWorld(ctx context.Context,
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type HeadlessControlService_DownloadSessionWorldClient = grpc.ServerStreamingClient[DownloadSessionWorldResponse]
 
+func (c *headlessControlServiceClient) ResoniteLinkStream(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ResoniteLinkStreamRequest, ResoniteLinkStreamResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &HeadlessControlService_ServiceDesc.Streams[1], HeadlessControlService_ResoniteLinkStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[ResoniteLinkStreamRequest, ResoniteLinkStreamResponse]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type HeadlessControlService_ResoniteLinkStreamClient = grpc.BidiStreamingClient[ResoniteLinkStreamRequest, ResoniteLinkStreamResponse]
+
 func (c *headlessControlServiceClient) GetAccountInfo(ctx context.Context, in *GetAccountInfoRequest, opts ...grpc.CallOption) (*GetAccountInfoResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetAccountInfoResponse)
@@ -431,6 +446,7 @@ type HeadlessControlServiceServer interface {
 	DenyHostAccess(context.Context, *DenyHostAccessRequest) (*DenyHostAccessResponse, error)
 	GetStartupConfigToRestore(context.Context, *GetStartupConfigToRestoreRequest) (*GetStartupConfigToRestoreResponse, error)
 	DownloadSessionWorld(*DownloadSessionWorldRequest, grpc.ServerStreamingServer[DownloadSessionWorldResponse]) error
+	ResoniteLinkStream(grpc.BidiStreamingServer[ResoniteLinkStreamRequest, ResoniteLinkStreamResponse]) error
 	// Cloud系
 	GetAccountInfo(context.Context, *GetAccountInfoRequest) (*GetAccountInfoResponse, error)
 	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*FetchWorldInfoResponse, error)
@@ -515,6 +531,9 @@ func (UnimplementedHeadlessControlServiceServer) GetStartupConfigToRestore(conte
 }
 func (UnimplementedHeadlessControlServiceServer) DownloadSessionWorld(*DownloadSessionWorldRequest, grpc.ServerStreamingServer[DownloadSessionWorldResponse]) error {
 	return status.Error(codes.Unimplemented, "method DownloadSessionWorld not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) ResoniteLinkStream(grpc.BidiStreamingServer[ResoniteLinkStreamRequest, ResoniteLinkStreamResponse]) error {
+	return status.Error(codes.Unimplemented, "method ResoniteLinkStream not implemented")
 }
 func (UnimplementedHeadlessControlServiceServer) GetAccountInfo(context.Context, *GetAccountInfoRequest) (*GetAccountInfoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAccountInfo not implemented")
@@ -951,6 +970,13 @@ func _HeadlessControlService_DownloadSessionWorld_Handler(srv interface{}, strea
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type HeadlessControlService_DownloadSessionWorldServer = grpc.ServerStreamingServer[DownloadSessionWorldResponse]
 
+func _HeadlessControlService_ResoniteLinkStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(HeadlessControlServiceServer).ResoniteLinkStream(&grpc.GenericServerStream[ResoniteLinkStreamRequest, ResoniteLinkStreamResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type HeadlessControlService_ResoniteLinkStreamServer = grpc.BidiStreamingServer[ResoniteLinkStreamRequest, ResoniteLinkStreamResponse]
+
 func _HeadlessControlService_GetAccountInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetAccountInfoRequest)
 	if err := dec(in); err != nil {
@@ -1224,6 +1250,12 @@ var HeadlessControlService_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "DownloadSessionWorld",
 			Handler:       _HeadlessControlService_DownloadSessionWorld_Handler,
 			ServerStreams: true,
+		},
+		{
+			StreamName:    "ResoniteLinkStream",
+			Handler:       _HeadlessControlService_ResoniteLinkStream_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "headless/v1/headless.proto",

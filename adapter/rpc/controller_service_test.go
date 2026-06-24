@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -75,7 +77,7 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 
 	// Setup usecases with real repositories
 	hauc := usecase.NewHeadlessAccountUsecase(queries, mockSkyfrost)
-	suc := usecase.NewSessionUsecase(srepo, hhrepo, &cfg.GRPC, &cfg.Server)
+	suc := usecase.NewSessionUsecase(srepo, hhrepo, &cfg.GRPC, &cfg.Server, &cfg.ResoniteLink)
 	hhuc := usecase.NewHeadlessHostUsecase(hhrepo, srepo, suc, hauc)
 	buc := usecase.NewBlobUsecase(srepo, hhrepo, mockBlobstore)
 
@@ -2936,6 +2938,102 @@ func TestControllerService_StopSession(t *testing.T) {
 		})
 
 		_, err := client.StopSession(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
+		require.True(t, ok, "expected connect.Error")
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
+	})
+}
+
+func TestControllerService_IssueResoniteLinkConnection(t *testing.T) {
+	t.Run("成功: 認証済みユーザがトークン付きURLを発行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
+		session := testutil.CreateTestSession(t, setup.queries, host.ID, "TestSession", entity.SessionStatus_RUNNING)
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.IssueResoniteLinkConnectionRequest{
+			SessionId: session.ID,
+		})
+
+		res, err := client.IssueResoniteLinkConnection(t.Context(), req)
+		require.NoError(t, err)
+		require.NotNil(t, res.Msg)
+
+		// ws_path は path + query 形式
+		assert.True(t, strings.HasPrefix(res.Msg.GetWsPath(), "/resonite-link/ws?token="),
+			"ws_path should start with /resonite-link/ws?token=, got %q", res.Msg.GetWsPath())
+
+		// トークン部分を取り出して claims を検証
+		const prefix = "/resonite-link/ws?token="
+
+		token, decodeErr := url.QueryUnescape(strings.TrimPrefix(res.Msg.GetWsPath(), prefix))
+		require.NoError(t, decodeErr)
+
+		claims, err := auth.ParseResoniteLinkToken(token)
+		require.NoError(t, err)
+		assert.Equal(t, session.ID, claims.SessionID)
+		assert.NotEmpty(t, claims.UserID)
+		require.NotNil(t, res.Msg.GetExpiresAt())
+		assert.True(t, res.Msg.GetExpiresAt().AsTime().After(time.Now()))
+	})
+
+	t.Run("失敗: 認証なし", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		// No Authorization header
+		req := connect.NewRequest(&hdlctrlv1.IssueResoniteLinkConnectionRequest{
+			SessionId: "any-session",
+		})
+
+		_, err := client.IssueResoniteLinkConnection(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
+		require.True(t, ok, "expected connect.Error")
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+	})
+
+	t.Run("失敗: session_id が空", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.IssueResoniteLinkConnectionRequest{
+			SessionId: "",
+		})
+
+		_, err := client.IssueResoniteLinkConnection(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
+		require.True(t, ok, "expected connect.Error")
+		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
+	})
+
+	t.Run("失敗: 存在しないセッション", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.IssueResoniteLinkConnectionRequest{
+			SessionId: "nonexist-session",
+		})
+
+		_, err := client.IssueResoniteLinkConnection(t.Context(), req)
 		require.Error(t, err)
 
 		connectErr := &connect.Error{}

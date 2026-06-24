@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from "@connectrpc/connect-query";
+import { useState } from "react";
 import {
   deleteEndedSession,
   getSessionDetails,
@@ -21,6 +22,7 @@ import { toast } from "sonner";
 import { EditableTextArea, SplitButton } from "./base";
 import { AspectRatio, DropdownMenuItem } from "./ui";
 import HostTip from "./HostTip";
+import { ResoniteLinkConnectionDialog } from "./ResoniteLinkConnectionDialog";
 
 const BOOL_SELECT_OPTIONS = [
   { id: "true", label: "はい", value: true },
@@ -38,6 +40,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
   const { mutateAsync: mutateDelete, isPending: isPendingDelete } =
     useMutation(deleteEndedSession);
   const navigate = useNavigate();
+  const [openLinkDialog, setOpenLinkDialog] = useState(false);
 
   const hostId = data?.session?.hostId;
   const isRunning = data?.session?.status === SessionStatus.RUNNING;
@@ -140,30 +143,43 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
         />
         <div className="flex justify-end space-x-2">
           {isRunning ? (
-            <SessionControlButtons
-              sessionId={sessionId}
-              canSaveOverride={sessionState?.canSave}
-              canSaveAs={sessionState?.canSaveAs}
-              additionalButtons={
-                <>
-                  <SplitButton
-                    variant="outline"
-                    onClick={handleCopyUrl}
-                    dropdownContent={
-                      <DropdownMenuItem
-                        onClick={handleCopyWorldUrl}
-                        disabled={!sessionState?.worldUrl}
-                      >
-                        ワールドURLをコピー
-                      </DropdownMenuItem>
-                    }
-                  >
-                    URLをコピー
-                  </SplitButton>
-                  <RefetchButton refetch={refetch} />
-                </>
-              }
-            />
+            <>
+              <SessionControlButtons
+                sessionId={sessionId}
+                canSaveOverride={sessionState?.canSave}
+                canSaveAs={sessionState?.canSaveAs}
+                additionalButtons={
+                  <>
+                    <SplitButton
+                      variant="outline"
+                      onClick={handleCopyUrl}
+                      dropdownContent={
+                        <DropdownMenuItem
+                          onClick={handleCopyWorldUrl}
+                          disabled={!sessionState?.worldUrl}
+                        >
+                          ワールドURLをコピー
+                        </DropdownMenuItem>
+                      }
+                    >
+                      URLをコピー
+                    </SplitButton>
+                    <Button
+                      variant="outline"
+                      onClick={() => setOpenLinkDialog(true)}
+                    >
+                      ResoniteLink接続URL
+                    </Button>
+                    <RefetchButton refetch={refetch} />
+                  </>
+                }
+              />
+              <ResoniteLinkConnectionDialog
+                sessionId={sessionId}
+                open={openLinkDialog}
+                onOpenChange={setOpenLinkDialog}
+              />
+            </>
           ) : (
             <div className="flex space-x-2">
               {startupParams?.loadWorld?.case === "loadWorldUrl" &&
@@ -226,6 +242,11 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
           )}
           {sessionState?.lastSavedAt && sessionState.canSave && (
             <span>最終保存: {formatTimestamp(sessionState.lastSavedAt)}</span>
+          )}
+          {isRunning && (
+            <span>
+              ResoniteLink接続中: {sessionState?.resoniteLinkClientsCount ?? 0}
+            </span>
           )}
           <EditableTextArea
             label="管理者メモ"

@@ -442,6 +442,26 @@ func (mr *MockHeadlessControlServiceClientMockRecorder) ListUsersInSession(ctx, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsersInSession", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).ListUsersInSession), varargs...)
 }
 
+// ResoniteLinkStream mocks base method.
+func (m *MockHeadlessControlServiceClient) ResoniteLinkStream(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[headlessv1.ResoniteLinkStreamRequest, headlessv1.ResoniteLinkStreamResponse], error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ResoniteLinkStream", varargs...)
+	ret0, _ := ret[0].(grpc.BidiStreamingClient[headlessv1.ResoniteLinkStreamRequest, headlessv1.ResoniteLinkStreamResponse])
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ResoniteLinkStream indicates an expected call of ResoniteLinkStream.
+func (mr *MockHeadlessControlServiceClientMockRecorder) ResoniteLinkStream(ctx any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResoniteLinkStream", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).ResoniteLinkStream), varargs...)
+}
+
 // SaveAsSessionWorld mocks base method.
 func (m *MockHeadlessControlServiceClient) SaveAsSessionWorld(ctx context.Context, in *headlessv1.SaveAsSessionWorldRequest, opts ...grpc.CallOption) (*headlessv1.SaveAsSessionWorldResponse, error) {
 	m.ctrl.T.Helper()
