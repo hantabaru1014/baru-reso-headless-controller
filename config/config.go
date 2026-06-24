@@ -5,17 +5,19 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
 type EnvConfig struct {
-	Database DatabaseConfig
-	Auth     AuthConfig
-	Docker   DockerConfig
-	GRPC     GRPCConfig
-	Worker   WorkerConfig
-	Server   ServerConfig
-	RustFS   RustFSConfig
+	Database     DatabaseConfig
+	Auth         AuthConfig
+	Docker       DockerConfig
+	GRPC         GRPCConfig
+	Worker       WorkerConfig
+	Server       ServerConfig
+	RustFS       RustFSConfig
+	ResoniteLink ResoniteLinkConfig
 }
 
 type DatabaseConfig struct {
@@ -52,6 +54,19 @@ type ServerConfig struct {
 	ShutdownTimeout time.Duration
 	SessionPortMin  int
 	SessionPortMax  int
+}
+
+// ResoniteLinkConfig は ResoniteLink WebSocket ブリッジ用の設定.
+type ResoniteLinkConfig struct {
+	// TokenTTL は IssueResoniteLinkConnection が発行する短期トークンの有効期間.
+	TokenTTL time.Duration
+	// ReadyTimeout は WebSocket upgrade 前に headless container から
+	// ResoniteLinkReady を受信するまでのタイムアウト.
+	ReadyTimeout time.Duration
+	// AllowedOrigins は WebSocket upgrade で許可する Origin パターン.
+	// 空なら same-origin のみ (CheckOrigin で Host と Origin が一致するかを見る).
+	// "*" を含めると全許可.
+	AllowedOrigins []string
 }
 
 type RustFSConfig struct {
@@ -95,6 +110,10 @@ func LoadEnvConfig() (*EnvConfig, error) {
 
 	cfg.Server.SessionPortMin = portMin
 	cfg.Server.SessionPortMax = portMax
+
+	cfg.ResoniteLink.TokenTTL = getEnvDuration("RESONITE_LINK_TOKEN_TTL", 5*time.Minute)   //nolint:mnd // default
+	cfg.ResoniteLink.ReadyTimeout = getEnvDuration("RESONITE_LINK_READY_TIMEOUT", 5*time.Second) //nolint:mnd // default
+	cfg.ResoniteLink.AllowedOrigins = parseCSV(os.Getenv("RESONITE_LINK_ALLOWED_ORIGINS"))
 
 	cfg.RustFS.Endpoint = os.Getenv("RUSTFS_ENDPOINT")
 	cfg.RustFS.AccessKey = os.Getenv("RUSTFS_ACCESS_KEY")
@@ -178,6 +197,24 @@ func getEnvDurationSec(key string, defaultValue time.Duration) time.Duration {
 	}
 
 	return defaultValue
+}
+
+func parseCSV(s string) []string {
+	if s == "" {
+		return nil
+	}
+
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+
+	return out
 }
 
 func parseSessionPortEnv() (int, int, error) {

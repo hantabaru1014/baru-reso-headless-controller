@@ -6,6 +6,7 @@ import (
 	"github.com/google/wire"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/resonitelink"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
@@ -41,6 +42,10 @@ func ProvideRustFSConfig(cfg *config.EnvConfig) *config.RustFSConfig {
 	return &cfg.RustFS
 }
 
+func ProvideResoniteLinkConfig(cfg *config.EnvConfig) *config.ResoniteLinkConfig {
+	return &cfg.ResoniteLink
+}
+
 var ConfigSet = wire.NewSet(
 	ProvideDatabaseConfig,
 	ProvideDockerConfig,
@@ -48,6 +53,7 @@ var ConfigSet = wire.NewSet(
 	ProvideWorkerConfig,
 	ProvideServerConfig,
 	ProvideRustFSConfig,
+	ProvideResoniteLinkConfig,
 )
 
 func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
@@ -90,6 +96,9 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		// controller
 		rpc.NewUserService,
 		rpc.NewControllerService,
+
+		// resonite link bridge
+		resonitelink.NewBridge,
 
 		NewServer,
 	)

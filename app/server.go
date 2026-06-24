@@ -14,6 +14,7 @@ import (
 	pkgerrors "github.com/go-errors/errors"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/resonitelink"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
 	"github.com/hantabaru1014/baru-reso-headless-controller/front"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/blobstore"
@@ -21,12 +22,13 @@ import (
 )
 
 type Server struct {
-	userService       *rpc.UserService
-	controllerService *rpc.ControllerService
-	imageChecker      *worker.ImageChecker
-	eventWatcher      *worker.EventWatcher
-	blobClient        blobstore.Client
-	httpServer        *http.Server
+	userService        *rpc.UserService
+	controllerService  *rpc.ControllerService
+	imageChecker       *worker.ImageChecker
+	eventWatcher       *worker.EventWatcher
+	blobClient         blobstore.Client
+	resoniteLinkBridge *resonitelink.Bridge
+	httpServer         *http.Server
 }
 
 func NewServer(
@@ -35,13 +37,15 @@ func NewServer(
 	imageChecker *worker.ImageChecker,
 	eventWatcher *worker.EventWatcher,
 	blobClient blobstore.Client,
+	resoniteLinkBridge *resonitelink.Bridge,
 ) *Server {
 	return &Server{
-		userService:       userService,
-		controllerService: controllerService,
-		imageChecker:      imageChecker,
-		eventWatcher:      eventWatcher,
-		blobClient:        blobClient,
+		userService:        userService,
+		controllerService:  controllerService,
+		imageChecker:       imageChecker,
+		eventWatcher:       eventWatcher,
+		blobClient:         blobClient,
+		resoniteLinkBridge: resoniteLinkBridge,
 	}
 }
 
@@ -139,6 +143,7 @@ func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 	}
 
 	router.HandleFunc("/blobs/{uuid}", makeBlobHandler(s.blobClient)).Methods(http.MethodGet, http.MethodHead)
+	router.HandleFunc(resonitelink.WSPath, s.resoniteLinkBridge.ServeHTTP).Methods(http.MethodGet)
 
 	if len(frontUrl) > 0 {
 		rpURL, err := url.Parse(frontUrl)

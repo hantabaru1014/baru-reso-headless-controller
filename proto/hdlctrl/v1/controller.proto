@@ -59,6 +59,7 @@ service ControllerService {
   rpc ListUsersInSession(ListUsersInSessionRequest) returns (ListUsersInSessionResponse);
   rpc KickUser(KickUserRequest) returns (KickUserResponse);
   rpc BanUser(BanUserRequest) returns (BanUserResponse);
+  rpc IssueResoniteLinkConnection(IssueResoniteLinkConnectionRequest) returns (IssueResoniteLinkConnectionResponse);
 }
 
 message RefetchHeadlessAccountInfoRequest {
@@ -285,6 +286,18 @@ message BanUserRequest {
 }
 
 message BanUserResponse {}
+
+// ResoniteLink (WebSocket) 接続用の短期トークン付きパスを発行する。
+// 返される ws_path は path + query のみ。クライアント (フロントエンド) は
+// 現在の origin を補完して完全な ws[s]://host/path?token=... を組み立てる。
+message IssueResoniteLinkConnectionRequest {
+  string session_id = 1;
+}
+
+message IssueResoniteLinkConnectionResponse {
+  string ws_path = 1;
+  google.protobuf.Timestamp expires_at = 2;
+}
 
 message FetchWorldInfoRequest {
   string host_id = 1;

@@ -64,6 +64,7 @@ const (
 	ControllerService_ListUsersInSession_FullMethodName               = "/hdlctrl.v1.ControllerService/ListUsersInSession"
 	ControllerService_KickUser_FullMethodName                         = "/hdlctrl.v1.ControllerService/KickUser"
 	ControllerService_BanUser_FullMethodName                          = "/hdlctrl.v1.ControllerService/BanUser"
+	ControllerService_IssueResoniteLinkConnection_FullMethodName      = "/hdlctrl.v1.ControllerService/IssueResoniteLinkConnection"
 )
 
 // ControllerServiceClient is the client API for ControllerService service.
@@ -119,6 +120,7 @@ type ControllerServiceClient interface {
 	ListUsersInSession(ctx context.Context, in *ListUsersInSessionRequest, opts ...grpc.CallOption) (*ListUsersInSessionResponse, error)
 	KickUser(ctx context.Context, in *KickUserRequest, opts ...grpc.CallOption) (*KickUserResponse, error)
 	BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*BanUserResponse, error)
+	IssueResoniteLinkConnection(ctx context.Context, in *IssueResoniteLinkConnectionRequest, opts ...grpc.CallOption) (*IssueResoniteLinkConnectionResponse, error)
 }
 
 type controllerServiceClient struct {
@@ -569,6 +571,16 @@ func (c *controllerServiceClient) BanUser(ctx context.Context, in *BanUserReques
 	return out, nil
 }
 
+func (c *controllerServiceClient) IssueResoniteLinkConnection(ctx context.Context, in *IssueResoniteLinkConnectionRequest, opts ...grpc.CallOption) (*IssueResoniteLinkConnectionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(IssueResoniteLinkConnectionResponse)
+	err := c.cc.Invoke(ctx, ControllerService_IssueResoniteLinkConnection_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ControllerServiceServer is the server API for ControllerService service.
 // All implementations must embed UnimplementedControllerServiceServer
 // for forward compatibility.
@@ -622,6 +634,7 @@ type ControllerServiceServer interface {
 	ListUsersInSession(context.Context, *ListUsersInSessionRequest) (*ListUsersInSessionResponse, error)
 	KickUser(context.Context, *KickUserRequest) (*KickUserResponse, error)
 	BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error)
+	IssueResoniteLinkConnection(context.Context, *IssueResoniteLinkConnectionRequest) (*IssueResoniteLinkConnectionResponse, error)
 	mustEmbedUnimplementedControllerServiceServer()
 }
 
@@ -763,6 +776,9 @@ func (UnimplementedControllerServiceServer) KickUser(context.Context, *KickUserR
 }
 func (UnimplementedControllerServiceServer) BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BanUser not implemented")
+}
+func (UnimplementedControllerServiceServer) IssueResoniteLinkConnection(context.Context, *IssueResoniteLinkConnectionRequest) (*IssueResoniteLinkConnectionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method IssueResoniteLinkConnection not implemented")
 }
 func (UnimplementedControllerServiceServer) mustEmbedUnimplementedControllerServiceServer() {}
 func (UnimplementedControllerServiceServer) testEmbeddedByValue()                           {}
@@ -1577,6 +1593,24 @@ func _ControllerService_BanUser_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_IssueResoniteLinkConnection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IssueResoniteLinkConnectionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).IssueResoniteLinkConnection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_IssueResoniteLinkConnection_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).IssueResoniteLinkConnection(ctx, req.(*IssueResoniteLinkConnectionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ControllerService_ServiceDesc is the grpc.ServiceDesc for ControllerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1759,6 +1793,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BanUser",
 			Handler:    _ControllerService_BanUser_Handler,
+		},
+		{
+			MethodName: "IssueResoniteLinkConnection",
+			Handler:    _ControllerService_IssueResoniteLinkConnection_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

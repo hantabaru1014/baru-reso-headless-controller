@@ -166,6 +166,9 @@ const (
 	// ControllerServiceBanUserProcedure is the fully-qualified name of the ControllerService's BanUser
 	// RPC.
 	ControllerServiceBanUserProcedure = "/hdlctrl.v1.ControllerService/BanUser"
+	// ControllerServiceIssueResoniteLinkConnectionProcedure is the fully-qualified name of the
+	// ControllerService's IssueResoniteLinkConnection RPC.
+	ControllerServiceIssueResoniteLinkConnectionProcedure = "/hdlctrl.v1.ControllerService/IssueResoniteLinkConnection"
 )
 
 // ControllerServiceClient is a client for the hdlctrl.v1.ControllerService service.
@@ -219,6 +222,7 @@ type ControllerServiceClient interface {
 	ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error)
 	KickUser(context.Context, *connect.Request[v1.KickUserRequest]) (*connect.Response[v1.KickUserResponse], error)
 	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
+	IssueResoniteLinkConnection(context.Context, *connect.Request[v1.IssueResoniteLinkConnectionRequest]) (*connect.Response[v1.IssueResoniteLinkConnectionResponse], error)
 }
 
 // NewControllerServiceClient constructs a client for the hdlctrl.v1.ControllerService service. By
@@ -496,6 +500,12 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(controllerServiceMethods.ByName("BanUser")),
 			connect.WithClientOptions(opts...),
 		),
+		issueResoniteLinkConnection: connect.NewClient[v1.IssueResoniteLinkConnectionRequest, v1.IssueResoniteLinkConnectionResponse](
+			httpClient,
+			baseURL+ControllerServiceIssueResoniteLinkConnectionProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("IssueResoniteLinkConnection")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -545,6 +555,7 @@ type controllerServiceClient struct {
 	listUsersInSession               *connect.Client[v1.ListUsersInSessionRequest, v1.ListUsersInSessionResponse]
 	kickUser                         *connect.Client[v1.KickUserRequest, v1.KickUserResponse]
 	banUser                          *connect.Client[v1.BanUserRequest, v1.BanUserResponse]
+	issueResoniteLinkConnection      *connect.Client[v1.IssueResoniteLinkConnectionRequest, v1.IssueResoniteLinkConnectionResponse]
 }
 
 // ListHeadlessHost calls hdlctrl.v1.ControllerService.ListHeadlessHost.
@@ -768,6 +779,11 @@ func (c *controllerServiceClient) BanUser(ctx context.Context, req *connect.Requ
 	return c.banUser.CallUnary(ctx, req)
 }
 
+// IssueResoniteLinkConnection calls hdlctrl.v1.ControllerService.IssueResoniteLinkConnection.
+func (c *controllerServiceClient) IssueResoniteLinkConnection(ctx context.Context, req *connect.Request[v1.IssueResoniteLinkConnectionRequest]) (*connect.Response[v1.IssueResoniteLinkConnectionResponse], error) {
+	return c.issueResoniteLinkConnection.CallUnary(ctx, req)
+}
+
 // ControllerServiceHandler is an implementation of the hdlctrl.v1.ControllerService service.
 type ControllerServiceHandler interface {
 	// ホスト系
@@ -819,6 +835,7 @@ type ControllerServiceHandler interface {
 	ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error)
 	KickUser(context.Context, *connect.Request[v1.KickUserRequest]) (*connect.Response[v1.KickUserResponse], error)
 	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
+	IssueResoniteLinkConnection(context.Context, *connect.Request[v1.IssueResoniteLinkConnectionRequest]) (*connect.Response[v1.IssueResoniteLinkConnectionResponse], error)
 }
 
 // NewControllerServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -1092,6 +1109,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		connect.WithSchema(controllerServiceMethods.ByName("BanUser")),
 		connect.WithHandlerOptions(opts...),
 	)
+	controllerServiceIssueResoniteLinkConnectionHandler := connect.NewUnaryHandler(
+		ControllerServiceIssueResoniteLinkConnectionProcedure,
+		svc.IssueResoniteLinkConnection,
+		connect.WithSchema(controllerServiceMethods.ByName("IssueResoniteLinkConnection")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/hdlctrl.v1.ControllerService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ControllerServiceListHeadlessHostProcedure:
@@ -1182,6 +1205,8 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceKickUserHandler.ServeHTTP(w, r)
 		case ControllerServiceBanUserProcedure:
 			controllerServiceBanUserHandler.ServeHTTP(w, r)
+		case ControllerServiceIssueResoniteLinkConnectionProcedure:
+			controllerServiceIssueResoniteLinkConnectionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1365,4 +1390,8 @@ func (UnimplementedControllerServiceHandler) KickUser(context.Context, *connect.
 
 func (UnimplementedControllerServiceHandler) BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.BanUser is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) IssueResoniteLinkConnection(context.Context, *connect.Request[v1.IssueResoniteLinkConnectionRequest]) (*connect.Response[v1.IssueResoniteLinkConnectionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.IssueResoniteLinkConnection is not implemented"))
 }

@@ -233,3 +233,8 @@ export const kickUser = ControllerService.method.kickUser;
  * @generated from rpc hdlctrl.v1.ControllerService.BanUser
  */
 export const banUser = ControllerService.method.banUser;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.IssueResoniteLinkConnection
+ */
+export const issueResoniteLinkConnection = ControllerService.method.issueResoniteLinkConnection;

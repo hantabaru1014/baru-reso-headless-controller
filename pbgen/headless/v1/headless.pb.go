@@ -3657,8 +3657,10 @@ type Session struct {
 	StartedAt                  *timestamppb.Timestamp `protobuf:"bytes,21,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
 	ConnectUris                []string               `protobuf:"bytes,22,rep,name=connect_uris,json=connectUris,proto3" json:"connect_uris,omitempty"`
 	CanSaveAs                  bool                   `protobuf:"varint,23,opt,name=can_save_as,json=canSaveAs,proto3" json:"can_save_as,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	// 現在この session に張られている ResoniteLink ブリッジ stream の本数
+	ResoniteLinkClientsCount int32 `protobuf:"varint,24,opt,name=resonite_link_clients_count,json=resoniteLinkClientsCount,proto3" json:"resonite_link_clients_count,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *Session) Reset() {
@@ -3851,6 +3853,13 @@ func (x *Session) GetCanSaveAs() bool {
 		return x.CanSaveAs
 	}
 	return false
+}
+
+func (x *Session) GetResoniteLinkClientsCount() int32 {
+	if x != nil {
+		return x.ResoniteLinkClientsCount
+	}
+	return 0
 }
 
 type DefaultUserRole struct {
@@ -4515,6 +4524,285 @@ func (x *RecordId) GetOwnerId() string {
 	return ""
 }
 
+// ResoniteLink を gRPC bidi stream で中継する。
+// クライアントは stream 開始直後に必ず ResoniteLinkInit を送り、以降は
+// ResoniteLink の JSON テキスト/バイナリペイロードをそのまま流す。
+type ResoniteLinkStreamRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Payload:
+	//
+	//	*ResoniteLinkStreamRequest_Init
+	//	*ResoniteLinkStreamRequest_TextFrame
+	//	*ResoniteLinkStreamRequest_BinaryFrame
+	Payload       isResoniteLinkStreamRequest_Payload `protobuf_oneof:"payload"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResoniteLinkStreamRequest) Reset() {
+	*x = ResoniteLinkStreamRequest{}
+	mi := &file_headless_v1_headless_proto_msgTypes[69]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResoniteLinkStreamRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResoniteLinkStreamRequest) ProtoMessage() {}
+
+func (x *ResoniteLinkStreamRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_headless_v1_headless_proto_msgTypes[69]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResoniteLinkStreamRequest.ProtoReflect.Descriptor instead.
+func (*ResoniteLinkStreamRequest) Descriptor() ([]byte, []int) {
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{69}
+}
+
+func (x *ResoniteLinkStreamRequest) GetPayload() isResoniteLinkStreamRequest_Payload {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
+func (x *ResoniteLinkStreamRequest) GetInit() *ResoniteLinkInit {
+	if x != nil {
+		if x, ok := x.Payload.(*ResoniteLinkStreamRequest_Init); ok {
+			return x.Init
+		}
+	}
+	return nil
+}
+
+func (x *ResoniteLinkStreamRequest) GetTextFrame() string {
+	if x != nil {
+		if x, ok := x.Payload.(*ResoniteLinkStreamRequest_TextFrame); ok {
+			return x.TextFrame
+		}
+	}
+	return ""
+}
+
+func (x *ResoniteLinkStreamRequest) GetBinaryFrame() []byte {
+	if x != nil {
+		if x, ok := x.Payload.(*ResoniteLinkStreamRequest_BinaryFrame); ok {
+			return x.BinaryFrame
+		}
+	}
+	return nil
+}
+
+type isResoniteLinkStreamRequest_Payload interface {
+	isResoniteLinkStreamRequest_Payload()
+}
+
+type ResoniteLinkStreamRequest_Init struct {
+	Init *ResoniteLinkInit `protobuf:"bytes,1,opt,name=init,proto3,oneof"`
+}
+
+type ResoniteLinkStreamRequest_TextFrame struct {
+	TextFrame string `protobuf:"bytes,2,opt,name=text_frame,json=textFrame,proto3,oneof"`
+}
+
+type ResoniteLinkStreamRequest_BinaryFrame struct {
+	BinaryFrame []byte `protobuf:"bytes,3,opt,name=binary_frame,json=binaryFrame,proto3,oneof"`
+}
+
+func (*ResoniteLinkStreamRequest_Init) isResoniteLinkStreamRequest_Payload() {}
+
+func (*ResoniteLinkStreamRequest_TextFrame) isResoniteLinkStreamRequest_Payload() {}
+
+func (*ResoniteLinkStreamRequest_BinaryFrame) isResoniteLinkStreamRequest_Payload() {}
+
+type ResoniteLinkInit struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResoniteLinkInit) Reset() {
+	*x = ResoniteLinkInit{}
+	mi := &file_headless_v1_headless_proto_msgTypes[70]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResoniteLinkInit) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResoniteLinkInit) ProtoMessage() {}
+
+func (x *ResoniteLinkInit) ProtoReflect() protoreflect.Message {
+	mi := &file_headless_v1_headless_proto_msgTypes[70]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResoniteLinkInit.ProtoReflect.Descriptor instead.
+func (*ResoniteLinkInit) Descriptor() ([]byte, []int) {
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{70}
+}
+
+func (x *ResoniteLinkInit) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+type ResoniteLinkStreamResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Payload:
+	//
+	//	*ResoniteLinkStreamResponse_Ready
+	//	*ResoniteLinkStreamResponse_TextFrame
+	//	*ResoniteLinkStreamResponse_BinaryFrame
+	Payload       isResoniteLinkStreamResponse_Payload `protobuf_oneof:"payload"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResoniteLinkStreamResponse) Reset() {
+	*x = ResoniteLinkStreamResponse{}
+	mi := &file_headless_v1_headless_proto_msgTypes[71]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResoniteLinkStreamResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResoniteLinkStreamResponse) ProtoMessage() {}
+
+func (x *ResoniteLinkStreamResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_headless_v1_headless_proto_msgTypes[71]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResoniteLinkStreamResponse.ProtoReflect.Descriptor instead.
+func (*ResoniteLinkStreamResponse) Descriptor() ([]byte, []int) {
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{71}
+}
+
+func (x *ResoniteLinkStreamResponse) GetPayload() isResoniteLinkStreamResponse_Payload {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
+func (x *ResoniteLinkStreamResponse) GetReady() *ResoniteLinkReady {
+	if x != nil {
+		if x, ok := x.Payload.(*ResoniteLinkStreamResponse_Ready); ok {
+			return x.Ready
+		}
+	}
+	return nil
+}
+
+func (x *ResoniteLinkStreamResponse) GetTextFrame() string {
+	if x != nil {
+		if x, ok := x.Payload.(*ResoniteLinkStreamResponse_TextFrame); ok {
+			return x.TextFrame
+		}
+	}
+	return ""
+}
+
+func (x *ResoniteLinkStreamResponse) GetBinaryFrame() []byte {
+	if x != nil {
+		if x, ok := x.Payload.(*ResoniteLinkStreamResponse_BinaryFrame); ok {
+			return x.BinaryFrame
+		}
+	}
+	return nil
+}
+
+type isResoniteLinkStreamResponse_Payload interface {
+	isResoniteLinkStreamResponse_Payload()
+}
+
+type ResoniteLinkStreamResponse_Ready struct {
+	Ready *ResoniteLinkReady `protobuf:"bytes,1,opt,name=ready,proto3,oneof"`
+}
+
+type ResoniteLinkStreamResponse_TextFrame struct {
+	TextFrame string `protobuf:"bytes,2,opt,name=text_frame,json=textFrame,proto3,oneof"`
+}
+
+type ResoniteLinkStreamResponse_BinaryFrame struct {
+	BinaryFrame []byte `protobuf:"bytes,3,opt,name=binary_frame,json=binaryFrame,proto3,oneof"`
+}
+
+func (*ResoniteLinkStreamResponse_Ready) isResoniteLinkStreamResponse_Payload() {}
+
+func (*ResoniteLinkStreamResponse_TextFrame) isResoniteLinkStreamResponse_Payload() {}
+
+func (*ResoniteLinkStreamResponse_BinaryFrame) isResoniteLinkStreamResponse_Payload() {}
+
+type ResoniteLinkReady struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResoniteLinkReady) Reset() {
+	*x = ResoniteLinkReady{}
+	mi := &file_headless_v1_headless_proto_msgTypes[72]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResoniteLinkReady) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResoniteLinkReady) ProtoMessage() {}
+
+func (x *ResoniteLinkReady) ProtoReflect() protoreflect.Message {
+	mi := &file_headless_v1_headless_proto_msgTypes[72]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResoniteLinkReady.ProtoReflect.Descriptor instead.
+func (*ResoniteLinkReady) Descriptor() ([]byte, []int) {
+	return file_headless_v1_headless_proto_rawDescGZIP(), []int{72}
+}
+
 var File_headless_v1_headless_proto protoreflect.FileDescriptor
 
 const file_headless_v1_headless_proto_rawDesc = "" +
@@ -4770,7 +5058,7 @@ const file_headless_v1_headless_proto_rawDesc = "" +
 	"\bUserInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x19\n" +
-	"\bicon_url\x18\x03 \x01(\tR\aiconUrl\"\xee\a\n" +
+	"\bicon_url\x18\x03 \x01(\tR\aiconUrl\"\xad\b\n" +
 	"\aSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -4800,7 +5088,8 @@ const file_headless_v1_headless_proto_rawDesc = "" +
 	"\n" +
 	"started_at\x18\x15 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12!\n" +
 	"\fconnect_uris\x18\x16 \x03(\tR\vconnectUris\x12\x1e\n" +
-	"\vcan_save_as\x18\x17 \x01(\bR\tcanSaveAsB\x10\n" +
+	"\vcan_save_as\x18\x17 \x01(\bR\tcanSaveAs\x12=\n" +
+	"\x1bresonite_link_clients_count\x18\x18 \x01(\x05R\x18resoniteLinkClientsCountB\x10\n" +
 	"\x0e_thumbnail_urlB\x10\n" +
 	"\x0e_last_saved_at\"B\n" +
 	"\x0fDefaultUserRole\x12\x12\n" +
@@ -4894,7 +5183,23 @@ const file_headless_v1_headless_proto_rawDesc = "" +
 	"\x12_username_override\"5\n" +
 	"\bRecordId\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
-	"\bowner_id\x18\x02 \x01(\tR\aownerId*\xa0\x01\n" +
+	"\bowner_id\x18\x02 \x01(\tR\aownerId\"\xa1\x01\n" +
+	"\x19ResoniteLinkStreamRequest\x123\n" +
+	"\x04init\x18\x01 \x01(\v2\x1d.headless.v1.ResoniteLinkInitH\x00R\x04init\x12\x1f\n" +
+	"\n" +
+	"text_frame\x18\x02 \x01(\tH\x00R\ttextFrame\x12#\n" +
+	"\fbinary_frame\x18\x03 \x01(\fH\x00R\vbinaryFrameB\t\n" +
+	"\apayload\"1\n" +
+	"\x10ResoniteLinkInit\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"\xa5\x01\n" +
+	"\x1aResoniteLinkStreamResponse\x126\n" +
+	"\x05ready\x18\x01 \x01(\v2\x1e.headless.v1.ResoniteLinkReadyH\x00R\x05ready\x12\x1f\n" +
+	"\n" +
+	"text_frame\x18\x02 \x01(\tH\x00R\ttextFrame\x12#\n" +
+	"\fbinary_frame\x18\x03 \x01(\fH\x00R\vbinaryFrameB\t\n" +
+	"\apayload\"\x13\n" +
+	"\x11ResoniteLinkReady*\xa0\x01\n" +
 	"\x11WorldBinaryFormat\x12#\n" +
 	"\x1fWORLD_BINARY_FORMAT_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aWORLD_BINARY_FORMAT_7ZBSON\x10\x01\x12\x1d\n" +
@@ -4913,7 +5218,7 @@ const file_headless_v1_headless_proto_rawDesc = "" +
 	"\x1eCONTACT_CHAT_MESSAGE_TYPE_TEXT\x10\x01\x12$\n" +
 	" CONTACT_CHAT_MESSAGE_TYPE_OBJECT\x10\x02\x12#\n" +
 	"\x1fCONTACT_CHAT_MESSAGE_TYPE_SOUND\x10\x03\x12,\n" +
-	"(CONTACT_CHAT_MESSAGE_TYPE_SESSION_INVITE\x10\x042\xe5\x15\n" +
+	"(CONTACT_CHAT_MESSAGE_TYPE_SESSION_INVITE\x10\x042\xd0\x16\n" +
 	"\x16HeadlessControlService\x12G\n" +
 	"\bGetAbout\x12\x1c.headless.v1.GetAboutRequest\x1a\x1d.headless.v1.GetAboutResponse\x12J\n" +
 	"\tGetStatus\x12\x1d.headless.v1.GetStatusRequest\x1a\x1e.headless.v1.GetStatusResponse\x12G\n" +
@@ -4939,7 +5244,8 @@ const file_headless_v1_headless_proto_rawDesc = "" +
 	"\x0fAllowHostAccess\x12#.headless.v1.AllowHostAccessRequest\x1a$.headless.v1.AllowHostAccessResponse\x12Y\n" +
 	"\x0eDenyHostAccess\x12\".headless.v1.DenyHostAccessRequest\x1a#.headless.v1.DenyHostAccessResponse\x12z\n" +
 	"\x19GetStartupConfigToRestore\x12-.headless.v1.GetStartupConfigToRestoreRequest\x1a..headless.v1.GetStartupConfigToRestoreResponse\x12m\n" +
-	"\x14DownloadSessionWorld\x12(.headless.v1.DownloadSessionWorldRequest\x1a).headless.v1.DownloadSessionWorldResponse0\x01\x12Y\n" +
+	"\x14DownloadSessionWorld\x12(.headless.v1.DownloadSessionWorldRequest\x1a).headless.v1.DownloadSessionWorldResponse0\x01\x12i\n" +
+	"\x12ResoniteLinkStream\x12&.headless.v1.ResoniteLinkStreamRequest\x1a'.headless.v1.ResoniteLinkStreamResponse(\x010\x01\x12Y\n" +
 	"\x0eGetAccountInfo\x12\".headless.v1.GetAccountInfoRequest\x1a#.headless.v1.GetAccountInfoResponse\x12Y\n" +
 	"\x0eFetchWorldInfo\x12\".headless.v1.FetchWorldInfoRequest\x1a#.headless.v1.FetchWorldInfoResponse\x12Y\n" +
 	"\x0eSearchUserInfo\x12\".headless.v1.SearchUserInfoRequest\x1a#.headless.v1.SearchUserInfoResponse\x12b\n" +
@@ -4963,7 +5269,7 @@ func file_headless_v1_headless_proto_rawDescGZIP() []byte {
 }
 
 var file_headless_v1_headless_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_headless_v1_headless_proto_msgTypes = make([]protoimpl.MessageInfo, 69)
+var file_headless_v1_headless_proto_msgTypes = make([]protoimpl.MessageInfo, 73)
 var file_headless_v1_headless_proto_goTypes = []any{
 	(WorldBinaryFormat)(0),                    // 0: headless.v1.WorldBinaryFormat
 	(AccessLevel)(0),                          // 1: headless.v1.AccessLevel
@@ -5039,7 +5345,11 @@ var file_headless_v1_headless_proto_goTypes = []any{
 	(*AllowedAccessEntry)(nil),                // 71: headless.v1.AllowedAccessEntry
 	(*StartupConfig)(nil),                     // 72: headless.v1.StartupConfig
 	(*RecordId)(nil),                          // 73: headless.v1.RecordId
-	(*timestamppb.Timestamp)(nil),             // 74: google.protobuf.Timestamp
+	(*ResoniteLinkStreamRequest)(nil),         // 74: headless.v1.ResoniteLinkStreamRequest
+	(*ResoniteLinkInit)(nil),                  // 75: headless.v1.ResoniteLinkInit
+	(*ResoniteLinkStreamResponse)(nil),        // 76: headless.v1.ResoniteLinkStreamResponse
+	(*ResoniteLinkReady)(nil),                 // 77: headless.v1.ResoniteLinkReady
+	(*timestamppb.Timestamp)(nil),             // 78: google.protobuf.Timestamp
 }
 var file_headless_v1_headless_proto_depIdxs = []int32{
 	72, // 0: headless.v1.GetStartupConfigToRestoreResponse.startup_config:type_name -> headless.v1.StartupConfig
@@ -5061,82 +5371,86 @@ var file_headless_v1_headless_proto_depIdxs = []int32{
 	65, // 16: headless.v1.ListUsersInSessionResponse.users:type_name -> headless.v1.UserInSession
 	1,  // 17: headless.v1.Session.access_level:type_name -> headless.v1.AccessLevel
 	69, // 18: headless.v1.Session.startup_parameters:type_name -> headless.v1.WorldStartupParameters
-	74, // 19: headless.v1.Session.last_saved_at:type_name -> google.protobuf.Timestamp
-	74, // 20: headless.v1.Session.started_at:type_name -> google.protobuf.Timestamp
+	78, // 19: headless.v1.Session.last_saved_at:type_name -> google.protobuf.Timestamp
+	78, // 20: headless.v1.Session.started_at:type_name -> google.protobuf.Timestamp
 	1,  // 21: headless.v1.WorldStartupParameters.access_level:type_name -> headless.v1.AccessLevel
 	68, // 22: headless.v1.WorldStartupParameters.default_user_roles:type_name -> headless.v1.DefaultUserRole
 	73, // 23: headless.v1.WorldStartupParameters.override_corresponding_world_id:type_name -> headless.v1.RecordId
 	2,  // 24: headless.v1.ContactChatMessage.type:type_name -> headless.v1.ContactChatMessageType
-	74, // 25: headless.v1.ContactChatMessage.send_time:type_name -> google.protobuf.Timestamp
-	74, // 26: headless.v1.ContactChatMessage.read_time:type_name -> google.protobuf.Timestamp
+	78, // 25: headless.v1.ContactChatMessage.send_time:type_name -> google.protobuf.Timestamp
+	78, // 26: headless.v1.ContactChatMessage.read_time:type_name -> google.protobuf.Timestamp
 	4,  // 27: headless.v1.AllowedAccessEntry.access_types:type_name -> headless.v1.AllowedAccessEntry.AccessType
 	69, // 28: headless.v1.StartupConfig.start_worlds:type_name -> headless.v1.WorldStartupParameters
 	71, // 29: headless.v1.StartupConfig.allowed_url_hosts:type_name -> headless.v1.AllowedAccessEntry
-	35, // 30: headless.v1.HeadlessControlService.GetAbout:input_type -> headless.v1.GetAboutRequest
-	37, // 31: headless.v1.HeadlessControlService.GetStatus:input_type -> headless.v1.GetStatusRequest
-	39, // 32: headless.v1.HeadlessControlService.Shutdown:input_type -> headless.v1.ShutdownRequest
-	41, // 33: headless.v1.HeadlessControlService.ListSessions:input_type -> headless.v1.ListSessionsRequest
-	43, // 34: headless.v1.HeadlessControlService.GetSession:input_type -> headless.v1.GetSessionRequest
-	45, // 35: headless.v1.HeadlessControlService.StartWorld:input_type -> headless.v1.StartWorldRequest
-	47, // 36: headless.v1.HeadlessControlService.StopSession:input_type -> headless.v1.StopSessionRequest
-	49, // 37: headless.v1.HeadlessControlService.SaveSessionWorld:input_type -> headless.v1.SaveSessionWorldRequest
-	51, // 38: headless.v1.HeadlessControlService.SaveAsSessionWorld:input_type -> headless.v1.SaveAsSessionWorldRequest
-	55, // 39: headless.v1.HeadlessControlService.InviteUser:input_type -> headless.v1.InviteUserRequest
-	57, // 40: headless.v1.HeadlessControlService.AllowUserToJoin:input_type -> headless.v1.AllowUserToJoinRequest
-	59, // 41: headless.v1.HeadlessControlService.UpdateUserRole:input_type -> headless.v1.UpdateUserRoleRequest
-	61, // 42: headless.v1.HeadlessControlService.UpdateSessionParameters:input_type -> headless.v1.UpdateSessionParametersRequest
-	63, // 43: headless.v1.HeadlessControlService.ListUsersInSession:input_type -> headless.v1.ListUsersInSessionRequest
-	25, // 44: headless.v1.HeadlessControlService.KickUser:input_type -> headless.v1.KickUserRequest
-	27, // 45: headless.v1.HeadlessControlService.BanUser:input_type -> headless.v1.BanUserRequest
-	7,  // 46: headless.v1.HeadlessControlService.GetHostSettings:input_type -> headless.v1.GetHostSettingsRequest
-	9,  // 47: headless.v1.HeadlessControlService.UpdateHostSettings:input_type -> headless.v1.UpdateHostSettingsRequest
-	11, // 48: headless.v1.HeadlessControlService.AllowHostAccess:input_type -> headless.v1.AllowHostAccessRequest
-	13, // 49: headless.v1.HeadlessControlService.DenyHostAccess:input_type -> headless.v1.DenyHostAccessRequest
-	5,  // 50: headless.v1.HeadlessControlService.GetStartupConfigToRestore:input_type -> headless.v1.GetStartupConfigToRestoreRequest
-	53, // 51: headless.v1.HeadlessControlService.DownloadSessionWorld:input_type -> headless.v1.DownloadSessionWorldRequest
-	31, // 52: headless.v1.HeadlessControlService.GetAccountInfo:input_type -> headless.v1.GetAccountInfoRequest
-	33, // 53: headless.v1.HeadlessControlService.FetchWorldInfo:input_type -> headless.v1.FetchWorldInfoRequest
-	29, // 54: headless.v1.HeadlessControlService.SearchUserInfo:input_type -> headless.v1.SearchUserInfoRequest
-	23, // 55: headless.v1.HeadlessControlService.GetFriendRequests:input_type -> headless.v1.GetFriendRequestsRequest
-	21, // 56: headless.v1.HeadlessControlService.AcceptFriendRequests:input_type -> headless.v1.AcceptFriendRequestsRequest
-	15, // 57: headless.v1.HeadlessControlService.ListContacts:input_type -> headless.v1.ListContactsRequest
-	17, // 58: headless.v1.HeadlessControlService.GetContactMessages:input_type -> headless.v1.GetContactMessagesRequest
-	19, // 59: headless.v1.HeadlessControlService.SendContactMessage:input_type -> headless.v1.SendContactMessageRequest
-	36, // 60: headless.v1.HeadlessControlService.GetAbout:output_type -> headless.v1.GetAboutResponse
-	38, // 61: headless.v1.HeadlessControlService.GetStatus:output_type -> headless.v1.GetStatusResponse
-	40, // 62: headless.v1.HeadlessControlService.Shutdown:output_type -> headless.v1.ShutdownResponse
-	42, // 63: headless.v1.HeadlessControlService.ListSessions:output_type -> headless.v1.ListSessionsResponse
-	44, // 64: headless.v1.HeadlessControlService.GetSession:output_type -> headless.v1.GetSessionResponse
-	46, // 65: headless.v1.HeadlessControlService.StartWorld:output_type -> headless.v1.StartWorldResponse
-	48, // 66: headless.v1.HeadlessControlService.StopSession:output_type -> headless.v1.StopSessionResponse
-	50, // 67: headless.v1.HeadlessControlService.SaveSessionWorld:output_type -> headless.v1.SaveSessionWorldResponse
-	52, // 68: headless.v1.HeadlessControlService.SaveAsSessionWorld:output_type -> headless.v1.SaveAsSessionWorldResponse
-	56, // 69: headless.v1.HeadlessControlService.InviteUser:output_type -> headless.v1.InviteUserResponse
-	58, // 70: headless.v1.HeadlessControlService.AllowUserToJoin:output_type -> headless.v1.AllowUserToJoinResponse
-	60, // 71: headless.v1.HeadlessControlService.UpdateUserRole:output_type -> headless.v1.UpdateUserRoleResponse
-	62, // 72: headless.v1.HeadlessControlService.UpdateSessionParameters:output_type -> headless.v1.UpdateSessionParametersResponse
-	64, // 73: headless.v1.HeadlessControlService.ListUsersInSession:output_type -> headless.v1.ListUsersInSessionResponse
-	26, // 74: headless.v1.HeadlessControlService.KickUser:output_type -> headless.v1.KickUserResponse
-	28, // 75: headless.v1.HeadlessControlService.BanUser:output_type -> headless.v1.BanUserResponse
-	8,  // 76: headless.v1.HeadlessControlService.GetHostSettings:output_type -> headless.v1.GetHostSettingsResponse
-	10, // 77: headless.v1.HeadlessControlService.UpdateHostSettings:output_type -> headless.v1.UpdateHostSettingsResponse
-	12, // 78: headless.v1.HeadlessControlService.AllowHostAccess:output_type -> headless.v1.AllowHostAccessResponse
-	14, // 79: headless.v1.HeadlessControlService.DenyHostAccess:output_type -> headless.v1.DenyHostAccessResponse
-	6,  // 80: headless.v1.HeadlessControlService.GetStartupConfigToRestore:output_type -> headless.v1.GetStartupConfigToRestoreResponse
-	54, // 81: headless.v1.HeadlessControlService.DownloadSessionWorld:output_type -> headless.v1.DownloadSessionWorldResponse
-	32, // 82: headless.v1.HeadlessControlService.GetAccountInfo:output_type -> headless.v1.GetAccountInfoResponse
-	34, // 83: headless.v1.HeadlessControlService.FetchWorldInfo:output_type -> headless.v1.FetchWorldInfoResponse
-	30, // 84: headless.v1.HeadlessControlService.SearchUserInfo:output_type -> headless.v1.SearchUserInfoResponse
-	24, // 85: headless.v1.HeadlessControlService.GetFriendRequests:output_type -> headless.v1.GetFriendRequestsResponse
-	22, // 86: headless.v1.HeadlessControlService.AcceptFriendRequests:output_type -> headless.v1.AcceptFriendRequestsResponse
-	16, // 87: headless.v1.HeadlessControlService.ListContacts:output_type -> headless.v1.ListContactsResponse
-	18, // 88: headless.v1.HeadlessControlService.GetContactMessages:output_type -> headless.v1.GetContactMessagesResponse
-	20, // 89: headless.v1.HeadlessControlService.SendContactMessage:output_type -> headless.v1.SendContactMessageResponse
-	60, // [60:90] is the sub-list for method output_type
-	30, // [30:60] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	75, // 30: headless.v1.ResoniteLinkStreamRequest.init:type_name -> headless.v1.ResoniteLinkInit
+	77, // 31: headless.v1.ResoniteLinkStreamResponse.ready:type_name -> headless.v1.ResoniteLinkReady
+	35, // 32: headless.v1.HeadlessControlService.GetAbout:input_type -> headless.v1.GetAboutRequest
+	37, // 33: headless.v1.HeadlessControlService.GetStatus:input_type -> headless.v1.GetStatusRequest
+	39, // 34: headless.v1.HeadlessControlService.Shutdown:input_type -> headless.v1.ShutdownRequest
+	41, // 35: headless.v1.HeadlessControlService.ListSessions:input_type -> headless.v1.ListSessionsRequest
+	43, // 36: headless.v1.HeadlessControlService.GetSession:input_type -> headless.v1.GetSessionRequest
+	45, // 37: headless.v1.HeadlessControlService.StartWorld:input_type -> headless.v1.StartWorldRequest
+	47, // 38: headless.v1.HeadlessControlService.StopSession:input_type -> headless.v1.StopSessionRequest
+	49, // 39: headless.v1.HeadlessControlService.SaveSessionWorld:input_type -> headless.v1.SaveSessionWorldRequest
+	51, // 40: headless.v1.HeadlessControlService.SaveAsSessionWorld:input_type -> headless.v1.SaveAsSessionWorldRequest
+	55, // 41: headless.v1.HeadlessControlService.InviteUser:input_type -> headless.v1.InviteUserRequest
+	57, // 42: headless.v1.HeadlessControlService.AllowUserToJoin:input_type -> headless.v1.AllowUserToJoinRequest
+	59, // 43: headless.v1.HeadlessControlService.UpdateUserRole:input_type -> headless.v1.UpdateUserRoleRequest
+	61, // 44: headless.v1.HeadlessControlService.UpdateSessionParameters:input_type -> headless.v1.UpdateSessionParametersRequest
+	63, // 45: headless.v1.HeadlessControlService.ListUsersInSession:input_type -> headless.v1.ListUsersInSessionRequest
+	25, // 46: headless.v1.HeadlessControlService.KickUser:input_type -> headless.v1.KickUserRequest
+	27, // 47: headless.v1.HeadlessControlService.BanUser:input_type -> headless.v1.BanUserRequest
+	7,  // 48: headless.v1.HeadlessControlService.GetHostSettings:input_type -> headless.v1.GetHostSettingsRequest
+	9,  // 49: headless.v1.HeadlessControlService.UpdateHostSettings:input_type -> headless.v1.UpdateHostSettingsRequest
+	11, // 50: headless.v1.HeadlessControlService.AllowHostAccess:input_type -> headless.v1.AllowHostAccessRequest
+	13, // 51: headless.v1.HeadlessControlService.DenyHostAccess:input_type -> headless.v1.DenyHostAccessRequest
+	5,  // 52: headless.v1.HeadlessControlService.GetStartupConfigToRestore:input_type -> headless.v1.GetStartupConfigToRestoreRequest
+	53, // 53: headless.v1.HeadlessControlService.DownloadSessionWorld:input_type -> headless.v1.DownloadSessionWorldRequest
+	74, // 54: headless.v1.HeadlessControlService.ResoniteLinkStream:input_type -> headless.v1.ResoniteLinkStreamRequest
+	31, // 55: headless.v1.HeadlessControlService.GetAccountInfo:input_type -> headless.v1.GetAccountInfoRequest
+	33, // 56: headless.v1.HeadlessControlService.FetchWorldInfo:input_type -> headless.v1.FetchWorldInfoRequest
+	29, // 57: headless.v1.HeadlessControlService.SearchUserInfo:input_type -> headless.v1.SearchUserInfoRequest
+	23, // 58: headless.v1.HeadlessControlService.GetFriendRequests:input_type -> headless.v1.GetFriendRequestsRequest
+	21, // 59: headless.v1.HeadlessControlService.AcceptFriendRequests:input_type -> headless.v1.AcceptFriendRequestsRequest
+	15, // 60: headless.v1.HeadlessControlService.ListContacts:input_type -> headless.v1.ListContactsRequest
+	17, // 61: headless.v1.HeadlessControlService.GetContactMessages:input_type -> headless.v1.GetContactMessagesRequest
+	19, // 62: headless.v1.HeadlessControlService.SendContactMessage:input_type -> headless.v1.SendContactMessageRequest
+	36, // 63: headless.v1.HeadlessControlService.GetAbout:output_type -> headless.v1.GetAboutResponse
+	38, // 64: headless.v1.HeadlessControlService.GetStatus:output_type -> headless.v1.GetStatusResponse
+	40, // 65: headless.v1.HeadlessControlService.Shutdown:output_type -> headless.v1.ShutdownResponse
+	42, // 66: headless.v1.HeadlessControlService.ListSessions:output_type -> headless.v1.ListSessionsResponse
+	44, // 67: headless.v1.HeadlessControlService.GetSession:output_type -> headless.v1.GetSessionResponse
+	46, // 68: headless.v1.HeadlessControlService.StartWorld:output_type -> headless.v1.StartWorldResponse
+	48, // 69: headless.v1.HeadlessControlService.StopSession:output_type -> headless.v1.StopSessionResponse
+	50, // 70: headless.v1.HeadlessControlService.SaveSessionWorld:output_type -> headless.v1.SaveSessionWorldResponse
+	52, // 71: headless.v1.HeadlessControlService.SaveAsSessionWorld:output_type -> headless.v1.SaveAsSessionWorldResponse
+	56, // 72: headless.v1.HeadlessControlService.InviteUser:output_type -> headless.v1.InviteUserResponse
+	58, // 73: headless.v1.HeadlessControlService.AllowUserToJoin:output_type -> headless.v1.AllowUserToJoinResponse
+	60, // 74: headless.v1.HeadlessControlService.UpdateUserRole:output_type -> headless.v1.UpdateUserRoleResponse
+	62, // 75: headless.v1.HeadlessControlService.UpdateSessionParameters:output_type -> headless.v1.UpdateSessionParametersResponse
+	64, // 76: headless.v1.HeadlessControlService.ListUsersInSession:output_type -> headless.v1.ListUsersInSessionResponse
+	26, // 77: headless.v1.HeadlessControlService.KickUser:output_type -> headless.v1.KickUserResponse
+	28, // 78: headless.v1.HeadlessControlService.BanUser:output_type -> headless.v1.BanUserResponse
+	8,  // 79: headless.v1.HeadlessControlService.GetHostSettings:output_type -> headless.v1.GetHostSettingsResponse
+	10, // 80: headless.v1.HeadlessControlService.UpdateHostSettings:output_type -> headless.v1.UpdateHostSettingsResponse
+	12, // 81: headless.v1.HeadlessControlService.AllowHostAccess:output_type -> headless.v1.AllowHostAccessResponse
+	14, // 82: headless.v1.HeadlessControlService.DenyHostAccess:output_type -> headless.v1.DenyHostAccessResponse
+	6,  // 83: headless.v1.HeadlessControlService.GetStartupConfigToRestore:output_type -> headless.v1.GetStartupConfigToRestoreResponse
+	54, // 84: headless.v1.HeadlessControlService.DownloadSessionWorld:output_type -> headless.v1.DownloadSessionWorldResponse
+	76, // 85: headless.v1.HeadlessControlService.ResoniteLinkStream:output_type -> headless.v1.ResoniteLinkStreamResponse
+	32, // 86: headless.v1.HeadlessControlService.GetAccountInfo:output_type -> headless.v1.GetAccountInfoResponse
+	34, // 87: headless.v1.HeadlessControlService.FetchWorldInfo:output_type -> headless.v1.FetchWorldInfoResponse
+	30, // 88: headless.v1.HeadlessControlService.SearchUserInfo:output_type -> headless.v1.SearchUserInfoResponse
+	24, // 89: headless.v1.HeadlessControlService.GetFriendRequests:output_type -> headless.v1.GetFriendRequestsResponse
+	22, // 90: headless.v1.HeadlessControlService.AcceptFriendRequests:output_type -> headless.v1.AcceptFriendRequestsResponse
+	16, // 91: headless.v1.HeadlessControlService.ListContacts:output_type -> headless.v1.ListContactsResponse
+	18, // 92: headless.v1.HeadlessControlService.GetContactMessages:output_type -> headless.v1.GetContactMessagesResponse
+	20, // 93: headless.v1.HeadlessControlService.SendContactMessage:output_type -> headless.v1.SendContactMessageResponse
+	63, // [63:94] is the sub-list for method output_type
+	32, // [32:63] is the sub-list for method input_type
+	32, // [32:32] is the sub-list for extension type_name
+	32, // [32:32] is the sub-list for extension extendee
+	0,  // [0:32] is the sub-list for field type_name
 }
 
 func init() { file_headless_v1_headless_proto_init() }
@@ -5179,13 +5493,23 @@ func file_headless_v1_headless_proto_init() {
 	}
 	file_headless_v1_headless_proto_msgTypes[65].OneofWrappers = []any{}
 	file_headless_v1_headless_proto_msgTypes[67].OneofWrappers = []any{}
+	file_headless_v1_headless_proto_msgTypes[69].OneofWrappers = []any{
+		(*ResoniteLinkStreamRequest_Init)(nil),
+		(*ResoniteLinkStreamRequest_TextFrame)(nil),
+		(*ResoniteLinkStreamRequest_BinaryFrame)(nil),
+	}
+	file_headless_v1_headless_proto_msgTypes[71].OneofWrappers = []any{
+		(*ResoniteLinkStreamResponse_Ready)(nil),
+		(*ResoniteLinkStreamResponse_TextFrame)(nil),
+		(*ResoniteLinkStreamResponse_BinaryFrame)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_headless_v1_headless_proto_rawDesc), len(file_headless_v1_headless_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   69,
+			NumMessages:   73,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

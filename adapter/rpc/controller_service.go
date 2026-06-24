@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/converter"
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/resonitelink"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
@@ -1045,6 +1046,32 @@ func (c *ControllerService) InviteUser(ctx context.Context, req *connect.Request
 	}
 
 	res := connect.NewResponse(&hdlctrlv1.InviteUserResponse{})
+
+	return res, nil
+}
+
+// IssueResoniteLinkConnection implements hdlctrlv1connect.ControllerServiceHandler.
+// 認証済みユーザに対し ResoniteLink WebSocket 接続用の path?query を返す。
+// 返される ws_path は host を含まない相対パスで、クライアントが現在の origin を補完して使う。
+func (c *ControllerService) IssueResoniteLinkConnection(ctx context.Context, req *connect.Request[hdlctrlv1.IssueResoniteLinkConnectionRequest]) (*connect.Response[hdlctrlv1.IssueResoniteLinkConnectionResponse], error) {
+	claims, err := auth.GetAuthClaimsFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	if req.Msg.GetSessionId() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("session_id is required"))
+	}
+
+	token, expiresAt, err := c.suc.IssueResoniteLinkToken(ctx, req.Msg.GetSessionId(), claims.UserID)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.IssueResoniteLinkConnectionResponse{
+		WsPath:    resonitelink.BuildWSPath(token),
+		ExpiresAt: timestamppb.New(expiresAt),
+	})
 
 	return res, nil
 }
