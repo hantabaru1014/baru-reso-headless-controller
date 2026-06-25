@@ -84,6 +84,9 @@ const meta = {
     loadingSkeletonCount: {
       control: "number",
     },
+    enableColumnResizing: {
+      control: "boolean",
+    },
   },
   args: {
     // @ts-expect-error なんかエラー出るけどとりあえず動くから無視
@@ -167,6 +170,28 @@ export const WithPaginationSinglePage: Story = {
         }}
       />
     );
+  },
+};
+
+/**
+ * ヘッダー右端の境界をマウスでドラッグするとカラム幅を変更できる。
+ * 初期状態はリサイズ無効時と同じく content による auto-sizing。
+ * `minSize` / `maxSize` を column 定義で指定するとドラッグ時の上下限を制限できる。
+ */
+export const ColumnResizing: Story = {
+  args: {
+    enableColumnResizing: true,
+  },
+  render: function Render(args) {
+    const data = useMemo(() => generateSampleData(8), []);
+    return <DataTable {...args} columns={columns} data={data} />;
+  },
+};
+
+/** `enableColumnResizing` を false にするとリサイズハンドルが消える。 */
+export const ColumnResizingDisabled: Story = {
+  args: {
+    enableColumnResizing: false,
   },
 };
 
