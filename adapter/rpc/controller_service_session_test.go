@@ -488,30 +488,14 @@ func TestControllerService_UpdateUserRole(t *testing.T) {
 }
 
 func TestControllerService_StartWorld(t *testing.T) {
-	t.Run("成功: ワールドを起動", func(t *testing.T) {
+	t.Run("成功: 非同期 job が登録される", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
 		client := setupAuthenticatedClient(t, setup.service)
 
-		// Create test account and host
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
-		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
-
-		// Mock HostConnector - GetRpcClient
-		setup.mockHostConnector.EXPECT().
-			GetRpcClient(gomock.Any(), gomock.Any()).
-			Return(setup.mockRpcClient, nil)
-
-		// Mock RPC call to start world
-		setup.mockRpcClient.EXPECT().
-			StartWorld(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.StartWorldResponse{
-				OpenedSession: &headlessv1.Session{
-					Id:   "session-new",
-					Name: "TestWorld",
-				},
-			}, nil)
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_EXITED)
 
 		worldUrl := "resrec:///U-test/R-12345"
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.StartWorldRequest{
@@ -523,9 +507,8 @@ func TestControllerService_StartWorld(t *testing.T) {
 
 		res, err := client.StartWorld(t.Context(), req)
 		require.NoError(t, err)
-		assert.NotNil(t, res.Msg)
-		assert.NotNil(t, res.Msg.GetOpenedSession())
-		assert.Equal(t, "session-new", res.Msg.GetOpenedSession().GetId())
+		require.NotNil(t, res.Msg)
+		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_START_SESSION))
 	})
 
 	t.Run("失敗: 存在しないホスト", func(t *testing.T) {
@@ -550,164 +533,12 @@ func TestControllerService_StartWorld(t *testing.T) {
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
-
-	t.Run("成功: forcePortが未指定の場合、ポート範囲から自動割り当て", func(t *testing.T) {
-		// 環境変数を設定
-		t.Setenv("SESSION_PORT_MIN", "30000")
-		t.Setenv("SESSION_PORT_MAX", "30100")
-
-		setup := setupControllerServiceTest(t)
-		defer setup.Cleanup()
-
-		client := setupAuthenticatedClient(t, setup.service)
-
-		// Create test account and host
-		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test-port", "test-port@example.test", "password")
-		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test-port", "TestHost", entity.HeadlessHostStatus_RUNNING)
-
-		// Mock HostConnector - GetRpcClient
-		setup.mockHostConnector.EXPECT().
-			GetRpcClient(gomock.Any(), gomock.Any()).
-			Return(setup.mockRpcClient, nil)
-
-		// Mock RPC call to start world
-		// forcePortが範囲内（30000-30100）で設定されていることを検証
-		setup.mockRpcClient.EXPECT().
-			StartWorld(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx any, req *headlessv1.StartWorldRequest, opts ...any) (*headlessv1.StartWorldResponse, error) {
-				// forcePortが自動割り当てされていることを確認
-				assert.NotEqual(t, uint32(0), req.GetParameters().GetForcePort(), "ForcePort should be auto-assigned")
-				assert.GreaterOrEqual(t, req.GetParameters().GetForcePort(), uint32(30000), "ForcePort should be >= 30000")
-				assert.LessOrEqual(t, req.GetParameters().GetForcePort(), uint32(30100), "ForcePort should be <= 30100")
-
-				return &headlessv1.StartWorldResponse{
-					OpenedSession: &headlessv1.Session{
-						Id:   "session-new",
-						Name: "TestWorld",
-					},
-				}, nil
-			})
-
-		worldUrl := "resrec:///U-test-port/R-12345"
-		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.StartWorldRequest{
-			HostId: host.ID,
-			Parameters: &headlessv1.WorldStartupParameters{
-				LoadWorld: &headlessv1.WorldStartupParameters_LoadWorldUrl{LoadWorldUrl: worldUrl},
-				// ForcePortは未指定（0）
-			},
-		})
-
-		res, err := client.StartWorld(t.Context(), req)
-		require.NoError(t, err)
-		assert.NotNil(t, res.Msg)
-		assert.NotNil(t, res.Msg.GetOpenedSession())
-		assert.Equal(t, "session-new", res.Msg.GetOpenedSession().GetId())
-	})
-
-	t.Run("成功: forcePortが明示的に指定された場合、その値を使用", func(t *testing.T) {
-		// 環境変数を設定
-		t.Setenv("SESSION_PORT_MIN", "30000")
-		t.Setenv("SESSION_PORT_MAX", "30100")
-
-		setup := setupControllerServiceTest(t)
-		defer setup.Cleanup()
-
-		client := setupAuthenticatedClient(t, setup.service)
-
-		// Create test account and host
-		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test-port2", "test-port2@example.test", "password")
-		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test-port2", "TestHost2", entity.HeadlessHostStatus_RUNNING)
-
-		// Mock HostConnector - GetRpcClient
-		setup.mockHostConnector.EXPECT().
-			GetRpcClient(gomock.Any(), gomock.Any()).
-			Return(setup.mockRpcClient, nil)
-
-		// Mock RPC call to start world
-		// 明示的に指定したforcePortがそのまま使用されることを検証
-		expectedPort := uint32(40000)
-
-		setup.mockRpcClient.EXPECT().
-			StartWorld(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx any, req *headlessv1.StartWorldRequest, opts ...any) (*headlessv1.StartWorldResponse, error) {
-				// 明示的に指定したポートが使われていることを確認
-				assert.Equal(t, expectedPort, req.GetParameters().GetForcePort(), "ForcePort should be the explicitly specified value")
-
-				return &headlessv1.StartWorldResponse{
-					OpenedSession: &headlessv1.Session{
-						Id:   "session-new",
-						Name: "TestWorld",
-					},
-				}, nil
-			})
-
-		worldUrl := "resrec:///U-test-port2/R-12345"
-		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.StartWorldRequest{
-			HostId: host.ID,
-			Parameters: &headlessv1.WorldStartupParameters{
-				LoadWorld: &headlessv1.WorldStartupParameters_LoadWorldUrl{LoadWorldUrl: worldUrl},
-				ForcePort: expectedPort, // 明示的にポートを指定
-			},
-		})
-
-		res, err := client.StartWorld(t.Context(), req)
-		require.NoError(t, err)
-		assert.NotNil(t, res.Msg)
-		assert.NotNil(t, res.Msg.GetOpenedSession())
-		assert.Equal(t, "session-new", res.Msg.GetOpenedSession().GetId())
-	})
-
-	t.Run("成功: 環境変数が未設定の場合、forcePortは自動割り当てされない", func(t *testing.T) {
-		// 環境変数を明示的にクリア
-		t.Setenv("SESSION_PORT_MIN", "")
-		t.Setenv("SESSION_PORT_MAX", "")
-
-		setup := setupControllerServiceTest(t)
-		defer setup.Cleanup()
-
-		client := setupAuthenticatedClient(t, setup.service)
-
-		// Create test account and host
-		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test-noenv", "test-noenv@example.test", "password")
-		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test-noenv", "TestHost", entity.HeadlessHostStatus_RUNNING)
-
-		// Mock HostConnector - GetRpcClient
-		setup.mockHostConnector.EXPECT().
-			GetRpcClient(gomock.Any(), gomock.Any()).
-			Return(setup.mockRpcClient, nil)
-
-		// Mock RPC call to start world
-		// 環境変数が未設定の場合、forcePortは0のまま（自動割り当てされない）
-		setup.mockRpcClient.EXPECT().
-			StartWorld(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx any, req *headlessv1.StartWorldRequest, opts ...any) (*headlessv1.StartWorldResponse, error) {
-				// forcePortが自動割り当てされていないことを確認（0のまま）
-				assert.Equal(t, uint32(0), req.GetParameters().GetForcePort(), "ForcePort should not be auto-assigned when env vars are not set")
-
-				return &headlessv1.StartWorldResponse{
-					OpenedSession: &headlessv1.Session{
-						Id:   "session-new",
-						Name: "TestWorld",
-					},
-				}, nil
-			})
-
-		worldUrl := "resrec:///U-test-noenv/R-12345"
-		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.StartWorldRequest{
-			HostId: host.ID,
-			Parameters: &headlessv1.WorldStartupParameters{
-				LoadWorld: &headlessv1.WorldStartupParameters_LoadWorldUrl{LoadWorldUrl: worldUrl},
-				// ForcePortは未指定（0）
-			},
-		})
-
-		res, err := client.StartWorld(t.Context(), req)
-		require.NoError(t, err)
-		assert.NotNil(t, res.Msg)
-		assert.NotNil(t, res.Msg.GetOpenedSession())
-		assert.Equal(t, "session-new", res.Msg.GetOpenedSession().GetId())
-	})
 }
+
+// NOTE: forcePort の自動割り当てロジックは usecase.SessionUsecase.StartSession 内に
+// あり、非同期 job 化後は worker 経由で実行されるため、ここでは検証しない.
+// 既存の port 自動割り当てテストは usecase 層のテストへ移すか, AsyncJobExecutor
+// の統合テストでカバーする (TODO).
 
 func TestControllerService_InviteUser(t *testing.T) {
 	t.Run("成功: ユーザーIDでユーザーを招待", func(t *testing.T) {
@@ -799,38 +630,18 @@ func TestControllerService_InviteUser(t *testing.T) {
 }
 
 func TestControllerService_StopSession(t *testing.T) {
-	t.Run("成功: セッションを停止", func(t *testing.T) {
+	t.Run("成功: 非同期 job が登録される", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
 		client := setupAuthenticatedClient(t, setup.service)
 
-		// Create test account, host, and session
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
-		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
-		session := testutil.CreateTestSession(t, setup.queries, host.ID, "TestSession", entity.SessionStatus_RUNNING)
-
-		// Mock HostConnector - GetRpcClient
-		setup.mockHostConnector.EXPECT().
-			GetRpcClient(gomock.Any(), gomock.Any()).
-			Return(setup.mockRpcClient, nil).
-			AnyTimes()
-
-		// Mock RPC call to get session
-		setup.mockRpcClient.EXPECT().
-			GetSession(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.GetSessionResponse{
-				Session: &headlessv1.Session{
-					Id:   session.ID,
-					Name: session.Name,
-				},
-			}, nil).
-			AnyTimes()
-
-		// Mock RPC call to stop session
-		setup.mockRpcClient.EXPECT().
-			StopSession(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.StopSessionResponse{}, nil)
+		// 受付時 GetSession を通すには ENDED ステータスなら DB のみ参照する.
+		// RUNNING にすると cache miss → GetRpcClient 経由で CRASHED に降格して
+		// テストが副作用にまみれる. enqueue 確認用なので ENDED で十分.
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_EXITED)
+		session := testutil.CreateTestSession(t, setup.queries, host.ID, "TestSession", entity.SessionStatus_ENDED)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.StopSessionRequest{
 			SessionId: session.ID,
@@ -838,7 +649,8 @@ func TestControllerService_StopSession(t *testing.T) {
 
 		res, err := client.StopSession(t.Context(), req)
 		require.NoError(t, err)
-		assert.NotNil(t, res.Msg)
+		require.NotNil(t, res.Msg)
+		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_STOP_SESSION))
 	})
 
 	t.Run("失敗: 存在しないセッション", func(t *testing.T) {

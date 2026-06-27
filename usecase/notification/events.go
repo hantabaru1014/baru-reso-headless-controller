@@ -87,6 +87,21 @@ func SessionLifecycle(
 	}
 }
 
+// JobCompleted は非同期 job (ホスト/セッションの起動・停止等) の完了通知を作る.
+// bus.PublishTo(createdBy, ...) で投入元の user にだけ届けるのが想定用法.
+func JobCompleted(jobID, message string, level hdlctrlv1.JobCompletedEvent_Level) *hdlctrlv1.NotificationEvent {
+	return &hdlctrlv1.NotificationEvent{
+		OccurredAt: timestamppb.Now(),
+		Payload: &hdlctrlv1.NotificationEvent_JobCompleted{
+			JobCompleted: &hdlctrlv1.JobCompletedEvent{
+				JobId:   jobID,
+				Level:   level,
+				Message: message,
+			},
+		},
+	}
+}
+
 // KeepAlive はサーバが定期送出する no-op イベント. timestamp は呼び出し時刻.
 func KeepAlive() *hdlctrlv1.NotificationEvent {
 	return &hdlctrlv1.NotificationEvent{

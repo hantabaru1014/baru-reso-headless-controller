@@ -82,7 +82,9 @@ export default function NewSessionForm() {
         hostId: data.hostId,
         parameters: buildStartWorldParameters(data),
       });
-      toast.success("セッションを開始しました");
+      // 非同期 job として実行されるので「受け付けた」だけ通知し、
+      // 完了は notificationDispatch 経由の JobCompletedEvent toast で出す.
+      toast.success("セッションの開始を受け付けました");
       navigate("/sessions");
     } catch (e) {
       toast.error(`エラー: ${e instanceof Error ? e.message : e}`);

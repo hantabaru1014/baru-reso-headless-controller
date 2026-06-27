@@ -360,10 +360,9 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
         withUpdate: true,
         withWorldRestart: true,
       });
-      setTimeout(() => {
-        refetch();
-      }, 1000);
-      toast.success("ホストを再起動しました");
+      // 非同期 job として実行されるので「受け付けた」だけ通知し、完了は
+      // notificationDispatch 経由の JobCompletedEvent toast に任せる.
+      toast.success("ホストの再起動を開始しました");
     } catch (e) {
       toast.error(
         e instanceof Error ? e.message : "ホストの再起動に失敗しました",
@@ -374,10 +373,7 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
   const handleShutdown = async () => {
     try {
       await shutdownHost({ hostId });
-      setTimeout(() => {
-        refetch();
-      }, 1000);
-      toast.success("ホストをシャットダウンしました");
+      toast.success("ホストのシャットダウンを開始しました");
     } catch (e) {
       toast.error(
         e instanceof Error ? e.message : "ホストのシャットダウンに失敗しました",

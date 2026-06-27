@@ -49,7 +49,9 @@ export default function SessionControlButtons({
       await mutateStop({
         sessionId,
       });
-      toast.success("セッションを停止しました");
+      // 非同期 job として実行されるので「受け付けた」だけ通知し、
+      // 完了は notificationDispatch 経由の JobCompletedEvent toast で出す.
+      toast.success("セッションの停止を受け付けました");
       navigate("/sessions");
     } catch (e) {
       toast.error(`セッションの停止に失敗しました: ${e}`);

@@ -16,6 +16,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	"github.com/hantabaru1014/baru-reso-headless-controller/testutil"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/async_job"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/notification"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -74,9 +75,11 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 	buc := usecase.NewBlobUsecase(srepo, hhrepo, mockBlobstore)
 	sorepo := adapter.NewScheduledSessionOperationRepository(queries)
 	souc := usecase.NewScheduledSessionOperationUsecase(sorepo)
+	ajrepo := adapter.NewAsyncJobRepository(queries)
+	ajuc := async_job.NewUsecase(ajrepo)
 
 	// Setup service with real repositories
-	service := NewControllerService(hhrepo, srepo, hhuc, hauc, suc, buc, souc, mockSkyfrost, notification.NewBus())
+	service := NewControllerService(hhrepo, srepo, hhuc, hauc, suc, buc, souc, ajuc, mockSkyfrost, notification.NewBus())
 
 	return &controllerServiceTestSetup{
 		service:           service,

@@ -24,6 +24,13 @@ func (b *fakeBus) Publish(ev *hdlctrlv1.NotificationEvent) {
 	b.events = append(b.events, ev)
 }
 
+func (b *fakeBus) PublishTo(_ string, ev *hdlctrlv1.NotificationEvent) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.events = append(b.events, ev)
+}
+
 func (*fakeBus) Subscribe(_ context.Context, _ string) (<-chan *hdlctrlv1.NotificationEvent, func()) {
 	ch := make(chan *hdlctrlv1.NotificationEvent)
 	return ch, func() { close(ch) }

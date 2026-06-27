@@ -193,73 +193,21 @@ func scheduledSessionOperationToEntity(s db.ScheduledSessionOperation) (*entity.
 		return nil, errors.Wrap(err, 0)
 	}
 
-	var lastError *string
-
-	if s.LastError.Valid {
-		v := s.LastError.String
-		lastError = &v
-	}
-
-	var claimedBy *string
-
-	if s.ClaimedBy.Valid {
-		v := s.ClaimedBy.String
-		claimedBy = &v
-	}
-
-	var claimedAt *time.Time
-
-	if s.ClaimedAt.Valid {
-		v := s.ClaimedAt.Time
-		claimedAt = &v
-	}
-
-	var executedAt *time.Time
-
-	if s.ExecutedAt.Valid {
-		v := s.ExecutedAt.Time
-		executedAt = &v
-	}
-
-	var createdBy *string
-
-	if s.CreatedBy.Valid {
-		v := s.CreatedBy.String
-		createdBy = &v
-	}
-
-	var hostID *string
-
-	if s.HostID.Valid {
-		v := s.HostID.String
-		hostID = &v
-	}
-
-	var sessionID *string
-
-	if s.SessionID.Valid {
-		v := s.SessionID.String
-		sessionID = &v
-	}
-
-	payload := json.RawMessage(s.OperationPayload)
-	cfg := json.RawMessage(s.TriggerConfig)
-
 	return &entity.ScheduledSessionOperation{
 		ID:               id,
 		OperationType:    entity.ScheduledOperationType(s.OperationType),
-		OperationPayload: payload,
+		OperationPayload: json.RawMessage(s.OperationPayload),
 		TriggerType:      entity.ScheduledTriggerType(s.TriggerType),
-		TriggerConfig:    cfg,
+		TriggerConfig:    json.RawMessage(s.TriggerConfig),
 		NextFireAt:       s.NextFireAt.Time,
-		HostID:           hostID,
-		SessionID:        sessionID,
+		HostID:           ptrFromText(s.HostID),
+		SessionID:        ptrFromText(s.SessionID),
 		Status:           entity.ScheduledOperationStatus(s.Status),
-		LastError:        lastError,
-		ClaimedBy:        claimedBy,
-		ClaimedAt:        claimedAt,
-		ExecutedAt:       executedAt,
-		CreatedBy:        createdBy,
+		LastError:        ptrFromText(s.LastError),
+		ClaimedBy:        ptrFromText(s.ClaimedBy),
+		ClaimedAt:        ptrFromTimestamptz(s.ClaimedAt),
+		ExecutedAt:       ptrFromTimestamptz(s.ExecutedAt),
+		CreatedBy:        ptrFromText(s.CreatedBy),
 		CreatedAt:        s.CreatedAt.Time,
 		UpdatedAt:        s.UpdatedAt.Time,
 	}, nil

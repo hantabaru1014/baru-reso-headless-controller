@@ -13,6 +13,7 @@ import (
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -159,22 +160,24 @@ func (c *ControllerService) UpdateUserRole(ctx context.Context, req *connect.Req
 }
 
 // StartWorld implements hdlctrlv1connect.ControllerServiceHandler.
+// container への StartWorld RPC は時間がかかるため非同期 job 化する.
 func (c *ControllerService) StartWorld(ctx context.Context, req *connect.Request[hdlctrlv1.StartWorldRequest]) (*connect.Response[hdlctrlv1.StartWorldResponse], error) {
 	claims, err := auth.GetAuthClaimsFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	openedSession, err := c.suc.StartSession(ctx, req.Msg.GetHostId(), &claims.UserID, req.Msg.GetParameters(), &req.Msg.Memo)
+	// hhrepo.Find は DB のみで完結し、RUNNING ホストへの container RPC を起こさない.
+	if _, err := c.hhrepo.Find(ctx, req.Msg.GetHostId(), port.HeadlessHostFetchOptions{}); err != nil {
+		return nil, convertErr(err)
+	}
+
+	jobID, err := c.ajuc.EnqueueStartSession(ctx, req.Msg, &claims.UserID)
 	if err != nil {
 		return nil, convertErr(err)
 	}
 
-	res := connect.NewResponse(&hdlctrlv1.StartWorldResponse{
-		OpenedSession: converter.SessionEntityToProto(openedSession),
-	})
-
-	return res, nil
+	return connect.NewResponse(&hdlctrlv1.StartWorldResponse{JobId: jobID}), nil
 }
 
 // InviteUser implements hdlctrlv1connect.ControllerServiceHandler.
@@ -230,15 +233,25 @@ func (c *ControllerService) IssueResoniteLinkConnection(ctx context.Context, req
 }
 
 // StopSession implements hdlctrlv1connect.ControllerServiceHandler.
+// container への StopSession RPC は時間がかかるため非同期 job 化する.
 func (c *ControllerService) StopSession(ctx context.Context, req *connect.Request[hdlctrlv1.StopSessionRequest]) (*connect.Response[hdlctrlv1.StopSessionResponse], error) {
-	err := c.suc.StopSession(ctx, req.Msg.GetSessionId())
+	claims, err := auth.GetAuthClaimsFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	// srepo.Get は DB のみで完結する. SessionUsecase.GetSession は cache hydration や
+	// container RPC を起こすので、ここでは使わない.
+	if _, err := c.srepo.Get(ctx, req.Msg.GetSessionId()); err != nil {
+		return nil, convertErr(err)
+	}
+
+	jobID, err := c.ajuc.EnqueueStopSession(ctx, req.Msg, &claims.UserID)
 	if err != nil {
 		return nil, convertErr(err)
 	}
 
-	res := connect.NewResponse(&hdlctrlv1.StopSessionResponse{})
-
-	return res, nil
+	return connect.NewResponse(&hdlctrlv1.StopSessionResponse{JobId: jobID}), nil
 }
 
 // SearchSessions implements hdlctrlv1connect.ControllerServiceHandler.
