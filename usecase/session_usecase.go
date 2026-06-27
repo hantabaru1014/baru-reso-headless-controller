@@ -26,25 +26,39 @@ const (
 )
 
 type SessionUsecase struct {
-	sessionRepo       port.SessionRepository
-	hostRepo          port.HeadlessHostRepository
-	grpcCallTimeout   time.Duration
-	forcePortMin      int
-	forcePortMax      int
-	resoniteLinkTTL   time.Duration
-	portMutex         sync.Mutex
+	sessionRepo     port.SessionRepository
+	hostRepo        port.HeadlessHostRepository
+	hostDrainer     port.HostDrainer
+	grpcCallTimeout time.Duration
+	forcePortMin    int
+	forcePortMax    int
+	resoniteLinkTTL time.Duration
+	portMutex       sync.Mutex
 }
 
-func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.HeadlessHostRepository, grpcCfg *config.GRPCConfig, serverCfg *config.ServerConfig, linkCfg *config.ResoniteLinkConfig) *SessionUsecase {
+func NewSessionUsecase(
+	sessionRepo port.SessionRepository,
+	hostRepo port.HeadlessHostRepository,
+	hostDrainer port.HostDrainer,
+	grpcCfg *config.GRPCConfig,
+	serverCfg *config.ServerConfig,
+	linkCfg *config.ResoniteLinkConfig,
+) *SessionUsecase {
 	return &SessionUsecase{
 		sessionRepo:     sessionRepo,
 		hostRepo:        hostRepo,
+		hostDrainer:     hostDrainer,
 		grpcCallTimeout: grpcCfg.CallTimeout,
 		forcePortMin:    serverCfg.SessionPortMin,
 		forcePortMax:    serverCfg.SessionPortMax,
 		resoniteLinkTTL: linkCfg.TokenTTL,
 	}
 }
+
+// ErrHostDraining is returned by StartSession when the target host is
+// being drained for an in-flight auto-upgrade and therefore must not
+// accept new sessions.
+var ErrHostDraining = errors.New("host is draining for upgrade")
 
 // IssueResoniteLinkToken は ResoniteLink WebSocket 接続用の短期 JWT を発行する.
 // セッションが存在することを確認した上で、claims に session_id と userID を含める.
@@ -58,6 +72,10 @@ func (u *SessionUsecase) IssueResoniteLinkToken(ctx context.Context, sessionID, 
 }
 
 func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId *string, params *headlessv1.WorldStartupParameters, memo *string) (*entity.Session, error) {
+	if u.hostDrainer != nil && u.hostDrainer.IsHostDraining(hostId) {
+		return nil, ErrHostDraining
+	}
+
 	client, err := u.hostRepo.GetRpcClient(ctx, hostId)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)

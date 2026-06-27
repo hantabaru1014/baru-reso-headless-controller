@@ -53,21 +53,30 @@ func ProvideWorkerRunners(
 	imageChecker *worker.ImageChecker,
 	dockerEventWatcher *worker.DockerEventWatcher,
 	hostEventWatcher *worker.HostEventWatcher,
+	upgradeOrchestrator *worker.HostUpgradeOrchestrator,
 ) []worker.Runner {
 	return []worker.Runner{
 		imageChecker,
 		dockerEventWatcher,
 		hostEventWatcher,
+		upgradeOrchestrator,
 	}
 }
 
 // ProvideHostEventHandlers gathers consumers for the per-host event
-// streams. Today only a logging handler is registered; add real handlers
-// here as they come online.
+// streams.
 func ProvideHostEventHandlers(
 	loggingHandler *worker.LoggingHostEventHandler,
+	upgradeOrchestrator *worker.HostUpgradeOrchestrator,
 ) []worker.HostEventHandler {
-	return []worker.HostEventHandler{loggingHandler}
+	return []worker.HostEventHandler{loggingHandler, upgradeOrchestrator}
+}
+
+// ProvideHeadlessAccountFetcher exposes HeadlessAccountUsecase under the
+// orchestrator's narrow interface so the worker package does not have to
+// depend on the entire usecase package.
+func ProvideHeadlessAccountFetcher(u *usecase.HeadlessAccountUsecase) worker.HeadlessAccountFetcher {
+	return u
 }
 
 var ConfigSet = wire.NewSet(
@@ -113,6 +122,9 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		worker.NewSQLHostEventStore,
 		wire.Bind(new(worker.HostEventStore), new(*worker.SQLHostEventStore)),
 		worker.NewLoggingHostEventHandler,
+		worker.NewHostUpgradeOrchestrator,
+		wire.Bind(new(port.HostDrainer), new(*worker.HostUpgradeOrchestrator)),
+		ProvideHeadlessAccountFetcher,
 		ProvideHostEventHandlers,
 		ProvideWorkerRunners,
 		worker.NewManager,
@@ -157,6 +169,11 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 		adapter.NewHeadlessHostRepository,
 		wire.Bind(new(port.SessionRepository), new(*adapter.SessionRepository)),
 		adapter.NewSessionRepository,
+
+		// CLI has no upgrade orchestrator running, so SessionUsecase
+		// gets a no-op drainer.
+		wire.Struct(new(port.NoopHostDrainer)),
+		wire.Bind(new(port.HostDrainer), new(port.NoopHostDrainer)),
 
 		// usecase
 		usecase.NewUserUsecase,

@@ -77,7 +77,7 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 
 	// Setup usecases with real repositories
 	hauc := usecase.NewHeadlessAccountUsecase(queries, mockSkyfrost)
-	suc := usecase.NewSessionUsecase(srepo, hhrepo, &cfg.GRPC, &cfg.Server, &cfg.ResoniteLink)
+	suc := usecase.NewSessionUsecase(srepo, hhrepo, port.NoopHostDrainer{}, &cfg.GRPC, &cfg.Server, &cfg.ResoniteLink)
 	hhuc := usecase.NewHeadlessHostUsecase(hhrepo, srepo, suc, hauc)
 	buc := usecase.NewBlobUsecase(srepo, hhrepo, mockBlobstore)
 
@@ -1091,6 +1091,12 @@ func TestControllerService_RestartHeadlessHost(t *testing.T) {
 		// Mock HostConnector - Stop
 		setup.mockHostConnector.EXPECT().
 			Stop(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		// 旧コンテナの削除 (issue #21 対応)
+		setup.mockHostConnector.EXPECT().
+			Remove(gomock.Any(), gomock.Any()).
 			Return(nil).
 			Times(1)
 

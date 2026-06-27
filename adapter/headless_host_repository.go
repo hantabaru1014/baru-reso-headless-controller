@@ -244,6 +244,15 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 		}
 	}
 
+	// 旧コンテナを削除しておかないと、Resonite クラウド側で
+	// 同名ホストの machineId 衝突が起きて新しいコンテナがログインに
+	// 失敗することがある。issue #21 参照。Remove はコンテナが存在しない
+	// 場合は nil を返すので wasRunning でない場合でも安全に呼べる。
+	err = connector.Remove(ctx, connectStr)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
 	err = h.q.UpdateHostMemo(ctx, db.UpdateHostMemoParams{
 		ID: id,
 		Memo: pgtype.Text{
