@@ -31,8 +31,16 @@ RETURNING *;
 -- name: UpdateSessionStatus :exec
 UPDATE sessions SET status = $2 WHERE id = $1;
 
--- name: UpdateSessionCurrentState :exec
-UPDATE sessions SET current_state = $2 WHERE id = $1;
+-- name: UpdateSessionCurrentStateAndName :exec
+-- event 駆動の SessionParametersChanged 反映用。current_state と name の
+-- 部分更新にして、並行する UpdateSessionParameters / StartSession など
+-- の Upsert と他フィールドが衝突しないようにする
+UPDATE sessions SET current_state = $2, name = $3 WHERE id = $1;
+
+-- name: UpdateSessionAfterWorldSaved :exec
+-- event 駆動の WorldSaved 反映用。startup_parameters と current_state の
+-- 部分更新でレース耐性を持たせる
+UPDATE sessions SET startup_parameters = $2, current_state = $3 WHERE id = $1;
 
 -- name: GetSession :one
 SELECT * FROM sessions WHERE id = $1 LIMIT 1;

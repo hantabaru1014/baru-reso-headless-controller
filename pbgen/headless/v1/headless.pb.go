@@ -2573,7 +2573,11 @@ func (x *SaveSessionWorldRequest) GetSessionId() string {
 }
 
 type SaveSessionWorldResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 保存後の世界 record URL。preset 由来で初回 save された場合に
+	// controller が即座に最新 URL を得られるよう、save 完了時点の
+	// World.RecordURL を同期的に返す
+	SavedWorldUrl string `protobuf:"bytes,1,opt,name=saved_world_url,json=savedWorldUrl,proto3" json:"saved_world_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2606,6 +2610,13 @@ func (x *SaveSessionWorldResponse) ProtoReflect() protoreflect.Message {
 // Deprecated: Use SaveSessionWorldResponse.ProtoReflect.Descriptor instead.
 func (*SaveSessionWorldResponse) Descriptor() ([]byte, []int) {
 	return file_headless_v1_headless_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *SaveSessionWorldResponse) GetSavedWorldUrl() string {
+	if x != nil {
+		return x.SavedWorldUrl
+	}
+	return ""
 }
 
 type SaveAsSessionWorldRequest struct {
@@ -5509,8 +5520,9 @@ const file_headless_v1_headless_proto_rawDesc = "" +
 	"\x13StopSessionResponse\"8\n" +
 	"\x17SaveSessionWorldRequest\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\"\x1a\n" +
-	"\x18SaveSessionWorldResponse\"\xde\x01\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"B\n" +
+	"\x18SaveSessionWorldResponse\x12&\n" +
+	"\x0fsaved_world_url\x18\x01 \x01(\tR\rsavedWorldUrl\"\xde\x01\n" +
 	"\x19SaveAsSessionWorldRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12E\n" +

@@ -327,11 +327,20 @@ func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMo
 
 	switch saveMode {
 	case SaveMode_OVERWRITE:
-		_, err = client.SaveSessionWorld(ctx, &headlessv1.SaveSessionWorldRequest{SessionId: id})
+		// 保存後の最新 record URL は container 側 RPC response に含まれる。
+		// WorldSaved event 経由でも到達するが、ここで同期的に response から
+		// 取ることで preset 由来の初回 save (record URL が新規発番される)
+		// でも stale な CurrentState ではなく確実に最新 URL を返せる
+		resp, err := client.SaveSessionWorld(ctx, &headlessv1.SaveSessionWorldRequest{SessionId: id})
 		if err != nil {
 			return "", errors.Wrap(err, 0)
 		}
 
+		if url := resp.GetSavedWorldUrl(); url != "" {
+			return url, nil
+		}
+
+		// 旧 container との互換のため、空応答時は DB の CurrentState を fallback
 		return s.CurrentState.GetWorldUrl(), nil
 
 	case SaveMode_SAVE_AS:

@@ -15,15 +15,35 @@ import (
 	"google.golang.org/grpc"
 )
 
-// fakeSessionRepo is a minimal stub used to capture Upsert calls and seed
-// Get responses. Methods not exercised by the handler stay panicking via
-// the embedded interface to surface accidental usage.
+type partialUpdate struct {
+	id           string
+	currentState *headlessv1.Session
+	name         string
+}
+
+type afterSavedUpdate struct {
+	id                string
+	startupParameters *headlessv1.WorldStartupParameters
+	currentState      *headlessv1.Session
+}
+
+type statusUpdate struct {
+	id     string
+	status entity.SessionStatus
+}
+
+// fakeSessionRepo records which repository method handled each write so a
+// regression that re-introduces full Upsert (= race window) is caught.
 type fakeSessionRepo struct {
 	port.SessionRepository
 
 	mu       sync.Mutex
 	sessions map[string]*entity.Session
-	upserts  []*entity.Session
+
+	partialUpdates []partialUpdate
+	afterSaved     []afterSavedUpdate
+	statusUpdates  []statusUpdate
+	upsertCalls    int
 }
 
 func newFakeSessionRepo() *fakeSessionRepo {
@@ -42,12 +62,45 @@ func (r *fakeSessionRepo) Get(_ context.Context, id string) (*entity.Session, er
 	return s, nil
 }
 
-func (r *fakeSessionRepo) Upsert(_ context.Context, s *entity.Session) error {
+func (r *fakeSessionRepo) Upsert(_ context.Context, _ *entity.Session) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.sessions[s.ID] = s
-	r.upserts = append(r.upserts, s)
+	r.upsertCalls++
+
+	return nil
+}
+
+func (r *fakeSessionRepo) UpdateStatus(_ context.Context, id string, status entity.SessionStatus) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.statusUpdates = append(r.statusUpdates, statusUpdate{id: id, status: status})
+	if s, ok := r.sessions[id]; ok {
+		s.Status = status
+	}
+
+	return nil
+}
+
+func (r *fakeSessionRepo) UpdateCurrentStateAndName(_ context.Context, id string, currentState *headlessv1.Session, name string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.partialUpdates = append(r.partialUpdates, partialUpdate{id: id, currentState: currentState, name: name})
+	if s, ok := r.sessions[id]; ok {
+		s.CurrentState = currentState
+		s.Name = name
+	}
+
+	return nil
+}
+
+func (r *fakeSessionRepo) UpdateAfterWorldSaved(_ context.Context, id string, startupParameters *headlessv1.WorldStartupParameters, currentState *headlessv1.Session) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.afterSaved = append(r.afterSaved, afterSavedUpdate{id: id, startupParameters: startupParameters, currentState: currentState})
 
 	return nil
 }
@@ -74,18 +127,26 @@ func (r *fakeSessionRepo) seed(s *entity.Session) {
 	r.sessions[s.ID] = s
 }
 
-func (r *fakeSessionRepo) upsertSnapshot() []*entity.Session {
+type repoSnapshot struct {
+	Partials []partialUpdate
+	Afters   []afterSavedUpdate
+	Statuses []statusUpdate
+	Upserts  int
+}
+
+func (r *fakeSessionRepo) snapshot() repoSnapshot {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	out := make([]*entity.Session, len(r.upserts))
-	copy(out, r.upserts)
-
-	return out
+	return repoSnapshot{
+		Partials: append([]partialUpdate(nil), r.partialUpdates...),
+		Afters:   append([]afterSavedUpdate(nil), r.afterSaved...),
+		Statuses: append([]statusUpdate(nil), r.statusUpdates...),
+		Upserts:  r.upsertCalls,
+	}
 }
 
-// stubHostRepo only implements GetRpcClient. Returning the per-host client
-// map matches how the real adapter resolves per-host RPC connections.
+// stubHostRepo only implements GetRpcClient; other methods will panic if hit.
 type stubHostRepo struct {
 	port.HeadlessHostRepository
 
@@ -104,71 +165,54 @@ func (r *stubHostRepo) GetRpcClient(_ context.Context, id string) (headlessv1.He
 type stubControlClient struct {
 	headlessv1.HeadlessControlServiceClient
 
-	getSessions    map[string]*headlessv1.Session
-	getSessionErrs map[string]error
+	listSessionsResp *headlessv1.ListSessionsResponse
+	listSessionsErr  error
 
-	mu        sync.Mutex
-	getCalled []string
+	mu              sync.Mutex
+	listSessionsHit int
 }
 
-func (c *stubControlClient) GetSession(_ context.Context, in *headlessv1.GetSessionRequest, _ ...grpc.CallOption) (*headlessv1.GetSessionResponse, error) {
+func (c *stubControlClient) ListSessions(_ context.Context, _ *headlessv1.ListSessionsRequest, _ ...grpc.CallOption) (*headlessv1.ListSessionsResponse, error) {
 	c.mu.Lock()
-	c.getCalled = append(c.getCalled, in.GetSessionId())
+	c.listSessionsHit++
 	c.mu.Unlock()
 
-	if err, ok := c.getSessionErrs[in.GetSessionId()]; ok {
-		return nil, err
+	if c.listSessionsErr != nil {
+		return nil, c.listSessionsErr
 	}
 
-	s, ok := c.getSessions[in.GetSessionId()]
-	if !ok {
-		return nil, errors.New("no such session")
+	if c.listSessionsResp != nil {
+		return c.listSessionsResp, nil
 	}
 
-	return &headlessv1.GetSessionResponse{Session: s}, nil
+	return &headlessv1.ListSessionsResponse{}, nil
 }
 
-func (c *stubControlClient) getCalledSnapshot() []string {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	out := make([]string, len(c.getCalled))
-	copy(out, c.getCalled)
-
-	return out
-}
-
-func TestSessionStateSyncHandler_SessionParametersChanged_UpsertsCurrentState(t *testing.T) {
+func TestSessionStateSyncHandler_SessionParametersChanged_UsesPartialUpdate(t *testing.T) {
 	t.Parallel()
 
 	repo := newFakeSessionRepo()
-	repo.seed(&entity.Session{
-		ID:     "s1",
-		Name:   "old-name",
-		HostID: "h1",
-		Status: entity.SessionStatus_RUNNING,
-	})
+	repo.seed(&entity.Session{ID: "s1", Name: "old", HostID: "h1", Status: entity.SessionStatus_RUNNING})
 
 	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
 
-	snapshot := &headlessv1.Session{Id: "s1", Name: "new-name", MaxUsers: 16}
+	snapshot := &headlessv1.Session{Id: "s1", Name: "new", MaxUsers: 16}
 	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
 		Payload: &headlessv1.HostEvent_SessionParametersChanged{
-			SessionParametersChanged: &headlessv1.SessionParametersChanged{
-				SessionId: "s1",
-				Session:   snapshot,
-			},
+			SessionParametersChanged: &headlessv1.SessionParametersChanged{SessionId: "s1", Session: snapshot},
 		},
 	})
 
-	upserts := repo.upsertSnapshot()
-	require.Len(t, upserts, 1)
-	assert.Equal(t, "new-name", upserts[0].Name)
-	require.NotNil(t, upserts[0].CurrentState)
-	assert.Equal(t, int32(16), upserts[0].CurrentState.GetMaxUsers())
+	snap := repo.snapshot()
+	partials, upserts := snap.Partials, snap.Upserts
+	require.Len(t, partials, 1, "must use partial UpdateCurrentStateAndName")
+	assert.Equal(t, "s1", partials[0].id)
+	assert.Equal(t, "new", partials[0].name)
+	assert.Equal(t, int32(16), partials[0].currentState.GetMaxUsers())
+	assert.Equal(t, 0, upserts, "must not invoke full Upsert (race window)")
 }
 
-func TestSessionStateSyncHandler_SessionParametersChanged_UnknownSessionIgnored(t *testing.T) {
+func TestSessionStateSyncHandler_SessionParametersChanged_NilSnapshotIgnored(t *testing.T) {
 	t.Parallel()
 
 	repo := newFakeSessionRepo()
@@ -176,14 +220,13 @@ func TestSessionStateSyncHandler_SessionParametersChanged_UnknownSessionIgnored(
 
 	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
 		Payload: &headlessv1.HostEvent_SessionParametersChanged{
-			SessionParametersChanged: &headlessv1.SessionParametersChanged{
-				SessionId: "unknown",
-				Session:   &headlessv1.Session{Id: "unknown"},
-			},
+			SessionParametersChanged: &headlessv1.SessionParametersChanged{SessionId: "s1"},
 		},
 	})
 
-	assert.Empty(t, repo.upsertSnapshot(), "no upsert should happen for an unknown session id")
+	snap := repo.snapshot()
+	partials := snap.Partials
+	assert.Empty(t, partials)
 }
 
 func TestSessionStateSyncHandler_WorldSaved_UpdatesStartupParametersAndCurrentState(t *testing.T) {
@@ -195,24 +238,42 @@ func TestSessionStateSyncHandler_WorldSaved_UpdatesStartupParametersAndCurrentSt
 		HostID: "h1",
 		Status: entity.SessionStatus_RUNNING,
 		StartupParameters: &headlessv1.WorldStartupParameters{
-			LoadWorld: &headlessv1.WorldStartupParameters_LoadWorldUrl{LoadWorldUrl: "old-url"},
+			LoadWorld: &headlessv1.WorldStartupParameters_LoadWorldUrl{LoadWorldUrl: "old"},
 		},
-		CurrentState: &headlessv1.Session{Id: "s1", WorldUrl: "old-url"},
+		CurrentState: &headlessv1.Session{Id: "s1", WorldUrl: "old"},
 	})
 
 	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
-
 	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
 		Payload: &headlessv1.HostEvent_WorldSaved{
-			WorldSaved: &headlessv1.WorldSaved{SessionId: "s1", WorldUrl: "new-url"},
+			WorldSaved: &headlessv1.WorldSaved{SessionId: "s1", WorldUrl: "new"},
 		},
 	})
 
-	upserts := repo.upsertSnapshot()
-	require.Len(t, upserts, 1)
-	assert.Equal(t, "new-url", upserts[0].StartupParameters.GetLoadWorldUrl(),
-		"StartupParameters.LoadWorldUrl must point to the latest world record")
-	assert.Equal(t, "new-url", upserts[0].CurrentState.GetWorldUrl())
+	snap := repo.snapshot()
+	afters, upserts := snap.Afters, snap.Upserts
+	require.Len(t, afters, 1, "must use partial UpdateAfterWorldSaved")
+	assert.Equal(t, "new", afters[0].startupParameters.GetLoadWorldUrl())
+	assert.Equal(t, "new", afters[0].currentState.GetWorldUrl())
+	assert.Equal(t, 0, upserts)
+}
+
+func TestSessionStateSyncHandler_WorldSaved_BothNilSkipped(t *testing.T) {
+	t.Parallel()
+
+	repo := newFakeSessionRepo()
+	repo.seed(&entity.Session{ID: "s1", HostID: "h1", Status: entity.SessionStatus_RUNNING})
+
+	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
+	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
+		Payload: &headlessv1.HostEvent_WorldSaved{
+			WorldSaved: &headlessv1.WorldSaved{SessionId: "s1", WorldUrl: "new"},
+		},
+	})
+
+	snap := repo.snapshot()
+	afters := snap.Afters
+	assert.Empty(t, afters, "no startup_params and no current_state -> nothing to write")
 }
 
 func TestSessionStateSyncHandler_WorldSaved_EmptyUrlSkipped(t *testing.T) {
@@ -222,27 +283,31 @@ func TestSessionStateSyncHandler_WorldSaved_EmptyUrlSkipped(t *testing.T) {
 	repo.seed(&entity.Session{ID: "s1", HostID: "h1", Status: entity.SessionStatus_RUNNING})
 
 	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
-
 	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
 		Payload: &headlessv1.HostEvent_WorldSaved{
 			WorldSaved: &headlessv1.WorldSaved{SessionId: "s1"},
 		},
 	})
 
-	assert.Empty(t, repo.upsertSnapshot(), "empty WorldUrl should be a no-op")
+	snap := repo.snapshot()
+	afters := snap.Afters
+	assert.Empty(t, afters)
 }
 
-func TestSessionStateSyncHandler_HandleHostEventStreamReset_RefetchesRunningSessions(t *testing.T) {
+func TestSessionStateSyncHandler_StreamReset_RefreshesLiveAndDemotesLost(t *testing.T) {
 	t.Parallel()
 
 	repo := newFakeSessionRepo()
-	repo.seed(&entity.Session{ID: "s1", HostID: "h1", Status: entity.SessionStatus_RUNNING})
-	repo.seed(&entity.Session{ID: "s2", HostID: "h2", Status: entity.SessionStatus_RUNNING})
+	repo.seed(&entity.Session{ID: "s-alive", HostID: "h1", Status: entity.SessionStatus_RUNNING})
+	repo.seed(&entity.Session{ID: "s-lost", HostID: "h1", Status: entity.SessionStatus_RUNNING})
+	repo.seed(&entity.Session{ID: "s-other-host", HostID: "h2", Status: entity.SessionStatus_RUNNING})
 	repo.seed(&entity.Session{ID: "s-ended", HostID: "h1", Status: entity.SessionStatus_ENDED})
 
 	client := &stubControlClient{
-		getSessions: map[string]*headlessv1.Session{
-			"s1": {Id: "s1", Name: "from-resync", MaxUsers: 24},
+		listSessionsResp: &headlessv1.ListSessionsResponse{
+			Sessions: []*headlessv1.Session{
+				{Id: "s-alive", Name: "refreshed", MaxUsers: 24},
+			},
 		},
 	}
 	hosts := &stubHostRepo{clients: map[string]headlessv1.HeadlessControlServiceClient{"h1": client}}
@@ -250,25 +315,50 @@ func TestSessionStateSyncHandler_HandleHostEventStreamReset_RefetchesRunningSess
 	h := NewSessionStateSyncHandler(repo, hosts)
 	h.HandleHostEventStreamReset(context.Background(), "h1")
 
-	assert.Equal(t, []string{"s1"}, client.getCalledSnapshot(),
-		"resync must only call GetSession for sessions belonging to the reset host that are still RUNNING")
+	snap := repo.snapshot()
+	partials, statuses, upserts := snap.Partials, snap.Statuses, snap.Upserts
 
-	upserts := repo.upsertSnapshot()
-	require.Len(t, upserts, 1)
-	assert.Equal(t, "s1", upserts[0].ID)
-	require.NotNil(t, upserts[0].CurrentState)
-	assert.Equal(t, "from-resync", upserts[0].CurrentState.GetName())
+	require.Len(t, partials, 1, "alive session is refreshed via partial update")
+	assert.Equal(t, "s-alive", partials[0].id)
+	assert.Equal(t, "refreshed", partials[0].name)
+
+	require.Len(t, statuses, 1, "session missing from ListSessions response gets demoted to UNKNOWN")
+	assert.Equal(t, "s-lost", statuses[0].id)
+	assert.Equal(t, entity.SessionStatus_UNKNOWN, statuses[0].status)
+
+	assert.Equal(t, 0, upserts, "reset must not use full Upsert")
+	assert.Equal(t, 1, client.listSessionsHit, "single ListSessions covers the whole host")
 }
 
-func TestSessionStateSyncHandler_HandleHostEventStreamReset_RpcClientErrorSilenced(t *testing.T) {
+func TestSessionStateSyncHandler_StreamReset_RpcClientErrorSilenced(t *testing.T) {
 	t.Parallel()
 
 	repo := newFakeSessionRepo()
 	repo.seed(&entity.Session{ID: "s1", HostID: "h1", Status: entity.SessionStatus_RUNNING})
 
-	h := NewSessionStateSyncHandler(repo, &stubHostRepo{clients: nil})
-
-	// Must not panic; should just no-op when the host RPC client is unavailable.
+	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
 	h.HandleHostEventStreamReset(context.Background(), "h1")
-	assert.Empty(t, repo.upsertSnapshot())
+
+	snap := repo.snapshot()
+	partials, statuses := snap.Partials, snap.Statuses
+	assert.Empty(t, partials)
+	assert.Empty(t, statuses, "host unreachable -> can't know whether sessions are lost; leave status alone")
+}
+
+func TestSessionStateSyncHandler_StreamReset_ListSessionsErrorSilenced(t *testing.T) {
+	t.Parallel()
+
+	repo := newFakeSessionRepo()
+	repo.seed(&entity.Session{ID: "s1", HostID: "h1", Status: entity.SessionStatus_RUNNING})
+
+	client := &stubControlClient{listSessionsErr: errors.New("transient")}
+	hosts := &stubHostRepo{clients: map[string]headlessv1.HeadlessControlServiceClient{"h1": client}}
+
+	h := NewSessionStateSyncHandler(repo, hosts)
+	h.HandleHostEventStreamReset(context.Background(), "h1")
+
+	snap := repo.snapshot()
+	partials, statuses := snap.Partials, snap.Statuses
+	assert.Empty(t, partials)
+	assert.Empty(t, statuses, "ListSessions failure -> no demotion (avoid false positives)")
 }

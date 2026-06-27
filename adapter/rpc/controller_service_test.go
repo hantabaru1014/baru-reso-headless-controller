@@ -2333,13 +2333,10 @@ func TestControllerService_SaveSessionWorld(t *testing.T) {
 
 		client := setupAuthenticatedClient(t, setup.service)
 
-		// Create test account, host, and session (CurrentState is populated as if
-		// the host-event watcher had already broadcast the latest WorldSaved snapshot).
+		// Create test account, host, and session
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
-		session := testutil.CreateTestSessionWithCurrentState(t, setup.queries, host.ID, "TestSession", entity.SessionStatus_RUNNING, &headlessv1.Session{
-			WorldUrl: "resrec:///U-test/R-test-world",
-		})
+		session := testutil.CreateTestSession(t, setup.queries, host.ID, "TestSession", entity.SessionStatus_RUNNING)
 
 		// Mock HostConnector - GetRpcClient
 		setup.mockHostConnector.EXPECT().
@@ -2347,10 +2344,14 @@ func TestControllerService_SaveSessionWorld(t *testing.T) {
 			Return(setup.mockRpcClient, nil).
 			AnyTimes()
 
-		// Mock RPC call to save world
+		// Mock RPC call to save world. container 側は新しく saved_world_url を返すようになったので
+		// preset 由来の初回 save でも controller 応答が stale CurrentState ではなく
+		// 同期的に正しい URL を返せることを検証する
 		setup.mockRpcClient.EXPECT().
 			SaveSessionWorld(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.SaveSessionWorldResponse{}, nil)
+			Return(&headlessv1.SaveSessionWorldResponse{
+				SavedWorldUrl: "resrec:///U-test/R-test-world",
+			}, nil)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.SaveSessionWorldRequest{
 			SessionId: session.ID,

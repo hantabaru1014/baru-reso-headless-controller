@@ -189,17 +189,38 @@ func (q *Queries) ListSessionsPaged(ctx context.Context, arg ListSessionsPagedPa
 	return items, nil
 }
 
-const updateSessionCurrentState = `-- name: UpdateSessionCurrentState :exec
-UPDATE sessions SET current_state = $2 WHERE id = $1
+const updateSessionAfterWorldSaved = `-- name: UpdateSessionAfterWorldSaved :exec
+UPDATE sessions SET startup_parameters = $2, current_state = $3 WHERE id = $1
 `
 
-type UpdateSessionCurrentStateParams struct {
-	ID           string
-	CurrentState []byte
+type UpdateSessionAfterWorldSavedParams struct {
+	ID                string
+	StartupParameters []byte
+	CurrentState      []byte
 }
 
-func (q *Queries) UpdateSessionCurrentState(ctx context.Context, arg UpdateSessionCurrentStateParams) error {
-	_, err := q.db.Exec(ctx, updateSessionCurrentState, arg.ID, arg.CurrentState)
+// event 駆動の WorldSaved 反映用。startup_parameters と current_state の
+// 部分更新でレース耐性を持たせる
+func (q *Queries) UpdateSessionAfterWorldSaved(ctx context.Context, arg UpdateSessionAfterWorldSavedParams) error {
+	_, err := q.db.Exec(ctx, updateSessionAfterWorldSaved, arg.ID, arg.StartupParameters, arg.CurrentState)
+	return err
+}
+
+const updateSessionCurrentStateAndName = `-- name: UpdateSessionCurrentStateAndName :exec
+UPDATE sessions SET current_state = $2, name = $3 WHERE id = $1
+`
+
+type UpdateSessionCurrentStateAndNameParams struct {
+	ID           string
+	CurrentState []byte
+	Name         string
+}
+
+// event 駆動の SessionParametersChanged 反映用。current_state と name の
+// 部分更新にして、並行する UpdateSessionParameters / StartSession など
+// の Upsert と他フィールドが衝突しないようにする
+func (q *Queries) UpdateSessionCurrentStateAndName(ctx context.Context, arg UpdateSessionCurrentStateAndNameParams) error {
+	_, err := q.db.Exec(ctx, updateSessionCurrentStateAndName, arg.ID, arg.CurrentState, arg.Name)
 	return err
 }
 

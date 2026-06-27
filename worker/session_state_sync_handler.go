@@ -14,6 +14,12 @@ import (
 // SessionStateSyncHandler keeps the persisted Session.CurrentState in sync
 // with what the container is broadcasting over the HostEventWatcher stream,
 // removing the need for per-request polling in the session usecase.
+//
+// All writes go through partial-update repository methods
+// (UpdateCurrentStateAndName / UpdateAfterWorldSaved) instead of Upsert
+// so a concurrent UpdateSessionParameters / StartSession / StopSession
+// can't have its startup_parameters / status / ended_at silently
+// clobbered by a stale snapshot that the handler had Get'd moments earlier.
 type SessionStateSyncHandler struct {
 	sessionRepo port.SessionRepository
 	hostRepo    port.HeadlessHostRepository
@@ -37,10 +43,24 @@ func (h *SessionStateSyncHandler) HandleHostEvent(ctx context.Context, hostID st
 	}
 }
 
-// HandleHostEventStreamReset re-pulls fresh state from the host so the DB
-// catches up after the event buffer overflowed and we lost some updates.
+// HandleHostEventStreamReset reconciles DB state with the host after the
+// event buffer overflowed (some events were definitely lost).
+//
+// Two things must happen:
+//  1. For each session the host still reports, refresh CurrentState so
+//     any missed SessionParametersChanged catches up.
+//  2. For sessions the DB believes are RUNNING on this host but the host
+//     no longer reports, demote status to UNKNOWN — we likely missed a
+//     SessionEnded and would otherwise leave the row RUNNING forever.
+//
+// A separate SessionLifecycleHandler (sibling branch) also touches status
+// on reset by indiscriminately marking every RUNNING session UNKNOWN.
+// Both handlers can coexist: the lifecycle handler's blanket demotion is
+// harmless because the live event stream that resumes after the reset,
+// together with this handler's per-host ListSessions resync, will promote
+// surviving sessions back to RUNNING with fresh CurrentState.
 func (h *SessionStateSyncHandler) HandleHostEventStreamReset(ctx context.Context, hostID string) {
-	sessions, err := h.sessionRepo.ListByStatus(ctx, entity.SessionStatus_RUNNING)
+	runningSessions, err := h.sessionRepo.ListByStatus(ctx, entity.SessionStatus_RUNNING)
 	if err != nil {
 		slog.Error("session-state-sync: failed to list running sessions on reset", "hostID", hostID, "error", err)
 
@@ -54,52 +74,61 @@ func (h *SessionStateSyncHandler) HandleHostEventStreamReset(ctx context.Context
 		return
 	}
 
-	for _, s := range sessions {
+	listResp, err := client.ListSessions(ctx, &headlessv1.ListSessionsRequest{})
+	if err != nil {
+		slog.Warn("session-state-sync: ListSessions failed during resync", "hostID", hostID, "error", err)
+
+		return
+	}
+
+	live := make(map[string]*headlessv1.Session, len(listResp.GetSessions()))
+	for _, s := range listResp.GetSessions() {
+		live[s.GetId()] = s
+	}
+
+	for _, s := range runningSessions {
 		if s.HostID != hostID {
 			continue
 		}
 
-		resp, err := client.GetSession(ctx, &headlessv1.GetSessionRequest{SessionId: s.ID})
-		if err != nil || resp.GetSession() == nil {
-			slog.Warn("session-state-sync: GetSession failed during resync", "hostID", hostID, "sessionID", s.ID, "error", err)
+		if snapshot, ok := live[s.ID]; ok {
+			if err := h.sessionRepo.UpdateCurrentStateAndName(ctx, s.ID, snapshot, snapshot.GetName()); err != nil {
+				slog.Warn("session-state-sync: UpdateCurrentStateAndName failed during resync", "sessionID", s.ID, "error", err)
+			}
 
 			continue
 		}
 
-		s.CurrentState = resp.GetSession()
-		if err := h.sessionRepo.Upsert(ctx, s); err != nil {
-			slog.Warn("session-state-sync: Upsert failed during resync", "sessionID", s.ID, "error", err)
+		// DB は RUNNING のままだが host から消えている = SessionEnded を
+		// 取りこぼした疑い。確証はないので一旦 UNKNOWN へ落として、後続の
+		// reconciler / 手動オペが正しい終端 status に降ろせるようにする
+		if err := h.sessionRepo.UpdateStatus(ctx, s.ID, entity.SessionStatus_UNKNOWN); err != nil {
+			slog.Warn("session-state-sync: UpdateStatus(UNKNOWN) failed during resync", "sessionID", s.ID, "error", err)
 		}
 	}
 }
 
 func (h *SessionStateSyncHandler) applySessionParametersChanged(ctx context.Context, hostID string, payload *headlessv1.SessionParametersChanged) {
 	sessionID := payload.GetSessionId()
+	snapshot := payload.GetSession()
 
-	s, err := h.sessionRepo.Get(ctx, sessionID)
-	if err != nil {
-		if !errors.Is(err, domain.ErrNotFound) {
-			slog.Warn("session-state-sync: Get failed", "hostID", hostID, "sessionID", sessionID, "error", err)
-		}
-
+	if snapshot == nil {
 		return
 	}
 
-	s.CurrentState = payload.GetSession()
-	if name := payload.GetSession().GetName(); name != "" {
-		s.Name = name
-	}
-
-	if err := h.sessionRepo.Upsert(ctx, s); err != nil {
-		slog.Warn("session-state-sync: Upsert failed", "sessionID", sessionID, "error", err)
+	if err := h.sessionRepo.UpdateCurrentStateAndName(ctx, sessionID, snapshot, snapshot.GetName()); err != nil {
+		if !errors.Is(err, domain.ErrNotFound) {
+			slog.Warn("session-state-sync: UpdateCurrentStateAndName failed", "hostID", hostID, "sessionID", sessionID, "error", err)
+		}
 	}
 }
 
 func (h *SessionStateSyncHandler) applyWorldSaved(ctx context.Context, hostID string, payload *headlessv1.WorldSaved) {
 	sessionID := payload.GetSessionId()
-
 	worldURL := payload.GetWorldUrl()
+
 	if worldURL == "" {
+		// container 側 WorldSavedHook が観測ログを残しているのでここでは握りつぶす
 		return
 	}
 
@@ -112,6 +141,12 @@ func (h *SessionStateSyncHandler) applyWorldSaved(ctx context.Context, hostID st
 		return
 	}
 
+	if s.StartupParameters == nil && s.CurrentState == nil {
+		return
+	}
+
+	// LoadWorldPresetName を意図的に load_world_url で置き換える: preset 由来で
+	// 保存された world は次回起動時 preset ではなく保存済み URL でロードしたい
 	if s.StartupParameters != nil {
 		s.StartupParameters.LoadWorld = &headlessv1.WorldStartupParameters_LoadWorldUrl{
 			LoadWorldUrl: worldURL,
@@ -122,7 +157,7 @@ func (h *SessionStateSyncHandler) applyWorldSaved(ctx context.Context, hostID st
 		s.CurrentState.WorldUrl = worldURL
 	}
 
-	if err := h.sessionRepo.Upsert(ctx, s); err != nil {
-		slog.Warn("session-state-sync: Upsert failed after WorldSaved", "sessionID", sessionID, "error", err)
+	if err := h.sessionRepo.UpdateAfterWorldSaved(ctx, sessionID, s.StartupParameters, s.CurrentState); err != nil {
+		slog.Warn("session-state-sync: UpdateAfterWorldSaved failed", "sessionID", sessionID, "error", err)
 	}
 }
