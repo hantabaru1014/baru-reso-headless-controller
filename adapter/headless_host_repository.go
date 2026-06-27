@@ -54,6 +54,14 @@ func (h *HeadlessHostRepository) UpdateHostSettings(ctx context.Context, id stri
 	})
 }
 
+// UpdateAutoUpdatePolicy implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) UpdateAutoUpdatePolicy(ctx context.Context, id string, policy entity.HostAutoUpdatePolicy) error {
+	return h.q.UpdateHostAutoUpdatePolicy(ctx, db.UpdateHostAutoUpdatePolicyParams{
+		ID:               id,
+		AutoUpdatePolicy: int32(policy),
+	})
+}
+
 // Find implements port.HeadlessHostRepository.
 func (h *HeadlessHostRepository) Find(ctx context.Context, id string, fetchOptions port.HeadlessHostFetchOptions) (*entity.HeadlessHost, error) {
 	host, err := h.q.GetHost(ctx, id)
@@ -242,6 +250,14 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
+	}
+
+	// Restart の度に旧コンテナを掃除する (auto upgrade だと Restart が
+	// 高頻度なので残骸が Docker daemon に積み上がる)。Remove は対象が
+	// 存在しないとき nil を返すので無条件に呼んで安全。
+	err = connector.Remove(ctx, connectStr)
+	if err != nil {
+		return errors.Wrap(err, 0)
 	}
 
 	err = h.q.UpdateHostMemo(ctx, db.UpdateHostMemoParams{

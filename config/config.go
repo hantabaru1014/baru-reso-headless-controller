@@ -49,6 +49,10 @@ type WorkerConfig struct {
 	// its set of per-host event-stream subscriptions against the RUNNING
 	// hosts in the DB.
 	HostEventPollInterval time.Duration
+	// UpgradeCheckInterval controls how often HostUpgradeOrchestrator
+	// polls for newly available container image tags and reconciles its
+	// drain set.
+	UpgradeCheckInterval time.Duration
 }
 
 type ServerConfig struct {
@@ -102,6 +106,7 @@ func LoadEnvConfig() (*EnvConfig, error) {
 	cfg.Worker.EventReconnectDelay = getEnvDuration("EVENT_WATCHER_RECONNECT_DELAY", 5*time.Second)    //nolint:mnd // default
 	cfg.Worker.EventMaxReconnectWait = getEnvDuration("EVENT_WATCHER_MAX_RECONNECT_WAIT", 5*time.Minute) //nolint:mnd // default
 	cfg.Worker.HostEventPollInterval = getEnvDuration("HOST_EVENT_POLL_INTERVAL", 10*time.Second)        //nolint:mnd // default
+	cfg.Worker.UpgradeCheckInterval = getEnvDuration("UPGRADE_CHECK_INTERVAL", time.Minute)
 
 	cfg.Server.Host = getEnvWithDefault("HOST", ":8014")
 	cfg.Server.FrontDevMode = os.Getenv("FDEV") == "true"

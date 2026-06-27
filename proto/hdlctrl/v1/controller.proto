@@ -216,6 +216,7 @@ message UpdateHeadlessHostSettingsRequest {
   bool update_auto_spawn_items = 6;
   repeated string auto_spawn_items = 7;
   optional string universe_id = 8;
+  optional HeadlessHostAutoUpdatePolicy auto_update_policy = 9;
 }
 
 message UpdateHeadlessHostSettingsResponse {}

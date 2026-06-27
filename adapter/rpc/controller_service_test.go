@@ -79,7 +79,7 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 
 	// Setup usecases with real repositories
 	hauc := usecase.NewHeadlessAccountUsecase(queries, mockSkyfrost)
-	suc := usecase.NewSessionUsecase(srepo, hhrepo, stateCache, &cfg.Server, &cfg.ResoniteLink)
+	suc := usecase.NewSessionUsecase(srepo, hhrepo, port.NoopHostDrainer{}, stateCache, &cfg.Server, &cfg.ResoniteLink)
 	hhuc := usecase.NewHeadlessHostUsecase(hhrepo, srepo, suc, hauc)
 	buc := usecase.NewBlobUsecase(srepo, hhrepo, mockBlobstore)
 
@@ -1096,6 +1096,12 @@ func TestControllerService_RestartHeadlessHost(t *testing.T) {
 			Return(nil).
 			Times(1)
 
+		// 旧コンテナの削除 (issue #21 対応)
+		setup.mockHostConnector.EXPECT().
+			Remove(gomock.Any(), gomock.Any()).
+			Return(nil).
+			Times(1)
+
 		setup.mockHostConnector.EXPECT().
 			Start(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, params hostconnector.HostStartParams) (hostconnector.HostConnectString, error) {
@@ -1151,11 +1157,13 @@ func TestControllerService_UpdateHeadlessHostSettings(t *testing.T) {
 
 		newName := "UpdatedHost"
 		newTickRate := float32(120)
+		newPolicy := hdlctrlv1.HeadlessHostAutoUpdatePolicy_HEADLESS_HOST_AUTO_UPDATE_POLICY_USERS_EMPTY
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.UpdateHeadlessHostSettingsRequest{
-			HostId:   host.ID,
-			Name:     &newName,
-			TickRate: &newTickRate,
+			HostId:           host.ID,
+			Name:             &newName,
+			TickRate:         &newTickRate,
+			AutoUpdatePolicy: &newPolicy,
 		})
 
 		res, err := client.UpdateHeadlessHostSettings(t.Context(), req)
@@ -1166,6 +1174,8 @@ func TestControllerService_UpdateHeadlessHostSettings(t *testing.T) {
 		updatedHost, err := setup.queries.GetHost(t.Context(), host.ID)
 		require.NoError(t, err)
 		assert.Equal(t, newName, updatedHost.Name)
+		assert.Equal(t, int32(entity.HostAutoUpdatePolicy_USERS_EMPTY), updatedHost.AutoUpdatePolicy,
+			"AutoUpdatePolicy passed in request should be persisted")
 	})
 
 	t.Run("成功: 実行中のホストの設定を更新", func(t *testing.T) {

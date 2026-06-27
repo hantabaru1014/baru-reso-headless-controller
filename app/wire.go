@@ -47,19 +47,30 @@ func ProvideResoniteLinkConfig(cfg *config.EnvConfig) *config.ResoniteLinkConfig
 	return &cfg.ResoniteLink
 }
 
-// ProvideWorkerRunners groups the concrete background workers that the
-// server supervises into a slice the worker.Manager consumes. Add new
-// workers here when introducing one.
-func ProvideWorkerRunners(
+// ProvideWorkerManager groups the concrete background workers AND
+// performs two post-construction links that wire itself cannot express:
+//   - The orchestrator needs a SessionStopper (SessionUsecase), but
+//     SessionUsecase needs a HostDrainer (the orchestrator). Wire can
+//     pick only one direction at construction time; we close the cycle
+//     by setting the stopper here, after both ends exist.
+//   - The orchestrator subscribes to ImageChecker so registry polling
+//     happens in exactly one place.
+func ProvideWorkerManager(
 	imageChecker *worker.ImageChecker,
 	dockerEventWatcher *worker.DockerEventWatcher,
 	hostEventWatcher *worker.HostEventWatcher,
-) []worker.Runner {
-	return []worker.Runner{
+	upgradeOrchestrator *worker.HostUpgradeOrchestrator,
+	sessionStopper port.SessionStopper,
+) *worker.Manager {
+	upgradeOrchestrator.SetSessionStopper(sessionStopper)
+	imageChecker.Subscribe(upgradeOrchestrator.OnNewImage)
+
+	return worker.NewManager([]worker.Runner{
 		imageChecker,
 		dockerEventWatcher,
 		hostEventWatcher,
-	}
+		upgradeOrchestrator,
+	})
 }
 
 // ProvideHostEventHandlers gathers consumers for the per-host event
@@ -68,9 +79,17 @@ func ProvideWorkerRunners(
 func ProvideHostEventHandlers(
 	sessionStateSyncHandler *worker.SessionStateSyncHandler,
 	sessionLifecycleHandler *worker.SessionLifecycleHandler,
+	upgradeOrchestrator *worker.HostUpgradeOrchestrator,
 	loggingHandler *worker.LoggingHostEventHandler,
 ) []worker.HostEventHandler {
-	return []worker.HostEventHandler{sessionStateSyncHandler, sessionLifecycleHandler, loggingHandler}
+	return []worker.HostEventHandler{sessionStateSyncHandler, sessionLifecycleHandler, upgradeOrchestrator, loggingHandler}
+}
+
+// ProvideHeadlessAccountFetcher exposes HeadlessAccountUsecase under the
+// orchestrator's narrow interface so the worker package does not have to
+// depend on the entire usecase package.
+func ProvideHeadlessAccountFetcher(u *usecase.HeadlessAccountUsecase) worker.HeadlessAccountFetcher {
+	return u
 }
 
 var ConfigSet = wire.NewSet(
@@ -122,9 +141,11 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		worker.NewLoggingHostEventHandler,
 		worker.NewSessionStateSyncHandler,
 		worker.NewSessionLifecycleHandler,
+		worker.NewHostUpgradeOrchestrator,
+		wire.Bind(new(port.HostDrainer), new(*worker.HostUpgradeOrchestrator)),
+		ProvideHeadlessAccountFetcher,
 		ProvideHostEventHandlers,
-		ProvideWorkerRunners,
-		worker.NewManager,
+		ProvideWorkerManager,
 
 		// usecase
 		usecase.NewHeadlessHostUsecase,
@@ -132,6 +153,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		usecase.NewHeadlessAccountUsecase,
 		usecase.NewSessionUsecase,
 		usecase.NewBlobUsecase,
+		wire.Bind(new(port.SessionStopper), new(*usecase.SessionUsecase)),
 
 		// controller
 		rpc.NewUserService,
@@ -166,6 +188,11 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 		adapter.NewHeadlessHostRepository,
 		wire.Bind(new(port.SessionRepository), new(*adapter.SessionRepository)),
 		adapter.NewSessionRepository,
+
+		// CLI has no upgrade orchestrator running, so SessionUsecase
+		// gets a no-op drainer.
+		wire.Struct(new(port.NoopHostDrainer)),
+		wire.Bind(new(port.HostDrainer), new(port.NoopHostDrainer)),
 
 		// in-memory session-state cache (cli は通常 session を起動しないが、
 		// SessionUsecase の constructor 依存を満たすために bind だけする)
