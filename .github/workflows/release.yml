@@ -18,6 +18,8 @@ jobs:
 
       - name: Build frontend
         run: pnpm run build
+        env:
+          VITE_APP_VERSION: ${{ github.event.release.tag_name }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0

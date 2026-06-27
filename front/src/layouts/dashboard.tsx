@@ -18,6 +18,7 @@ import {
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/libs/cssUtils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { SidebarVersionFooter } from "@/components/SidebarVersionFooter";
 import { UserMenuDropdown } from "@/components/UserMenuDropdown";
 
 const navigation = [
@@ -91,6 +92,7 @@ function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarVersionFooter version={__APP_VERSION__} />
     </Sidebar>
   );
 }
