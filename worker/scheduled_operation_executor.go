@@ -159,15 +159,11 @@ func (e *ScheduledOperationExecutor) dispatchOnce(ctx context.Context, wg *sync.
 		case sem <- struct{}{}:
 		}
 
-		wg.Add(1)
-
-		op := op
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			defer func() { <-sem }()
 
 			e.executeOne(ctx, op)
-		}()
+		})
 	}
 }
 

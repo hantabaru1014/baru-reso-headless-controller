@@ -295,7 +295,7 @@ func (c *ControllerService) DeleteEndedSession(ctx context.Context, req *connect
 
 // UpdateSessionExtraSettings implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) UpdateSessionExtraSettings(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateSessionExtraSettingsRequest]) (*connect.Response[hdlctrlv1.UpdateSessionExtraSettingsResponse], error) {
-	if err := c.suc.UpdateSessionExtraSettings(ctx, req.Msg.GetSessionId(), req.Msg.AutoUpgrade, req.Msg.Memo); err != nil {
+	if err := c.suc.UpdateSessionExtraSettings(ctx, req.Msg.GetSessionId(), req.Msg.AutoUpgrade, req.Msg.Memo); err != nil { //nolint:protogetter // optional 3 値を保つため pointer field を直接渡す
 		return nil, convertErr(err)
 	}
 

@@ -55,7 +55,9 @@ func RegisterTrigger(t entity.ScheduledTriggerType, f TriggerFactory) {
 
 func DecodeTrigger(t entity.ScheduledTriggerType, cfg json.RawMessage) (Trigger, error) {
 	triggerRegistryMu.RLock()
+
 	f, ok := triggerRegistry[t]
+
 	triggerRegistryMu.RUnlock()
 
 	if !ok {

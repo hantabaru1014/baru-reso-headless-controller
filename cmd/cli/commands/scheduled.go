@@ -97,6 +97,7 @@ func newScheduledCancelCmd(sou *usecase.ScheduledSessionOperationUsecase) *cobra
 			}
 
 			cmd.Printf("Canceled scheduled operation %s\n", args[0])
+
 			return nil
 		},
 	}
@@ -104,7 +105,7 @@ func newScheduledCancelCmd(sou *usecase.ScheduledSessionOperationUsecase) *cobra
 
 // newScheduledCreateStopCmd は STOP_SESSION 予約を作る最小コマンド.
 // START / UPDATE_PARAMETERS / UPDATE_EXTRA は引数が複雑なので CLI ではサポートせず WebUI 推奨.
-// (CLI からも作成可能とのユーザー要望は、最低限 stop を作れる形で満たす)
+// (CLI からも作成可能とのユーザー要望は、最低限 stop を作れる形で満たす).
 func newScheduledCreateStopCmd(sou *usecase.ScheduledSessionOperationUsecase) *cobra.Command {
 	var (
 		sessionID string
@@ -141,6 +142,7 @@ func newScheduledCreateStopCmd(sou *usecase.ScheduledSessionOperationUsecase) *c
 			}
 
 			cmd.Printf("Created scheduled stop operation %s at %s\n", created.ID, created.NextFireAt.Format(time.RFC3339))
+
 			return nil
 		},
 	}
@@ -168,26 +170,44 @@ func parseStatus(s string) (entity.ScheduledOperationStatus, error) {
 }
 
 func printScheduledOp(w io.Writer, e *entity.ScheduledSessionOperation) {
-	row := map[string]any{
-		"id":           e.ID,
-		"operation":    int(e.OperationType),
-		"trigger":      int(e.TriggerType),
-		"next_fire_at": e.NextFireAt.Format(time.RFC3339),
-		"status":       int(e.Status),
-		"host_id":      e.HostID,
-		"session_id":   e.SessionID,
-		"last_error":   e.LastError,
-		"executed_at":  timePtrOrNil(e.ExecutedAt),
+	row := struct {
+		ID         string  `json:"id"`
+		Operation  int32   `json:"operation"`
+		Trigger    int32   `json:"trigger"`
+		NextFireAt string  `json:"next_fire_at"`
+		Status     int32   `json:"status"`
+		HostID     *string `json:"host_id"`
+		SessionID  *string `json:"session_id"`
+		LastError  *string `json:"last_error"`
+		ExecutedAt *string `json:"executed_at"`
+	}{
+		ID:         e.ID,
+		Operation:  int32(e.OperationType),
+		Trigger:    int32(e.TriggerType),
+		NextFireAt: e.NextFireAt.Format(time.RFC3339),
+		Status:     int32(e.Status),
+		HostID:     e.HostID,
+		SessionID:  e.SessionID,
+		LastError:  e.LastError,
+		ExecutedAt: timePtrOrNil(e.ExecutedAt),
 	}
 
-	b, _ := json.Marshal(row)
-	fmt.Fprintln(w, string(b))
+	b, err := json.Marshal(row)
+	if err != nil {
+		_, _ = fmt.Fprintf(w, "marshal error: %v\n", err)
+		return
+	}
+
+	// 出力先 (stdout) 書き込みエラーは致命的ではないので無視.
+	_, _ = fmt.Fprintln(w, string(b))
 }
 
-func timePtrOrNil(t *time.Time) any {
+func timePtrOrNil(t *time.Time) *string {
 	if t == nil {
 		return nil
 	}
 
-	return t.Format(time.RFC3339)
+	s := t.Format(time.RFC3339)
+
+	return &s
 }

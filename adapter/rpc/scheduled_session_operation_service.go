@@ -100,6 +100,7 @@ func (c *ControllerService) ListScheduledSessionOperations(ctx context.Context, 
 		PageIndex: pageIndex,
 		PageSize:  pageSize,
 	}
+
 	if req.Msg.SessionId != nil {
 		v := req.Msg.GetSessionId()
 		filter.SessionID = &v
@@ -175,6 +176,7 @@ func buildActionFromProto(op *hdlctrlv1.ScheduledOperation) (scheduled_op.Action
 		}
 
 		var memo *string
+
 		if start.GetMemo() != "" {
 			m := start.GetMemo()
 			memo = &m
@@ -196,6 +198,7 @@ func buildActionFromProto(op *hdlctrlv1.ScheduledOperation) (scheduled_op.Action
 		return act, nil, &sid, nil
 	case *hdlctrlv1.ScheduledOperation_UpdateParameters:
 		upd := x.UpdateParameters
+
 		inner := upd.GetParameters()
 		if inner == nil {
 			return nil, nil, nil, errors.New("update_parameters: parameters is required")
@@ -216,18 +219,21 @@ func buildActionFromProto(op *hdlctrlv1.ScheduledOperation) (scheduled_op.Action
 		return act, nil, &sid, nil
 	case *hdlctrlv1.ScheduledOperation_UpdateExtraSettings:
 		upd := x.UpdateExtraSettings
+
 		sid := upd.GetSessionId()
 		if sid == "" {
 			return nil, nil, nil, errors.New("update_extra_settings: session_id is required")
 		}
 
 		var autoUpgrade *bool
+
 		if upd.AutoUpgrade != nil {
 			v := upd.GetAutoUpgrade()
 			autoUpgrade = &v
 		}
 
 		var memo *string
+
 		if upd.Memo != nil {
 			v := upd.GetMemo()
 			memo = &v
@@ -397,6 +403,8 @@ func protoStatusToDomain(p hdlctrlv1.ScheduledOperationStatus) entity.ScheduledO
 		return entity.ScheduledOperationStatus_FAILED
 	case hdlctrlv1.ScheduledOperationStatus_SCHEDULED_OPERATION_STATUS_CANCELED:
 		return entity.ScheduledOperationStatus_CANCELED
+	case hdlctrlv1.ScheduledOperationStatus_SCHEDULED_OPERATION_STATUS_UNSPECIFIED:
+		return entity.ScheduledOperationStatus_PENDING
 	default:
 		return entity.ScheduledOperationStatus_PENDING
 	}

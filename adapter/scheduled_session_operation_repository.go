@@ -119,6 +119,7 @@ func (r *ScheduledSessionOperationRepository) ClaimDue(ctx context.Context, inst
 
 func (r *ScheduledSessionOperationRepository) ReleaseStaleClaims(ctx context.Context, staleAfter time.Duration) (int64, error) {
 	seconds := int32(staleAfter / time.Second) //nolint:gosec // G115: 設定値で int32 範囲を超えない
+
 	rows, err := r.q.ReleaseStaleScheduledSessionOperationClaims(ctx, seconds)
 	if err != nil {
 		return 0, errors.WrapPrefix(convertDBErr(err), "scheduled_session_operation", 0)
@@ -193,42 +194,49 @@ func scheduledSessionOperationToEntity(s db.ScheduledSessionOperation) (*entity.
 	}
 
 	var lastError *string
+
 	if s.LastError.Valid {
 		v := s.LastError.String
 		lastError = &v
 	}
 
 	var claimedBy *string
+
 	if s.ClaimedBy.Valid {
 		v := s.ClaimedBy.String
 		claimedBy = &v
 	}
 
 	var claimedAt *time.Time
+
 	if s.ClaimedAt.Valid {
 		v := s.ClaimedAt.Time
 		claimedAt = &v
 	}
 
 	var executedAt *time.Time
+
 	if s.ExecutedAt.Valid {
 		v := s.ExecutedAt.Time
 		executedAt = &v
 	}
 
 	var createdBy *string
+
 	if s.CreatedBy.Valid {
 		v := s.CreatedBy.String
 		createdBy = &v
 	}
 
 	var hostID *string
+
 	if s.HostID.Valid {
 		v := s.HostID.String
 		hostID = &v
 	}
 
 	var sessionID *string
+
 	if s.SessionID.Valid {
 		v := s.SessionID.String
 		sessionID = &v
@@ -256,4 +264,3 @@ func scheduledSessionOperationToEntity(s db.ScheduledSessionOperation) (*entity.
 		UpdatedAt:        s.UpdatedAt.Time,
 	}, nil
 }
-

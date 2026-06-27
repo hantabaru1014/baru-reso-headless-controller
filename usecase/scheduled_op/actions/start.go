@@ -45,6 +45,7 @@ func (a *StartSessionAction) Execute(ctx context.Context, deps scheduled_op.Acti
 	}
 
 	_, err := deps.Session.StartSession(ctx, a.HostID, a.UserID, params, a.Memo)
+
 	return err
 }
 

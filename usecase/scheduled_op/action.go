@@ -50,7 +50,9 @@ func RegisterAction(t entity.ScheduledOperationType, f ActionFactory) {
 
 func DecodeAction(t entity.ScheduledOperationType, payload json.RawMessage) (Action, error) {
 	actionRegistryMu.RLock()
+
 	f, ok := actionRegistry[t]
+
 	actionRegistryMu.RUnlock()
 
 	if !ok {

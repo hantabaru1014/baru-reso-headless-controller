@@ -37,6 +37,9 @@ func parseUUID(id string) (pgtype.UUID, error) {
 	return u, nil
 }
 
+// canonicalUUIDLen は ハイフン付き UUID 文字列の長さ (8-4-4-4-12).
+const canonicalUUIDLen = 36
+
 // formatUUID は pgtype.UUID を canonical 文字列に整形する.
 func formatUUID(u pgtype.UUID) (string, error) {
 	if !u.Valid {
@@ -44,7 +47,7 @@ func formatUUID(u pgtype.UUID) (string, error) {
 	}
 
 	src := u.Bytes[:]
-	dst := make([]byte, 36)
+	dst := make([]byte, canonicalUUIDLen)
 	hex.Encode(dst[0:8], src[0:4])
 	dst[8] = '-'
 	hex.Encode(dst[9:13], src[4:6])

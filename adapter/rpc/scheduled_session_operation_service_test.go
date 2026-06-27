@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"errors"
 	"testing"
 	"time"
 
@@ -76,8 +75,9 @@ func TestControllerService_ScheduledSessionOperations(t *testing.T) {
 		// Cancel 2 回目 → FailedPrecondition
 		_, err = client.CancelScheduledSessionOperation(t.Context(), cancelReq)
 		require.Error(t, err)
+
 		connectErr := &connect.Error{}
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodeFailedPrecondition, connectErr.Code())
 	})
 
@@ -98,7 +98,7 @@ func TestControllerService_ScheduledSessionOperations(t *testing.T) {
 		require.Error(t, err)
 
 		connectErr := &connect.Error{}
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
 	})
 }

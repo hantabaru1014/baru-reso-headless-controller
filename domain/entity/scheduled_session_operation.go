@@ -8,11 +8,11 @@ import (
 type ScheduledOperationType int32
 
 const (
-	ScheduledOperationType_UNKNOWN                  ScheduledOperationType = 0
-	ScheduledOperationType_START_SESSION            ScheduledOperationType = 1
-	ScheduledOperationType_STOP_SESSION             ScheduledOperationType = 2
-	ScheduledOperationType_UPDATE_PARAMETERS        ScheduledOperationType = 3
-	ScheduledOperationType_UPDATE_EXTRA_SETTINGS    ScheduledOperationType = 4
+	ScheduledOperationType_UNKNOWN               ScheduledOperationType = 0
+	ScheduledOperationType_START_SESSION         ScheduledOperationType = 1
+	ScheduledOperationType_STOP_SESSION          ScheduledOperationType = 2
+	ScheduledOperationType_UPDATE_PARAMETERS     ScheduledOperationType = 3
+	ScheduledOperationType_UPDATE_EXTRA_SETTINGS ScheduledOperationType = 4
 )
 
 type ScheduledTriggerType int32
@@ -20,7 +20,7 @@ type ScheduledTriggerType int32
 const (
 	ScheduledTriggerType_UNKNOWN ScheduledTriggerType = 0
 	ScheduledTriggerType_TIME    ScheduledTriggerType = 1
-	// 後続 PR 用: ScheduledTriggerType_CONDITION ScheduledTriggerType = 2
+	// 後続 PR 用: ScheduledTriggerType_CONDITION ScheduledTriggerType = 2.
 )
 
 type ScheduledOperationStatus int32
