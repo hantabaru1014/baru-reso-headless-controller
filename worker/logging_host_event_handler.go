@@ -42,8 +42,6 @@ func payloadKind(ev *headlessv1.HostEvent) string {
 		return "user_left_session"
 	case *headlessv1.HostEvent_WorldSaved:
 		return "world_saved"
-	case *headlessv1.HostEvent_SessionParametersChanged:
-		return "session_parameters_changed"
 	default:
 		return "unknown"
 	}

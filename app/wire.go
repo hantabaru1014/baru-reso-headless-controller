@@ -8,7 +8,6 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/resonitelink"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
-	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/sessionstate"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/blobstore"
@@ -63,14 +62,12 @@ func ProvideWorkerRunners(
 }
 
 // ProvideHostEventHandlers gathers consumers for the per-host event
-// streams. Order matters: the logging handler runs last so other handlers'
-// DB writes are visible by the time we log the event.
+// streams.
 func ProvideHostEventHandlers(
-	sessionStateSyncHandler *worker.SessionStateSyncHandler,
-	sessionLifecycleHandler *worker.SessionLifecycleHandler,
 	loggingHandler *worker.LoggingHostEventHandler,
+	sessionLifecycleHandler *worker.SessionLifecycleHandler,
 ) []worker.HostEventHandler {
-	return []worker.HostEventHandler{sessionStateSyncHandler, sessionLifecycleHandler, loggingHandler}
+	return []worker.HostEventHandler{loggingHandler, sessionLifecycleHandler}
 }
 
 var ConfigSet = wire.NewSet(
@@ -109,10 +106,6 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		wire.Bind(new(port.SessionRepository), new(*adapter.SessionRepository)),
 		adapter.NewSessionRepository,
 
-		// in-memory session-state cache (volatile snapshot owned by container)
-		sessionstate.NewMemoryCache,
-		wire.Bind(new(port.SessionStateCache), new(*sessionstate.MemoryCache)),
-
 		// worker
 		worker.NewImageChecker,
 		worker.NewDockerEventWatcher,
@@ -120,7 +113,6 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		worker.NewSQLHostEventStore,
 		wire.Bind(new(worker.HostEventStore), new(*worker.SQLHostEventStore)),
 		worker.NewLoggingHostEventHandler,
-		worker.NewSessionStateSyncHandler,
 		worker.NewSessionLifecycleHandler,
 		ProvideHostEventHandlers,
 		ProvideWorkerRunners,
@@ -166,11 +158,6 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 		adapter.NewHeadlessHostRepository,
 		wire.Bind(new(port.SessionRepository), new(*adapter.SessionRepository)),
 		adapter.NewSessionRepository,
-
-		// in-memory session-state cache (cli は通常 session を起動しないが、
-		// SessionUsecase の constructor 依存を満たすために bind だけする)
-		sessionstate.NewMemoryCache,
-		wire.Bind(new(port.SessionStateCache), new(*sessionstate.MemoryCache)),
 
 		// usecase
 		usecase.NewUserUsecase,

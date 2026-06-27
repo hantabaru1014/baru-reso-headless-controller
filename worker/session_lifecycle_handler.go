@@ -45,15 +45,33 @@ func (h *SessionLifecycleHandler) HandleHostEvent(ctx context.Context, hostID st
 	}
 }
 
-// HandleHostEventStreamReset is intentionally a no-op.
-//
-// Session resync after an OutOfRange is owned by SessionStateSyncHandler,
-// which calls ListSessions on the host and demotes only the sessions the
-// host actually lost (via DowngradeToUnknownIfRunning). A blanket
-// demote-everything here would clobber that careful per-session
-// reconciliation because both handlers are dispatched in sequence from
-// HostEventWatcher.notifyReset.
-func (h *SessionLifecycleHandler) HandleHostEventStreamReset(_ context.Context, _ string) {}
+// HandleHostEventStreamReset は OutOfRange でストリームが切れた直後に呼ばれる。
+// 切れている間に SessionEnded を取りこぼした可能性があるため、当該 host で
+// RUNNING になっている session を一旦 UNKNOWN に倒す。次の SessionStarted や
+// 他の resync 経路で正しい状態に戻る想定の最弱の防衛。
+func (h *SessionLifecycleHandler) HandleHostEventStreamReset(ctx context.Context, hostID string) {
+	sessions, err := h.sessionRepo.ListByHostAndStatus(ctx, hostID, entity.SessionStatus_RUNNING)
+	if err != nil {
+		slog.Error("session-lifecycle: failed to list RUNNING sessions on stream reset",
+			"hostID", hostID, "error", err)
+
+		return
+	}
+
+	if len(sessions) == 0 {
+		return
+	}
+
+	for _, s := range sessions {
+		if err := h.sessionRepo.UpdateStatus(ctx, s.ID, entity.SessionStatus_UNKNOWN); err != nil {
+			slog.Error("session-lifecycle: failed to demote session on stream reset",
+				"hostID", hostID, "sessionID", s.ID, "error", err)
+		}
+	}
+
+	slog.Warn("session-lifecycle: demoted RUNNING sessions to UNKNOWN due to host event stream reset",
+		"hostID", hostID, "count", len(sessions))
+}
 
 func (h *SessionLifecycleHandler) handleSessionStarted(ctx context.Context, hostID, eventID string, occurredAt time.Time, payload *headlessv1.SessionStarted) {
 	sessionID := payload.GetSessionId()
