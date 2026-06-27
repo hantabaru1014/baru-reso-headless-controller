@@ -50,7 +50,8 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	dockerEventWatcher := worker.NewDockerEventWatcher(dockerHostConnector, queries, workerConfig)
 	sqlHostEventStore := worker.NewSQLHostEventStore(queries)
 	loggingHostEventHandler := worker.NewLoggingHostEventHandler()
-	v := ProvideHostEventHandlers(loggingHostEventHandler)
+	sessionLifecycleHandler := worker.NewSessionLifecycleHandler(sessionRepository)
+	v := ProvideHostEventHandlers(loggingHostEventHandler, sessionLifecycleHandler)
 	hostEventWatcher := worker.NewHostEventWatcher(headlessHostRepository, sqlHostEventStore, workerConfig, v)
 	v2 := ProvideWorkerRunners(imageChecker, dockerEventWatcher, hostEventWatcher)
 	manager := worker.NewManager(v2)
@@ -125,12 +126,12 @@ func ProvideWorkerRunners(
 }
 
 // ProvideHostEventHandlers gathers consumers for the per-host event
-// streams. Today only a logging handler is registered; add real handlers
-// here as they come online.
+// streams.
 func ProvideHostEventHandlers(
 	loggingHandler *worker.LoggingHostEventHandler,
+	sessionLifecycleHandler *worker.SessionLifecycleHandler,
 ) []worker.HostEventHandler {
-	return []worker.HostEventHandler{loggingHandler}
+	return []worker.HostEventHandler{loggingHandler, sessionLifecycleHandler}
 }
 
 var ConfigSet = wire.NewSet(

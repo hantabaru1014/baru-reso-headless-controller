@@ -11,6 +11,77 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const applySessionEnded = `-- name: ApplySessionEnded :execrows
+UPDATE sessions
+SET
+    status = $2,
+    ended_at = $3
+WHERE id = $1
+  AND host_id = $4
+  AND (ended_at IS NULL OR ended_at < $3)
+`
+
+type ApplySessionEndedParams struct {
+	ID      string
+	Status  int32
+	EndedAt pgtype.Timestamptz
+	HostID  string
+}
+
+// host から届く SessionEnded を反映する部分更新。
+// occurred_at が現在の ended_at より新しい場合のみ更新する。
+// host_id 一致条件で、host 移動後に旧 host から遅延配信された SessionEnded
+// が現所有 host の session を倒すのを SQL レベルでも防ぐ。
+func (q *Queries) ApplySessionEnded(ctx context.Context, arg ApplySessionEndedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, applySessionEnded,
+		arg.ID,
+		arg.Status,
+		arg.EndedAt,
+		arg.HostID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const applySessionStarted = `-- name: ApplySessionStarted :execrows
+UPDATE sessions
+SET
+    name = $2,
+    status = $3,
+    started_at = $4,
+    ended_at = NULL,
+    host_id = $5
+WHERE id = $1
+  AND (started_at IS NULL OR started_at < $4)
+`
+
+type ApplySessionStartedParams struct {
+	ID        string
+	Name      string
+	Status    int32
+	StartedAt pgtype.Timestamptz
+	HostID    string
+}
+
+// host から届く SessionStarted を反映する部分更新。
+// occurred_at が現在の started_at より新しい場合のみ更新する (idempotent / 巻き戻し防止)。
+// 他フィールド (memo, auto_upgrade, startup_parameters, owner_id 等) には触れない。
+func (q *Queries) ApplySessionStarted(ctx context.Context, arg ApplySessionStartedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, applySessionStarted,
+		arg.ID,
+		arg.Name,
+		arg.Status,
+		arg.StartedAt,
+		arg.HostID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteSession = `-- name: DeleteSession :exec
 DELETE FROM sessions WHERE id = $1
 `
@@ -45,12 +116,98 @@ func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
 	return i, err
 }
 
+const insertSessionFromEvent = `-- name: InsertSessionFromEvent :exec
+INSERT INTO sessions (
+    id,
+    name,
+    status,
+    started_at,
+    host_id,
+    startup_parameters,
+    startup_parameters_schema_version,
+    auto_upgrade
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, FALSE
+)
+ON CONFLICT (id) DO NOTHING
+`
+
+type InsertSessionFromEventParams struct {
+	ID                             string
+	Name                           string
+	Status                         int32
+	StartedAt                      pgtype.Timestamptz
+	HostID                         string
+	StartupParameters              []byte
+	StartupParametersSchemaVersion int32
+}
+
+// host 由来の SessionStarted で「DB に存在しない session」を作る用の挿入。
+// ON CONFLICT DO NOTHING にすることで、competing path (SessionUsecase.StartSession など)
+// が同 id で先に row を作っていた場合に memo / owner_id / startup_parameters 等を
+// 上書きしないことを保証する (handler は続けて ApplySessionStarted で部分更新する)。
+func (q *Queries) InsertSessionFromEvent(ctx context.Context, arg InsertSessionFromEventParams) error {
+	_, err := q.db.Exec(ctx, insertSessionFromEvent,
+		arg.ID,
+		arg.Name,
+		arg.Status,
+		arg.StartedAt,
+		arg.HostID,
+		arg.StartupParameters,
+		arg.StartupParametersSchemaVersion,
+	)
+	return err
+}
+
 const listSessions = `-- name: ListSessions :many
 SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at FROM sessions ORDER BY started_at DESC
 `
 
 func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
 	rows, err := q.db.Query(ctx, listSessions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Session
+	for rows.Next() {
+		var i Session
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Status,
+			&i.StartedAt,
+			&i.OwnerID,
+			&i.EndedAt,
+			&i.HostID,
+			&i.StartupParameters,
+			&i.StartupParametersSchemaVersion,
+			&i.AutoUpgrade,
+			&i.Memo,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSessionsByHostAndStatus = `-- name: ListSessionsByHostAndStatus :many
+SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at FROM sessions WHERE host_id = $1 AND status = $2 ORDER BY started_at DESC
+`
+
+type ListSessionsByHostAndStatusParams struct {
+	HostID string
+	Status int32
+}
+
+func (q *Queries) ListSessionsByHostAndStatus(ctx context.Context, arg ListSessionsByHostAndStatusParams) ([]Session, error) {
+	rows, err := q.db.Query(ctx, listSessionsByHostAndStatus, arg.HostID, arg.Status)
 	if err != nil {
 		return nil, err
 	}
