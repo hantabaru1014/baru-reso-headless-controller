@@ -46,21 +46,30 @@ func ProvideResoniteLinkConfig(cfg *config.EnvConfig) *config.ResoniteLinkConfig
 	return &cfg.ResoniteLink
 }
 
-// ProvideWorkerRunners groups the concrete background workers that the
-// server supervises into a slice the worker.Manager consumes. Add new
-// workers here when introducing one.
-func ProvideWorkerRunners(
+// ProvideWorkerManager groups the concrete background workers AND
+// performs two post-construction links that wire itself cannot express:
+//   - The orchestrator needs a SessionStopper (SessionUsecase), but
+//     SessionUsecase needs a HostDrainer (the orchestrator). Wire can
+//     pick only one direction at construction time; we close the cycle
+//     by setting the stopper here, after both ends exist.
+//   - The orchestrator subscribes to ImageChecker so registry polling
+//     happens in exactly one place.
+func ProvideWorkerManager(
 	imageChecker *worker.ImageChecker,
 	dockerEventWatcher *worker.DockerEventWatcher,
 	hostEventWatcher *worker.HostEventWatcher,
 	upgradeOrchestrator *worker.HostUpgradeOrchestrator,
-) []worker.Runner {
-	return []worker.Runner{
+	sessionStopper port.SessionStopper,
+) *worker.Manager {
+	upgradeOrchestrator.SetSessionStopper(sessionStopper)
+	imageChecker.Subscribe(upgradeOrchestrator.OnNewImage)
+
+	return worker.NewManager([]worker.Runner{
 		imageChecker,
 		dockerEventWatcher,
 		hostEventWatcher,
 		upgradeOrchestrator,
-	}
+	})
 }
 
 // ProvideHostEventHandlers gathers consumers for the per-host event
@@ -126,8 +135,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		wire.Bind(new(port.HostDrainer), new(*worker.HostUpgradeOrchestrator)),
 		ProvideHeadlessAccountFetcher,
 		ProvideHostEventHandlers,
-		ProvideWorkerRunners,
-		worker.NewManager,
+		ProvideWorkerManager,
 
 		// usecase
 		usecase.NewHeadlessHostUsecase,
@@ -135,6 +143,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		usecase.NewHeadlessAccountUsecase,
 		usecase.NewSessionUsecase,
 		usecase.NewBlobUsecase,
+		wire.Bind(new(port.SessionStopper), new(*usecase.SessionUsecase)),
 
 		// controller
 		rpc.NewUserService,

@@ -3,7 +3,6 @@ package worker
 import (
 	"context"
 	"log/slog"
-	"slices"
 	"sync"
 	"time"
 
@@ -16,39 +15,59 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
 
-// HostUpgradeOrchestrator watches for newly published headless container
-// images and rolls hosts that opted in (AutoUpdatePolicy = USERS_EMPTY)
-// onto the latest tag without disturbing active users.
+// HostUpgradeOrchestrator rolls hosts that opted in
+// (AutoUpdatePolicy = USERS_EMPTY) onto the latest container tag without
+// disturbing active users.
 //
-// The lifecycle for one host is:
-//  1. A periodic tick discovers that the host is running an older release
-//     tag than what the registry advertises and adds the host to drainSet.
-//  2. While in drainSet, StartSession on this host is rejected (via the
-//     HostDrainer interface SessionUsecase consults).
-//  3. Whenever a session on a draining host reports an empty user count
-//     (either from a UserLeftSession event or from the periodic poll), it
-//     is stopped.
-//  4. Once the host has zero RUNNING sessions, it is restarted on the
-//     target tag and removed from drainSet.
+// Lifecycle for one host:
+//  1. ImageChecker observes a new tag and calls OnNewImage. The
+//     orchestrator looks at every running host with USERS_EMPTY policy,
+//     and for those whose current AppVersion differs from the new tag it
+//     (a) snapshots the host's StartupConfig + account (start_worlds in
+//     particular MUST be captured here — once we stop the sessions the
+//     live container has nothing to report) and (b) RPC-fetches each
+//     session's current user count so the in-memory counter has a
+//     trustworthy baseline.
+//  2. While in drainTargets, StartSession on the host is rejected by
+//     SessionUsecase (via the port.HostDrainer interface).
+//  3. The periodic tick and per-host UserLeftSession events both call
+//     reconcileHost: any session whose user count is 0 is stopped via
+//     port.SessionStopper.
+//  4. When no RUNNING session remains for the host, Restart is invoked
+//     with the snapshotted StartupConfig + target tag. On success the
+//     host leaves drainTargets; on failure we increment an attempt
+//     counter and abort after maxRestartAttempts so a permanently broken
+//     host doesn't block its session admission forever.
 //
-// State (drainSet, targets, sessionUsers) is kept in memory; a controller
-// restart loses it but the next tick reconstructs an equivalent view from
-// the registry + live RPC state, so no upgrade is permanently lost.
+// State is purely in-memory; a controller restart loses it but the next
+// ImageChecker poll will re-discover the upgrade candidate.
 type HostUpgradeOrchestrator struct {
 	hostRepo           port.HeadlessHostRepository
 	sessionRepo        port.SessionRepository
 	accountRepo        HeadlessAccountFetcher
 	interval           time.Duration
 	restartStopTimeout int
+	maxRestartAttempts int
 
-	mu           sync.Mutex
-	drainTargets map[string]string // hostID -> target image tag
-	sessionUsers map[string]int32  // sessionID -> last-known user count
+	mu            sync.Mutex
+	drainTargets  map[string]*drainState      // hostID -> in-flight upgrade state
+	sessionUsers  map[string]map[string]int32 // hostID -> sessionID -> user count
+	reconcileLock map[string]*sync.Mutex      // hostID -> per-host reconcile lock
 
-	// reconcileOnce serialises reconcile passes so the periodic ticker
-	// and event-driven triggers cannot race on the host/session RPCs or
-	// double-fire a restart for the same host.
-	reconcileOnce sync.Mutex
+	// sessionStopper is wired AFTER construction (see SetSessionStopper)
+	// to break the SessionUsecase ↔ orchestrator construction cycle.
+	stopperMu      sync.RWMutex
+	sessionStopper port.SessionStopper
+}
+
+// drainState is everything the orchestrator captured at enroll time —
+// the StartupConfig snapshot (in particular start_worlds), the resolved
+// account credentials and the target tag — plus the running attempt
+// counter so a permanently-failing restart eventually aborts.
+type drainState struct {
+	targetTag    string
+	restartParms port.HeadlessHostStartParams
+	attempts     int
 }
 
 // HeadlessAccountFetcher is the slice of HeadlessAccountUsecase the
@@ -64,11 +83,19 @@ var (
 	_ port.HostDrainer = (*HostUpgradeOrchestrator)(nil)
 )
 
-// defaultRestartStopTimeoutSeconds is how long Restart waits for a
-// graceful container stop before forcing it down. Resonite headless
-// sometimes takes a while to flush state on shutdown, so we err on the
-// generous side.
-const defaultRestartStopTimeoutSeconds = 180
+const (
+	// defaultRestartStopTimeoutSeconds is how long Restart waits for a
+	// graceful container stop before forcing it down. Resonite headless
+	// sometimes takes a while to flush state on shutdown, so we err on
+	// the generous side.
+	defaultRestartStopTimeoutSeconds = 180
+
+	// defaultMaxRestartAttempts caps consecutive restart failures for a
+	// host before the orchestrator gives up and removes it from the
+	// drain set. Otherwise a permanently broken host would block all
+	// new sessions on it forever.
+	defaultMaxRestartAttempts = 5
+)
 
 func NewHostUpgradeOrchestrator(
 	hostRepo port.HeadlessHostRepository,
@@ -82,9 +109,22 @@ func NewHostUpgradeOrchestrator(
 		accountRepo:        accountRepo,
 		interval:           cfg.UpgradeCheckInterval,
 		restartStopTimeout: defaultRestartStopTimeoutSeconds,
-		drainTargets:       make(map[string]string),
-		sessionUsers:       make(map[string]int32),
+		maxRestartAttempts: defaultMaxRestartAttempts,
+		drainTargets:       make(map[string]*drainState),
+		sessionUsers:       make(map[string]map[string]int32),
+		reconcileLock:      make(map[string]*sync.Mutex),
 	}
+}
+
+// SetSessionStopper installs the SessionStopper after construction.
+// Required because SessionUsecase depends on HostDrainer (= orchestrator)
+// which would otherwise form a wire-time cycle. The HTTP server's
+// constructor performs this linkage once both ends are built.
+func (o *HostUpgradeOrchestrator) SetSessionStopper(s port.SessionStopper) {
+	o.stopperMu.Lock()
+	defer o.stopperMu.Unlock()
+
+	o.sessionStopper = s
 }
 
 func (o *HostUpgradeOrchestrator) Name() string { return "host-upgrade-orchestrator" }
@@ -99,9 +139,13 @@ func (o *HostUpgradeOrchestrator) IsHostDraining(hostID string) bool {
 	return ok
 }
 
+// Run periodically reconciles already-enrolled hosts. Discovery of NEW
+// upgrade candidates happens via the OnNewImage callback subscribed on
+// ImageChecker; the periodic tick exists to retry restarts that failed
+// (e.g. transient docker errors) and to catch sessions that became empty
+// without the UserLeftSession event reaching us (cold start, stream
+// reset).
 func (o *HostUpgradeOrchestrator) Run(ctx context.Context) error {
-	o.tick(ctx)
-
 	ticker := time.NewTicker(o.interval)
 	defer ticker.Stop()
 
@@ -110,84 +154,17 @@ func (o *HostUpgradeOrchestrator) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-			o.tick(ctx)
+			o.reconcileAllDraining(ctx)
 		}
 	}
 }
 
-// HandleHostEvent implements HostEventHandler. UserLeftSession and
-// SessionEnded events on a draining host trigger an immediate reconcile
-// so the upgrade fires the moment the last user disconnects rather than
-// waiting up to UpgradeCheckInterval.
-func (o *HostUpgradeOrchestrator) HandleHostEvent(ctx context.Context, hostID string, ev *headlessv1.HostEvent) {
-	switch p := ev.GetPayload().(type) {
-	case *headlessv1.HostEvent_UserJoinedSession:
-		o.bumpUserCount(p.UserJoinedSession.GetSessionId(), 1)
-	case *headlessv1.HostEvent_UserLeftSession:
-		o.bumpUserCount(p.UserLeftSession.GetSessionId(), -1)
-	case *headlessv1.HostEvent_SessionEnded:
-		o.forgetSession(p.SessionEnded.GetSessionId())
-	default:
-		return
-	}
-
-	if !o.IsHostDraining(hostID) {
-		return
-	}
-
-	o.reconcileHost(ctx, hostID)
-}
-
-// HandleHostEventStreamReset implements HostEventHandler. We don't know
-// which sessions belong to the reset host (the counter is keyed on
-// sessionID alone), so the conservative move is to drop every cached
-// count and let the next reconcile re-fetch via RPC.
-func (o *HostUpgradeOrchestrator) HandleHostEventStreamReset(_ context.Context, hostID string) {
-	if !o.IsHostDraining(hostID) {
-		return
-	}
-
-	o.mu.Lock()
-	o.sessionUsers = make(map[string]int32)
-	o.mu.Unlock()
-}
-
-// tick runs one full sweep: discover upgrade candidates, then reconcile
-// every host currently in drainSet.
-func (o *HostUpgradeOrchestrator) tick(ctx context.Context) {
-	o.discoverUpgradeCandidates(ctx)
-
-	for _, id := range o.drainingHostIDs() {
-		o.reconcileHost(ctx, id)
-	}
-}
-
-func (o *HostUpgradeOrchestrator) drainingHostIDs() []string {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-
-	ids := make([]string, 0, len(o.drainTargets))
-	for id := range o.drainTargets {
-		ids = append(ids, id)
-	}
-
-	return ids
-}
-
-// discoverUpgradeCandidates compares the latest non-prerelease registry
-// tag against each RUNNING host with AutoUpdatePolicy == USERS_EMPTY. A
-// host whose AppVersion differs from the newest tag (and isn't already
-// draining) is enrolled.
-func (o *HostUpgradeOrchestrator) discoverUpgradeCandidates(ctx context.Context) {
-	tags, err := o.hostRepo.ListContainerTags(ctx, nil)
-	if err != nil {
-		slog.Error("upgrade-orchestrator: failed to list tags", "error", err)
-
-		return
-	}
-
-	latest := newestReleaseTag(tags)
-	if latest == nil {
+// OnNewImage is the ImageChecker subscription. It enrolls each running
+// USERS_EMPTY host whose AppVersion differs from the new tag, snapshots
+// the startup config + account (BEFORE any sessions are stopped), seeds
+// the per-host user-count cache from RPC, then triggers a reconcile.
+func (o *HostUpgradeOrchestrator) OnNewImage(ctx context.Context, latest *port.ContainerImage) {
+	if latest == nil || latest.IsPreRelease {
 		return
 	}
 
@@ -211,38 +188,182 @@ func (o *HostUpgradeOrchestrator) discoverUpgradeCandidates(ctx context.Context)
 			continue
 		}
 
-		if o.enrollHost(h.ID, latest.Tag) {
-			slog.Info("upgrade-orchestrator: enrolled host for drain",
-				"hostID", h.ID, "currentAppVersion", h.AppVersion, "targetTag", latest.Tag)
+		if o.IsHostDraining(h.ID) {
+			continue
 		}
+
+		o.enrollHost(ctx, h.ID, latest.Tag)
 	}
 }
 
-// enrollHost atomically adds the host to drainTargets unless it was
-// already present. Returns true if this call actually enrolled it.
-func (o *HostUpgradeOrchestrator) enrollHost(hostID, targetTag string) bool {
+// HandleHostEvent implements HostEventHandler. Cache updates happen
+// unconditionally so a host enrolled later still sees up-to-date counts;
+// reconcile is only triggered for hosts already in drainTargets.
+func (o *HostUpgradeOrchestrator) HandleHostEvent(ctx context.Context, hostID string, ev *headlessv1.HostEvent) {
+	switch p := ev.GetPayload().(type) {
+	case *headlessv1.HostEvent_UserJoinedSession:
+		o.bumpUserCount(hostID, p.UserJoinedSession.GetSessionId(), 1)
+	case *headlessv1.HostEvent_UserLeftSession:
+		o.bumpUserCount(hostID, p.UserLeftSession.GetSessionId(), -1)
+	case *headlessv1.HostEvent_SessionEnded:
+		o.forgetSession(hostID, p.SessionEnded.GetSessionId())
+	default:
+		return
+	}
+
+	if !o.IsHostDraining(hostID) {
+		return
+	}
+
+	o.reconcileHost(ctx, hostID)
+}
+
+// HandleHostEventStreamReset implements HostEventHandler. The watcher
+// has lost buffered events for this host, so any per-session cache we
+// hold for it is suspect — wipe it (only this host's submap, not
+// everyone's) and let the next reconcile re-fetch from RPC. We do this
+// regardless of whether the host is currently draining: an enroll that
+// happens later would otherwise pick up the stale counters.
+func (o *HostUpgradeOrchestrator) HandleHostEventStreamReset(ctx context.Context, hostID string) {
+	o.mu.Lock()
+	delete(o.sessionUsers, hostID)
+	o.mu.Unlock()
+
+	if !o.IsHostDraining(hostID) {
+		return
+	}
+
+	// Reseed from RPC so the upgrade decision keeps moving forward
+	// even if no further events arrive on the new stream.
+	if err := o.seedSessionUserCache(ctx, hostID); err != nil {
+		slog.Warn("upgrade-orchestrator: reseed after stream reset failed",
+			"hostID", hostID, "error", err)
+	}
+
+	o.reconcileHost(ctx, hostID)
+}
+
+// reconcileAllDraining is the periodic catch-up pass.
+func (o *HostUpgradeOrchestrator) reconcileAllDraining(ctx context.Context) {
+	for _, id := range o.drainingHostIDs() {
+		o.reconcileHost(ctx, id)
+	}
+}
+
+func (o *HostUpgradeOrchestrator) drainingHostIDs() []string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	if _, already := o.drainTargets[hostID]; already {
-		return false
+	ids := make([]string, 0, len(o.drainTargets))
+	for id := range o.drainTargets {
+		ids = append(ids, id)
 	}
 
-	o.drainTargets[hostID] = targetTag
+	return ids
+}
 
-	return true
+// enrollHost captures the snapshot data the eventual restart will need
+// and adds the host to drainTargets. Failure to snapshot leaves the
+// host unenrolled — better than enrolling with a bad snapshot that
+// would restart the host with empty start_worlds.
+func (o *HostUpgradeOrchestrator) enrollHost(ctx context.Context, hostID, targetTag string) {
+	// CRITICAL: this Find must run with IncludeStartWorlds:true BEFORE
+	// any sessions are stopped, because the underlying RPC reads
+	// start_worlds from the running container's live state. Once
+	// stopSession drains the sessions there is nothing left to capture.
+	host, err := o.hostRepo.Find(ctx, hostID, port.HeadlessHostFetchOptions{
+		IncludeStartWorlds: true,
+	})
+	if err != nil {
+		slog.Error("upgrade-orchestrator: snapshot host failed; skipping enroll",
+			"hostID", hostID, "error", err)
+
+		return
+	}
+
+	account, err := o.accountRepo.GetHeadlessAccount(ctx, host.AccountId)
+	if err != nil {
+		slog.Error("upgrade-orchestrator: account fetch failed; skipping enroll",
+			"hostID", hostID, "error", err)
+
+		return
+	}
+
+	state := &drainState{
+		targetTag: targetTag,
+		restartParms: port.HeadlessHostStartParams{
+			Name:              host.Name,
+			ContainerImageTag: targetTag,
+			StartupConfig:     converter.HeadlessHostSettingsToStartupConfigProto(&host.HostSettings),
+			HeadlessAccount:   *account,
+			AutoUpdatePolicy:  host.AutoUpdatePolicy,
+			Memo:              host.Memo,
+		},
+	}
+
+	o.mu.Lock()
+
+	if _, already := o.drainTargets[hostID]; already {
+		o.mu.Unlock()
+
+		return
+	}
+
+	o.drainTargets[hostID] = state
+	o.mu.Unlock()
+
+	slog.Info("upgrade-orchestrator: enrolled host for drain",
+		"hostID", hostID, "currentAppVersion", host.AppVersion, "targetTag", targetTag)
+
+	// Reseed cache from live RPC so the very next reconcile has a
+	// trustworthy baseline. Without this, controller-restart races
+	// (a user-leave event arriving after a checkpoint with no matching
+	// user-join replay) could leave a session falsely at 0.
+	if err := o.seedSessionUserCache(ctx, hostID); err != nil {
+		slog.Warn("upgrade-orchestrator: initial cache seed failed; reconcile will RPC-verify",
+			"hostID", hostID, "error", err)
+	}
+
+	o.reconcileHost(ctx, hostID)
+}
+
+// seedSessionUserCache replaces the per-host user-count submap with the
+// live counts reported by the container. Subsequent UserJoined/Left
+// events are applied incrementally on top of this baseline.
+func (o *HostUpgradeOrchestrator) seedSessionUserCache(ctx context.Context, hostID string) error {
+	client, err := o.hostRepo.GetRpcClient(ctx, hostID)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	resp, err := client.ListSessions(ctx, &headlessv1.ListSessionsRequest{})
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	seeded := make(map[string]int32, len(resp.GetSessions()))
+	for _, s := range resp.GetSessions() {
+		seeded[s.GetId()] = s.GetUsersCount()
+	}
+
+	o.mu.Lock()
+	o.sessionUsers[hostID] = seeded
+	o.mu.Unlock()
+
+	return nil
 }
 
 // reconcileHost stops empty sessions on a draining host and, once no
 // RUNNING sessions remain, restarts the host on its target tag.
 func (o *HostUpgradeOrchestrator) reconcileHost(ctx context.Context, hostID string) {
-	// Serialise reconcile passes so the ticker and event-driven calls
-	// don't double-restart the same host.
-	o.reconcileOnce.Lock()
-	defer o.reconcileOnce.Unlock()
+	// Per-host serialisation so the periodic tick and event-driven
+	// triggers cannot double-restart the same host, but reconciles for
+	// different hosts can still proceed in parallel.
+	o.hostReconcileMutex(hostID).Lock()
+	defer o.hostReconcileMutex(hostID).Unlock()
 
 	o.mu.Lock()
-	targetTag, draining := o.drainTargets[hostID]
+	state, draining := o.drainTargets[hostID]
 	o.mu.Unlock()
 
 	if !draining {
@@ -259,7 +380,7 @@ func (o *HostUpgradeOrchestrator) reconcileHost(ctx context.Context, hostID stri
 	remaining := 0
 
 	for _, s := range sessions {
-		count, err := o.refreshUserCount(ctx, hostID, s)
+		count, err := o.userCountForSession(ctx, hostID, s.ID)
 		if err != nil {
 			slog.Warn("upgrade-orchestrator: failed to fetch session user count",
 				"hostID", hostID, "sessionID", s.ID, "error", err)
@@ -275,29 +396,64 @@ func (o *HostUpgradeOrchestrator) reconcileHost(ctx context.Context, hostID stri
 			continue
 		}
 
-		if err := o.stopSession(ctx, hostID, s); err != nil {
+		if err := o.stopSession(ctx, s.ID); err != nil {
 			slog.Error("upgrade-orchestrator: failed to stop empty session",
 				"hostID", hostID, "sessionID", s.ID, "error", err)
 
 			remaining++
+
+			continue
 		}
+
+		o.forgetSession(hostID, s.ID)
 	}
 
 	if remaining > 0 {
 		return
 	}
 
-	if err := o.restartHost(ctx, hostID, targetTag); err != nil {
-		slog.Error("upgrade-orchestrator: restart failed", "hostID", hostID, "tag", targetTag, "error", err)
+	if err := o.restartHost(ctx, hostID, state); err != nil {
+		o.recordRestartFailure(hostID, err)
 
 		return
 	}
 
 	o.mu.Lock()
 	delete(o.drainTargets, hostID)
+	delete(o.sessionUsers, hostID)
 	o.mu.Unlock()
 
-	slog.Info("upgrade-orchestrator: host upgraded", "hostID", hostID, "tag", targetTag)
+	slog.Info("upgrade-orchestrator: host upgraded", "hostID", hostID, "tag", state.targetTag)
+}
+
+func (o *HostUpgradeOrchestrator) recordRestartFailure(hostID string, restartErr error) {
+	o.mu.Lock()
+
+	state, ok := o.drainTargets[hostID]
+	if !ok {
+		o.mu.Unlock()
+
+		return
+	}
+
+	state.attempts++
+	attempts := state.attempts
+	target := state.targetTag
+
+	if attempts >= o.maxRestartAttempts {
+		delete(o.drainTargets, hostID)
+		delete(o.sessionUsers, hostID)
+	}
+
+	o.mu.Unlock()
+
+	if attempts >= o.maxRestartAttempts {
+		slog.Error("upgrade-orchestrator: giving up after repeated restart failures",
+			"hostID", hostID, "tag", target, "attempts", attempts, "lastError", restartErr)
+	} else {
+		slog.Error("upgrade-orchestrator: restart failed; will retry",
+			"hostID", hostID, "tag", target, "attempts", attempts, "error", restartErr)
+	}
 }
 
 // runningSessionsForHost returns RUNNING sessions on this host based on
@@ -319,24 +475,40 @@ func (o *HostUpgradeOrchestrator) runningSessionsForHost(ctx context.Context, ho
 	return out, nil
 }
 
-// refreshUserCount returns the latest user count for the session,
-// preferring the in-memory counter (kept up to date by host events) and
-// falling back to an RPC call on cache miss.
-func (o *HostUpgradeOrchestrator) refreshUserCount(ctx context.Context, hostID string, s *entity.Session) (int32, error) {
+// userCountForSession returns the latest user count for the session.
+// The per-host cache is treated as authoritative when it reports a
+// strictly positive value (we wouldn't stop the session anyway), but a
+// cached 0 OR a cache miss falls back to an RPC verification. This
+// guards against a stale "0" left over from a partial event replay
+// incorrectly tearing down a session that actually has users.
+func (o *HostUpgradeOrchestrator) userCountForSession(ctx context.Context, hostID, sessionID string) (int32, error) {
 	o.mu.Lock()
-	cached, ok := o.sessionUsers[s.ID]
+
+	var (
+		cached int32
+		hit    bool
+	)
+
+	if hostMap, ok := o.sessionUsers[hostID]; ok {
+		cached, hit = hostMap[sessionID]
+	}
+
 	o.mu.Unlock()
 
-	if ok {
+	if hit && cached > 0 {
 		return cached, nil
 	}
 
+	return o.fetchUserCountRPC(ctx, hostID, sessionID)
+}
+
+func (o *HostUpgradeOrchestrator) fetchUserCountRPC(ctx context.Context, hostID, sessionID string) (int32, error) {
 	client, err := o.hostRepo.GetRpcClient(ctx, hostID)
 	if err != nil {
 		return 0, errors.Wrap(err, 0)
 	}
 
-	resp, err := client.GetSession(ctx, &headlessv1.GetSessionRequest{SessionId: s.ID})
+	resp, err := client.GetSession(ctx, &headlessv1.GetSessionRequest{SessionId: sessionID})
 	if err != nil {
 		return 0, errors.Wrap(err, 0)
 	}
@@ -344,108 +516,82 @@ func (o *HostUpgradeOrchestrator) refreshUserCount(ctx context.Context, hostID s
 	count := resp.GetSession().GetUsersCount()
 
 	o.mu.Lock()
-	o.sessionUsers[s.ID] = count
+
+	if o.sessionUsers[hostID] == nil {
+		o.sessionUsers[hostID] = make(map[string]int32)
+	}
+
+	o.sessionUsers[hostID][sessionID] = count
 	o.mu.Unlock()
 
 	return count, nil
 }
 
-// stopSession mirrors SessionUsecase.StopSession but is inlined here to
-// avoid a dependency cycle between worker and usecase (SessionUsecase
-// already depends on this orchestrator via port.HostDrainer).
-func (o *HostUpgradeOrchestrator) stopSession(ctx context.Context, hostID string, s *entity.Session) error {
-	client, err := o.hostRepo.GetRpcClient(ctx, hostID)
-	if err != nil {
-		return errors.Wrap(err, 0)
+// stopSession delegates to the wired SessionStopper (SessionUsecase) so
+// that LoadWorld URL preservation, status updates and any future
+// stop-time logic stay in one place. Returns an error if the stopper
+// has not been wired (programmer error).
+func (o *HostUpgradeOrchestrator) stopSession(ctx context.Context, sessionID string) error {
+	o.stopperMu.RLock()
+	stopper := o.sessionStopper
+	o.stopperMu.RUnlock()
+
+	if stopper == nil {
+		return errors.New("upgrade-orchestrator: SessionStopper not wired")
 	}
 
-	hdlSession, err := client.GetSession(ctx, &headlessv1.GetSessionRequest{SessionId: s.ID})
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-
-	if url := hdlSession.GetSession().GetWorldUrl(); url != "" {
-		s.StartupParameters.LoadWorld = &headlessv1.WorldStartupParameters_LoadWorldUrl{
-			LoadWorldUrl: url,
-		}
-	}
-
-	_, err = client.StopSession(ctx, &headlessv1.StopSessionRequest{SessionId: s.ID})
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-
-	now := time.Now()
-	s.EndedAt = &now
-	s.Status = entity.SessionStatus_ENDED
-
-	if err := o.sessionRepo.Upsert(ctx, s); err != nil {
-		return errors.Wrap(err, 0)
-	}
-
-	o.forgetSession(s.ID)
-
-	return nil
+	return stopper.StopSession(ctx, sessionID)
 }
 
-// restartHost builds the StartupConfig from the host's persisted state
-// and calls into the repository directly. Done this way (rather than via
-// HeadlessHostUsecase.HeadlessHostRestart) to avoid the dependency cycle
-// orchestrator → SessionUsecase → HostDrainer → orchestrator.
-func (o *HostUpgradeOrchestrator) restartHost(ctx context.Context, hostID, targetTag string) error {
-	host, err := o.hostRepo.Find(ctx, hostID, port.HeadlessHostFetchOptions{
-		IncludeStartWorlds: true,
-	})
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-
-	account, err := o.accountRepo.GetHeadlessAccount(ctx, host.AccountId)
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-
-	params := port.HeadlessHostStartParams{
-		Name:              host.Name,
-		ContainerImageTag: targetTag,
-		StartupConfig:     converter.HeadlessHostSettingsToStartupConfigProto(&host.HostSettings),
-		HeadlessAccount:   *account,
-		AutoUpdatePolicy:  host.AutoUpdatePolicy,
-		Memo:              host.Memo,
-	}
-
-	return o.hostRepo.Restart(ctx, host.ID, params, o.restartStopTimeout)
+// restartHost uses the snapshot captured at enroll time (NOT a live
+// Find) so start_worlds reflects the sessions that were running BEFORE
+// drain started.
+func (o *HostUpgradeOrchestrator) restartHost(ctx context.Context, hostID string, state *drainState) error {
+	return o.hostRepo.Restart(ctx, hostID, state.restartParms, o.restartStopTimeout)
 }
 
-func (o *HostUpgradeOrchestrator) bumpUserCount(sessionID string, delta int32) {
-	if sessionID == "" {
+func (o *HostUpgradeOrchestrator) bumpUserCount(hostID, sessionID string, delta int32) {
+	if hostID == "" || sessionID == "" {
 		return
 	}
 
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	o.sessionUsers[sessionID] = max(o.sessionUsers[sessionID]+delta, 0)
+	hostMap, ok := o.sessionUsers[hostID]
+	if !ok {
+		hostMap = make(map[string]int32)
+		o.sessionUsers[hostID] = hostMap
+	}
+
+	hostMap[sessionID] = max(hostMap[sessionID]+delta, 0)
 }
 
-func (o *HostUpgradeOrchestrator) forgetSession(sessionID string) {
+func (o *HostUpgradeOrchestrator) forgetSession(hostID, sessionID string) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	delete(o.sessionUsers, sessionID)
+	if hostMap, ok := o.sessionUsers[hostID]; ok {
+		delete(hostMap, sessionID)
+
+		if len(hostMap) == 0 {
+			delete(o.sessionUsers, hostID)
+		}
+	}
 }
 
-// newestReleaseTag returns the latest non-prerelease tag, or nil if the
-// list is empty. ContainerTagList is ordered oldest-to-newest by the
-// repository.
-func newestReleaseTag(tags port.ContainerImageList) *port.ContainerImage {
-	for _, t := range slices.Backward(tags) {
-		if t.IsPreRelease {
-			continue
-		}
+// hostReconcileMutex returns the per-host reconcile lock, allocating it
+// on first use. Per-host (rather than global) so unrelated draining
+// hosts can reconcile in parallel.
+func (o *HostUpgradeOrchestrator) hostReconcileMutex(hostID string) *sync.Mutex {
+	o.mu.Lock()
+	defer o.mu.Unlock()
 
-		return t
+	m, ok := o.reconcileLock[hostID]
+	if !ok {
+		m = &sync.Mutex{}
+		o.reconcileLock[hostID] = m
 	}
 
-	return nil
+	return m
 }

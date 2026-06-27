@@ -244,10 +244,16 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 		}
 	}
 
-	// 旧コンテナを削除しておかないと、Resonite クラウド側で
-	// 同名ホストの machineId 衝突が起きて新しいコンテナがログインに
-	// 失敗することがある。issue #21 参照。Remove はコンテナが存在しない
-	// 場合は nil を返すので wasRunning でない場合でも安全に呼べる。
+	// issue #21 対応: 旧コンテナを掃除する。
+	// auto upgrade のように Restart を高頻度で呼ぶと旧コンテナが残り
+	// 続けて Docker daemon に積み上がる。Remove は存在しないコンテナ
+	// では nil を返す (Force:true) ので wasRunning でない場合でも
+	// 安全に呼べる。
+	// 根本原因 ("同じ名前のホストを建てられない") の正確なメカニズム
+	// (docker レベルでは ContainerCreate に空名を渡しているので名前
+	// 衝突しない) は未確認だが、旧コンテナ残留が悪さをするケースの
+	// 候補は複数あり (clouddrive のセッション保留、Resonite cloud
+	// 側の machineId 等)、いずれにせよ掃除しない理由が無い。
 	err = connector.Remove(ctx, connectStr)
 	if err != nil {
 		return errors.Wrap(err, 0)

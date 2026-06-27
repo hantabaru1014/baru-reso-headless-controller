@@ -6,6 +6,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
@@ -17,25 +18,26 @@ import (
 )
 
 // orchestratorHostRepo is a port.HeadlessHostRepository fake covering only
-// the methods the orchestrator exercises. Counts how often Restart was
-// invoked per host so tests can assert restart-once semantics.
+// the methods the orchestrator exercises.
 type orchestratorHostRepo struct {
 	port.HeadlessHostRepository
 
-	mu       sync.Mutex
-	hosts    map[string]*entity.HeadlessHost
-	tags     port.ContainerImageList
-	tagsErr  error
-	listErr  error
-	restarts map[string][]port.HeadlessHostStartParams
-	clients  map[string]headlessv1.HeadlessControlServiceClient
+	mu          sync.Mutex
+	hosts       map[string]*entity.HeadlessHost
+	listErr     error
+	restarts    map[string][]port.HeadlessHostStartParams
+	restartErrs map[string][]error // pop one per call
+	clients     map[string]headlessv1.HeadlessControlServiceClient
+	findOpts    map[string]port.HeadlessHostFetchOptions // last fetch options per host
 }
 
 func newOrchestratorHostRepo() *orchestratorHostRepo {
 	return &orchestratorHostRepo{
-		hosts:    make(map[string]*entity.HeadlessHost),
-		restarts: make(map[string][]port.HeadlessHostStartParams),
-		clients:  make(map[string]headlessv1.HeadlessControlServiceClient),
+		hosts:       make(map[string]*entity.HeadlessHost),
+		restarts:    make(map[string][]port.HeadlessHostStartParams),
+		restartErrs: make(map[string][]error),
+		clients:     make(map[string]headlessv1.HeadlessControlServiceClient),
+		findOpts:    make(map[string]port.HeadlessHostFetchOptions),
 	}
 }
 
@@ -55,9 +57,11 @@ func (r *orchestratorHostRepo) ListAll(_ context.Context, _ port.HeadlessHostFet
 	return out, nil
 }
 
-func (r *orchestratorHostRepo) Find(_ context.Context, id string, _ port.HeadlessHostFetchOptions) (*entity.HeadlessHost, error) {
+func (r *orchestratorHostRepo) Find(_ context.Context, id string, opts port.HeadlessHostFetchOptions) (*entity.HeadlessHost, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	r.findOpts[id] = opts
 
 	h, ok := r.hosts[id]
 	if !ok {
@@ -67,16 +71,18 @@ func (r *orchestratorHostRepo) Find(_ context.Context, id string, _ port.Headles
 	return h, nil
 }
 
-func (r *orchestratorHostRepo) ListContainerTags(_ context.Context, _ *string) (port.ContainerImageList, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	return r.tags, r.tagsErr
-}
-
 func (r *orchestratorHostRepo) Restart(_ context.Context, id string, params port.HeadlessHostStartParams, _ int) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	if queued := r.restartErrs[id]; len(queued) > 0 {
+		err := queued[0]
+		r.restartErrs[id] = queued[1:]
+
+		if err != nil {
+			return err
+		}
+	}
 
 	r.restarts[id] = append(r.restarts[id], params)
 
@@ -99,14 +105,35 @@ func (r *orchestratorHostRepo) GetRpcClient(_ context.Context, id string) (headl
 	return c, nil
 }
 
-func (r *orchestratorHostRepo) restartCount(hostID string) int { //nolint:unparam // tests intentionally exercise one host
+func (r *orchestratorHostRepo) restartCount(hostID string) int { //nolint:unparam // tests exercise a single host id
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	return len(r.restarts[hostID])
 }
 
-// orchestratorSessionRepo only implements ListByStatus and Upsert.
+func (r *orchestratorHostRepo) lastRestartParams(hostID string) (port.HeadlessHostStartParams, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	calls := r.restarts[hostID]
+	if len(calls) == 0 {
+		return port.HeadlessHostStartParams{}, false
+	}
+
+	return calls[len(calls)-1], true
+}
+
+func (r *orchestratorHostRepo) lastFindOpts(hostID string) (port.HeadlessHostFetchOptions, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	opts, ok := r.findOpts[hostID]
+
+	return opts, ok
+}
+
+// orchestratorSessionRepo implements ListByStatus and Upsert.
 type orchestratorSessionRepo struct {
 	port.SessionRepository
 
@@ -155,17 +182,17 @@ func (fakeAccountFetcher) GetHeadlessAccount(_ context.Context, id string) (*ent
 	return &entity.HeadlessAccount{ResoniteID: id, Credential: "cred", Password: "pw"}, nil
 }
 
-// stubRPCClient is a tiny HeadlessControlServiceClient covering the two
-// RPCs reconcile uses: GetSession (for user counts + worldUrl) and
-// StopSession (for closing empty sessions).
+// stubRPCClient is a tiny HeadlessControlServiceClient covering the RPCs
+// the orchestrator uses: ListSessions (cache seed) and GetSession (cache
+// fallback / verification).
 type stubRPCClient struct {
 	headlessv1.HeadlessControlServiceClient
 
-	mu         sync.Mutex
-	users      map[string]int32 // sessionID -> users count
-	stopCalls  int
-	getCalls   int
-	worldURL   string
+	mu          sync.Mutex
+	users       map[string]int32 // sessionID -> users count
+	sessionList []*headlessv1.Session
+	getCalls    int
+	listCalls   int
 }
 
 func newStubRPCClient() *stubRPCClient {
@@ -182,32 +209,59 @@ func (c *stubRPCClient) GetSession(_ context.Context, in *headlessv1.GetSessionR
 		Session: &headlessv1.Session{
 			Id:         in.GetSessionId(),
 			UsersCount: c.users[in.GetSessionId()],
-			WorldUrl:   c.worldURL,
 		},
 	}, nil
 }
 
-func (c *stubRPCClient) StopSession(_ context.Context, _ *headlessv1.StopSessionRequest, _ ...grpc.CallOption) (*headlessv1.StopSessionResponse, error) {
+func (c *stubRPCClient) ListSessions(_ context.Context, _ *headlessv1.ListSessionsRequest, _ ...grpc.CallOption) (*headlessv1.ListSessionsResponse, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.stopCalls++
+	c.listCalls++
 
-	return &headlessv1.StopSessionResponse{}, nil
+	return &headlessv1.ListSessionsResponse{Sessions: append([]*headlessv1.Session(nil), c.sessionList...)}, nil
 }
 
-func (c *stubRPCClient) setUsers(sessionID string, n int32) { //nolint:unparam // tests intentionally exercise one session
+func (c *stubRPCClient) setUsers(sessionID string, n int32) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	c.users[sessionID] = n
 }
 
-func (c *stubRPCClient) stopInvocations() int {
+func (c *stubRPCClient) setListedSessions(sessions ...*headlessv1.Session) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	return c.stopCalls
+	c.sessionList = sessions
+}
+
+// stubSessionStopper records every StopSession invocation and lets tests
+// fail them on demand.
+type stubSessionStopper struct {
+	mu      sync.Mutex
+	stopped []string
+	err     error
+}
+
+func (s *stubSessionStopper) StopSession(_ context.Context, sessionID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.err != nil {
+		return s.err
+	}
+
+	s.stopped = append(s.stopped, sessionID)
+
+	return nil
+}
+
+func (s *stubSessionStopper) stoppedIDs() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return append([]string(nil), s.stopped...)
 }
 
 // orchestratorTestEnv bundles the wiring for a single test.
@@ -216,22 +270,28 @@ type orchestratorTestEnv struct {
 	hostRepo *orchestratorHostRepo
 	sessRepo *orchestratorSessionRepo
 	client   *stubRPCClient
+	stopper  *stubSessionStopper
 }
 
 func newOrchestratorTestEnv(_ *testing.T) *orchestratorTestEnv {
 	hr := newOrchestratorHostRepo()
 	sr := &orchestratorSessionRepo{}
 	c := newStubRPCClient()
+	stop := &stubSessionStopper{}
 
+	// Long interval so the background ticker doesn't race with tests
+	// that drive reconcile/OnNewImage synchronously.
 	o := NewHostUpgradeOrchestrator(hr, sr, fakeAccountFetcher{}, &config.WorkerConfig{
-		UpgradeCheckInterval: 1, // value irrelevant; we drive tick manually
+		UpgradeCheckInterval: time.Hour,
 	})
+	o.SetSessionStopper(stop)
 
 	return &orchestratorTestEnv{
 		orch:     o,
 		hostRepo: hr,
 		sessRepo: sr,
 		client:   c,
+		stopper:  stop,
 	}
 }
 
@@ -251,17 +311,7 @@ func (e *orchestratorTestEnv) addRunningHost(id, appVersion string, policy entit
 	e.hostRepo.clients[id] = e.client
 }
 
-func (e *orchestratorTestEnv) setLatestTag(appVersion string) { //nolint:unparam // tests vary appVersion via separate setups
-	e.hostRepo.mu.Lock()
-	defer e.hostRepo.mu.Unlock()
-
-	e.hostRepo.tags = port.ContainerImageList{
-		{Tag: "old", ResoniteVersion: "2026.1.1", AppVersion: "v0.9.0"},
-		{Tag: "v" + appVersion, ResoniteVersion: "2026.1.1", AppVersion: appVersion},
-	}
-}
-
-func (e *orchestratorTestEnv) addSession(id, hostID string) {
+func (e *orchestratorTestEnv) addSession(id, hostID string) { //nolint:unparam // tests use a single host id today; helper kept general for future use
 	e.sessRepo.mu.Lock()
 	defer e.sessRepo.mu.Unlock()
 
@@ -273,43 +323,128 @@ func (e *orchestratorTestEnv) addSession(id, hostID string) {
 	})
 }
 
-func TestOrchestrator_EnrollsHostWhenNewerTagAvailable(t *testing.T) {
+func newImage(tag, appVersion string, isPrerelease bool) *port.ContainerImage {
+	return &port.ContainerImage{
+		Tag:             tag,
+		AppVersion:      appVersion,
+		ResoniteVersion: "2026.1.1",
+		IsPreRelease:    isPrerelease,
+	}
+}
+
+// --- discovery / enrollment ---------------------------------------------
+
+func TestOrchestrator_OnNewImage_EnrollsRunningOptInHost(t *testing.T) {
 	t.Parallel()
 
 	env := newOrchestratorTestEnv(t)
 	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
-	env.setLatestTag("v2.0.0")
+	// Live session blocks immediate restart so we can assert enrolment.
+	env.addSession("s1", "h1")
+	env.client.setUsers("s1", 3)
+	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 3})
 
-	env.orch.discoverUpgradeCandidates(t.Context())
+	env.orch.OnNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
 
 	assert.True(t, env.orch.IsHostDraining("h1"))
 }
 
-func TestOrchestrator_IgnoresHostsWithoutOptIn(t *testing.T) {
+func TestOrchestrator_OnNewImage_IgnoresHostsWithoutOptIn(t *testing.T) {
 	t.Parallel()
 
 	env := newOrchestratorTestEnv(t)
 	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_NEVER)
 	env.addRunningHost("h2", "v1.0.0", entity.HostAutoUpdatePolicy_UNSPECIFIED)
-	env.setLatestTag("v2.0.0")
+	env.client.setListedSessions()
 
-	env.orch.discoverUpgradeCandidates(t.Context())
+	env.orch.OnNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
 
 	assert.False(t, env.orch.IsHostDraining("h1"))
 	assert.False(t, env.orch.IsHostDraining("h2"))
 }
 
-func TestOrchestrator_IgnoresUpToDateHosts(t *testing.T) {
+func TestOrchestrator_OnNewImage_IgnoresUpToDateHosts(t *testing.T) {
 	t.Parallel()
 
 	env := newOrchestratorTestEnv(t)
 	env.addRunningHost("h1", "v2.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
-	env.setLatestTag("v2.0.0")
 
-	env.orch.discoverUpgradeCandidates(t.Context())
+	env.orch.OnNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
 
 	assert.False(t, env.orch.IsHostDraining("h1"))
 }
+
+func TestOrchestrator_OnNewImage_IgnoresPrereleaseTags(t *testing.T) {
+	t.Parallel()
+
+	env := newOrchestratorTestEnv(t)
+	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
+
+	env.orch.OnNewImage(t.Context(), newImage("v2.0.0-pre", "v2.0.0-pre", true))
+
+	assert.False(t, env.orch.IsHostDraining("h1"))
+}
+
+// --- snapshot at enroll (MAJOR #1) --------------------------------------
+
+func TestOrchestrator_EnrollSnapshotsStartupConfigBeforeStop(t *testing.T) {
+	t.Parallel()
+
+	env := newOrchestratorTestEnv(t)
+	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
+
+	// Configure host with start_worlds that must survive the upgrade.
+	// After all sessions are stopped, the LIVE container would report
+	// empty start_worlds — the orchestrator must use the snapshot
+	// captured at enroll time instead.
+	env.hostRepo.mu.Lock()
+	env.hostRepo.hosts["h1"].HostSettings = entity.HeadlessHostSettings{
+		StartWorlds: []*headlessv1.WorldStartupParameters{
+			{Name: stringPtr("preserved-world")},
+		},
+	}
+	env.hostRepo.mu.Unlock()
+
+	env.addSession("s1", "h1")
+	env.client.setUsers("s1", 0)
+	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 0})
+
+	env.orch.OnNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+
+	// Find at enroll time must request start_worlds.
+	opts, ok := env.hostRepo.lastFindOpts("h1")
+	require.True(t, ok, "Find must have been invoked at enroll")
+	assert.True(t, opts.IncludeStartWorlds, "snapshot Find must include start_worlds")
+
+	// Restart should fire (session was empty) using the snapshotted
+	// start_worlds.
+	require.Equal(t, 1, env.hostRepo.restartCount("h1"))
+
+	last, ok := env.hostRepo.lastRestartParams("h1")
+	require.True(t, ok)
+
+	require.Len(t, last.StartupConfig.GetStartWorlds(), 1,
+		"start_worlds captured at enroll time must be preserved across restart")
+	assert.Equal(t, "preserved-world", last.StartupConfig.GetStartWorlds()[0].GetName())
+}
+
+func TestOrchestrator_RestartUsesLatestTagAndPolicy(t *testing.T) {
+	t.Parallel()
+
+	env := newOrchestratorTestEnv(t)
+	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
+	env.client.setListedSessions()
+
+	env.orch.OnNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+
+	last, ok := env.hostRepo.lastRestartParams("h1")
+	require.True(t, ok)
+	assert.Equal(t, "v2.0.0", last.ContainerImageTag, "restart must use the newest tag")
+	assert.Equal(t, entity.HostAutoUpdatePolicy_USERS_EMPTY, last.AutoUpdatePolicy,
+		"restart must preserve the AutoUpdatePolicy so future upgrades continue working")
+}
+
+// --- session stopping + restart -----------------------------------------
 
 func TestOrchestrator_RestartsHostWhenSessionsAreEmpty(t *testing.T) {
 	t.Parallel()
@@ -318,13 +453,14 @@ func TestOrchestrator_RestartsHostWhenSessionsAreEmpty(t *testing.T) {
 	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
 	env.addSession("s1", "h1")
 	env.client.setUsers("s1", 0)
-	env.setLatestTag("v2.0.0")
+	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 0})
 
-	env.orch.tick(t.Context())
+	env.orch.OnNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
 
-	assert.Equal(t, 1, env.client.stopInvocations(), "empty session should be stopped")
-	assert.Equal(t, 1, env.hostRepo.restartCount("h1"), "host should be restarted once its sessions drained")
-	assert.False(t, env.orch.IsHostDraining("h1"), "host should leave drain set after restart")
+	assert.Equal(t, []string{"s1"}, env.stopper.stoppedIDs(),
+		"empty session should be stopped via SessionStopper")
+	assert.Equal(t, 1, env.hostRepo.restartCount("h1"))
+	assert.False(t, env.orch.IsHostDraining("h1"))
 }
 
 func TestOrchestrator_DoesNotRestartWhileUsersPresent(t *testing.T) {
@@ -334,11 +470,11 @@ func TestOrchestrator_DoesNotRestartWhileUsersPresent(t *testing.T) {
 	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
 	env.addSession("s1", "h1")
 	env.client.setUsers("s1", 3)
-	env.setLatestTag("v2.0.0")
+	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 3})
 
-	env.orch.tick(t.Context())
+	env.orch.OnNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
 
-	assert.Equal(t, 0, env.client.stopInvocations(), "session with users must not be stopped")
+	assert.Empty(t, env.stopper.stoppedIDs(), "session with users must not be stopped")
 	assert.Equal(t, 0, env.hostRepo.restartCount("h1"), "host with users must not be restarted")
 	assert.True(t, env.orch.IsHostDraining("h1"), "host should remain in drain set")
 }
@@ -350,67 +486,188 @@ func TestOrchestrator_UserLeftEventTriggersRestartWhenLastUserLeaves(t *testing.
 	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
 	env.addSession("s1", "h1")
 	env.client.setUsers("s1", 1)
-	env.setLatestTag("v2.0.0")
+	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 1})
 
-	// Seed the in-memory counter (as the watcher would after a join).
-	env.orch.bumpUserCount("s1", 1)
-
-	// First tick records the host into drain set; users are still present.
-	env.orch.tick(t.Context())
+	env.orch.OnNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
 	require.True(t, env.orch.IsHostDraining("h1"))
 	require.Equal(t, 0, env.hostRepo.restartCount("h1"))
 
-	// Now the last user leaves: this should immediately reconcile.
-	env.client.setUsers("s1", 0) // RPC also reports 0 (defensive fallback)
+	// Last user leaves — the event handler must immediately reconcile.
+	env.client.setUsers("s1", 0)
 	env.orch.HandleHostEvent(t.Context(), "h1", &headlessv1.HostEvent{
 		Payload: &headlessv1.HostEvent_UserLeftSession{
 			UserLeftSession: &headlessv1.UserLeftSession{SessionId: "s1"},
 		},
 	})
 
-	assert.Equal(t, 1, env.client.stopInvocations(), "empty session should be stopped on user-left")
-	assert.Equal(t, 1, env.hostRepo.restartCount("h1"), "host should restart immediately on event")
+	assert.Equal(t, []string{"s1"}, env.stopper.stoppedIDs())
+	assert.Equal(t, 1, env.hostRepo.restartCount("h1"))
 	assert.False(t, env.orch.IsHostDraining("h1"))
 }
 
-func TestOrchestrator_RestartUsesLatestTagAndPolicy(t *testing.T) {
+// --- cold-start cache race (MAJOR #2) -----------------------------------
+
+func TestOrchestrator_StaleCacheZeroIsRPCVerifiedBeforeStop(t *testing.T) {
 	t.Parallel()
 
 	env := newOrchestratorTestEnv(t)
 	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
-	env.setLatestTag("v2.0.0") // -> Tag = "vv2.0.0" per the helper
+	env.addSession("s1", "h1")
 
-	env.orch.tick(t.Context())
+	// Simulate a controller-restart race: a UserLeftSession event came
+	// through without its prior UserJoinedSession (the checkpoint sat
+	// between them), so the bump clamped to 0 in the cache. This is
+	// before any enrolment / RPC-seed so the stale value persists.
+	env.orch.HandleHostEvent(t.Context(), "h1", &headlessv1.HostEvent{
+		Payload: &headlessv1.HostEvent_UserLeftSession{
+			UserLeftSession: &headlessv1.UserLeftSession{SessionId: "s1"},
+		},
+	})
 
-	env.hostRepo.mu.Lock()
-	calls := env.hostRepo.restarts["h1"]
-	env.hostRepo.mu.Unlock()
+	// Reality: the session actually has 4 users. The RPC seed at
+	// enroll time should replace the stale 0 with the truth, AND the
+	// userCountForSession path also RPC-verifies on cached zeroes for
+	// belt-and-braces.
+	env.client.setUsers("s1", 4)
+	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 4})
 
-	require.Len(t, calls, 1)
-	assert.Equal(t, "vv2.0.0", calls[0].ContainerImageTag, "restart must use the newest tag")
-	assert.Equal(t, entity.HostAutoUpdatePolicy_USERS_EMPTY, calls[0].AutoUpdatePolicy,
-		"restart must preserve the AutoUpdatePolicy so future upgrades continue working")
+	env.orch.OnNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+
+	assert.Empty(t, env.stopper.stoppedIDs(),
+		"orchestrator must NOT stop a session whose true user count is non-zero")
+	assert.Equal(t, 0, env.hostRepo.restartCount("h1"))
+	assert.True(t, env.orch.IsHostDraining("h1"))
 }
 
-func TestOrchestrator_PreReleaseTagsAreIgnored(t *testing.T) {
+func TestOrchestrator_EnrollSeedsCacheFromRPC(t *testing.T) {
 	t.Parallel()
 
 	env := newOrchestratorTestEnv(t)
 	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
 
-	// Newest tag is a prerelease; the orchestrator should still see the
-	// earlier release as latest-stable.
+	// Park a session with users present so the reconcile triggered at
+	// the end of enroll doesn't restart-and-wipe the host's cache
+	// before we can inspect it.
+	env.addSession("s1", "h1")
+	env.addSession("s2", "h1")
+	env.client.setUsers("s1", 2)
+	env.client.setUsers("s2", 1)
+	env.client.setListedSessions(
+		&headlessv1.Session{Id: "s1", UsersCount: 2},
+		&headlessv1.Session{Id: "s2", UsersCount: 1},
+	)
+
+	env.orch.OnNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+
+	env.client.mu.Lock()
+	calls := env.client.listCalls
+	env.client.mu.Unlock()
+
+	assert.GreaterOrEqual(t, calls, 1, "enroll must call ListSessions to seed the cache")
+
+	env.orch.mu.Lock()
+	host := env.orch.sessionUsers["h1"]
+	env.orch.mu.Unlock()
+
+	require.NotNil(t, host, "host cache must exist after enroll seed")
+	assert.Equal(t, int32(2), host["s1"])
+	assert.Equal(t, int32(1), host["s2"])
+}
+
+// --- HandleHostEventStreamReset (MAJOR #3) ------------------------------
+
+func TestOrchestrator_StreamResetClearsOnlyAffectedHostsCache(t *testing.T) {
+	t.Parallel()
+
+	env := newOrchestratorTestEnv(t)
+	// Seed cache for two unrelated hosts via UserJoined events.
+	env.orch.HandleHostEvent(t.Context(), "host-a", &headlessv1.HostEvent{
+		Payload: &headlessv1.HostEvent_UserJoinedSession{
+			UserJoinedSession: &headlessv1.UserJoinedSession{SessionId: "sa"},
+		},
+	})
+	env.orch.HandleHostEvent(t.Context(), "host-b", &headlessv1.HostEvent{
+		Payload: &headlessv1.HostEvent_UserJoinedSession{
+			UserJoinedSession: &headlessv1.UserJoinedSession{SessionId: "sb"},
+		},
+	})
+
+	env.orch.HandleHostEventStreamReset(t.Context(), "host-a")
+
+	env.orch.mu.Lock()
+	_, hadA := env.orch.sessionUsers["host-a"]
+	_, hadB := env.orch.sessionUsers["host-b"]
+	env.orch.mu.Unlock()
+
+	assert.False(t, hadA, "host-a's cache must be cleared on reset")
+	assert.True(t, hadB, "host-b's cache must NOT be affected by host-a's reset")
+}
+
+// --- restart retry abort (MINOR #2) -------------------------------------
+
+func TestOrchestrator_AbortsRestartAfterRepeatedFailures(t *testing.T) {
+	t.Parallel()
+
+	env := newOrchestratorTestEnv(t)
+	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
+	env.client.setListedSessions() // no sessions → reconcile goes straight to restart
+
+	// Queue up enough failures to trip the abort limit (5).
 	env.hostRepo.mu.Lock()
-	env.hostRepo.tags = port.ContainerImageList{
-		{Tag: "v1.0.0", ResoniteVersion: "2026.1.1", AppVersion: "v1.0.0"},
-		{Tag: "v1.0.0-pre", ResoniteVersion: "2026.1.1", AppVersion: "v1.0.0-pre", IsPreRelease: true},
+
+	for range 6 {
+		env.hostRepo.restartErrs["h1"] = append(env.hostRepo.restartErrs["h1"], errors.New("docker daemon angry"))
 	}
+
 	env.hostRepo.mu.Unlock()
 
-	env.orch.discoverUpgradeCandidates(t.Context())
+	// First OnNewImage enrols + tries once.
+	env.orch.OnNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
 
-	assert.False(t, env.orch.IsHostDraining("h1"), "host is already on latest stable")
+	// Drive 4 more reconciles via the periodic path.
+	for range 4 {
+		env.orch.reconcileAllDraining(t.Context())
+	}
+
+	assert.False(t, env.orch.IsHostDraining("h1"), "host should have been dropped after exhausting attempts")
+	assert.Equal(t, 0, env.hostRepo.restartCount("h1"), "all restarts failed; count must remain 0")
 }
+
+// --- SessionStopper integration -----------------------------------------
+
+func TestOrchestrator_DelegatesStopThroughSessionStopper(t *testing.T) {
+	t.Parallel()
+
+	env := newOrchestratorTestEnv(t)
+	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
+	env.addSession("s1", "h1")
+	env.client.setUsers("s1", 0)
+	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 0})
+
+	env.orch.OnNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+
+	assert.Equal(t, []string{"s1"}, env.stopper.stoppedIDs(),
+		"orchestrator must route session stop through the wired SessionStopper")
+}
+
+func TestOrchestrator_StopFailureLeavesHostDraining(t *testing.T) {
+	t.Parallel()
+
+	env := newOrchestratorTestEnv(t)
+	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
+	env.addSession("s1", "h1")
+	env.client.setUsers("s1", 0)
+	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 0})
+	env.stopper.err = errors.New("RPC: container unreachable")
+
+	env.orch.OnNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+
+	assert.Equal(t, 0, env.hostRepo.restartCount("h1"),
+		"restart must not fire while sessions remain (stop failed)")
+	assert.True(t, env.orch.IsHostDraining("h1"))
+}
+
+// --- NoopHostDrainer ----------------------------------------------------
 
 func TestOrchestrator_NoopHostDrainer(t *testing.T) {
 	t.Parallel()
@@ -419,3 +676,7 @@ func TestOrchestrator_NoopHostDrainer(t *testing.T) {
 
 	assert.False(t, d.IsHostDraining("anything"))
 }
+
+// --- helpers ------------------------------------------------------------
+
+func stringPtr(s string) *string { return &s }

@@ -60,6 +60,10 @@ func NewSessionUsecase(
 // accept new sessions.
 var ErrHostDraining = errors.New("host is draining for upgrade")
 
+// Compile-time assertion that SessionUsecase satisfies port.SessionStopper —
+// the upgrade orchestrator calls into us through this narrow interface.
+var _ port.SessionStopper = (*SessionUsecase)(nil)
+
 // IssueResoniteLinkToken は ResoniteLink WebSocket 接続用の短期 JWT を発行する.
 // セッションが存在することを確認した上で、claims に session_id と userID を含める.
 // TODO: owner-only enforcement - 現在は認証済みなら誰でも発行可能.

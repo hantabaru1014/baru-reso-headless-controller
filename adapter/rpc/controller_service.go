@@ -1176,6 +1176,15 @@ func convertErr(err error) error {
 		return connect.NewError(connect.CodeNotFound, err)
 	}
 
+	// ErrHostDraining is a precondition violation — the host has been
+	// enrolled for an auto-upgrade and is no longer accepting new
+	// sessions. Surface the distinction so the frontend can show a
+	// proper "host is upgrading, please retry shortly" message instead
+	// of a generic internal error.
+	if errors.Is(err, usecase.ErrHostDraining) {
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+
 	return connect.NewError(connect.CodeInternal, err)
 }
 
