@@ -23,15 +23,19 @@ type SessionListPageResult struct {
 type SessionRepository interface {
 	Upsert(ctx context.Context, session *entity.Session) error
 	UpdateStatus(ctx context.Context, id string, status entity.SessionStatus) error
-	// UpdateCurrentStateAndName は host 側 event 駆動同期で使う部分更新。
-	// startup_parameters / status / ended_at など他カラムを書き換えないことで
-	// 並行する UpdateSessionParameters / StartSession / StopSession の Upsert と
-	// race しても上書き事故を起こさない
-	UpdateCurrentStateAndName(ctx context.Context, id string, currentState *headlessv1.Session, name string) error
+	// ApplySessionParametersChanged は host 側 event 駆動同期で使う部分更新。
+	// SessionInfo の overlap field (name / description / max_users / access_level /
+	// hide_from_public_listing / away_kick_minutes / idle_restart_interval_seconds /
+	// save_on_exit / auto_save_interval_seconds / auto_sleep / tags) を
+	// startup_parameters JSONB に merge することで、in-world で session 設定が
+	// 変わったとき次回 restart にも反映する。他カラム (status / ended_at /
+	// memo 等) には触らない。
+	ApplySessionParametersChanged(ctx context.Context, id string, snapshot *headlessv1.Session) error
 	// UpdateAfterWorldSaved は WorldSaved event 反映用の部分更新。world_url 1 値
-	// だけを受け取り、startup_parameters の loadWorldUrl と current_state の
-	// worldUrl を JSONB の in-place 書き換えで更新する。current_state が NULL
-	// なら触らない (初期 startup 直後の race を救済)
+	// だけを受け取り、startup_parameters の loadWorldUrl を JSONB の in-place
+	// 書き換えで更新する (preset case は除去)。Get→mutate→Update を往復しないの
+	// で gRPC UpdateSessionParameters / Upsert と race しても他フィールドを
+	// stale snapshot で revert しない。
 	UpdateAfterWorldSaved(ctx context.Context, id string, worldURL string) error
 	// DowngradeToUnknownIfRunning は StreamReset 時の lost session 救済用の
 	// guarded update。RUNNING のときだけ UNKNOWN へ降ろし、StopSession で

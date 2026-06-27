@@ -45,6 +45,67 @@ func (q *Queries) ApplySessionEnded(ctx context.Context, arg ApplySessionEndedPa
 	return result.RowsAffected(), nil
 }
 
+const applySessionParametersChanged = `-- name: ApplySessionParametersChanged :exec
+UPDATE sessions
+SET name = $1::text,
+    startup_parameters = startup_parameters || jsonb_build_object(
+        'name', $1::text,
+        'description', $2::text,
+        'maxUsers', $3::int,
+        'accessLevel', $4::text,
+        'hideFromPublicListing', $5::bool,
+        'awayKickMinutes', $6::real,
+        'idleRestartIntervalSeconds', $7::int,
+        'saveOnExit', $8::bool,
+        'autoSaveIntervalSeconds', $9::int,
+        'autoSleep', $10::bool,
+        'tags', $11::jsonb
+    )
+WHERE id = $12
+`
+
+type ApplySessionParametersChangedParams struct {
+	Name                       string
+	Description                string
+	MaxUsers                   int32
+	AccessLevel                string
+	HideFromPublicListing      bool
+	AwayKickMinutes            float32
+	IdleRestartIntervalSeconds int32
+	SaveOnExit                 bool
+	AutoSaveIntervalSeconds    int32
+	AutoSleep                  bool
+	Tags                       []byte
+	ID                         string
+}
+
+// event 駆動の SessionParametersChanged 反映用。SessionInfo の overlap field を
+// startup_parameters JSONB に merge することで、in-world で session 設定が
+// 変わったときに次回 restart 時にもその変更が反映されるようにする。
+//
+// JSONB の `||` で右オペランドの値が左を上書きする。tags は配列ごと差し替えに
+// なるため、空配列を渡せば「タグ全消し」を表現できる。
+// protojson の field 名は camelCase (sessions.startup_parameters 列も
+// protojson 形式)。AccessLevel は enum 文字列 (`ACCESS_LEVEL_ANYONE` 等) を渡す。
+// name 列は startup_parameters とは別に持つので両方更新する。
+func (q *Queries) ApplySessionParametersChanged(ctx context.Context, arg ApplySessionParametersChangedParams) error {
+	_, err := q.db.Exec(ctx, applySessionParametersChanged,
+		arg.Name,
+		arg.Description,
+		arg.MaxUsers,
+		arg.AccessLevel,
+		arg.HideFromPublicListing,
+		arg.AwayKickMinutes,
+		arg.IdleRestartIntervalSeconds,
+		arg.SaveOnExit,
+		arg.AutoSaveIntervalSeconds,
+		arg.AutoSleep,
+		arg.Tags,
+		arg.ID,
+	)
+	return err
+}
+
 const applySessionStarted = `-- name: ApplySessionStarted :execrows
 UPDATE sessions
 SET
@@ -104,7 +165,7 @@ func (q *Queries) DowngradeSessionToUnknownIfRunning(ctx context.Context, id str
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at, current_state FROM sessions WHERE id = $1 LIMIT 1
+SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at FROM sessions WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
@@ -124,7 +185,6 @@ func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
 		&i.Memo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.CurrentState,
 	)
 	return i, err
 }
@@ -173,7 +233,7 @@ func (q *Queries) InsertSessionFromEvent(ctx context.Context, arg InsertSessionF
 }
 
 const listSessions = `-- name: ListSessions :many
-SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at, current_state FROM sessions ORDER BY started_at DESC
+SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at FROM sessions ORDER BY started_at DESC
 `
 
 func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
@@ -199,7 +259,6 @@ func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
 			&i.Memo,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.CurrentState,
 		); err != nil {
 			return nil, err
 		}
@@ -255,7 +314,7 @@ func (q *Queries) ListSessionsByHostAndStatus(ctx context.Context, arg ListSessi
 }
 
 const listSessionsByStatus = `-- name: ListSessionsByStatus :many
-SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at, current_state FROM sessions WHERE status = $1 ORDER BY started_at DESC
+SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at FROM sessions WHERE status = $1 ORDER BY started_at DESC
 `
 
 func (q *Queries) ListSessionsByStatus(ctx context.Context, status int32) ([]Session, error) {
@@ -281,7 +340,6 @@ func (q *Queries) ListSessionsByStatus(ctx context.Context, status int32) ([]Ses
 			&i.Memo,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.CurrentState,
 		); err != nil {
 			return nil, err
 		}
@@ -294,7 +352,7 @@ func (q *Queries) ListSessionsByStatus(ctx context.Context, status int32) ([]Ses
 }
 
 const listSessionsPaged = `-- name: ListSessionsPaged :many
-SELECT sessions.id, sessions.name, sessions.status, sessions.started_at, sessions.owner_id, sessions.ended_at, sessions.host_id, sessions.startup_parameters, sessions.startup_parameters_schema_version, sessions.auto_upgrade, sessions.memo, sessions.created_at, sessions.updated_at, sessions.current_state, COUNT(*) OVER() AS total_count
+SELECT sessions.id, sessions.name, sessions.status, sessions.started_at, sessions.owner_id, sessions.ended_at, sessions.host_id, sessions.startup_parameters, sessions.startup_parameters_schema_version, sessions.auto_upgrade, sessions.memo, sessions.created_at, sessions.updated_at, COUNT(*) OVER() AS total_count
 FROM sessions
 WHERE ($1::int IS NULL OR status = $1::int)
   AND ($2::text IS NULL OR host_id = $2::text)
@@ -345,7 +403,6 @@ func (q *Queries) ListSessionsPaged(ctx context.Context, arg ListSessionsPagedPa
 			&i.Session.Memo,
 			&i.Session.CreatedAt,
 			&i.Session.UpdatedAt,
-			&i.Session.CurrentState,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err
@@ -364,11 +421,7 @@ SET startup_parameters = jsonb_set(
         COALESCE(startup_parameters, '{}'::jsonb) - 'loadWorldPresetName',
         '{loadWorldUrl}',
         to_jsonb($1::text)
-    ),
-    current_state = CASE
-        WHEN current_state IS NULL THEN current_state
-        ELSE jsonb_set(current_state, '{worldUrl}', to_jsonb($1::text))
-    END
+    )
 WHERE id = $2
 `
 
@@ -378,35 +431,15 @@ type UpdateSessionAfterWorldSavedParams struct {
 }
 
 // event 駆動の WorldSaved 反映用。world_url 1 値だけ受け取り、protojson の
-// JSONB に対して jsonb_set で in-place 書き換えする。handler 側で Get→mutate
-// →Update を往復しないので、gRPC UpdateSessionParameters / Upsert と
-// race しても他フィールドを stale snapshot で revert しない。
+// JSONB に対して jsonb_set で in-place 書き換えする。handler は Get→mutate→Update
+// を往復しないので、gRPC UpdateSessionParameters / Upsert と race しても他
+// フィールドを stale snapshot で revert しない。
 //
 // protojson は oneof を active case のキーだけ出力するため、preset case が
 // 残っていると `loadWorld` で 2 つのキーが現れて parse 不能になる。
 // 先に `loadWorldPresetName` を `-` で削ってから `loadWorldUrl` を書き込む。
-// current_state は NULL のままなら触らない (初期 startup 直後の race で
-// 空オブジェクトを書いて UI を 0/0 表示にしないため)。
 func (q *Queries) UpdateSessionAfterWorldSaved(ctx context.Context, arg UpdateSessionAfterWorldSavedParams) error {
 	_, err := q.db.Exec(ctx, updateSessionAfterWorldSaved, arg.WorldUrl, arg.ID)
-	return err
-}
-
-const updateSessionCurrentStateAndName = `-- name: UpdateSessionCurrentStateAndName :exec
-UPDATE sessions SET current_state = $2, name = $3 WHERE id = $1
-`
-
-type UpdateSessionCurrentStateAndNameParams struct {
-	ID           string
-	CurrentState []byte
-	Name         string
-}
-
-// event 駆動の SessionParametersChanged 反映用。current_state と name の
-// 部分更新にして、並行する UpdateSessionParameters / StartSession など
-// の Upsert と他フィールドが衝突しないようにする
-func (q *Queries) UpdateSessionCurrentStateAndName(ctx context.Context, arg UpdateSessionCurrentStateAndNameParams) error {
-	_, err := q.db.Exec(ctx, updateSessionCurrentStateAndName, arg.ID, arg.CurrentState, arg.Name)
 	return err
 }
 
@@ -436,10 +469,9 @@ INSERT INTO sessions (
     startup_parameters,
     startup_parameters_schema_version,
     auto_upgrade,
-    memo,
-    current_state
+    memo
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 ) ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     status = EXCLUDED.status,
@@ -450,9 +482,8 @@ INSERT INTO sessions (
     startup_parameters = EXCLUDED.startup_parameters,
     startup_parameters_schema_version = EXCLUDED.startup_parameters_schema_version,
     auto_upgrade = EXCLUDED.auto_upgrade,
-    memo = EXCLUDED.memo,
-    current_state = EXCLUDED.current_state
-RETURNING id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at, current_state
+    memo = EXCLUDED.memo
+RETURNING id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at
 `
 
 type UpsertSessionParams struct {
@@ -467,7 +498,6 @@ type UpsertSessionParams struct {
 	StartupParametersSchemaVersion int32
 	AutoUpgrade                    bool
 	Memo                           pgtype.Text
-	CurrentState                   []byte
 }
 
 func (q *Queries) UpsertSession(ctx context.Context, arg UpsertSessionParams) (Session, error) {
@@ -483,7 +513,6 @@ func (q *Queries) UpsertSession(ctx context.Context, arg UpsertSessionParams) (S
 		arg.StartupParametersSchemaVersion,
 		arg.AutoUpgrade,
 		arg.Memo,
-		arg.CurrentState,
 	)
 	var i Session
 	err := row.Scan(
@@ -500,7 +529,6 @@ func (q *Queries) UpsertSession(ctx context.Context, arg UpsertSessionParams) (S
 		&i.Memo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.CurrentState,
 	)
 	return i, err
 }

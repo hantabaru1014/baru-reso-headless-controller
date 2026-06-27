@@ -12,6 +12,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/resonitelink"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/sessionstate"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/blobstore"
@@ -33,9 +34,10 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	dockerHostConnector := hostconnector.NewDockerHostConnector(dockerConfig, grpcConfig)
 	headlessHostRepository := adapter.NewHeadlessHostRepository(queries, dockerHostConnector, grpcConfig)
 	sessionRepository := adapter.NewSessionRepository(queries)
+	memoryCache := sessionstate.NewMemoryCache()
 	serverConfig := ProvideServerConfig(cfg)
 	resoniteLinkConfig := ProvideResoniteLinkConfig(cfg)
-	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, serverConfig, resoniteLinkConfig)
+	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, memoryCache, serverConfig, resoniteLinkConfig)
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
 	rustFSConfig := ProvideRustFSConfig(cfg)
@@ -49,7 +51,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	imageChecker := worker.NewImageChecker(dockerHostConnector, workerConfig)
 	dockerEventWatcher := worker.NewDockerEventWatcher(dockerHostConnector, queries, workerConfig)
 	sqlHostEventStore := worker.NewSQLHostEventStore(queries)
-	sessionStateSyncHandler := worker.NewSessionStateSyncHandler(sessionRepository, headlessHostRepository)
+	sessionStateSyncHandler := worker.NewSessionStateSyncHandler(sessionRepository, headlessHostRepository, memoryCache)
 	sessionLifecycleHandler := worker.NewSessionLifecycleHandler(sessionRepository)
 	loggingHostEventHandler := worker.NewLoggingHostEventHandler()
 	v := ProvideHostEventHandlers(sessionStateSyncHandler, sessionLifecycleHandler, loggingHostEventHandler)
@@ -71,9 +73,10 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 	dockerHostConnector := hostconnector.NewDockerHostConnector(dockerConfig, grpcConfig)
 	headlessHostRepository := adapter.NewHeadlessHostRepository(queries, dockerHostConnector, grpcConfig)
 	sessionRepository := adapter.NewSessionRepository(queries)
+	memoryCache := sessionstate.NewMemoryCache()
 	serverConfig := ProvideServerConfig(cfg)
 	resoniteLinkConfig := ProvideResoniteLinkConfig(cfg)
-	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, serverConfig, resoniteLinkConfig)
+	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, memoryCache, serverConfig, resoniteLinkConfig)
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
 	cli := NewCli(queries, userUsecase, headlessHostUsecase, defaultClient)

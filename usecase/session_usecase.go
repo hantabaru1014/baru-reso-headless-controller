@@ -28,16 +28,18 @@ const (
 type SessionUsecase struct {
 	sessionRepo     port.SessionRepository
 	hostRepo        port.HeadlessHostRepository
+	stateCache      port.SessionStateCache
 	forcePortMin    int
 	forcePortMax    int
 	resoniteLinkTTL time.Duration
 	portMutex       sync.Mutex
 }
 
-func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.HeadlessHostRepository, serverCfg *config.ServerConfig, linkCfg *config.ResoniteLinkConfig) *SessionUsecase {
+func NewSessionUsecase(sessionRepo port.SessionRepository, hostRepo port.HeadlessHostRepository, stateCache port.SessionStateCache, serverCfg *config.ServerConfig, linkCfg *config.ResoniteLinkConfig) *SessionUsecase {
 	return &SessionUsecase{
 		sessionRepo:     sessionRepo,
 		hostRepo:        hostRepo,
+		stateCache:      stateCache,
 		forcePortMin:    serverCfg.SessionPortMin,
 		forcePortMax:    serverCfg.SessionPortMax,
 		resoniteLinkTTL: linkCfg.TokenTTL,
@@ -91,16 +93,21 @@ func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId
 	}
 
 	startedAt := resp.GetOpenedSession().GetStartedAt().AsTime()
+	openedSession := resp.GetOpenedSession()
+
+	// 起動直後 SessionParametersChanged event より先に GetSession 等が来ても
+	// CurrentState を返せるよう、cache に最初の snapshot を入れておく。
+	u.stateCache.Set(openedSession.GetId(), openedSession)
 
 	session := &entity.Session{
-		ID:                resp.GetOpenedSession().GetId(),
-		Name:              resp.GetOpenedSession().GetName(),
+		ID:                openedSession.GetId(),
+		Name:              openedSession.GetName(),
 		Status:            entity.SessionStatus_RUNNING,
 		HostID:            hostId,
 		StartedAt:         &startedAt,
 		OwnerID:           userId,
 		StartupParameters: params,
-		CurrentState:      resp.GetOpenedSession(),
+		CurrentState:      openedSession,
 	}
 	if memo != nil {
 		session.Memo = *memo
@@ -125,11 +132,13 @@ func (u *SessionUsecase) StopSession(ctx context.Context, id string) error {
 		return errors.Wrap(err, 0)
 	}
 
-	// CurrentState は WorldSaved/SessionParametersChanged イベント経由で随時同期されているため
-	// StopSession 前に GetSession を打ち直す必要はない。万一未受信なら DB 上の最新の世界 URL を使う。
-	if worldUrl := s.CurrentState.GetWorldUrl(); worldUrl != "" && s.StartupParameters != nil {
-		s.StartupParameters.LoadWorld = &headlessv1.WorldStartupParameters_LoadWorldUrl{
-			LoadWorldUrl: worldUrl,
+	// CurrentState は cache が権威。WorldSaved / SessionParametersChanged event で
+	// 随時更新されているので、最後に観測した worldUrl があれば次回起動時に使う。
+	if snapshot, ok := u.stateCache.Get(id); ok {
+		if worldUrl := snapshot.GetWorldUrl(); worldUrl != "" && s.StartupParameters != nil {
+			s.StartupParameters.LoadWorld = &headlessv1.WorldStartupParameters_LoadWorldUrl{
+				LoadWorldUrl: worldUrl,
+			}
 		}
 	}
 
@@ -142,6 +151,8 @@ func (u *SessionUsecase) StopSession(ctx context.Context, id string) error {
 	s.EndedAt = &now
 	s.Status = entity.SessionStatus_ENDED
 
+	u.stateCache.Delete(id)
+
 	return u.sessionRepo.Upsert(ctx, s)
 }
 
@@ -151,15 +162,39 @@ func (u *SessionUsecase) GetSession(ctx context.Context, id string) (*entity.Ses
 		return nil, errors.Wrap(err, 0)
 	}
 
-	// CurrentState は host_event_watcher が live で更新するため polling 不要。
-	// container 死活は DockerEventWatcher が hosts.status を倒すので、ここでは
-	// GetRpcClient が解決できないときだけ CRASHED に倒す。
-	if dbSession.Status == entity.SessionStatus_STARTING || dbSession.Status == entity.SessionStatus_RUNNING {
-		if _, hostErr := u.hostRepo.GetRpcClient(ctx, dbSession.HostID); hostErr != nil {
-			_ = u.sessionRepo.UpdateStatus(ctx, id, entity.SessionStatus_CRASHED)
-			dbSession.Status = entity.SessionStatus_CRASHED
-		}
+	if dbSession.Status != entity.SessionStatus_STARTING && dbSession.Status != entity.SessionStatus_RUNNING {
+		return dbSession, nil
 	}
+
+	// cache hit ならそのまま返す。
+	if snapshot, ok := u.stateCache.Get(id); ok {
+		dbSession.CurrentState = snapshot
+
+		return dbSession, nil
+	}
+
+	// cache miss は controller 再起動直後や、まだ event が届いていないケース。
+	// container から取り直し cache を populate する。RPC が引けない / 失敗したら
+	// CRASHED に降ろして DB session を返す (UI 側は CurrentState=nil でも optional
+	// chain で扱える)。
+	client, clientErr := u.hostRepo.GetRpcClient(ctx, dbSession.HostID)
+	if clientErr != nil {
+		_ = u.sessionRepo.UpdateStatus(ctx, id, entity.SessionStatus_CRASHED)
+		dbSession.Status = entity.SessionStatus_CRASHED
+
+		return dbSession, nil //nolint:nilerr // CRASHED 降格として吸収する設計
+	}
+
+	resp, rpcErr := client.GetSession(ctx, &headlessv1.GetSessionRequest{SessionId: id})
+	if rpcErr != nil || resp.GetSession() == nil {
+		_ = u.sessionRepo.UpdateStatus(ctx, id, entity.SessionStatus_CRASHED)
+		dbSession.Status = entity.SessionStatus_CRASHED
+
+		return dbSession, nil //nolint:nilerr // CRASHED 降格として吸収する設計
+	}
+
+	u.stateCache.Set(id, resp.GetSession())
+	dbSession.CurrentState = resp.GetSession()
 
 	return dbSession, nil
 }
@@ -180,8 +215,8 @@ type SearchSessionsResult struct {
 }
 
 func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessionsFilter) (*SearchSessionsResult, error) {
-	// CurrentState は host_event_watcher が live で更新するため、ここで host への fanout polling は不要。
-	// DB のレコードがそのまま回答になる。
+	// CurrentState は cache から hydrate する。cache miss は許容 (list view の
+	// 表示劣化のみで、詳細画面の GetSession で取り直される)。
 	if filter.PageSize > 0 {
 		pageResult, err := u.sessionRepo.ListPaged(ctx, port.SessionListPageOptions{
 			HostID:    filter.HostID,
@@ -192,6 +227,8 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 		if err != nil {
 			return nil, errors.Wrap(err, 0)
 		}
+
+		u.hydrateCurrentState(pageResult.Sessions)
 
 		return &SearchSessionsResult{Sessions: pageResult.Sessions, TotalCount: pageResult.TotalCount}, nil
 	}
@@ -225,6 +262,8 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 
 		dbSessions = filtered
 	}
+
+	u.hydrateCurrentState(dbSessions)
 
 	return &SearchSessionsResult{
 		Sessions:   dbSessions,
@@ -304,13 +343,21 @@ func (u *SessionUsecase) UpdateSessionParameters(ctx context.Context, id string,
 
 	updateStartupParamsByUpdateRequest(s.StartupParameters, params)
 
-	s.CurrentState = newSession.GetSession()
+	// container の最新 snapshot で cache を更新しておく。SessionParametersChanged
+	// event 経由でも同じ snapshot が流れてくるが、handler の到達を待たずに
+	// 即時に最新 state を見せる。
+	if newSession.GetSession() != nil {
+		u.stateCache.Set(id, newSession.GetSession())
+	}
+
 	s.Name = newSession.GetSession().GetName()
 
 	return u.sessionRepo.Upsert(ctx, s)
 }
 
 func (u *SessionUsecase) DeleteSession(ctx context.Context, id string) error {
+	u.stateCache.Delete(id)
+
 	return u.sessionRepo.Delete(ctx, id)
 }
 
@@ -338,8 +385,12 @@ func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMo
 			return url, nil
 		}
 
-		// saved_world_url を埋めない container と互換するための fallback
-		return s.CurrentState.GetWorldUrl(), nil
+		// saved_world_url を埋めない container との互換用 fallback (cache から取る)
+		if snapshot, ok := u.stateCache.Get(id); ok {
+			return snapshot.GetWorldUrl(), nil
+		}
+
+		return "", nil
 
 	case SaveMode_SAVE_AS:
 		saveAsResp, err := client.SaveAsSessionWorld(ctx, &headlessv1.SaveAsSessionWorldRequest{
@@ -365,6 +416,14 @@ func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMo
 
 	default:
 		return "", errors.Errorf("unknown save mode: %d", saveMode)
+	}
+}
+
+func (u *SessionUsecase) hydrateCurrentState(sessions entity.SessionList) {
+	for _, s := range sessions {
+		if snapshot, ok := u.stateCache.Get(s.ID); ok {
+			s.CurrentState = snapshot
+		}
 	}
 }
 
@@ -406,4 +465,3 @@ func isPortAvailable(ctx context.Context, port int) bool {
 
 	return true
 }
-

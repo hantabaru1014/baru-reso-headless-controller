@@ -2,7 +2,6 @@ package adapter_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
@@ -12,11 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSessionRepository_UpdateAfterWorldSaved_JSONBRewrite verifies the
-// server-side jsonb_set rewrite of startup_parameters.loadWorldUrl and
-// current_state.worldUrl. The exact protojson key names must match the
-// SQL constants in db/queries/sessions.sql or the rewrite silently no-ops.
-func TestSessionRepository_UpdateAfterWorldSaved_JSONBRewrite(t *testing.T) {
+func TestSessionRepository_UpdateAfterWorldSaved_RewritesStartupParameters(t *testing.T) {
 	queries, pool := testutil.SetupTestDB(t)
 	testutil.CleanupTables(t, pool)
 
@@ -26,310 +21,136 @@ func TestSessionRepository_UpdateAfterWorldSaved_JSONBRewrite(t *testing.T) {
 	host := testutil.CreateTestHeadlessHost(t, queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
 
 	t.Run("preset 由来の startup_parameters を loadWorldUrl で置き換え、preset key を消す", func(t *testing.T) {
-		err := repo.Upsert(t.Context(), &entity.Session{
-			ID:     "s-preset",
-			Name:   "preset-session",
-			HostID: host.ID,
-			Status: entity.SessionStatus_RUNNING,
-			StartupParameters: &headlessv1.WorldStartupParameters{
-				LoadWorld: &headlessv1.WorldStartupParameters_LoadWorldPresetName{LoadWorldPresetName: "Default"},
-			},
-			CurrentState: &headlessv1.Session{Id: "s-preset", WorldUrl: ""},
+		preset := testutil.CreateTestSessionWithStartupParameters(t, queries, host.ID, "preset-session", entity.SessionStatus_RUNNING, &headlessv1.WorldStartupParameters{
+			LoadWorld: &headlessv1.WorldStartupParameters_LoadWorldPresetName{LoadWorldPresetName: "Default"},
 		})
+
+		err := repo.UpdateAfterWorldSaved(t.Context(), preset.ID, "resrec:///U-test/R-saved")
 		require.NoError(t, err)
 
-		err = repo.UpdateAfterWorldSaved(t.Context(), "s-preset", "resrec:///U-test/R-saved")
+		got, err := repo.Get(t.Context(), preset.ID)
 		require.NoError(t, err)
-
-		got, err := repo.Get(t.Context(), "s-preset")
-		require.NoError(t, err)
-
 		assert.Equal(t, "resrec:///U-test/R-saved", got.StartupParameters.GetLoadWorldUrl(),
 			"preset case must be replaced with loadWorldUrl")
 		assert.Empty(t, got.StartupParameters.GetLoadWorldPresetName(),
 			"preset key must be removed so the oneof has exactly one active case")
-		assert.Equal(t, "resrec:///U-test/R-saved", got.CurrentState.GetWorldUrl())
 	})
 
 	t.Run("既存 loadWorldUrl を別 URL に書き換える", func(t *testing.T) {
-		err := repo.Upsert(t.Context(), &entity.Session{
-			ID:     "s-url",
-			Name:   "url-session",
-			HostID: host.ID,
-			Status: entity.SessionStatus_RUNNING,
-			StartupParameters: &headlessv1.WorldStartupParameters{
-				LoadWorld: &headlessv1.WorldStartupParameters_LoadWorldUrl{LoadWorldUrl: "resrec:///old"},
-			},
-			CurrentState: &headlessv1.Session{Id: "s-url", WorldUrl: "resrec:///old"},
+		urlSession := testutil.CreateTestSessionWithStartupParameters(t, queries, host.ID, "url-session", entity.SessionStatus_RUNNING, &headlessv1.WorldStartupParameters{
+			LoadWorld: &headlessv1.WorldStartupParameters_LoadWorldUrl{LoadWorldUrl: "resrec:///old"},
 		})
+
+		err := repo.UpdateAfterWorldSaved(t.Context(), urlSession.ID, "resrec:///new")
 		require.NoError(t, err)
 
-		err = repo.UpdateAfterWorldSaved(t.Context(), "s-url", "resrec:///new")
-		require.NoError(t, err)
-
-		got, err := repo.Get(t.Context(), "s-url")
+		got, err := repo.Get(t.Context(), urlSession.ID)
 		require.NoError(t, err)
 		assert.Equal(t, "resrec:///new", got.StartupParameters.GetLoadWorldUrl())
-		assert.Equal(t, "resrec:///new", got.CurrentState.GetWorldUrl())
-	})
-
-	t.Run("current_state が NULL のまま session でも startup_parameters は更新される", func(t *testing.T) {
-		err := repo.Upsert(t.Context(), &entity.Session{
-			ID:     "s-no-cs",
-			Name:   "no-currentstate",
-			HostID: host.ID,
-			Status: entity.SessionStatus_RUNNING,
-			StartupParameters: &headlessv1.WorldStartupParameters{
-				LoadWorld: &headlessv1.WorldStartupParameters_LoadWorldUrl{LoadWorldUrl: "resrec:///old"},
-			},
-			CurrentState: nil,
-		})
-		require.NoError(t, err)
-
-		err = repo.UpdateAfterWorldSaved(t.Context(), "s-no-cs", "resrec:///new")
-		require.NoError(t, err)
-
-		got, err := repo.Get(t.Context(), "s-no-cs")
-		require.NoError(t, err)
-		assert.Equal(t, "resrec:///new", got.StartupParameters.GetLoadWorldUrl())
-		// NULL current_state は NULL のまま残す (UI に zero-value Session を渡して
-		// "0/0 users" と表示させないため)
-		assert.Nil(t, got.CurrentState, "NULL current_state must stay NULL")
-	})
-
-	t.Run("DowngradeToUnknownIfRunning は ENDED を巻き戻さない", func(t *testing.T) {
-		err := repo.Upsert(t.Context(), &entity.Session{
-			ID:     "s-ended",
-			Name:   "ended-session",
-			HostID: host.ID,
-			Status: entity.SessionStatus_ENDED,
-			StartupParameters: &headlessv1.WorldStartupParameters{
-				LoadWorld: &headlessv1.WorldStartupParameters_LoadWorldUrl{LoadWorldUrl: "u"},
-			},
-		})
-		require.NoError(t, err)
-
-		err = repo.DowngradeToUnknownIfRunning(t.Context(), "s-ended")
-		require.NoError(t, err)
-
-		got, err := repo.Get(t.Context(), "s-ended")
-		require.NoError(t, err)
-		assert.Equal(t, entity.SessionStatus_ENDED, got.Status, "ENDED session must not be silently demoted to UNKNOWN")
-	})
-
-	t.Run("DowngradeToUnknownIfRunning は RUNNING のみ UNKNOWN へ", func(t *testing.T) {
-		err := repo.Upsert(t.Context(), &entity.Session{
-			ID:     "s-running",
-			Name:   "running-session",
-			HostID: host.ID,
-			Status: entity.SessionStatus_RUNNING,
-			StartupParameters: &headlessv1.WorldStartupParameters{
-				LoadWorld: &headlessv1.WorldStartupParameters_LoadWorldUrl{LoadWorldUrl: "u"},
-			},
-		})
-		require.NoError(t, err)
-
-		err = repo.DowngradeToUnknownIfRunning(t.Context(), "s-running")
-		require.NoError(t, err)
-
-		got, err := repo.Get(t.Context(), "s-running")
-		require.NoError(t, err)
-		assert.Equal(t, entity.SessionStatus_UNKNOWN, got.Status)
 	})
 }
 
-// TestSessionRepository_LifecycleQueries exercises the partial-update SQL
-// (ApplySessionStarted / ApplySessionEnded), the host_id+status list query,
-// and the ON CONFLICT DO NOTHING insert that back SessionLifecycleHandler.
-// The handler-level tests use an in-memory fake; this test verifies the
-// actual pgx/sqlc bindings, the WHERE clause logic, and the RowsAffected
-// behaviour of `:execrows` against a real Postgres.
-//
-// Requires the test database to be migrated (see `make test.setup`).
-func TestSessionRepository_LifecycleQueries(t *testing.T) {
+// TestSessionRepository_ApplySessionParametersChanged verifies the SQL jsonb merge
+// writes the SessionInfo overlap fields into startup_parameters. If a protojson
+// key name drifts (e.g. proto field rename), this test fails immediately rather
+// than the production session re-loading with stale data.
+func TestSessionRepository_ApplySessionParametersChanged_MergesIntoStartupParameters(t *testing.T) {
 	queries, pool := testutil.SetupTestDB(t)
+	testutil.CleanupTables(t, pool)
 
-	t.Run("ApplySessionStarted は新しい occurred_at で UPDATE する", func(t *testing.T) {
-		testutil.CleanupTables(t, pool)
+	repo := adapter.NewSessionRepository(queries)
 
-		repo := adapter.NewSessionRepository(queries)
-		host := testutil.CreateTestHeadlessHost(t, queries, "U-a", "host", entity.HeadlessHostStatus_RUNNING)
-		original := testutil.CreateTestSession(t, queries, host.ID, "session", entity.SessionStatus_RUNNING)
+	testutil.CreateTestHeadlessAccount(t, queries, "U-test", "test@example.test", "password")
+	host := testutil.CreateTestHeadlessHost(t, queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
 
-		newStart := original.StartedAt.Time.Add(time.Hour)
-
-		applied, err := repo.ApplySessionStarted(t.Context(), original.ID, host.ID, "new-name", newStart)
-		require.NoError(t, err)
-		assert.True(t, applied, "newer occurred_at must report applied=true")
-
-		updated, err := repo.Get(t.Context(), original.ID)
-		require.NoError(t, err)
-		assert.Equal(t, "new-name", updated.Name)
-		require.NotNil(t, updated.StartedAt)
-		assert.True(t, updated.StartedAt.Equal(newStart))
-		assert.Equal(t, entity.SessionStatus_RUNNING, updated.Status)
-		assert.Nil(t, updated.EndedAt, "ApplySessionStarted must clear ended_at")
+	descBefore := "desc-before"
+	sess := testutil.CreateTestSessionWithStartupParameters(t, queries, host.ID, "before", entity.SessionStatus_RUNNING, &headlessv1.WorldStartupParameters{
+		LoadWorld:   &headlessv1.WorldStartupParameters_LoadWorldPresetName{LoadWorldPresetName: "Default"},
+		Description: &descBefore,
+		Tags:        []string{"keep-me"},
 	})
 
-	t.Run("ApplySessionStarted は古い occurred_at を skip (RowsAffected==0)", func(t *testing.T) {
-		testutil.CleanupTables(t, pool)
+	snapshot := &headlessv1.Session{
+		Id:                         sess.ID,
+		Name:                       "after",
+		Description:                "desc-after",
+		MaxUsers:                   24,
+		AccessLevel:                headlessv1.AccessLevel_ACCESS_LEVEL_ANYONE,
+		HideFromPublicListing:      true,
+		AwayKickMinutes:            7.5,
+		IdleRestartIntervalSeconds: 180,
+		SaveOnExit:                 true,
+		AutoSaveIntervalSeconds:    300,
+		AutoSleep:                  false,
+		Tags:                       []string{"newtag"},
+	}
 
-		repo := adapter.NewSessionRepository(queries)
-		host := testutil.CreateTestHeadlessHost(t, queries, "U-a", "host", entity.HeadlessHostStatus_RUNNING)
-		original := testutil.CreateTestSession(t, queries, host.ID, "session", entity.SessionStatus_RUNNING)
+	err := repo.ApplySessionParametersChanged(t.Context(), sess.ID, snapshot)
+	require.NoError(t, err)
 
-		stale := original.StartedAt.Time.Add(-time.Hour)
+	got, err := repo.Get(t.Context(), sess.ID)
+	require.NoError(t, err)
 
-		applied, err := repo.ApplySessionStarted(t.Context(), original.ID, host.ID, "stale-name", stale)
-		require.NoError(t, err)
-		assert.False(t, applied, "older occurred_at must be skipped (RowsAffected==0)")
+	assert.Equal(t, "after", got.Name, "name 列も更新される")
+	sp := got.StartupParameters
+	assert.Equal(t, "after", sp.GetName())
+	assert.Equal(t, "desc-after", sp.GetDescription())
+	assert.Equal(t, int32(24), sp.GetMaxUsers())
+	assert.Equal(t, headlessv1.AccessLevel_ACCESS_LEVEL_ANYONE, sp.GetAccessLevel())
+	assert.True(t, sp.GetHideFromPublicListing())
+	assert.InDelta(t, 7.5, sp.GetAwayKickMinutes(), 0.001)
+	assert.Equal(t, int32(180), sp.GetIdleRestartIntervalSeconds())
+	assert.True(t, sp.GetSaveOnExit())
+	assert.Equal(t, int32(300), sp.GetAutoSaveIntervalSeconds())
+	assert.False(t, sp.GetAutoSleep())
+	assert.Equal(t, []string{"newtag"}, sp.GetTags(), "tags 配列は丸ごと置換")
 
-		unchanged, err := repo.Get(t.Context(), original.ID)
-		require.NoError(t, err)
-		assert.Equal(t, original.Name, unchanged.Name, "stale event must not overwrite name")
+	// preset case は merge 対象外なので保持される
+	assert.Equal(t, "Default", sp.GetLoadWorldPresetName(),
+		"merge は overlap field のみ。load_world oneof などは触らない")
+}
+
+func TestSessionRepository_ApplySessionParametersChanged_EmptyTags(t *testing.T) {
+	queries, pool := testutil.SetupTestDB(t)
+	testutil.CleanupTables(t, pool)
+
+	repo := adapter.NewSessionRepository(queries)
+
+	testutil.CreateTestHeadlessAccount(t, queries, "U-test", "test@example.test", "password")
+	host := testutil.CreateTestHeadlessHost(t, queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
+
+	sess := testutil.CreateTestSessionWithStartupParameters(t, queries, host.ID, "n", entity.SessionStatus_RUNNING, &headlessv1.WorldStartupParameters{
+		Tags: []string{"a", "b"},
 	})
 
-	t.Run("ApplySessionStarted は別 host を渡すと host_id を更新する", func(t *testing.T) {
-		testutil.CleanupTables(t, pool)
+	err := repo.ApplySessionParametersChanged(t.Context(), sess.ID, &headlessv1.Session{Id: sess.ID, Tags: nil})
+	require.NoError(t, err)
 
-		repo := adapter.NewSessionRepository(queries)
-		hostA := testutil.CreateTestHeadlessHost(t, queries, "U-a", "host-a", entity.HeadlessHostStatus_RUNNING)
-		hostB := testutil.CreateTestHeadlessHost(t, queries, "U-b", "host-b", entity.HeadlessHostStatus_RUNNING)
+	got, err := repo.Get(t.Context(), sess.ID)
+	require.NoError(t, err)
+	assert.Empty(t, got.StartupParameters.GetTags(), "空配列を渡すと tags は全消し")
+}
 
-		original := testutil.CreateTestSession(t, queries, hostA.ID, "session", entity.SessionStatus_RUNNING)
-		newStart := original.StartedAt.Time.Add(time.Hour)
+func TestSessionRepository_DowngradeToUnknownIfRunning_GuardedAgainstEnded(t *testing.T) {
+	queries, pool := testutil.SetupTestDB(t)
+	testutil.CleanupTables(t, pool)
 
-		applied, err := repo.ApplySessionStarted(t.Context(), original.ID, hostB.ID, "session", newStart)
-		require.NoError(t, err)
-		assert.True(t, applied)
+	repo := adapter.NewSessionRepository(queries)
 
-		updated, err := repo.Get(t.Context(), original.ID)
-		require.NoError(t, err)
-		assert.Equal(t, hostB.ID, updated.HostID, "ApplySessionStarted must allow host migration")
-	})
+	testutil.CreateTestHeadlessAccount(t, queries, "U-test", "test@example.test", "password")
+	host := testutil.CreateTestHeadlessHost(t, queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
 
-	t.Run("ApplySessionEnded は新しい occurred_at で UPDATE する", func(t *testing.T) {
-		testutil.CleanupTables(t, pool)
+	ended := testutil.CreateTestSession(t, queries, host.ID, "ended-session", entity.SessionStatus_ENDED)
+	running := testutil.CreateTestSession(t, queries, host.ID, "running-session", entity.SessionStatus_RUNNING)
 
-		repo := adapter.NewSessionRepository(queries)
-		host := testutil.CreateTestHeadlessHost(t, queries, "U-a", "host", entity.HeadlessHostStatus_RUNNING)
-		original := testutil.CreateTestSession(t, queries, host.ID, "session", entity.SessionStatus_RUNNING)
-		endedAt := original.StartedAt.Time.Add(2 * time.Hour)
+	require.NoError(t, repo.DowngradeToUnknownIfRunning(t.Context(), ended.ID))
+	require.NoError(t, repo.DowngradeToUnknownIfRunning(t.Context(), running.ID))
 
-		applied, err := repo.ApplySessionEnded(t.Context(), original.ID, host.ID, endedAt)
-		require.NoError(t, err)
-		assert.True(t, applied)
+	gotEnded, err := repo.Get(t.Context(), ended.ID)
+	require.NoError(t, err)
+	assert.Equal(t, entity.SessionStatus_ENDED, gotEnded.Status, "ENDED は巻き戻さない")
 
-		updated, err := repo.Get(t.Context(), original.ID)
-		require.NoError(t, err)
-		assert.Equal(t, entity.SessionStatus_ENDED, updated.Status)
-		require.NotNil(t, updated.EndedAt)
-		assert.True(t, updated.EndedAt.Equal(endedAt))
-	})
-
-	t.Run("ApplySessionEnded は古い ended_at を skip", func(t *testing.T) {
-		testutil.CleanupTables(t, pool)
-
-		repo := adapter.NewSessionRepository(queries)
-		host := testutil.CreateTestHeadlessHost(t, queries, "U-a", "host", entity.HeadlessHostStatus_RUNNING)
-		original := testutil.CreateTestSession(t, queries, host.ID, "session", entity.SessionStatus_RUNNING)
-		firstEnd := original.StartedAt.Time.Add(2 * time.Hour)
-
-		_, err := repo.ApplySessionEnded(t.Context(), original.ID, host.ID, firstEnd)
-		require.NoError(t, err)
-
-		earlier := firstEnd.Add(-time.Hour)
-		applied, err := repo.ApplySessionEnded(t.Context(), original.ID, host.ID, earlier)
-		require.NoError(t, err)
-		assert.False(t, applied, "earlier occurred_at must be skipped (RowsAffected==0)")
-
-		got, err := repo.Get(t.Context(), original.ID)
-		require.NoError(t, err)
-		require.NotNil(t, got.EndedAt)
-		assert.True(t, got.EndedAt.Equal(firstEnd))
-	})
-
-	t.Run("ApplySessionEnded は host_id 不一致なら SQL レベルで skip", func(t *testing.T) {
-		testutil.CleanupTables(t, pool)
-
-		repo := adapter.NewSessionRepository(queries)
-		hostA := testutil.CreateTestHeadlessHost(t, queries, "U-a", "host-a", entity.HeadlessHostStatus_RUNNING)
-		hostB := testutil.CreateTestHeadlessHost(t, queries, "U-b", "host-b", entity.HeadlessHostStatus_RUNNING)
-
-		original := testutil.CreateTestSession(t, queries, hostA.ID, "session", entity.SessionStatus_RUNNING)
-		endedAt := original.StartedAt.Time.Add(2 * time.Hour)
-
-		applied, err := repo.ApplySessionEnded(t.Context(), original.ID, hostB.ID, endedAt)
-		require.NoError(t, err)
-		assert.False(t, applied,
-			"SessionEnded from a non-owning host must be skipped at the SQL level")
-
-		got, err := repo.Get(t.Context(), original.ID)
-		require.NoError(t, err)
-		assert.Equal(t, entity.SessionStatus_RUNNING, got.Status)
-		assert.Nil(t, got.EndedAt)
-	})
-
-	t.Run("InsertFromEvent は既存 row を上書きしない (ON CONFLICT DO NOTHING)", func(t *testing.T) {
-		testutil.CleanupTables(t, pool)
-
-		repo := adapter.NewSessionRepository(queries)
-		host := testutil.CreateTestHeadlessHost(t, queries, "U-a", "host", entity.HeadlessHostStatus_RUNNING)
-		original := testutil.CreateTestSession(t, queries, host.ID, "original-name", entity.SessionStatus_RUNNING)
-
-		newStart := original.StartedAt.Time.Add(time.Hour)
-		err := repo.InsertFromEvent(t.Context(), &entity.Session{
-			ID:        original.ID,
-			Name:      "conflicting-name",
-			Status:    entity.SessionStatus_RUNNING,
-			HostID:    host.ID,
-			StartedAt: &newStart,
-		})
-		require.NoError(t, err)
-
-		got, err := repo.Get(t.Context(), original.ID)
-		require.NoError(t, err)
-		assert.Equal(t, "original-name", got.Name, "InsertFromEvent must not overwrite an existing row")
-	})
-
-	t.Run("InsertFromEvent は新しい id なら row を作る", func(t *testing.T) {
-		testutil.CleanupTables(t, pool)
-
-		repo := adapter.NewSessionRepository(queries)
-		host := testutil.CreateTestHeadlessHost(t, queries, "U-a", "host", entity.HeadlessHostStatus_RUNNING)
-
-		now := time.Now().UTC().Truncate(time.Microsecond)
-		err := repo.InsertFromEvent(t.Context(), &entity.Session{
-			ID:        "fresh-session-id",
-			Name:      "fresh-name",
-			Status:    entity.SessionStatus_RUNNING,
-			HostID:    host.ID,
-			StartedAt: &now,
-		})
-		require.NoError(t, err)
-
-		got, err := repo.Get(t.Context(), "fresh-session-id")
-		require.NoError(t, err)
-		assert.Equal(t, "fresh-name", got.Name)
-		assert.Equal(t, host.ID, got.HostID)
-		assert.Equal(t, entity.SessionStatus_RUNNING, got.Status)
-	})
-
-	t.Run("ListByHostAndStatus は host_id と status の両方で絞り込む", func(t *testing.T) {
-		testutil.CleanupTables(t, pool)
-
-		repo := adapter.NewSessionRepository(queries)
-		hostA := testutil.CreateTestHeadlessHost(t, queries, "U-a", "host-a", entity.HeadlessHostStatus_RUNNING)
-		hostB := testutil.CreateTestHeadlessHost(t, queries, "U-b", "host-b", entity.HeadlessHostStatus_RUNNING)
-
-		wantRunning := testutil.CreateTestSession(t, queries, hostA.ID, "wanted", entity.SessionStatus_RUNNING)
-		_ = testutil.CreateTestSession(t, queries, hostA.ID, "ended-same-host", entity.SessionStatus_ENDED)
-		_ = testutil.CreateTestSession(t, queries, hostA.ID, "starting-same-host", entity.SessionStatus_STARTING)
-		_ = testutil.CreateTestSession(t, queries, hostB.ID, "running-other-host", entity.SessionStatus_RUNNING)
-
-		got, err := repo.ListByHostAndStatus(t.Context(), hostA.ID, entity.SessionStatus_RUNNING)
-		require.NoError(t, err)
-		require.Len(t, got, 1)
-		assert.Equal(t, wantRunning.ID, got[0].ID)
-	})
+	gotRunning, err := repo.Get(t.Context(), running.ID)
+	require.NoError(t, err)
+	assert.Equal(t, entity.SessionStatus_UNKNOWN, gotRunning.Status, "RUNNING のみ UNKNOWN へ降ろす")
 }

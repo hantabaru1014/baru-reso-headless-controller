@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -28,18 +29,10 @@ func (r *SessionRepository) Upsert(ctx context.Context, session *entity.Session)
 	var (
 		err           error
 		startupParams []byte
-		currentState  []byte
 	)
 
 	if session.StartupParameters != nil {
 		startupParams, err = protojson.Marshal(session.StartupParameters)
-		if err != nil {
-			return errors.Wrap(err, 0)
-		}
-	}
-
-	if session.CurrentState != nil {
-		currentState, err = protojson.Marshal(session.CurrentState)
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
@@ -85,7 +78,6 @@ func (r *SessionRepository) Upsert(ctx context.Context, session *entity.Session)
 		StartupParametersSchemaVersion: 1,
 		AutoUpgrade:                    session.AutoUpgrade,
 		Memo:                           memo,
-		CurrentState:                   currentState,
 	})
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -101,16 +93,37 @@ func (r *SessionRepository) UpdateStatus(ctx context.Context, id string, status 
 	})
 }
 
-func (r *SessionRepository) UpdateCurrentStateAndName(ctx context.Context, id string, currentState *headlessv1.Session, name string) error {
-	cs, err := protojson.Marshal(currentState)
+func (r *SessionRepository) ApplySessionParametersChanged(ctx context.Context, id string, snapshot *headlessv1.Session) error {
+	if snapshot == nil {
+		return nil
+	}
+
+	// tags は JSON array として渡す。空配列で「タグ全消し」を表現できる。
+	// 必ず非 nil の []string を marshal して "[]" を保証する (nil だと "null" に
+	// なって JSONB || 演算で型不整合になる)。
+	tagSlice := snapshot.GetTags()
+	if tagSlice == nil {
+		tagSlice = []string{}
+	}
+
+	tagsJSON, err := json.Marshal(tagSlice)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
 
-	return r.q.UpdateSessionCurrentStateAndName(ctx, db.UpdateSessionCurrentStateAndNameParams{
-		ID:           id,
-		CurrentState: cs,
-		Name:         name,
+	return r.q.ApplySessionParametersChanged(ctx, db.ApplySessionParametersChangedParams{
+		ID:                         id,
+		Name:                       snapshot.GetName(),
+		Description:                snapshot.GetDescription(),
+		MaxUsers:                   snapshot.GetMaxUsers(),
+		AccessLevel:                snapshot.GetAccessLevel().String(),
+		HideFromPublicListing:      snapshot.GetHideFromPublicListing(),
+		AwayKickMinutes:            snapshot.GetAwayKickMinutes(),
+		IdleRestartIntervalSeconds: snapshot.GetIdleRestartIntervalSeconds(),
+		SaveOnExit:                 snapshot.GetSaveOnExit(),
+		AutoSaveIntervalSeconds:    snapshot.GetAutoSaveIntervalSeconds(),
+		AutoSleep:                  snapshot.GetAutoSleep(),
+		Tags:                       tagsJSON,
 	})
 }
 
@@ -314,17 +327,6 @@ func sessionToEntity(s db.Session) (*entity.Session, error) {
 		return nil, errors.Wrap(err, 0)
 	}
 
-	var currentState *headlessv1.Session
-
-	if len(s.CurrentState) > 0 {
-		cs := &headlessv1.Session{}
-		if err := protojson.Unmarshal(s.CurrentState, cs); err != nil {
-			return nil, errors.Wrap(err, 0)
-		}
-
-		currentState = cs
-	}
-
 	var ownerId *string
 	if s.OwnerID.Valid {
 		ownerId = &s.OwnerID.String
@@ -335,6 +337,8 @@ func sessionToEntity(s db.Session) (*entity.Session, error) {
 		memo = s.Memo.String
 	}
 
+	// CurrentState は揮発状態のため DB に持たず in-memory cache (port.SessionStateCache)
+	// が権威。Caller 側で cache から populate される。
 	return &entity.Session{
 		ID:                s.ID,
 		Name:              s.Name,
@@ -346,7 +350,6 @@ func sessionToEntity(s db.Session) (*entity.Session, error) {
 		StartupParameters: &startupParams,
 		AutoUpgrade:       s.AutoUpgrade,
 		Memo:              memo,
-		CurrentState:      currentState,
 	}, nil
 }
 

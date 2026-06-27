@@ -111,26 +111,24 @@ func CreateTestHeadlessHost(t *testing.T, queries *db.Queries, accountID, name s
 func CreateTestSession(t *testing.T, queries *db.Queries, hostID, name string, status entity.SessionStatus) db.Session {
 	t.Helper()
 
-	return CreateTestSessionWithCurrentState(t, queries, hostID, name, status, nil)
+	return CreateTestSessionWithStartupParameters(t, queries, hostID, name, status, nil)
 }
 
-// CreateTestSessionWithCurrentState creates a test session and persists the given
-// CurrentState snapshot, simulating an event-driven update from the host.
-func CreateTestSessionWithCurrentState(t *testing.T, queries *db.Queries, hostID, name string, status entity.SessionStatus, currentState *headlessv1.Session) db.Session {
+// CreateTestSessionWithStartupParameters creates a test session with explicit
+// startup_parameters JSONB, simulating various pre-existing DB state in tests.
+func CreateTestSessionWithStartupParameters(t *testing.T, queries *db.Queries, hostID, name string, status entity.SessionStatus, startupParameters *headlessv1.WorldStartupParameters) db.Session {
 	t.Helper()
 
 	id := uniuri.New()
 	startupParams := []byte(`{"maxUsers": 8}`)
 
-	var currentStateBytes []byte
-
-	if currentState != nil {
-		b, err := protojson.Marshal(currentState)
+	if startupParameters != nil {
+		b, err := protojson.Marshal(startupParameters)
 		if err != nil {
-			t.Fatalf("failed to marshal current_state: %v", err)
+			t.Fatalf("failed to marshal startup_parameters: %v", err)
 		}
 
-		currentStateBytes = b
+		startupParams = b
 	}
 
 	session, err := queries.UpsertSession(t.Context(), db.UpsertSessionParams{
@@ -145,7 +143,6 @@ func CreateTestSessionWithCurrentState(t *testing.T, queries *db.Queries, hostID
 		StartupParametersSchemaVersion: 1,
 		AutoUpgrade:                    false,
 		Memo:                           pgtype.Text{Valid: false},
-		CurrentState:                   currentStateBytes,
 	})
 	if err != nil {
 		t.Fatalf("failed to create test session: %v", err)

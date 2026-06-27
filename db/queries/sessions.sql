@@ -10,10 +10,9 @@ INSERT INTO sessions (
     startup_parameters,
     startup_parameters_schema_version,
     auto_upgrade,
-    memo,
-    current_state
+    memo
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 ) ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     status = EXCLUDED.status,
@@ -24,8 +23,7 @@ INSERT INTO sessions (
     startup_parameters = EXCLUDED.startup_parameters,
     startup_parameters_schema_version = EXCLUDED.startup_parameters_schema_version,
     auto_upgrade = EXCLUDED.auto_upgrade,
-    memo = EXCLUDED.memo,
-    current_state = EXCLUDED.current_state
+    memo = EXCLUDED.memo
 RETURNING *;
 
 -- name: UpdateSessionStatus :exec
@@ -37,33 +35,48 @@ UPDATE sessions SET status = $2 WHERE id = $1;
 -- 2 = SessionStatus_RUNNING, 0 = SessionStatus_UNKNOWN
 UPDATE sessions SET status = 0 WHERE id = $1 AND status = 2;
 
--- name: UpdateSessionCurrentStateAndName :exec
--- event 駆動の SessionParametersChanged 反映用。current_state と name の
--- 部分更新にして、並行する UpdateSessionParameters / StartSession など
--- の Upsert と他フィールドが衝突しないようにする
-UPDATE sessions SET current_state = $2, name = $3 WHERE id = $1;
+-- name: ApplySessionParametersChanged :exec
+-- event 駆動の SessionParametersChanged 反映用。SessionInfo の overlap field を
+-- startup_parameters JSONB に merge することで、in-world で session 設定が
+-- 変わったときに次回 restart 時にもその変更が反映されるようにする。
+--
+-- JSONB の `||` で右オペランドの値が左を上書きする。tags は配列ごと差し替えに
+-- なるため、空配列を渡せば「タグ全消し」を表現できる。
+-- protojson の field 名は camelCase (sessions.startup_parameters 列も
+-- protojson 形式)。AccessLevel は enum 文字列 (`ACCESS_LEVEL_ANYONE` 等) を渡す。
+-- name 列は startup_parameters とは別に持つので両方更新する。
+UPDATE sessions
+SET name = @name::text,
+    startup_parameters = startup_parameters || jsonb_build_object(
+        'name', @name::text,
+        'description', @description::text,
+        'maxUsers', @max_users::int,
+        'accessLevel', @access_level::text,
+        'hideFromPublicListing', @hide_from_public_listing::bool,
+        'awayKickMinutes', @away_kick_minutes::real,
+        'idleRestartIntervalSeconds', @idle_restart_interval_seconds::int,
+        'saveOnExit', @save_on_exit::bool,
+        'autoSaveIntervalSeconds', @auto_save_interval_seconds::int,
+        'autoSleep', @auto_sleep::bool,
+        'tags', @tags::jsonb
+    )
+WHERE id = @id;
 
 -- name: UpdateSessionAfterWorldSaved :exec
 -- event 駆動の WorldSaved 反映用。world_url 1 値だけ受け取り、protojson の
--- JSONB に対して jsonb_set で in-place 書き換えする。handler 側で Get→mutate
--- →Update を往復しないので、gRPC UpdateSessionParameters / Upsert と
--- race しても他フィールドを stale snapshot で revert しない。
+-- JSONB に対して jsonb_set で in-place 書き換えする。handler は Get→mutate→Update
+-- を往復しないので、gRPC UpdateSessionParameters / Upsert と race しても他
+-- フィールドを stale snapshot で revert しない。
 --
 -- protojson は oneof を active case のキーだけ出力するため、preset case が
 -- 残っていると `loadWorld` で 2 つのキーが現れて parse 不能になる。
 -- 先に `loadWorldPresetName` を `-` で削ってから `loadWorldUrl` を書き込む。
--- current_state は NULL のままなら触らない (初期 startup 直後の race で
--- 空オブジェクトを書いて UI を 0/0 表示にしないため)。
 UPDATE sessions
 SET startup_parameters = jsonb_set(
         COALESCE(startup_parameters, '{}'::jsonb) - 'loadWorldPresetName',
         '{loadWorldUrl}',
         to_jsonb(@world_url::text)
-    ),
-    current_state = CASE
-        WHEN current_state IS NULL THEN current_state
-        ELSE jsonb_set(current_state, '{worldUrl}', to_jsonb(@world_url::text))
-    END
+    )
 WHERE id = @id;
 
 -- name: GetSession :one

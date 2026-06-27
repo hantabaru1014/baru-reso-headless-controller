@@ -1,1 +1,1 @@
-ALTER TABLE sessions DROP COLUMN current_state;
+SELECT 1;

@@ -13,6 +13,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	hostconnectormock "github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector/mock"
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/sessionstate"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
@@ -74,10 +75,11 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 	// Setup repositories with real implementations
 	srepo := adapter.NewSessionRepository(queries)
 	hhrepo := adapter.NewHeadlessHostRepository(queries, mockHostConnector, &cfg.GRPC)
+	stateCache := sessionstate.NewMemoryCache()
 
 	// Setup usecases with real repositories
 	hauc := usecase.NewHeadlessAccountUsecase(queries, mockSkyfrost)
-	suc := usecase.NewSessionUsecase(srepo, hhrepo, &cfg.Server, &cfg.ResoniteLink)
+	suc := usecase.NewSessionUsecase(srepo, hhrepo, stateCache, &cfg.Server, &cfg.ResoniteLink)
 	hhuc := usecase.NewHeadlessHostUsecase(hhrepo, srepo, suc, hauc)
 	buc := usecase.NewBlobUsecase(srepo, hhrepo, mockBlobstore)
 
@@ -2344,9 +2346,17 @@ func TestControllerService_SaveSessionWorld(t *testing.T) {
 			Return(setup.mockRpcClient, nil).
 			AnyTimes()
 
-		// Mock RPC call to save world. container 側は新しく saved_world_url を返すようになったので
-		// preset 由来の初回 save でも controller 応答が stale CurrentState ではなく
-		// 同期的に正しい URL を返せることを検証する
+		// SessionUsecase.GetSession は cache miss 時に container の GetSession を打って
+		// cache を populate する。テストでは cache 未投入なのでこの呼び出しが発生する。
+		setup.mockRpcClient.EXPECT().
+			GetSession(gomock.Any(), gomock.Any()).
+			Return(&headlessv1.GetSessionResponse{
+				Session: &headlessv1.Session{Id: session.ID, Name: session.Name},
+			}, nil).
+			AnyTimes()
+
+		// Mock RPC call to save world. container 側が新しく saved_world_url を返すので
+		// preset 由来の初回 save でも stale な CurrentState ではなく同期的に正しい URL を返す。
 		setup.mockRpcClient.EXPECT().
 			SaveSessionWorld(gomock.Any(), gomock.Any()).
 			Return(&headlessv1.SaveSessionWorldResponse{

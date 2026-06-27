@@ -15,18 +15,17 @@ import (
 	"google.golang.org/grpc"
 )
 
-type partialUpdate struct {
-	id           string
-	currentState *headlessv1.Session
-	name         string
+type paramsApplyCall struct {
+	id       string
+	snapshot *headlessv1.Session
 }
 
-type afterSavedUpdate struct {
+type worldSavedCall struct {
 	id       string
 	worldURL string
 }
 
-type statusUpdate struct {
+type statusCall struct {
 	id     string
 	status entity.SessionStatus
 }
@@ -39,10 +38,11 @@ type syncFakeRepo struct {
 	mu       sync.Mutex
 	sessions map[string]*entity.Session
 
-	partialUpdates []partialUpdate
-	afterSaved     []afterSavedUpdate
-	statusUpdates  []statusUpdate
-	upsertCalls    int
+	paramsApplies []paramsApplyCall
+	worldSaveds   []worldSavedCall
+	downgrades    []string
+	statusCalls   []statusCall
+	upsertCalls   int
 }
 
 func newSyncFakeRepo() *syncFakeRepo {
@@ -74,23 +74,16 @@ func (r *syncFakeRepo) UpdateStatus(_ context.Context, id string, status entity.
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.statusUpdates = append(r.statusUpdates, statusUpdate{id: id, status: status})
-	if s, ok := r.sessions[id]; ok {
-		s.Status = status
-	}
+	r.statusCalls = append(r.statusCalls, statusCall{id: id, status: status})
 
 	return nil
 }
 
-func (r *syncFakeRepo) UpdateCurrentStateAndName(_ context.Context, id string, currentState *headlessv1.Session, name string) error {
+func (r *syncFakeRepo) ApplySessionParametersChanged(_ context.Context, id string, snapshot *headlessv1.Session) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.partialUpdates = append(r.partialUpdates, partialUpdate{id: id, currentState: currentState, name: name})
-	if s, ok := r.sessions[id]; ok {
-		s.CurrentState = currentState
-		s.Name = name
-	}
+	r.paramsApplies = append(r.paramsApplies, paramsApplyCall{id: id, snapshot: snapshot})
 
 	return nil
 }
@@ -99,7 +92,7 @@ func (r *syncFakeRepo) UpdateAfterWorldSaved(_ context.Context, id string, world
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.afterSaved = append(r.afterSaved, afterSavedUpdate{id: id, worldURL: worldURL})
+	r.worldSaveds = append(r.worldSaveds, worldSavedCall{id: id, worldURL: worldURL})
 
 	return nil
 }
@@ -108,22 +101,19 @@ func (r *syncFakeRepo) DowngradeToUnknownIfRunning(_ context.Context, id string)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.statusUpdates = append(r.statusUpdates, statusUpdate{id: id, status: entity.SessionStatus_UNKNOWN})
-	if s, ok := r.sessions[id]; ok && s.Status == entity.SessionStatus_RUNNING {
-		s.Status = entity.SessionStatus_UNKNOWN
-	}
+	r.downgrades = append(r.downgrades, id)
 
 	return nil
 }
 
-func (r *syncFakeRepo) ListByStatus(_ context.Context, status entity.SessionStatus) (entity.SessionList, error) {
+func (r *syncFakeRepo) ListByHostAndStatus(_ context.Context, hostID string, status entity.SessionStatus) (entity.SessionList, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	out := make(entity.SessionList, 0)
 
 	for _, s := range r.sessions {
-		if s.Status == status {
+		if s.HostID == hostID && s.Status == status {
 			out = append(out, s)
 		}
 	}
@@ -138,26 +128,66 @@ func (r *syncFakeRepo) seed(s *entity.Session) {
 	r.sessions[s.ID] = s
 }
 
-type repoSnapshot struct {
-	Partials []partialUpdate
-	Afters   []afterSavedUpdate
-	Statuses []statusUpdate
-	Upserts  int
+type syncSnapshot struct {
+	ParamsApplies []paramsApplyCall
+	WorldSaveds   []worldSavedCall
+	Downgrades    []string
+	StatusCalls   []statusCall
+	Upserts       int
 }
 
-func (r *syncFakeRepo) snapshot() repoSnapshot {
+func (r *syncFakeRepo) snapshot() syncSnapshot {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	return repoSnapshot{
-		Partials: append([]partialUpdate(nil), r.partialUpdates...),
-		Afters:   append([]afterSavedUpdate(nil), r.afterSaved...),
-		Statuses: append([]statusUpdate(nil), r.statusUpdates...),
-		Upserts:  r.upsertCalls,
+	return syncSnapshot{
+		ParamsApplies: append([]paramsApplyCall(nil), r.paramsApplies...),
+		WorldSaveds:   append([]worldSavedCall(nil), r.worldSaveds...),
+		Downgrades:    append([]string(nil), r.downgrades...),
+		StatusCalls:   append([]statusCall(nil), r.statusCalls...),
+		Upserts:       r.upsertCalls,
 	}
 }
 
-// stubHostRepo only implements GetRpcClient; other methods will panic if hit.
+// fakeCache captures cache writes / deletes so tests can assert the handler
+// routes events through both the DB and the in-memory cache.
+type fakeCache struct {
+	mu       sync.Mutex
+	sessions map[string]*headlessv1.Session
+	deletes  []string
+	sets     []string
+}
+
+func newFakeCache() *fakeCache {
+	return &fakeCache{sessions: make(map[string]*headlessv1.Session)}
+}
+
+func (c *fakeCache) Get(id string) (*headlessv1.Session, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	s, ok := c.sessions[id]
+
+	return s, ok
+}
+
+func (c *fakeCache) Set(id string, snapshot *headlessv1.Session) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.sessions[id] = snapshot
+	c.sets = append(c.sets, id)
+}
+
+func (c *fakeCache) Delete(id string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	delete(c.sessions, id)
+	c.deletes = append(c.deletes, id)
+}
+
+// stubHostRepo only implements GetRpcClient; other methods will panic.
 type stubHostRepo struct {
 	port.HeadlessHostRepository
 
@@ -199,15 +229,14 @@ func (c *stubControlClient) ListSessions(_ context.Context, _ *headlessv1.ListSe
 	return &headlessv1.ListSessionsResponse{}, nil
 }
 
-func TestSessionStateSyncHandler_SessionParametersChanged_UsesPartialUpdate(t *testing.T) {
+func TestSessionStateSyncHandler_SessionParametersChanged_WritesCacheAndPartialUpdate(t *testing.T) {
 	t.Parallel()
 
 	repo := newSyncFakeRepo()
-	repo.seed(&entity.Session{ID: "s1", Name: "old", HostID: "h1", Status: entity.SessionStatus_RUNNING})
+	cache := newFakeCache()
+	h := NewSessionStateSyncHandler(repo, &stubHostRepo{}, cache)
 
-	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
-
-	snapshot := &headlessv1.Session{Id: "s1", Name: "new", MaxUsers: 16}
+	snapshot := &headlessv1.Session{Id: "s1", Name: "new", MaxUsers: 16, Tags: []string{"a"}}
 	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
 		Payload: &headlessv1.HostEvent_SessionParametersChanged{
 			SessionParametersChanged: &headlessv1.SessionParametersChanged{SessionId: "s1", Session: snapshot},
@@ -215,19 +244,22 @@ func TestSessionStateSyncHandler_SessionParametersChanged_UsesPartialUpdate(t *t
 	})
 
 	snap := repo.snapshot()
-	partials, upserts := snap.Partials, snap.Upserts
-	require.Len(t, partials, 1, "must use partial UpdateCurrentStateAndName")
-	assert.Equal(t, "s1", partials[0].id)
-	assert.Equal(t, "new", partials[0].name)
-	assert.Equal(t, int32(16), partials[0].currentState.GetMaxUsers())
-	assert.Equal(t, 0, upserts, "must not invoke full Upsert")
+	require.Len(t, snap.ParamsApplies, 1, "must call ApplySessionParametersChanged")
+	assert.Equal(t, "s1", snap.ParamsApplies[0].id)
+	assert.Equal(t, "new", snap.ParamsApplies[0].snapshot.GetName())
+	assert.Equal(t, 0, snap.Upserts, "no full Upsert")
+
+	got, ok := cache.Get("s1")
+	require.True(t, ok, "cache must be populated")
+	assert.Equal(t, "new", got.GetName())
 }
 
 func TestSessionStateSyncHandler_SessionParametersChanged_NilSnapshotIgnored(t *testing.T) {
 	t.Parallel()
 
 	repo := newSyncFakeRepo()
-	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
+	cache := newFakeCache()
+	h := NewSessionStateSyncHandler(repo, &stubHostRepo{}, cache)
 
 	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
 		Payload: &headlessv1.HostEvent_SessionParametersChanged{
@@ -236,19 +268,20 @@ func TestSessionStateSyncHandler_SessionParametersChanged_NilSnapshotIgnored(t *
 	})
 
 	snap := repo.snapshot()
-	partials := snap.Partials
-	assert.Empty(t, partials)
+	assert.Empty(t, snap.ParamsApplies)
+
+	_, ok := cache.Get("s1")
+	assert.False(t, ok)
 }
 
-func TestSessionStateSyncHandler_WorldSaved_DelegatesToPartialUpdate(t *testing.T) {
+func TestSessionStateSyncHandler_WorldSaved_UpdatesCacheWorldUrlAndStartupParameters(t *testing.T) {
 	t.Parallel()
 
-	// Handler must dispatch through the partial-update method only; never Get
-	// + reassemble + Upsert. Don't seed anything — UPDATE on a non-existent
-	// id is a no-op on the SQL side.
 	repo := newSyncFakeRepo()
-	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
+	cache := newFakeCache()
+	cache.Set("s1", &headlessv1.Session{Id: "s1", Name: "n", WorldUrl: "old", MaxUsers: 16})
 
+	h := NewSessionStateSyncHandler(repo, &stubHostRepo{}, cache)
 	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
 		Payload: &headlessv1.HostEvent_WorldSaved{
 			WorldSaved: &headlessv1.WorldSaved{SessionId: "s1", WorldUrl: "new"},
@@ -256,17 +289,43 @@ func TestSessionStateSyncHandler_WorldSaved_DelegatesToPartialUpdate(t *testing.
 	})
 
 	snap := repo.snapshot()
-	require.Len(t, snap.Afters, 1, "must dispatch through UpdateAfterWorldSaved")
-	assert.Equal(t, "s1", snap.Afters[0].id)
-	assert.Equal(t, "new", snap.Afters[0].worldURL)
-	assert.Equal(t, 0, snap.Upserts, "no full Upsert")
+	require.Len(t, snap.WorldSaveds, 1)
+	assert.Equal(t, "new", snap.WorldSaveds[0].worldURL)
+	assert.Equal(t, 0, snap.Upserts)
+
+	got, ok := cache.Get("s1")
+	require.True(t, ok)
+	assert.Equal(t, "new", got.GetWorldUrl(), "cache WorldUrl must be replaced")
+	assert.Equal(t, "n", got.GetName(), "other fields preserved")
+	assert.Equal(t, int32(16), got.GetMaxUsers())
+}
+
+func TestSessionStateSyncHandler_WorldSaved_NoCacheEntryStillWritesDB(t *testing.T) {
+	t.Parallel()
+
+	repo := newSyncFakeRepo()
+	cache := newFakeCache()
+
+	h := NewSessionStateSyncHandler(repo, &stubHostRepo{}, cache)
+	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
+		Payload: &headlessv1.HostEvent_WorldSaved{
+			WorldSaved: &headlessv1.WorldSaved{SessionId: "s1", WorldUrl: "new"},
+		},
+	})
+
+	snap := repo.snapshot()
+	require.Len(t, snap.WorldSaveds, 1, "DB partial update fires even with no cache hit")
+
+	_, ok := cache.Get("s1")
+	assert.False(t, ok, "no cache entry -> do not invent one")
 }
 
 func TestSessionStateSyncHandler_WorldSaved_EmptyUrlSkipped(t *testing.T) {
 	t.Parallel()
 
 	repo := newSyncFakeRepo()
-	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
+	cache := newFakeCache()
+	h := NewSessionStateSyncHandler(repo, &stubHostRepo{}, cache)
 
 	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
 		Payload: &headlessv1.HostEvent_WorldSaved{
@@ -275,10 +334,36 @@ func TestSessionStateSyncHandler_WorldSaved_EmptyUrlSkipped(t *testing.T) {
 	})
 
 	snap := repo.snapshot()
-	assert.Empty(t, snap.Afters)
+	assert.Empty(t, snap.WorldSaveds)
 }
 
-func TestSessionStateSyncHandler_StreamReset_RefreshesLiveAndDemotesLost(t *testing.T) {
+func TestSessionStateSyncHandler_SessionEnded_DeletesCache(t *testing.T) {
+	t.Parallel()
+
+	repo := newSyncFakeRepo()
+	cache := newFakeCache()
+	cache.Set("s1", &headlessv1.Session{Id: "s1"})
+
+	h := NewSessionStateSyncHandler(repo, &stubHostRepo{}, cache)
+	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
+		Payload: &headlessv1.HostEvent_SessionEnded{
+			SessionEnded: &headlessv1.SessionEnded{SessionId: "s1"},
+		},
+	})
+
+	_, ok := cache.Get("s1")
+	assert.False(t, ok, "cache entry must be evicted")
+
+	snap := repo.snapshot()
+	// DB demotion is SessionLifecycleHandler's job; this handler must not touch DB.
+	assert.Empty(t, snap.ParamsApplies)
+	assert.Empty(t, snap.WorldSaveds)
+	assert.Empty(t, snap.Downgrades)
+	assert.Empty(t, snap.StatusCalls)
+	assert.Equal(t, 0, snap.Upserts)
+}
+
+func TestSessionStateSyncHandler_StreamReset_RebuildsCacheAndDemotesLost(t *testing.T) {
 	t.Parallel()
 
 	repo := newSyncFakeRepo()
@@ -286,6 +371,11 @@ func TestSessionStateSyncHandler_StreamReset_RefreshesLiveAndDemotesLost(t *test
 	repo.seed(&entity.Session{ID: "s-lost", HostID: "h1", Status: entity.SessionStatus_RUNNING})
 	repo.seed(&entity.Session{ID: "s-other-host", HostID: "h2", Status: entity.SessionStatus_RUNNING})
 	repo.seed(&entity.Session{ID: "s-ended", HostID: "h1", Status: entity.SessionStatus_ENDED})
+
+	cache := newFakeCache()
+	// 過去に観測済み (handler が trackSession 済み相当) で stream reset 期間中に
+	// 消えたとみなされる stale な entry を仕込む
+	cache.Set("s-stale", &headlessv1.Session{Id: "s-stale"})
 
 	client := &stubControlClient{
 		listSessionsResp: &headlessv1.ListSessionsResponse{
@@ -296,22 +386,24 @@ func TestSessionStateSyncHandler_StreamReset_RefreshesLiveAndDemotesLost(t *test
 	}
 	hosts := &stubHostRepo{clients: map[string]headlessv1.HeadlessControlServiceClient{"h1": client}}
 
-	h := NewSessionStateSyncHandler(repo, hosts)
+	h := NewSessionStateSyncHandler(repo, hosts, cache)
+	// host h1 で過去に s-stale を観測した状態を擬似的に踏ませる
+	h.trackSession("h1", "s-stale")
+
 	h.HandleHostEventStreamReset(context.Background(), "h1")
 
+	got, ok := cache.Get("s-alive")
+	require.True(t, ok, "live snapshot must populate cache")
+	assert.Equal(t, "refreshed", got.GetName())
+
+	_, ok = cache.Get("s-stale")
+	assert.False(t, ok, "stale cache entry must be evicted during resync")
+
 	snap := repo.snapshot()
-	partials, statuses, upserts := snap.Partials, snap.Statuses, snap.Upserts
-
-	require.Len(t, partials, 1, "alive session is refreshed via partial update")
-	assert.Equal(t, "s-alive", partials[0].id)
-	assert.Equal(t, "refreshed", partials[0].name)
-
-	require.Len(t, statuses, 1, "session missing from ListSessions response gets demoted to UNKNOWN")
-	assert.Equal(t, "s-lost", statuses[0].id)
-	assert.Equal(t, entity.SessionStatus_UNKNOWN, statuses[0].status)
-
-	assert.Equal(t, 0, upserts, "reset must not use full Upsert")
-	assert.Equal(t, 1, client.listSessionsHit, "single ListSessions covers the whole host")
+	require.Len(t, snap.Downgrades, 1, "lost RUNNING session demoted to UNKNOWN")
+	assert.Equal(t, "s-lost", snap.Downgrades[0])
+	assert.Equal(t, 0, snap.Upserts)
+	assert.Equal(t, 1, client.listSessionsHit)
 }
 
 func TestSessionStateSyncHandler_StreamReset_RpcClientErrorSilenced(t *testing.T) {
@@ -320,13 +412,13 @@ func TestSessionStateSyncHandler_StreamReset_RpcClientErrorSilenced(t *testing.T
 	repo := newSyncFakeRepo()
 	repo.seed(&entity.Session{ID: "s1", HostID: "h1", Status: entity.SessionStatus_RUNNING})
 
-	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
+	cache := newFakeCache()
+	h := NewSessionStateSyncHandler(repo, &stubHostRepo{}, cache)
+
 	h.HandleHostEventStreamReset(context.Background(), "h1")
 
 	snap := repo.snapshot()
-	partials, statuses := snap.Partials, snap.Statuses
-	assert.Empty(t, partials)
-	assert.Empty(t, statuses, "host unreachable -> can't know whether sessions are lost; leave status alone")
+	assert.Empty(t, snap.Downgrades, "host unreachable -> leave DB and cache untouched")
 }
 
 func TestSessionStateSyncHandler_StreamReset_ListSessionsErrorSilenced(t *testing.T) {
@@ -337,12 +429,11 @@ func TestSessionStateSyncHandler_StreamReset_ListSessionsErrorSilenced(t *testin
 
 	client := &stubControlClient{listSessionsErr: errors.New("transient")}
 	hosts := &stubHostRepo{clients: map[string]headlessv1.HeadlessControlServiceClient{"h1": client}}
+	cache := newFakeCache()
+	h := NewSessionStateSyncHandler(repo, hosts, cache)
 
-	h := NewSessionStateSyncHandler(repo, hosts)
 	h.HandleHostEventStreamReset(context.Background(), "h1")
 
 	snap := repo.snapshot()
-	partials, statuses := snap.Partials, snap.Statuses
-	assert.Empty(t, partials)
-	assert.Empty(t, statuses, "ListSessions failure -> no demotion (avoid false positives)")
+	assert.Empty(t, snap.Downgrades, "ListSessions failure -> no demotion (avoid false positives)")
 }
