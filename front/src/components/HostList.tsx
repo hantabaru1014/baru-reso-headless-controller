@@ -31,10 +31,13 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SelectField } from "./base/SelectField";
-import { HeadlessHost } from "front/pbgen/hdlctrl/v1/controller_pb";
+import {
+  HeadlessHost,
+  HeadlessHostAutoUpdatePolicy,
+} from "front/pbgen/hdlctrl/v1/controller_pb";
 import { DataTable } from "./base/DataTable";
 import { toast } from "sonner";
-import { TextField } from "./base";
+import { CheckboxField, TextField } from "./base";
 import { ResoniteUserIcon } from "./ResoniteUserIcon";
 
 const newHostFormSchema = z.object({
@@ -43,6 +46,7 @@ const newHostFormSchema = z.object({
   usernameOverride: z.string().optional(),
   tag: z.string().min(1, "バージョンは必須です"),
   accountId: z.string().min(1, "ホストユーザは必須です"),
+  autoUpdate: z.boolean(),
 });
 type NewHostFormData = z.infer<typeof newHostFormSchema>;
 
@@ -71,6 +75,7 @@ function NewHostDialog({
       usernameOverride: "",
       tag: "latestRelease",
       accountId: "",
+      autoUpdate: false,
     },
   });
 
@@ -84,6 +89,9 @@ function NewHostDialog({
           universeId: data.universeId || undefined,
           usernameOverride: data.usernameOverride || undefined,
         },
+        autoUpdatePolicy: data.autoUpdate
+          ? HeadlessHostAutoUpdatePolicy.USERS_EMPTY
+          : HeadlessHostAutoUpdatePolicy.NEVER,
       });
       onClose?.();
     } catch (e) {
@@ -164,6 +172,18 @@ function NewHostDialog({
                 selectedId={field.value}
                 onChange={(option) => field.onChange(option.id)}
                 error={errors.accountId?.message}
+              />
+            )}
+          />
+          <Controller
+            name="autoUpdate"
+            control={control}
+            render={({ field }) => (
+              <CheckboxField
+                label="自動アップグレード"
+                helperText="新しいバージョンがリリースされたら、セッション参加者が 0 人になった瞬間に自動で最新バージョンへ再起動します"
+                checked={field.value}
+                onCheckedChange={(checked) => field.onChange(checked === true)}
               />
             )}
           />

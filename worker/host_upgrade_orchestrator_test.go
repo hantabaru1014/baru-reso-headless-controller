@@ -403,7 +403,7 @@ func TestOrchestrator_OnNewImage_IgnoresPrereleaseTags(t *testing.T) {
 	assert.False(t, env.orch.IsHostDraining("h1"))
 }
 
-// --- snapshot at enroll (MAJOR #1 + round-2 fix) ------------------------
+// --- snapshot at enroll ------------------------------------------------
 
 func TestOrchestrator_EnrollSnapshotsStartupConfigBeforeStop(t *testing.T) {
 	t.Parallel()
@@ -440,9 +440,9 @@ func TestOrchestrator_EnrollSnapshotsStartupConfigBeforeStop(t *testing.T) {
 	assert.Equal(t, "preserved-world", last.StartupConfig.GetStartWorlds()[0].GetName())
 }
 
-// TestOrchestrator_EnrollSkipsWhenStartupConfigFetchFails guards the
-// round-2 MAJOR fix: GetStartupConfigToRestore failures must abort
-// enroll instead of producing an empty-start_worlds snapshot. The next
+// TestOrchestrator_EnrollSkipsWhenStartupConfigFetchFails verifies the
+// contract that GetStartupConfigToRestore failures must abort enroll
+// instead of producing an empty-start_worlds snapshot. The next
 // ImageChecker tick will retry the host.
 func TestOrchestrator_EnrollSkipsWhenStartupConfigFetchFails(t *testing.T) {
 	t.Parallel()
@@ -536,7 +536,7 @@ func TestOrchestrator_UserLeftEventTriggersRestartWhenLastUserLeaves(t *testing.
 	assert.False(t, env.orch.IsHostDraining("h1"))
 }
 
-// --- cold-start cache race (MAJOR #2) -----------------------------------
+// --- cold-start cache race ---------------------------------------------
 
 func TestOrchestrator_StaleCacheZeroIsRPCVerifiedBeforeStop(t *testing.T) {
 	t.Parallel()
@@ -605,7 +605,7 @@ func TestOrchestrator_EnrollSeedsCacheFromRPC(t *testing.T) {
 	assert.Equal(t, int32(1), host["s2"])
 }
 
-// --- HandleHostEventStreamReset (MAJOR #3) ------------------------------
+// --- HandleHostEventStreamReset ----------------------------------------
 
 func TestOrchestrator_StreamResetClearsOnlyAffectedHostsCache(t *testing.T) {
 	t.Parallel()
@@ -634,7 +634,7 @@ func TestOrchestrator_StreamResetClearsOnlyAffectedHostsCache(t *testing.T) {
 	assert.True(t, hadB, "host-b's cache must NOT be affected by host-a's reset")
 }
 
-// --- restart retry abort (MINOR #2) -------------------------------------
+// --- restart retry abort -----------------------------------------------
 
 func TestOrchestrator_AbortsRestartAfterRepeatedFailures(t *testing.T) {
 	t.Parallel()

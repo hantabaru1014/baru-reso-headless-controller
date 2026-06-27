@@ -298,13 +298,6 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
           readonly={!isRunning}
           isLoading={isPending}
         />
-        {/* <EditableCheckBox
-          label="自動アップデート"
-          checked={data?.session?.autoUpgrade || false}
-          onSave={(v) => handleSaveExtra("autoUpgrade", v)}
-          isLoading={isPending}
-          helperText="新しいバージョンが出た場合にユーザがいなければ自動で新しいバージョンのホストに移行します"
-        /> */}
         <EditableTextField
           label="AFKキック時間(分)"
           type="number"

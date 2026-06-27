@@ -244,17 +244,9 @@ func (h *HeadlessHostRepository) Restart(ctx context.Context, id string, newStar
 		}
 	}
 
-	// issue #21 対応: 旧コンテナを掃除する。
-	// auto upgrade のように Restart を高頻度で呼ぶと旧コンテナが残り
-	// 続けて Docker daemon に積み上がる。Remove は対象コンテナが
-	// 存在しなければ (getContainer の ErrContainerNotFound 経路で)
-	// 静かに nil を返す実装なので、wasRunning でない (= Stop を
-	// skip した) 場合や既に外部で削除されていた場合でも安全に呼べる。
-	// 根本原因 ("同じ名前のホストを建てられない") の正確なメカニズム
-	// (docker レベルでは ContainerCreate に空名を渡しているので名前
-	// 衝突しない) は未確認だが、旧コンテナ残留が悪さをするケースの
-	// 候補は複数あり (clouddrive のセッション保留、Resonite cloud
-	// 側の machineId 等)、いずれにせよ掃除しない理由が無い。
+	// Restart の度に旧コンテナを掃除する (auto upgrade だと Restart が
+	// 高頻度なので残骸が Docker daemon に積み上がる)。Remove は対象が
+	// 存在しないとき nil を返すので無条件に呼んで安全。
 	err = connector.Remove(ctx, connectStr)
 	if err != nil {
 		return errors.Wrap(err, 0)
