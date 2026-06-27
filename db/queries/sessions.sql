@@ -38,6 +38,33 @@ SELECT * FROM sessions ORDER BY started_at DESC;
 -- name: ListSessionsByStatus :many
 SELECT * FROM sessions WHERE status = $1 ORDER BY started_at DESC;
 
+-- name: ListSessionsByHostAndStatus :many
+SELECT * FROM sessions WHERE host_id = $1 AND status = $2 ORDER BY started_at DESC;
+
+-- name: ApplySessionStarted :execrows
+-- host から届く SessionStarted を反映する部分更新。
+-- occurred_at が現在の started_at より新しい場合のみ更新する (idempotent / 巻き戻し防止)。
+-- 他フィールド (memo, auto_upgrade, startup_parameters, owner_id 等) には触れない。
+UPDATE sessions
+SET
+    name = $2,
+    status = $3,
+    started_at = $4,
+    ended_at = NULL,
+    host_id = $5
+WHERE id = $1
+  AND (started_at IS NULL OR started_at < $4);
+
+-- name: ApplySessionEnded :execrows
+-- host から届く SessionEnded を反映する部分更新。
+-- occurred_at が現在の ended_at より新しい場合のみ更新する。
+UPDATE sessions
+SET
+    status = $2,
+    ended_at = $3
+WHERE id = $1
+  AND (ended_at IS NULL OR ended_at < $3);
+
 -- name: ListSessionsPaged :many
 -- ページング付きセッション一覧。
 -- status / host_id は nullable パラメータ (sqlc.narg)。NULL なら未指定として扱う。

@@ -141,6 +141,57 @@ func (r *SessionRepository) ListByStatus(ctx context.Context, status entity.Sess
 	return result, nil
 }
 
+func (r *SessionRepository) ListByHostAndStatus(ctx context.Context, hostID string, status entity.SessionStatus) (entity.SessionList, error) {
+	sessions, err := r.q.ListSessionsByHostAndStatus(ctx, db.ListSessionsByHostAndStatusParams{
+		HostID: hostID,
+		Status: int32(status),
+	})
+	if err != nil {
+		return nil, errors.WrapPrefix(convertDBErr(err), "session", 0)
+	}
+
+	result := make(entity.SessionList, 0, len(sessions))
+
+	for _, s := range sessions {
+		entity, err := sessionToEntity(s)
+		if err != nil {
+			return nil, errors.Wrap(err, 0)
+		}
+
+		result = append(result, entity)
+	}
+
+	return result, nil
+}
+
+func (r *SessionRepository) ApplySessionStarted(ctx context.Context, id, hostID, name string, occurredAt time.Time) (bool, error) {
+	rows, err := r.q.ApplySessionStarted(ctx, db.ApplySessionStartedParams{
+		ID:        id,
+		Name:      name,
+		Status:    int32(entity.SessionStatus_RUNNING),
+		StartedAt: pgtype.Timestamptz{Time: occurredAt, Valid: true},
+		HostID:    hostID,
+	})
+	if err != nil {
+		return false, errors.WrapPrefix(convertDBErr(err), "session", 0)
+	}
+
+	return rows > 0, nil
+}
+
+func (r *SessionRepository) ApplySessionEnded(ctx context.Context, id string, occurredAt time.Time) (bool, error) {
+	rows, err := r.q.ApplySessionEnded(ctx, db.ApplySessionEndedParams{
+		ID:      id,
+		Status:  int32(entity.SessionStatus_ENDED),
+		EndedAt: pgtype.Timestamptz{Time: occurredAt, Valid: true},
+	})
+	if err != nil {
+		return false, errors.WrapPrefix(convertDBErr(err), "session", 0)
+	}
+
+	return rows > 0, nil
+}
+
 func (r *SessionRepository) ListPaged(ctx context.Context, opts port.SessionListPageOptions) (*port.SessionListPageResult, error) {
 	params := db.ListSessionsPagedParams{
 		PageOffset: opts.PageIndex * opts.PageSize,

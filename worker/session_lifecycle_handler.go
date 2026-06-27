@@ -12,11 +12,11 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
 
-// SessionLifecycleHandler keeps the sessions table in sync with the
-// SessionStarted / SessionEnded events emitted by each headless host so
-// that container-internal restarts (auto recover, world restart, ...)
-// are reflected in the DB without going through a controller-side
-// StartSession call.
+// SessionLifecycleHandler は host から届く SessionStarted / SessionEnded を
+// sessions テーブルに idempotent に反映する HostEventHandler。
+// controller 経由の StartSession 由来か、container 内部の auto recover や
+// world restart 由来か、host UI からの直接起動由来かに関係なく、同じ経路で
+// started_at / ended_at / status を最新化する。
 type SessionLifecycleHandler struct {
 	sessionRepo port.SessionRepository
 }
@@ -34,11 +34,37 @@ func (h *SessionLifecycleHandler) HandleHostEvent(ctx context.Context, hostID st
 	case *headlessv1.HostEvent_SessionStarted:
 		h.handleSessionStarted(ctx, hostID, ev.GetId(), occurredAt, payload.SessionStarted)
 	case *headlessv1.HostEvent_SessionEnded:
-		h.handleSessionEnded(ctx, ev.GetId(), occurredAt, payload.SessionEnded)
+		h.handleSessionEnded(ctx, hostID, ev.GetId(), occurredAt, payload.SessionEnded)
 	}
 }
 
-func (h *SessionLifecycleHandler) HandleHostEventStreamReset(_ context.Context, _ string) {}
+// HandleHostEventStreamReset は OutOfRange でストリームが切れた直後に呼ばれる。
+// 切れている間に SessionEnded を取りこぼした可能性があるため、当該 host で
+// RUNNING になっている session を一旦 UNKNOWN に倒す。次の SessionStarted や
+// 他の resync 経路で正しい状態に戻る想定の最弱の防衛。
+func (h *SessionLifecycleHandler) HandleHostEventStreamReset(ctx context.Context, hostID string) {
+	sessions, err := h.sessionRepo.ListByHostAndStatus(ctx, hostID, entity.SessionStatus_RUNNING)
+	if err != nil {
+		slog.Error("session-lifecycle: failed to list RUNNING sessions on stream reset",
+			"hostID", hostID, "error", err)
+
+		return
+	}
+
+	if len(sessions) == 0 {
+		return
+	}
+
+	for _, s := range sessions {
+		if err := h.sessionRepo.UpdateStatus(ctx, s.ID, entity.SessionStatus_UNKNOWN); err != nil {
+			slog.Error("session-lifecycle: failed to demote session on stream reset",
+				"hostID", hostID, "sessionID", s.ID, "error", err)
+		}
+	}
+
+	slog.Warn("session-lifecycle: demoted RUNNING sessions to UNKNOWN due to host event stream reset",
+		"hostID", hostID, "count", len(sessions))
+}
 
 func (h *SessionLifecycleHandler) handleSessionStarted(ctx context.Context, hostID, eventID string, occurredAt time.Time, payload *headlessv1.SessionStarted) {
 	sessionID := payload.GetSessionId()
@@ -48,36 +74,53 @@ func (h *SessionLifecycleHandler) handleSessionStarted(ctx context.Context, host
 
 	switch {
 	case errors.Is(err, domain.ErrNotFound):
-		existing = &entity.Session{
-			ID:     sessionID,
-			HostID: hostID,
+		// host 側で UI などから直接 world が起動された (controller を経由していない)。
+		// startup_parameters は NOT NULL なので空 proto で埋める。
+		newSession := &entity.Session{
+			ID:                sessionID,
+			Name:              payload.GetSessionName(),
+			Status:            entity.SessionStatus_RUNNING,
+			HostID:            hostID,
+			StartedAt:         &occurredAt,
+			StartupParameters: &headlessv1.WorldStartupParameters{},
 		}
+		if err := h.sessionRepo.Upsert(ctx, newSession); err != nil {
+			slog.Error("session-lifecycle: failed to create session from SessionStarted",
+				append(logArgs, "error", err)...)
+		}
+
+		return
 	case err != nil:
 		slog.Error("session-lifecycle: failed to load session for SessionStarted",
 			append(logArgs, "error", err)...)
 
 		return
-	case existing.StartedAt != nil && !occurredAt.After(*existing.StartedAt):
-		slog.Debug("session-lifecycle: SessionStarted occurred_at is not newer than stored started_at; skipping",
-			append(logArgs, "occurredAt", occurredAt, "storedStartedAt", *existing.StartedAt)...)
+	}
+
+	if existing.HostID != hostID {
+		// SessionStarted は新しい host から来ているはずなので、host 移動とみなして
+		// 受け入れる (ApplySessionStarted が host_id も更新する)。
+		slog.Info("session-lifecycle: session migrated to a different host",
+			append(logArgs, "previousHostID", existing.HostID)...)
+	}
+
+	applied, err := h.sessionRepo.ApplySessionStarted(ctx, sessionID, hostID, payload.GetSessionName(), occurredAt)
+	if err != nil {
+		slog.Error("session-lifecycle: failed to apply SessionStarted",
+			append(logArgs, "error", err)...)
 
 		return
 	}
 
-	existing.Name = payload.GetSessionName()
-	existing.Status = entity.SessionStatus_RUNNING
-	existing.StartedAt = &occurredAt
-	existing.EndedAt = nil
-
-	if err := h.sessionRepo.Upsert(ctx, existing); err != nil {
-		slog.Error("session-lifecycle: failed to upsert session from SessionStarted",
-			append(logArgs, "error", err)...)
+	if !applied {
+		slog.Debug("session-lifecycle: SessionStarted occurred_at is not newer than stored started_at; skipped",
+			append(logArgs, "occurredAt", occurredAt)...)
 	}
 }
 
-func (h *SessionLifecycleHandler) handleSessionEnded(ctx context.Context, eventID string, occurredAt time.Time, payload *headlessv1.SessionEnded) {
+func (h *SessionLifecycleHandler) handleSessionEnded(ctx context.Context, hostID, eventID string, occurredAt time.Time, payload *headlessv1.SessionEnded) {
 	sessionID := payload.GetSessionId()
-	logArgs := []any{"eventID", eventID, "sessionID", sessionID}
+	logArgs := []any{"hostID", hostID, "eventID", eventID, "sessionID", sessionID}
 
 	existing, err := h.sessionRepo.Get(ctx, sessionID)
 
@@ -91,18 +134,34 @@ func (h *SessionLifecycleHandler) handleSessionEnded(ctx context.Context, eventI
 			append(logArgs, "error", err)...)
 
 		return
-	case existing.EndedAt != nil && !occurredAt.After(*existing.EndedAt):
-		slog.Debug("session-lifecycle: SessionEnded occurred_at is not newer than stored ended_at; skipping",
-			append(logArgs, "occurredAt", occurredAt, "storedEndedAt", *existing.EndedAt)...)
+	}
+
+	if existing.HostID != hostID {
+		// 古い host から遅延配信された SessionEnded で現所有 host の session を
+		// 倒さないようにスキップする。
+		slog.Warn("session-lifecycle: SessionEnded from non-owning host; skipping",
+			append(logArgs, "ownerHostID", existing.HostID)...)
 
 		return
 	}
 
-	existing.Status = entity.SessionStatus_ENDED
-	existing.EndedAt = &occurredAt
+	if existing.StartedAt != nil && occurredAt.Before(*existing.StartedAt) {
+		slog.Warn("session-lifecycle: SessionEnded occurred_at predates started_at; skipping",
+			append(logArgs, "occurredAt", occurredAt, "storedStartedAt", *existing.StartedAt)...)
 
-	if err := h.sessionRepo.Upsert(ctx, existing); err != nil {
-		slog.Error("session-lifecycle: failed to upsert session from SessionEnded",
+		return
+	}
+
+	applied, err := h.sessionRepo.ApplySessionEnded(ctx, sessionID, occurredAt)
+	if err != nil {
+		slog.Error("session-lifecycle: failed to apply SessionEnded",
 			append(logArgs, "error", err)...)
+
+		return
+	}
+
+	if !applied {
+		slog.Debug("session-lifecycle: SessionEnded occurred_at is not newer than stored ended_at; skipped",
+			append(logArgs, "occurredAt", occurredAt)...)
 	}
 }
