@@ -50,8 +50,9 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	dockerEventWatcher := worker.NewDockerEventWatcher(dockerHostConnector, queries, workerConfig)
 	sqlHostEventStore := worker.NewSQLHostEventStore(queries)
 	sessionStateSyncHandler := worker.NewSessionStateSyncHandler(sessionRepository, headlessHostRepository)
+	sessionLifecycleHandler := worker.NewSessionLifecycleHandler(sessionRepository)
 	loggingHostEventHandler := worker.NewLoggingHostEventHandler()
-	v := ProvideHostEventHandlers(sessionStateSyncHandler, loggingHostEventHandler)
+	v := ProvideHostEventHandlers(sessionStateSyncHandler, sessionLifecycleHandler, loggingHostEventHandler)
 	hostEventWatcher := worker.NewHostEventWatcher(headlessHostRepository, sqlHostEventStore, workerConfig, v)
 	v2 := ProvideWorkerRunners(imageChecker, dockerEventWatcher, hostEventWatcher)
 	manager := worker.NewManager(v2)
@@ -130,9 +131,10 @@ func ProvideWorkerRunners(
 // DB writes are visible by the time we log the event.
 func ProvideHostEventHandlers(
 	sessionStateSyncHandler *worker.SessionStateSyncHandler,
+	sessionLifecycleHandler *worker.SessionLifecycleHandler,
 	loggingHandler *worker.LoggingHostEventHandler,
 ) []worker.HostEventHandler {
-	return []worker.HostEventHandler{sessionStateSyncHandler, loggingHandler}
+	return []worker.HostEventHandler{sessionStateSyncHandler, sessionLifecycleHandler, loggingHandler}
 }
 
 var ConfigSet = wire.NewSet(

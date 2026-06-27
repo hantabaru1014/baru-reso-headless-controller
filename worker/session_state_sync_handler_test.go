@@ -31,9 +31,9 @@ type statusUpdate struct {
 	status entity.SessionStatus
 }
 
-// fakeSessionRepo records which repository method handled each write so a
+// syncFakeRepo records which repository method handled each write so a
 // regression that re-introduces full Upsert (= race window) is caught.
-type fakeSessionRepo struct {
+type syncFakeRepo struct {
 	port.SessionRepository
 
 	mu       sync.Mutex
@@ -45,11 +45,11 @@ type fakeSessionRepo struct {
 	upsertCalls    int
 }
 
-func newFakeSessionRepo() *fakeSessionRepo {
-	return &fakeSessionRepo{sessions: make(map[string]*entity.Session)}
+func newSyncFakeRepo() *syncFakeRepo {
+	return &syncFakeRepo{sessions: make(map[string]*entity.Session)}
 }
 
-func (r *fakeSessionRepo) Get(_ context.Context, id string) (*entity.Session, error) {
+func (r *syncFakeRepo) Get(_ context.Context, id string) (*entity.Session, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -61,7 +61,7 @@ func (r *fakeSessionRepo) Get(_ context.Context, id string) (*entity.Session, er
 	return s, nil
 }
 
-func (r *fakeSessionRepo) Upsert(_ context.Context, _ *entity.Session) error {
+func (r *syncFakeRepo) Upsert(_ context.Context, _ *entity.Session) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -70,7 +70,7 @@ func (r *fakeSessionRepo) Upsert(_ context.Context, _ *entity.Session) error {
 	return nil
 }
 
-func (r *fakeSessionRepo) UpdateStatus(_ context.Context, id string, status entity.SessionStatus) error {
+func (r *syncFakeRepo) UpdateStatus(_ context.Context, id string, status entity.SessionStatus) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -82,7 +82,7 @@ func (r *fakeSessionRepo) UpdateStatus(_ context.Context, id string, status enti
 	return nil
 }
 
-func (r *fakeSessionRepo) UpdateCurrentStateAndName(_ context.Context, id string, currentState *headlessv1.Session, name string) error {
+func (r *syncFakeRepo) UpdateCurrentStateAndName(_ context.Context, id string, currentState *headlessv1.Session, name string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -95,7 +95,7 @@ func (r *fakeSessionRepo) UpdateCurrentStateAndName(_ context.Context, id string
 	return nil
 }
 
-func (r *fakeSessionRepo) UpdateAfterWorldSaved(_ context.Context, id string, worldURL string) error {
+func (r *syncFakeRepo) UpdateAfterWorldSaved(_ context.Context, id string, worldURL string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -104,7 +104,7 @@ func (r *fakeSessionRepo) UpdateAfterWorldSaved(_ context.Context, id string, wo
 	return nil
 }
 
-func (r *fakeSessionRepo) DowngradeToUnknownIfRunning(_ context.Context, id string) error {
+func (r *syncFakeRepo) DowngradeToUnknownIfRunning(_ context.Context, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -116,7 +116,7 @@ func (r *fakeSessionRepo) DowngradeToUnknownIfRunning(_ context.Context, id stri
 	return nil
 }
 
-func (r *fakeSessionRepo) ListByStatus(_ context.Context, status entity.SessionStatus) (entity.SessionList, error) {
+func (r *syncFakeRepo) ListByStatus(_ context.Context, status entity.SessionStatus) (entity.SessionList, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -131,7 +131,7 @@ func (r *fakeSessionRepo) ListByStatus(_ context.Context, status entity.SessionS
 	return out, nil
 }
 
-func (r *fakeSessionRepo) seed(s *entity.Session) {
+func (r *syncFakeRepo) seed(s *entity.Session) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -145,7 +145,7 @@ type repoSnapshot struct {
 	Upserts  int
 }
 
-func (r *fakeSessionRepo) snapshot() repoSnapshot {
+func (r *syncFakeRepo) snapshot() repoSnapshot {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -202,7 +202,7 @@ func (c *stubControlClient) ListSessions(_ context.Context, _ *headlessv1.ListSe
 func TestSessionStateSyncHandler_SessionParametersChanged_UsesPartialUpdate(t *testing.T) {
 	t.Parallel()
 
-	repo := newFakeSessionRepo()
+	repo := newSyncFakeRepo()
 	repo.seed(&entity.Session{ID: "s1", Name: "old", HostID: "h1", Status: entity.SessionStatus_RUNNING})
 
 	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
@@ -226,7 +226,7 @@ func TestSessionStateSyncHandler_SessionParametersChanged_UsesPartialUpdate(t *t
 func TestSessionStateSyncHandler_SessionParametersChanged_NilSnapshotIgnored(t *testing.T) {
 	t.Parallel()
 
-	repo := newFakeSessionRepo()
+	repo := newSyncFakeRepo()
 	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
 
 	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
@@ -247,7 +247,7 @@ func TestSessionStateSyncHandler_WorldSaved_DelegatesToPartialUpdate(t *testing.
 	// writing — that's the Get→mutate→Update race the partial-update query
 	// was introduced to remove. Don't seed anything; the SQL handles
 	// non-existence on its own (UPDATE WHERE id matches nothing is a no-op).
-	repo := newFakeSessionRepo()
+	repo := newSyncFakeRepo()
 	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
 
 	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
@@ -266,7 +266,7 @@ func TestSessionStateSyncHandler_WorldSaved_DelegatesToPartialUpdate(t *testing.
 func TestSessionStateSyncHandler_WorldSaved_EmptyUrlSkipped(t *testing.T) {
 	t.Parallel()
 
-	repo := newFakeSessionRepo()
+	repo := newSyncFakeRepo()
 	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
 
 	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
@@ -282,7 +282,7 @@ func TestSessionStateSyncHandler_WorldSaved_EmptyUrlSkipped(t *testing.T) {
 func TestSessionStateSyncHandler_StreamReset_RefreshesLiveAndDemotesLost(t *testing.T) {
 	t.Parallel()
 
-	repo := newFakeSessionRepo()
+	repo := newSyncFakeRepo()
 	repo.seed(&entity.Session{ID: "s-alive", HostID: "h1", Status: entity.SessionStatus_RUNNING})
 	repo.seed(&entity.Session{ID: "s-lost", HostID: "h1", Status: entity.SessionStatus_RUNNING})
 	repo.seed(&entity.Session{ID: "s-other-host", HostID: "h2", Status: entity.SessionStatus_RUNNING})
@@ -318,7 +318,7 @@ func TestSessionStateSyncHandler_StreamReset_RefreshesLiveAndDemotesLost(t *test
 func TestSessionStateSyncHandler_StreamReset_RpcClientErrorSilenced(t *testing.T) {
 	t.Parallel()
 
-	repo := newFakeSessionRepo()
+	repo := newSyncFakeRepo()
 	repo.seed(&entity.Session{ID: "s1", HostID: "h1", Status: entity.SessionStatus_RUNNING})
 
 	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
@@ -333,7 +333,7 @@ func TestSessionStateSyncHandler_StreamReset_RpcClientErrorSilenced(t *testing.T
 func TestSessionStateSyncHandler_StreamReset_ListSessionsErrorSilenced(t *testing.T) {
 	t.Parallel()
 
-	repo := newFakeSessionRepo()
+	repo := newSyncFakeRepo()
 	repo.seed(&entity.Session{ID: "s1", HostID: "h1", Status: entity.SessionStatus_RUNNING})
 
 	client := &stubControlClient{listSessionsErr: errors.New("transient")}

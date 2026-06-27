@@ -66,9 +66,10 @@ func ProvideWorkerRunners(
 // DB writes are visible by the time we log the event.
 func ProvideHostEventHandlers(
 	sessionStateSyncHandler *worker.SessionStateSyncHandler,
+	sessionLifecycleHandler *worker.SessionLifecycleHandler,
 	loggingHandler *worker.LoggingHostEventHandler,
 ) []worker.HostEventHandler {
-	return []worker.HostEventHandler{sessionStateSyncHandler, loggingHandler}
+	return []worker.HostEventHandler{sessionStateSyncHandler, sessionLifecycleHandler, loggingHandler}
 }
 
 var ConfigSet = wire.NewSet(
@@ -115,6 +116,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		wire.Bind(new(worker.HostEventStore), new(*worker.SQLHostEventStore)),
 		worker.NewLoggingHostEventHandler,
 		worker.NewSessionStateSyncHandler,
+		worker.NewSessionLifecycleHandler,
 		ProvideHostEventHandlers,
 		ProvideWorkerRunners,
 		worker.NewManager,
