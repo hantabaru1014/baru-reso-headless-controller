@@ -172,7 +172,7 @@ func TestValidateToken(t *testing.T) {
 		require.NoError(t, err)
 
 		req := connect.NewRequest(&struct{}{})
-		req.Header().Set("authorization", "Bearer "+token)
+		req.Header().Set("Authorization", "Bearer "+token)
 
 		validatedClaims, err := ValidateToken(context.Background(), req)
 		require.NoError(t, err)
@@ -193,7 +193,7 @@ func TestValidateToken(t *testing.T) {
 
 	t.Run("失敗: Bearer のみ", func(t *testing.T) {
 		req := connect.NewRequest(&struct{}{})
-		req.Header().Set("authorization", "Bearer ")
+		req.Header().Set("Authorization", "Bearer ")
 
 		_, err := ValidateToken(context.Background(), req)
 		require.Error(t, err)
@@ -201,7 +201,7 @@ func TestValidateToken(t *testing.T) {
 
 	t.Run("失敗: 無効なトークン形式", func(t *testing.T) {
 		req := connect.NewRequest(&struct{}{})
-		req.Header().Set("authorization", "Bearer invalid-token")
+		req.Header().Set("Authorization", "Bearer invalid-token")
 
 		_, err := ValidateToken(context.Background(), req)
 		require.Error(t, err)
@@ -223,7 +223,7 @@ func TestValidateToken(t *testing.T) {
 
 			// トークンが有効な間は成功
 			req := connect.NewRequest(&struct{}{})
-			req.Header().Set("authorization", "Bearer "+token)
+			req.Header().Set("Authorization", "Bearer "+token)
 			_, err = ValidateToken(context.Background(), req)
 			require.NoError(t, err)
 
@@ -231,7 +231,7 @@ func TestValidateToken(t *testing.T) {
 			time.Sleep(31 * time.Minute)
 
 			req2 := connect.NewRequest(&struct{}{})
-			req2.Header().Set("authorization", "Bearer "+token)
+			req2.Header().Set("Authorization", "Bearer "+token)
 			_, err = ValidateToken(context.Background(), req2)
 			require.Error(t, err)
 
@@ -256,7 +256,7 @@ func TestNewAuthInterceptor(t *testing.T) {
 		require.NoError(t, err)
 
 		req := connect.NewRequest(&struct{}{})
-		req.Header().Set("authorization", "Bearer "+token)
+		req.Header().Set("Authorization", "Bearer "+token)
 
 		next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			// コンテキストにclaimsがセットされていることを確認
@@ -267,7 +267,7 @@ func TestNewAuthInterceptor(t *testing.T) {
 			return connect.NewResponse(&struct{}{}), nil
 		}
 
-		handler := interceptor(next)
+		handler := interceptor.WrapUnary(next)
 		_, err = handler(context.Background(), req)
 		require.NoError(t, err)
 	})
@@ -281,7 +281,7 @@ func TestNewAuthInterceptor(t *testing.T) {
 			return nil, nil
 		}
 
-		handler := interceptor(next)
+		handler := interceptor.WrapUnary(next)
 		_, err := handler(context.Background(), req)
 		require.Error(t, err)
 
@@ -293,7 +293,7 @@ func TestNewAuthInterceptor(t *testing.T) {
 
 	t.Run("失敗: 無効なトークンでリクエストが拒否", func(t *testing.T) {
 		req := connect.NewRequest(&struct{}{})
-		req.Header().Set("authorization", "Bearer invalid-token")
+		req.Header().Set("Authorization", "Bearer invalid-token")
 
 		next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			t.Fatal("should not reach here")
@@ -301,7 +301,7 @@ func TestNewAuthInterceptor(t *testing.T) {
 			return nil, nil
 		}
 
-		handler := interceptor(next)
+		handler := interceptor.WrapUnary(next)
 		_, err := handler(context.Background(), req)
 		require.Error(t, err)
 	})
@@ -319,7 +319,7 @@ func TestNewAuthInterceptor(t *testing.T) {
 			time.Sleep(31 * time.Minute)
 
 			req := connect.NewRequest(&struct{}{})
-			req.Header().Set("authorization", "Bearer "+token)
+			req.Header().Set("Authorization", "Bearer "+token)
 
 			next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 				t.Fatal("should not reach here")
@@ -327,7 +327,7 @@ func TestNewAuthInterceptor(t *testing.T) {
 				return nil, nil
 			}
 
-			handler := interceptor(next)
+			handler := interceptor.WrapUnary(next)
 			_, err = handler(context.Background(), req)
 			require.Error(t, err)
 
@@ -352,7 +352,7 @@ func TestNewOptionalAuthInterceptor(t *testing.T) {
 		require.NoError(t, err)
 
 		req := connect.NewRequest(&struct{}{})
-		req.Header().Set("authorization", "Bearer "+token)
+		req.Header().Set("Authorization", "Bearer "+token)
 
 		next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			// コンテキストにclaimsがセットされていることを確認
@@ -363,7 +363,7 @@ func TestNewOptionalAuthInterceptor(t *testing.T) {
 			return connect.NewResponse(&struct{}{}), nil
 		}
 
-		handler := interceptor(next)
+		handler := interceptor.WrapUnary(next)
 		_, err = handler(context.Background(), req)
 		require.NoError(t, err)
 	})
@@ -379,14 +379,14 @@ func TestNewOptionalAuthInterceptor(t *testing.T) {
 			return connect.NewResponse(&struct{}{}), nil
 		}
 
-		handler := interceptor(next)
+		handler := interceptor.WrapUnary(next)
 		_, err := handler(context.Background(), req)
 		require.NoError(t, err)
 	})
 
 	t.Run("成功: 無効なトークンでもリクエストが通過（claimsなし）", func(t *testing.T) {
 		req := connect.NewRequest(&struct{}{})
-		req.Header().Set("authorization", "Bearer invalid-token")
+		req.Header().Set("Authorization", "Bearer invalid-token")
 
 		next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			// 無効なトークンなのでclaimsはセットされない
@@ -396,14 +396,14 @@ func TestNewOptionalAuthInterceptor(t *testing.T) {
 			return connect.NewResponse(&struct{}{}), nil
 		}
 
-		handler := interceptor(next)
+		handler := interceptor.WrapUnary(next)
 		_, err := handler(context.Background(), req)
 		require.NoError(t, err)
 	})
 
 	t.Run("成功: Bearer のみでもリクエストが通過", func(t *testing.T) {
 		req := connect.NewRequest(&struct{}{})
-		req.Header().Set("authorization", "Bearer ")
+		req.Header().Set("Authorization", "Bearer ")
 
 		nextCalled := false
 		next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
@@ -412,7 +412,7 @@ func TestNewOptionalAuthInterceptor(t *testing.T) {
 			return connect.NewResponse(&struct{}{}), nil
 		}
 
-		handler := interceptor(next)
+		handler := interceptor.WrapUnary(next)
 		_, err := handler(context.Background(), req)
 		require.NoError(t, err)
 		assert.True(t, nextCalled)
@@ -431,7 +431,7 @@ func TestNewOptionalAuthInterceptor(t *testing.T) {
 			time.Sleep(31 * time.Minute)
 
 			req := connect.NewRequest(&struct{}{})
-			req.Header().Set("authorization", "Bearer "+token)
+			req.Header().Set("Authorization", "Bearer "+token)
 
 			next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 				// 期限切れトークンなのでclaimsはセットされない
@@ -441,7 +441,7 @@ func TestNewOptionalAuthInterceptor(t *testing.T) {
 				return connect.NewResponse(&struct{}{}), nil
 			}
 
-			handler := interceptor(next)
+			handler := interceptor.WrapUnary(next)
 			_, err = handler(context.Background(), req)
 			require.NoError(t, err)
 		})

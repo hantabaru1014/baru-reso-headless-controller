@@ -4,6 +4,7 @@ import { createConnectTransport } from "@connectrpc/connect-web";
 import { TransportProvider } from "@connectrpc/connect-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "./hooks/useAuth";
+import { useNotificationStream } from "./hooks/useNotificationStream";
 import { useResoniteUserSync } from "./hooks/useResoniteUserSync";
 import { Toaster } from "./components/ui";
 import { ThemeProvider } from "./components/ThemeProvider";
@@ -12,6 +13,7 @@ const queryClient = new QueryClient();
 
 function AppContent() {
   useResoniteUserSync();
+  useNotificationStream();
   return (
     <>
       <Outlet />

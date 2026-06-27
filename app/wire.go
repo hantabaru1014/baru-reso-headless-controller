@@ -14,6 +14,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/blobstore"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/notification"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/hantabaru1014/baru-reso-headless-controller/worker"
 )
@@ -88,15 +89,21 @@ func ProvideScheduledOperationExecutor(
 }
 
 // ProvideHostEventHandlers gathers consumers for the per-host event
-// streams. Order matters: the logging handler runs last so other handlers'
-// DB writes are visible by the time we log the event.
+// streams. Order matters:
+//   - DB-mutating handlers (state sync, lifecycle, upgrade orchestrator) run
+//     first so the DB reflects the new state.
+//   - NotificationDispatcher runs after those so frontend clients that
+//     re-fetch on receipt of the notification get the post-mutation rows.
+//   - LoggingHostEventHandler runs last so log lines reflect what all the
+//     other handlers actually saw.
 func ProvideHostEventHandlers(
 	sessionStateSyncHandler *worker.SessionStateSyncHandler,
 	sessionLifecycleHandler *worker.SessionLifecycleHandler,
 	upgradeOrchestrator *worker.HostUpgradeOrchestrator,
+	notificationDispatcher *worker.NotificationDispatcher,
 	loggingHandler *worker.LoggingHostEventHandler,
 ) []worker.HostEventHandler {
-	return []worker.HostEventHandler{sessionStateSyncHandler, sessionLifecycleHandler, upgradeOrchestrator, loggingHandler}
+	return []worker.HostEventHandler{sessionStateSyncHandler, sessionLifecycleHandler, upgradeOrchestrator, notificationDispatcher, loggingHandler}
 }
 
 // ProvideHeadlessAccountFetcher exposes HeadlessAccountUsecase under the
@@ -148,6 +155,10 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		sessionstate.NewMemoryCache,
 		wire.Bind(new(port.SessionStateCache), new(*sessionstate.MemoryCache)),
 
+		// in-memory notification bus (volatile pub/sub for frontend push)
+		notification.NewBus,
+		wire.Bind(new(notification.Bus), new(*notification.MemoryBus)),
+
 		// worker
 		worker.NewImageChecker,
 		worker.NewDockerEventWatcher,
@@ -158,6 +169,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		worker.NewSessionStateSyncHandler,
 		worker.NewSessionLifecycleHandler,
 		worker.NewHostUpgradeOrchestrator,
+		worker.NewNotificationDispatcher,
 		wire.Bind(new(port.HostDrainer), new(*worker.HostUpgradeOrchestrator)),
 		ProvideScheduledOperationExecutor,
 		ProvideHeadlessAccountFetcher,
@@ -176,6 +188,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		// controller
 		rpc.NewUserService,
 		rpc.NewControllerService,
+		rpc.NewNotificationService,
 
 		// resonite link bridge
 		resonitelink.NewBridge,

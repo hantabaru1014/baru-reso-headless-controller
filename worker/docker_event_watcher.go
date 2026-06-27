@@ -10,6 +10,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/notification"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -22,8 +23,9 @@ const shortContainerIDLen = 12
 // It also performs a one-shot reconciliation on startup to fix any drift
 // that happened while the controller was offline.
 type DockerEventWatcher struct {
-	dc *hostconnector.DockerHostConnector
-	q  *db.Queries
+	dc  *hostconnector.DockerHostConnector
+	q   *db.Queries
+	bus notification.Bus
 
 	reconnectDelay   time.Duration
 	maxReconnectWait time.Duration
@@ -34,11 +36,13 @@ var _ Runner = (*DockerEventWatcher)(nil)
 func NewDockerEventWatcher(
 	dc *hostconnector.DockerHostConnector,
 	q *db.Queries,
+	bus notification.Bus,
 	cfg *config.WorkerConfig,
 ) *DockerEventWatcher {
 	return &DockerEventWatcher{
 		dc:               dc,
 		q:                q,
+		bus:              bus,
 		reconnectDelay:   cfg.EventReconnectDelay,
 		maxReconnectWait: cfg.EventMaxReconnectWait,
 	}
@@ -142,9 +146,15 @@ func (w *DockerEventWatcher) syncAllStatuses(ctx context.Context) {
 			continue
 		}
 
+		w.publishHostUpdated(host.ID)
+
 		slog.Info("synced host status", "hostID", host.ID,
 			"oldStatus", host.Status, "newStatus", newStatus)
 	}
+}
+
+func (w *DockerEventWatcher) publishHostUpdated(hostID string) {
+	w.bus.Publish(notification.HostUpdated(hostID, "", nil))
 }
 
 func (w *DockerEventWatcher) handleEvent(ctx context.Context, event hostconnector.ContainerEvent) {
@@ -177,6 +187,8 @@ func (w *DockerEventWatcher) handleEvent(ctx context.Context, event hostconnecto
 
 		return
 	}
+
+	w.publishHostUpdated(host.ID)
 
 	slog.Info("updated host status from docker event",
 		"hostID", host.ID, "action", event.Action, "newStatus", newStatus)

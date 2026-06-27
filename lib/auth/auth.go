@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -107,8 +108,10 @@ type AuthClaimsContextKey string
 
 var AuthClaimsKey = AuthClaimsContextKey("claims")
 
-func ValidateToken(ctx context.Context, req connect.AnyRequest) (*AuthClaims, error) {
-	token := req.Header().Get("authorization")
+// validateAuthHeader は Authorization ヘッダから Bearer トークンを抽出して
+// claims をパースする. Unary/streaming 両方の interceptor から共有する.
+func validateAuthHeader(h http.Header) (*AuthClaims, error) {
+	token := h.Get("Authorization")
 	if len(token) <= len("Bearer ") {
 		err := connect.NewError(connect.CodeUnauthenticated, errors.New("token required"))
 		err.Meta().Add("WWW-Authenticate", "Bearer realm=\"token_required\"")
@@ -116,9 +119,7 @@ func ValidateToken(ctx context.Context, req connect.AnyRequest) (*AuthClaims, er
 		return nil, err
 	}
 
-	token = token[len("Bearer "):]
-
-	claims, err := ParseToken(token)
+	claims, err := ParseToken(token[len("Bearer "):])
 	if err != nil {
 		connectErr := connect.NewError(connect.CodeUnauthenticated, err)
 		connectErr.Meta().Add("WWW-Authenticate", "Bearer error=\"invalid_token\"")
@@ -129,32 +130,57 @@ func ValidateToken(ctx context.Context, req connect.AnyRequest) (*AuthClaims, er
 	return claims, nil
 }
 
+// ValidateToken は Unary handler の AnyRequest からトークンを検証する.
+// 既存の RPC handler から直接呼ばれるため公開 API として残す.
+func ValidateToken(_ context.Context, req connect.AnyRequest) (*AuthClaims, error) {
+	return validateAuthHeader(req.Header())
+}
+
 func SetSuccessResponseHeader(res connect.AnyResponse) {
 	res.Header().Set("WWW-Authenticate", "Bearer realm=\"\"")
 }
 
-func NewAuthInterceptor() connect.UnaryInterceptorFunc {
-	i := func(next connect.UnaryFunc) connect.UnaryFunc {
-		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			claims, err := ValidateToken(ctx, req)
-			if err != nil {
-				return nil, err
-			}
+// authInterceptor は unary + server/client/bidi streaming の両方に対して
+// Bearer トークン認証を行う connect.Interceptor.
+type authInterceptor struct{}
 
-			ctx = context.WithValue(ctx, AuthClaimsKey, claims)
+func (authInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
+	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		claims, err := validateAuthHeader(req.Header())
+		if err != nil {
+			return nil, err
+		}
 
-			res, err := next(ctx, req)
-			if err != nil {
-				return nil, err
-			}
+		res, err := next(context.WithValue(ctx, AuthClaimsKey, claims), req)
+		if err != nil {
+			return nil, err
+		}
 
-			SetSuccessResponseHeader(res)
+		SetSuccessResponseHeader(res)
 
-			return res, nil
-		})
+		return res, nil
 	}
+}
 
-	return connect.UnaryInterceptorFunc(i)
+func (authInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
+	return next
+}
+
+func (authInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
+		claims, err := validateAuthHeader(conn.RequestHeader())
+		if err != nil {
+			return err
+		}
+
+		return next(context.WithValue(ctx, AuthClaimsKey, claims), conn)
+	}
+}
+
+// NewAuthInterceptor は Bearer トークンによる認証を unary / streaming の
+// 両方に適用する interceptor を返す.
+func NewAuthInterceptor() connect.Interceptor {
+	return authInterceptor{}
 }
 
 // NewOptionalAuthInterceptor は認証情報があればコンテキストにセットするが、
@@ -162,7 +188,7 @@ func NewAuthInterceptor() connect.UnaryInterceptorFunc {
 func NewOptionalAuthInterceptor() connect.UnaryInterceptorFunc {
 	return func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			token := req.Header().Get("authorization")
+			token := req.Header().Get("Authorization")
 			if len(token) > len("Bearer ") {
 				token = token[len("Bearer "):]
 
