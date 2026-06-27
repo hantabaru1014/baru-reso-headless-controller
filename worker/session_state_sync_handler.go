@@ -16,10 +16,13 @@ import (
 // removing the need for per-request polling in the session usecase.
 //
 // All writes go through partial-update repository methods
-// (UpdateCurrentStateAndName / UpdateAfterWorldSaved) instead of Upsert
-// so a concurrent UpdateSessionParameters / StartSession / StopSession
-// can't have its startup_parameters / status / ended_at silently
-// clobbered by a stale snapshot that the handler had Get'd moments earlier.
+// (UpdateCurrentStateAndName / UpdateAfterWorldSaved /
+// DowngradeToUnknownIfRunning) so a concurrent UpdateSessionParameters /
+// StartSession / StopSession can't have its startup_parameters / status /
+// ended_at silently clobbered by a stale snapshot the handler had read a
+// moment earlier. UpdateAfterWorldSaved takes only the new world_url and
+// does the JSONB rewrite server-side, so there's no Get→mutate→Update
+// round trip to lose updates against.
 type SessionStateSyncHandler struct {
 	sessionRepo port.SessionRepository
 	hostRepo    port.HeadlessHostRepository
@@ -53,12 +56,9 @@ func (h *SessionStateSyncHandler) HandleHostEvent(ctx context.Context, hostID st
 //     no longer reports, demote status to UNKNOWN — we likely missed a
 //     SessionEnded and would otherwise leave the row RUNNING forever.
 //
-// A separate SessionLifecycleHandler (sibling branch) also touches status
-// on reset by indiscriminately marking every RUNNING session UNKNOWN.
-// Both handlers can coexist: the lifecycle handler's blanket demotion is
-// harmless because the live event stream that resumes after the reset,
-// together with this handler's per-host ListSessions resync, will promote
-// surviving sessions back to RUNNING with fresh CurrentState.
+// Demotion uses DowngradeToUnknownIfRunning (guarded update) so a
+// concurrent StopSession that successfully closed the session (status →
+// ENDED) won't get clobbered back to UNKNOWN.
 func (h *SessionStateSyncHandler) HandleHostEventStreamReset(ctx context.Context, hostID string) {
 	runningSessions, err := h.sessionRepo.ListByStatus(ctx, entity.SessionStatus_RUNNING)
 	if err != nil {
@@ -99,11 +99,11 @@ func (h *SessionStateSyncHandler) HandleHostEventStreamReset(ctx context.Context
 			continue
 		}
 
-		// DB は RUNNING のままだが host から消えている = SessionEnded を
-		// 取りこぼした疑い。確証はないので一旦 UNKNOWN へ落として、後続の
-		// reconciler / 手動オペが正しい終端 status に降ろせるようにする
-		if err := h.sessionRepo.UpdateStatus(ctx, s.ID, entity.SessionStatus_UNKNOWN); err != nil {
-			slog.Warn("session-state-sync: UpdateStatus(UNKNOWN) failed during resync", "sessionID", s.ID, "error", err)
+		// DB は RUNNING のままだが host から消えている = SessionEnded を取り
+		// こぼした疑い。RUNNING のときだけ UNKNOWN に降ろす (StopSession で
+		// すでに ENDED に至った session を巻き戻さないため guarded update)。
+		if err := h.sessionRepo.DowngradeToUnknownIfRunning(ctx, s.ID); err != nil {
+			slog.Warn("session-state-sync: DowngradeToUnknownIfRunning failed during resync", "sessionID", s.ID, "error", err)
 		}
 	}
 }
@@ -132,32 +132,14 @@ func (h *SessionStateSyncHandler) applyWorldSaved(ctx context.Context, hostID st
 		return
 	}
 
-	s, err := h.sessionRepo.Get(ctx, sessionID)
-	if err != nil {
+	// world_url 1 値だけを SQL に渡し、JSONB の jsonb_set で server-side 書き換え
+	// する。Get→mutate→Update を往復しないので、gRPC UpdateSessionParameters /
+	// UpdateSessionExtraSettings の Upsert と race しても他フィールドを stale
+	// snapshot で revert しない (preset case は SQL 側で除去、startup_parameters の
+	// loadWorldUrl が次回起動時の load_world として使われる)。
+	if err := h.sessionRepo.UpdateAfterWorldSaved(ctx, sessionID, worldURL); err != nil {
 		if !errors.Is(err, domain.ErrNotFound) {
-			slog.Warn("session-state-sync: Get failed", "hostID", hostID, "sessionID", sessionID, "error", err)
+			slog.Warn("session-state-sync: UpdateAfterWorldSaved failed", "hostID", hostID, "sessionID", sessionID, "error", err)
 		}
-
-		return
-	}
-
-	if s.StartupParameters == nil && s.CurrentState == nil {
-		return
-	}
-
-	// LoadWorldPresetName を意図的に load_world_url で置き換える: preset 由来で
-	// 保存された world は次回起動時 preset ではなく保存済み URL でロードしたい
-	if s.StartupParameters != nil {
-		s.StartupParameters.LoadWorld = &headlessv1.WorldStartupParameters_LoadWorldUrl{
-			LoadWorldUrl: worldURL,
-		}
-	}
-
-	if s.CurrentState != nil {
-		s.CurrentState.WorldUrl = worldURL
-	}
-
-	if err := h.sessionRepo.UpdateAfterWorldSaved(ctx, sessionID, s.StartupParameters, s.CurrentState); err != nil {
-		slog.Warn("session-state-sync: UpdateAfterWorldSaved failed", "sessionID", sessionID, "error", err)
 	}
 }

@@ -22,9 +22,8 @@ type partialUpdate struct {
 }
 
 type afterSavedUpdate struct {
-	id                string
-	startupParameters *headlessv1.WorldStartupParameters
-	currentState      *headlessv1.Session
+	id       string
+	worldURL string
 }
 
 type statusUpdate struct {
@@ -96,11 +95,23 @@ func (r *fakeSessionRepo) UpdateCurrentStateAndName(_ context.Context, id string
 	return nil
 }
 
-func (r *fakeSessionRepo) UpdateAfterWorldSaved(_ context.Context, id string, startupParameters *headlessv1.WorldStartupParameters, currentState *headlessv1.Session) error {
+func (r *fakeSessionRepo) UpdateAfterWorldSaved(_ context.Context, id string, worldURL string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.afterSaved = append(r.afterSaved, afterSavedUpdate{id: id, startupParameters: startupParameters, currentState: currentState})
+	r.afterSaved = append(r.afterSaved, afterSavedUpdate{id: id, worldURL: worldURL})
+
+	return nil
+}
+
+func (r *fakeSessionRepo) DowngradeToUnknownIfRunning(_ context.Context, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.statusUpdates = append(r.statusUpdates, statusUpdate{id: id, status: entity.SessionStatus_UNKNOWN})
+	if s, ok := r.sessions[id]; ok && s.Status == entity.SessionStatus_RUNNING {
+		s.Status = entity.SessionStatus_UNKNOWN
+	}
 
 	return nil
 }
@@ -229,21 +240,16 @@ func TestSessionStateSyncHandler_SessionParametersChanged_NilSnapshotIgnored(t *
 	assert.Empty(t, partials)
 }
 
-func TestSessionStateSyncHandler_WorldSaved_UpdatesStartupParametersAndCurrentState(t *testing.T) {
+func TestSessionStateSyncHandler_WorldSaved_DelegatesToPartialUpdate(t *testing.T) {
 	t.Parallel()
 
+	// The handler must NOT fetch the entity via Get and reassemble it before
+	// writing — that's the Get→mutate→Update race the partial-update query
+	// was introduced to remove. Don't seed anything; the SQL handles
+	// non-existence on its own (UPDATE WHERE id matches nothing is a no-op).
 	repo := newFakeSessionRepo()
-	repo.seed(&entity.Session{
-		ID:     "s1",
-		HostID: "h1",
-		Status: entity.SessionStatus_RUNNING,
-		StartupParameters: &headlessv1.WorldStartupParameters{
-			LoadWorld: &headlessv1.WorldStartupParameters_LoadWorldUrl{LoadWorldUrl: "old"},
-		},
-		CurrentState: &headlessv1.Session{Id: "s1", WorldUrl: "old"},
-	})
-
 	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
+
 	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
 		Payload: &headlessv1.HostEvent_WorldSaved{
 			WorldSaved: &headlessv1.WorldSaved{SessionId: "s1", WorldUrl: "new"},
@@ -251,38 +257,18 @@ func TestSessionStateSyncHandler_WorldSaved_UpdatesStartupParametersAndCurrentSt
 	})
 
 	snap := repo.snapshot()
-	afters, upserts := snap.Afters, snap.Upserts
-	require.Len(t, afters, 1, "must use partial UpdateAfterWorldSaved")
-	assert.Equal(t, "new", afters[0].startupParameters.GetLoadWorldUrl())
-	assert.Equal(t, "new", afters[0].currentState.GetWorldUrl())
-	assert.Equal(t, 0, upserts)
-}
-
-func TestSessionStateSyncHandler_WorldSaved_BothNilSkipped(t *testing.T) {
-	t.Parallel()
-
-	repo := newFakeSessionRepo()
-	repo.seed(&entity.Session{ID: "s1", HostID: "h1", Status: entity.SessionStatus_RUNNING})
-
-	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
-	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
-		Payload: &headlessv1.HostEvent_WorldSaved{
-			WorldSaved: &headlessv1.WorldSaved{SessionId: "s1", WorldUrl: "new"},
-		},
-	})
-
-	snap := repo.snapshot()
-	afters := snap.Afters
-	assert.Empty(t, afters, "no startup_params and no current_state -> nothing to write")
+	require.Len(t, snap.Afters, 1, "must dispatch through UpdateAfterWorldSaved")
+	assert.Equal(t, "s1", snap.Afters[0].id)
+	assert.Equal(t, "new", snap.Afters[0].worldURL)
+	assert.Equal(t, 0, snap.Upserts, "no full Upsert (race window)")
 }
 
 func TestSessionStateSyncHandler_WorldSaved_EmptyUrlSkipped(t *testing.T) {
 	t.Parallel()
 
 	repo := newFakeSessionRepo()
-	repo.seed(&entity.Session{ID: "s1", HostID: "h1", Status: entity.SessionStatus_RUNNING})
-
 	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
+
 	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
 		Payload: &headlessv1.HostEvent_WorldSaved{
 			WorldSaved: &headlessv1.WorldSaved{SessionId: "s1"},
@@ -290,8 +276,7 @@ func TestSessionStateSyncHandler_WorldSaved_EmptyUrlSkipped(t *testing.T) {
 	})
 
 	snap := repo.snapshot()
-	afters := snap.Afters
-	assert.Empty(t, afters)
+	assert.Empty(t, snap.Afters)
 }
 
 func TestSessionStateSyncHandler_StreamReset_RefreshesLiveAndDemotesLost(t *testing.T) {

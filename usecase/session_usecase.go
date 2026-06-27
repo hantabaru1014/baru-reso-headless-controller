@@ -153,7 +153,10 @@ func (u *SessionUsecase) GetSession(ctx context.Context, id string) (*entity.Ses
 
 	// CurrentState は host_event_watcher が live で更新するため、ここで polling する必要はない。
 	// host が落ちている場合は DockerEventWatcher が hosts.status を非 RUNNING に倒すので、
-	// それを根拠に CRASHED に倒す。
+	// GetRpcClient 失敗を介して CRASHED に伝播される設計。旧実装は GetSession RPC 失敗時
+	// にも CRASHED に倒していたが、event 駆動同期に倒したため container 死活シグナルは
+	// hostRepo に集約する。container 自体は生きていて単発 RPC が落ちる遷移を CRASHED で
+	// 拾わなくなるが、その場合は次の HostEvent または stream reset 時の resync で復旧する。
 	if dbSession.Status == entity.SessionStatus_STARTING || dbSession.Status == entity.SessionStatus_RUNNING {
 		if _, hostErr := u.hostRepo.GetRpcClient(ctx, dbSession.HostID); hostErr != nil {
 			_ = u.sessionRepo.UpdateStatus(ctx, id, entity.SessionStatus_CRASHED)

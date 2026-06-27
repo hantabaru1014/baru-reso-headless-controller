@@ -114,22 +114,15 @@ func (r *SessionRepository) UpdateCurrentStateAndName(ctx context.Context, id st
 	})
 }
 
-func (r *SessionRepository) UpdateAfterWorldSaved(ctx context.Context, id string, startupParameters *headlessv1.WorldStartupParameters, currentState *headlessv1.Session) error {
-	sp, err := protojson.Marshal(startupParameters)
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-
-	cs, err := protojson.Marshal(currentState)
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-
+func (r *SessionRepository) UpdateAfterWorldSaved(ctx context.Context, id string, worldURL string) error {
 	return r.q.UpdateSessionAfterWorldSaved(ctx, db.UpdateSessionAfterWorldSavedParams{
-		ID:                id,
-		StartupParameters: sp,
-		CurrentState:      cs,
+		ID:       id,
+		WorldUrl: worldURL,
 	})
+}
+
+func (r *SessionRepository) DowngradeToUnknownIfRunning(ctx context.Context, id string) error {
+	return r.q.DowngradeSessionToUnknownIfRunning(ctx, id)
 }
 
 func (r *SessionRepository) Get(ctx context.Context, id string) (*entity.Session, error) {

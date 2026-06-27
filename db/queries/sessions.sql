@@ -31,6 +31,12 @@ RETURNING *;
 -- name: UpdateSessionStatus :exec
 UPDATE sessions SET status = $2 WHERE id = $1;
 
+-- name: DowngradeSessionToUnknownIfRunning :exec
+-- StreamReset reconcile 期間中に gRPC StopSession 等で正常終端した session を、
+-- host snapshot に居ないという根拠だけで UNKNOWN へ降格しないようガードする。
+-- 2 = SessionStatus_RUNNING, 0 = SessionStatus_UNKNOWN
+UPDATE sessions SET status = 0 WHERE id = $1 AND status = 2;
+
 -- name: UpdateSessionCurrentStateAndName :exec
 -- event 駆動の SessionParametersChanged 反映用。current_state と name の
 -- 部分更新にして、並行する UpdateSessionParameters / StartSession など
@@ -38,9 +44,27 @@ UPDATE sessions SET status = $2 WHERE id = $1;
 UPDATE sessions SET current_state = $2, name = $3 WHERE id = $1;
 
 -- name: UpdateSessionAfterWorldSaved :exec
--- event 駆動の WorldSaved 反映用。startup_parameters と current_state の
--- 部分更新でレース耐性を持たせる
-UPDATE sessions SET startup_parameters = $2, current_state = $3 WHERE id = $1;
+-- event 駆動の WorldSaved 反映用。world_url 1 値だけ受け取り、protojson の
+-- JSONB に対して jsonb_set で in-place 書き換えする。handler 側で Get→mutate
+-- →Update を往復しないので、gRPC UpdateSessionParameters / Upsert と
+-- race しても他フィールドを stale snapshot で revert しない。
+--
+-- protojson は oneof を active case のキーだけ出力するため、preset case が
+-- 残っていると `loadWorld` で 2 つのキーが現れて parse 不能になる。
+-- 先に `loadWorldPresetName` を `-` で削ってから `loadWorldUrl` を書き込む。
+-- current_state は NULL のままなら触らない (初期 startup 直後の race で
+-- 空オブジェクトを書いて UI を 0/0 表示にしないため)。
+UPDATE sessions
+SET startup_parameters = jsonb_set(
+        COALESCE(startup_parameters, '{}'::jsonb) - 'loadWorldPresetName',
+        '{loadWorldUrl}',
+        to_jsonb(@world_url::text)
+    ),
+    current_state = CASE
+        WHEN current_state IS NULL THEN current_state
+        ELSE jsonb_set(current_state, '{worldUrl}', to_jsonb(@world_url::text))
+    END
+WHERE id = @id;
 
 -- name: GetSession :one
 SELECT * FROM sessions WHERE id = $1 LIMIT 1;

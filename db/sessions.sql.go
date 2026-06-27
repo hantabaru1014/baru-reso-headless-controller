@@ -20,6 +20,18 @@ func (q *Queries) DeleteSession(ctx context.Context, id string) error {
 	return err
 }
 
+const downgradeSessionToUnknownIfRunning = `-- name: DowngradeSessionToUnknownIfRunning :exec
+UPDATE sessions SET status = 0 WHERE id = $1 AND status = 2
+`
+
+// StreamReset reconcile 期間中に gRPC StopSession 等で正常終端した session を、
+// host snapshot に居ないという根拠だけで UNKNOWN へ降格しないようガードする。
+// 2 = SessionStatus_RUNNING, 0 = SessionStatus_UNKNOWN
+func (q *Queries) DowngradeSessionToUnknownIfRunning(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, downgradeSessionToUnknownIfRunning, id)
+	return err
+}
+
 const getSession = `-- name: GetSession :one
 SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at, current_state FROM sessions WHERE id = $1 LIMIT 1
 `
@@ -190,19 +202,36 @@ func (q *Queries) ListSessionsPaged(ctx context.Context, arg ListSessionsPagedPa
 }
 
 const updateSessionAfterWorldSaved = `-- name: UpdateSessionAfterWorldSaved :exec
-UPDATE sessions SET startup_parameters = $2, current_state = $3 WHERE id = $1
+UPDATE sessions
+SET startup_parameters = jsonb_set(
+        COALESCE(startup_parameters, '{}'::jsonb) - 'loadWorldPresetName',
+        '{loadWorldUrl}',
+        to_jsonb($1::text)
+    ),
+    current_state = CASE
+        WHEN current_state IS NULL THEN current_state
+        ELSE jsonb_set(current_state, '{worldUrl}', to_jsonb($1::text))
+    END
+WHERE id = $2
 `
 
 type UpdateSessionAfterWorldSavedParams struct {
-	ID                string
-	StartupParameters []byte
-	CurrentState      []byte
+	WorldUrl string
+	ID       string
 }
 
-// event 駆動の WorldSaved 反映用。startup_parameters と current_state の
-// 部分更新でレース耐性を持たせる
+// event 駆動の WorldSaved 反映用。world_url 1 値だけ受け取り、protojson の
+// JSONB に対して jsonb_set で in-place 書き換えする。handler 側で Get→mutate
+// →Update を往復しないので、gRPC UpdateSessionParameters / Upsert と
+// race しても他フィールドを stale snapshot で revert しない。
+//
+// protojson は oneof を active case のキーだけ出力するため、preset case が
+// 残っていると `loadWorld` で 2 つのキーが現れて parse 不能になる。
+// 先に `loadWorldPresetName` を `-` で削ってから `loadWorldUrl` を書き込む。
+// current_state は NULL のままなら触らない (初期 startup 直後の race で
+// 空オブジェクトを書いて UI を 0/0 表示にしないため)。
 func (q *Queries) UpdateSessionAfterWorldSaved(ctx context.Context, arg UpdateSessionAfterWorldSavedParams) error {
-	_, err := q.db.Exec(ctx, updateSessionAfterWorldSaved, arg.ID, arg.StartupParameters, arg.CurrentState)
+	_, err := q.db.Exec(ctx, updateSessionAfterWorldSaved, arg.WorldUrl, arg.ID)
 	return err
 }
 
