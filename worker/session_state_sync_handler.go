@@ -12,17 +12,9 @@ import (
 )
 
 // SessionStateSyncHandler keeps the persisted Session.CurrentState in sync
-// with what the container is broadcasting over the HostEventWatcher stream,
-// removing the need for per-request polling in the session usecase.
-//
-// All writes go through partial-update repository methods
-// (UpdateCurrentStateAndName / UpdateAfterWorldSaved /
-// DowngradeToUnknownIfRunning) so a concurrent UpdateSessionParameters /
-// StartSession / StopSession can't have its startup_parameters / status /
-// ended_at silently clobbered by a stale snapshot the handler had read a
-// moment earlier. UpdateAfterWorldSaved takes only the new world_url and
-// does the JSONB rewrite server-side, so there's no Get→mutate→Update
-// round trip to lose updates against.
+// with what the container broadcasts over the HostEventWatcher stream.
+// All writes go through partial-update repository methods so concurrent
+// UpdateSessionParameters / StartSession / StopSession are not clobbered.
 type SessionStateSyncHandler struct {
 	sessionRepo port.SessionRepository
 	hostRepo    port.HeadlessHostRepository
@@ -47,18 +39,9 @@ func (h *SessionStateSyncHandler) HandleHostEvent(ctx context.Context, hostID st
 }
 
 // HandleHostEventStreamReset reconciles DB state with the host after the
-// event buffer overflowed (some events were definitely lost).
-//
-// Two things must happen:
-//  1. For each session the host still reports, refresh CurrentState so
-//     any missed SessionParametersChanged catches up.
-//  2. For sessions the DB believes are RUNNING on this host but the host
-//     no longer reports, demote status to UNKNOWN — we likely missed a
-//     SessionEnded and would otherwise leave the row RUNNING forever.
-//
-// Demotion uses DowngradeToUnknownIfRunning (guarded update) so a
-// concurrent StopSession that successfully closed the session (status →
-// ENDED) won't get clobbered back to UNKNOWN.
+// event buffer overflowed. For sessions the host still reports we refresh
+// CurrentState; for RUNNING DB rows the host no longer reports we demote
+// to UNKNOWN via guarded update so a concurrent ENDED is not clobbered.
 func (h *SessionStateSyncHandler) HandleHostEventStreamReset(ctx context.Context, hostID string) {
 	runningSessions, err := h.sessionRepo.ListByStatus(ctx, entity.SessionStatus_RUNNING)
 	if err != nil {
@@ -99,9 +82,6 @@ func (h *SessionStateSyncHandler) HandleHostEventStreamReset(ctx context.Context
 			continue
 		}
 
-		// DB は RUNNING のままだが host から消えている = SessionEnded を取り
-		// こぼした疑い。RUNNING のときだけ UNKNOWN に降ろす (StopSession で
-		// すでに ENDED に至った session を巻き戻さないため guarded update)。
 		if err := h.sessionRepo.DowngradeToUnknownIfRunning(ctx, s.ID); err != nil {
 			slog.Warn("session-state-sync: DowngradeToUnknownIfRunning failed during resync", "sessionID", s.ID, "error", err)
 		}
@@ -128,15 +108,9 @@ func (h *SessionStateSyncHandler) applyWorldSaved(ctx context.Context, hostID st
 	worldURL := payload.GetWorldUrl()
 
 	if worldURL == "" {
-		// container 側 WorldSavedHook が観測ログを残しているのでここでは握りつぶす
 		return
 	}
 
-	// world_url 1 値だけを SQL に渡し、JSONB の jsonb_set で server-side 書き換え
-	// する。Get→mutate→Update を往復しないので、gRPC UpdateSessionParameters /
-	// UpdateSessionExtraSettings の Upsert と race しても他フィールドを stale
-	// snapshot で revert しない (preset case は SQL 側で除去、startup_parameters の
-	// loadWorldUrl が次回起動時の load_world として使われる)。
 	if err := h.sessionRepo.UpdateAfterWorldSaved(ctx, sessionID, worldURL); err != nil {
 		if !errors.Is(err, domain.ErrNotFound) {
 			slog.Warn("session-state-sync: UpdateAfterWorldSaved failed", "hostID", hostID, "sessionID", sessionID, "error", err)

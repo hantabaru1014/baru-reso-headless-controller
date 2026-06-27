@@ -32,7 +32,7 @@ type statusUpdate struct {
 }
 
 // syncFakeRepo records which repository method handled each write so a
-// regression that re-introduces full Upsert (= race window) is caught.
+// regression that re-introduces full Upsert is caught.
 type syncFakeRepo struct {
 	port.SessionRepository
 
@@ -220,7 +220,7 @@ func TestSessionStateSyncHandler_SessionParametersChanged_UsesPartialUpdate(t *t
 	assert.Equal(t, "s1", partials[0].id)
 	assert.Equal(t, "new", partials[0].name)
 	assert.Equal(t, int32(16), partials[0].currentState.GetMaxUsers())
-	assert.Equal(t, 0, upserts, "must not invoke full Upsert (race window)")
+	assert.Equal(t, 0, upserts, "must not invoke full Upsert")
 }
 
 func TestSessionStateSyncHandler_SessionParametersChanged_NilSnapshotIgnored(t *testing.T) {
@@ -243,10 +243,9 @@ func TestSessionStateSyncHandler_SessionParametersChanged_NilSnapshotIgnored(t *
 func TestSessionStateSyncHandler_WorldSaved_DelegatesToPartialUpdate(t *testing.T) {
 	t.Parallel()
 
-	// The handler must NOT fetch the entity via Get and reassemble it before
-	// writing — that's the Get→mutate→Update race the partial-update query
-	// was introduced to remove. Don't seed anything; the SQL handles
-	// non-existence on its own (UPDATE WHERE id matches nothing is a no-op).
+	// Handler must dispatch through the partial-update method only; never Get
+	// + reassemble + Upsert. Don't seed anything — UPDATE on a non-existent
+	// id is a no-op on the SQL side.
 	repo := newSyncFakeRepo()
 	h := NewSessionStateSyncHandler(repo, &stubHostRepo{})
 
@@ -260,7 +259,7 @@ func TestSessionStateSyncHandler_WorldSaved_DelegatesToPartialUpdate(t *testing.
 	require.Len(t, snap.Afters, 1, "must dispatch through UpdateAfterWorldSaved")
 	assert.Equal(t, "s1", snap.Afters[0].id)
 	assert.Equal(t, "new", snap.Afters[0].worldURL)
-	assert.Equal(t, 0, snap.Upserts, "no full Upsert (race window)")
+	assert.Equal(t, 0, snap.Upserts, "no full Upsert")
 }
 
 func TestSessionStateSyncHandler_WorldSaved_EmptyUrlSkipped(t *testing.T) {

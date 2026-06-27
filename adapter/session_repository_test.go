@@ -92,13 +92,12 @@ func TestSessionRepository_UpdateAfterWorldSaved_JSONBRewrite(t *testing.T) {
 		got, err := repo.Get(t.Context(), "s-no-cs")
 		require.NoError(t, err)
 		assert.Equal(t, "resrec:///new", got.StartupParameters.GetLoadWorldUrl())
-		// MINOR-1 regression guard: handler must not have created an empty
-		// CurrentState that the UI would render as "0/0 users".
+		// NULL current_state は NULL のまま残す (UI に zero-value Session を渡して
+		// "0/0 users" と表示させないため)
 		assert.Nil(t, got.CurrentState, "NULL current_state must stay NULL")
 	})
 
 	t.Run("DowngradeToUnknownIfRunning は ENDED を巻き戻さない", func(t *testing.T) {
-		// MINOR-4 regression guard.
 		err := repo.Upsert(t.Context(), &entity.Session{
 			ID:     "s-ended",
 			Name:   "ended-session",

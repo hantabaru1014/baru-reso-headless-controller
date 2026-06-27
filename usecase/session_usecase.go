@@ -151,12 +151,9 @@ func (u *SessionUsecase) GetSession(ctx context.Context, id string) (*entity.Ses
 		return nil, errors.Wrap(err, 0)
 	}
 
-	// CurrentState は host_event_watcher が live で更新するため、ここで polling する必要はない。
-	// host が落ちている場合は DockerEventWatcher が hosts.status を非 RUNNING に倒すので、
-	// GetRpcClient 失敗を介して CRASHED に伝播される設計。旧実装は GetSession RPC 失敗時
-	// にも CRASHED に倒していたが、event 駆動同期に倒したため container 死活シグナルは
-	// hostRepo に集約する。container 自体は生きていて単発 RPC が落ちる遷移を CRASHED で
-	// 拾わなくなるが、その場合は次の HostEvent または stream reset 時の resync で復旧する。
+	// CurrentState は host_event_watcher が live で更新するため polling 不要。
+	// container 死活は DockerEventWatcher が hosts.status を倒すので、ここでは
+	// GetRpcClient が解決できないときだけ CRASHED に倒す。
 	if dbSession.Status == entity.SessionStatus_STARTING || dbSession.Status == entity.SessionStatus_RUNNING {
 		if _, hostErr := u.hostRepo.GetRpcClient(ctx, dbSession.HostID); hostErr != nil {
 			_ = u.sessionRepo.UpdateStatus(ctx, id, entity.SessionStatus_CRASHED)
@@ -330,10 +327,8 @@ func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMo
 
 	switch saveMode {
 	case SaveMode_OVERWRITE:
-		// 保存後の最新 record URL は container 側 RPC response に含まれる。
-		// WorldSaved event 経由でも到達するが、ここで同期的に response から
-		// 取ることで preset 由来の初回 save (record URL が新規発番される)
-		// でも stale な CurrentState ではなく確実に最新 URL を返せる
+		// preset 由来の初回 save では record が新規発番されるので、保存直後の
+		// URL は response から同期的に取る。
 		resp, err := client.SaveSessionWorld(ctx, &headlessv1.SaveSessionWorldRequest{SessionId: id})
 		if err != nil {
 			return "", errors.Wrap(err, 0)
@@ -343,7 +338,7 @@ func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMo
 			return url, nil
 		}
 
-		// 旧 container との互換のため、空応答時は DB の CurrentState を fallback
+		// saved_world_url を埋めない container と互換するための fallback
 		return s.CurrentState.GetWorldUrl(), nil
 
 	case SaveMode_SAVE_AS:
