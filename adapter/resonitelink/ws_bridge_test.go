@@ -139,10 +139,10 @@ func wsURL(server *httptest.Server, query string) string {
 	return "ws" + strings.TrimPrefix(server.URL, "http") + "/?" + query
 }
 
-func issueToken(t *testing.T, sessionID string) string {
+func issueToken(t *testing.T, ttl time.Duration) string {
 	t.Helper()
 
-	token, _, err := auth.GenerateResoniteLinkToken("U-test", sessionID, time.Minute)
+	token, _, err := auth.GenerateResoniteLinkToken("U-test", testSessionID, ttl)
 	require.NoError(t, err)
 
 	return token
@@ -161,7 +161,7 @@ func TestBridge_HappyPath_TextAndBinary(t *testing.T) {
 	tb := startTestBridge(t)
 	readyOnce(tb.stream)
 
-	token := issueToken(t, testSessionID)
+	token := issueToken(t, time.Minute)
 
 	conn, resp, err := websocket.DefaultDialer.Dial(wsURL(tb.server, "token="+url.QueryEscape(token)), nil)
 	require.NoError(t, err)
@@ -252,7 +252,7 @@ func TestBridge_SessionNotFound_Returns404(t *testing.T) {
 	tb := startTestBridge(t)
 	delete(tb.sessRepo.sessions, testSessionID)
 
-	token := issueToken(t, testSessionID)
+	token := issueToken(t, time.Minute)
 	_, resp, err := websocket.DefaultDialer.Dial(wsURL(tb.server, "token="+url.QueryEscape(token)), nil)
 	require.Error(t, err)
 	require.NotNil(t, resp)
@@ -278,10 +278,83 @@ func TestBridge_WrongAudienceToken_Returns401(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
 
+// WebSocket クライアントが切断したら gRPC streamCtx も cancel され、
+// container 側の Recv() が起きて clients count が減ることを保証する.
+// (これが効かないと token 期限切れ後のゾンビ接続が container にも残る.)
+func TestBridge_ClientClose_CancelsGrpcStream(t *testing.T) {
+	tb := startTestBridge(t)
+	readyOnce(tb.stream)
+
+	token := issueToken(t, time.Minute)
+
+	conn, resp, err := websocket.DefaultDialer.Dial(wsURL(tb.server, "token="+url.QueryEscape(token)), nil)
+	require.NoError(t, err)
+
+	defer func() { _ = resp.Body.Close() }()
+
+	// Init が gRPC stream に届くまで待って stream の ctx が確立されたことを担保.
+	select {
+	case <-tb.stream.sentCh:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Init was not forwarded to gRPC stream")
+	}
+
+	streamCtx := tb.stream.ctx
+
+	// 正常クローズ送信. bridge は CloseSend してこちらの送信ループを抜ける.
+	require.NoError(t, conn.WriteMessage(websocket.CloseMessage,
+		websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")))
+	_ = conn.Close()
+
+	// クライアント切断が伝播して gRPC streamCtx が cancel されることを確認.
+	// (これが起きないと container 側の Recv が永久に起きず、bridge の clients count が減らない)
+	select {
+	case <-streamCtx.Done():
+	case <-time.After(2 * time.Second):
+		t.Fatal("gRPC stream ctx was not cancelled after WS close")
+	}
+}
+
+// token 期限切れ到達で WS と gRPC stream の両方が閉じられることを保証する.
+// (これがないと長時間 WS を維持された場合に期限切れ token のまま接続が居座り、
+// container 側の clients count も減らない.)
+func TestBridge_TokenExpiry_ClosesConnection(t *testing.T) {
+	tb := startTestBridge(t)
+	readyOnce(tb.stream)
+
+	shortToken := issueToken(t, 2*time.Second)
+
+	conn, resp, err := websocket.DefaultDialer.Dial(wsURL(tb.server, "token="+url.QueryEscape(shortToken)), nil)
+	require.NoError(t, err)
+
+	defer func() { _ = resp.Body.Close() }()
+	defer func() { _ = conn.Close() }()
+
+	// Init が流れたことを確認して streamCtx を握っておく.
+	select {
+	case <-tb.stream.sentCh:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Init was not forwarded to gRPC stream")
+	}
+
+	streamCtx := tb.stream.ctx
+
+	// token 有効期限到達で WS / gRPC stream が閉じられる. WS read が起きる.
+	_ = conn.SetReadDeadline(time.Now().Add(4 * time.Second))
+	_, _, err = conn.ReadMessage()
+	require.Error(t, err, "WS read should fail after token expiry")
+
+	select {
+	case <-streamCtx.Done():
+	case <-time.After(2 * time.Second):
+		t.Fatal("gRPC stream ctx was not cancelled after token expiry")
+	}
+}
+
 func TestBridge_ReadyTimeout_Returns502(t *testing.T) {
 	tb := startTestBridge(t)
 	// Ready を一切送らない -> readyTimeout 経過で 502
-	token := issueToken(t, testSessionID)
+	token := issueToken(t, time.Minute)
 
 	_, resp, err := websocket.DefaultDialer.Dial(wsURL(tb.server, "token="+url.QueryEscape(token)), nil)
 	require.Error(t, err)
