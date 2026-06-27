@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 )
 
 type SessionListPageOptions struct {
@@ -22,6 +23,24 @@ type SessionListPageResult struct {
 type SessionRepository interface {
 	Upsert(ctx context.Context, session *entity.Session) error
 	UpdateStatus(ctx context.Context, id string, status entity.SessionStatus) error
+	// ApplySessionParametersChanged は host 側 event 駆動同期で使う部分更新。
+	// SessionInfo の overlap field (name / description / max_users / access_level /
+	// hide_from_public_listing / away_kick_minutes / idle_restart_interval_seconds /
+	// save_on_exit / auto_save_interval_seconds / auto_sleep / tags) を
+	// startup_parameters JSONB に merge することで、in-world で session 設定が
+	// 変わったとき次回 restart にも反映する。他カラム (status / ended_at /
+	// memo 等) には触らない。
+	ApplySessionParametersChanged(ctx context.Context, id string, snapshot *headlessv1.Session) error
+	// UpdateAfterWorldSaved は WorldSaved event 反映用の部分更新。world_url 1 値
+	// だけを受け取り、startup_parameters の loadWorldUrl を JSONB の in-place
+	// 書き換えで更新する (preset case は除去)。Get→mutate→Update を往復しないの
+	// で gRPC UpdateSessionParameters / Upsert と race しても他フィールドを
+	// stale snapshot で revert しない。
+	UpdateAfterWorldSaved(ctx context.Context, id string, worldURL string) error
+	// DowngradeToUnknownIfRunning は StreamReset 時の lost session 救済用の
+	// guarded update。RUNNING のときだけ UNKNOWN へ降ろし、StopSession で
+	// ENDED に至った session を巻き戻さない
+	DowngradeToUnknownIfRunning(ctx context.Context, id string) error
 	Get(ctx context.Context, id string) (*entity.Session, error)
 	ListAll(ctx context.Context) (entity.SessionList, error)
 	ListByStatus(ctx context.Context, status entity.SessionStatus) (entity.SessionList, error)
