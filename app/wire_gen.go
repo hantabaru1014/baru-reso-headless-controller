@@ -53,7 +53,8 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	dockerEventWatcher := worker.NewDockerEventWatcher(dockerHostConnector, queries, workerConfig)
 	sqlHostEventStore := worker.NewSQLHostEventStore(queries)
 	loggingHostEventHandler := worker.NewLoggingHostEventHandler()
-	v := ProvideHostEventHandlers(loggingHostEventHandler, hostUpgradeOrchestrator)
+	sessionLifecycleHandler := worker.NewSessionLifecycleHandler(sessionRepository)
+	v := ProvideHostEventHandlers(loggingHostEventHandler, sessionLifecycleHandler, hostUpgradeOrchestrator)
 	hostEventWatcher := worker.NewHostEventWatcher(headlessHostRepository, sqlHostEventStore, workerConfig, v)
 	manager := ProvideWorkerManager(imageChecker, dockerEventWatcher, hostEventWatcher, hostUpgradeOrchestrator, sessionUsecase)
 	bridge := resonitelink.NewBridge(headlessHostRepository, sessionRepository, resoniteLinkConfig)
@@ -142,9 +143,10 @@ func ProvideWorkerManager(
 // streams.
 func ProvideHostEventHandlers(
 	loggingHandler *worker.LoggingHostEventHandler,
+	sessionLifecycleHandler *worker.SessionLifecycleHandler,
 	upgradeOrchestrator *worker.HostUpgradeOrchestrator,
 ) []worker.HostEventHandler {
-	return []worker.HostEventHandler{loggingHandler, upgradeOrchestrator}
+	return []worker.HostEventHandler{loggingHandler, sessionLifecycleHandler, upgradeOrchestrator}
 }
 
 // ProvideHeadlessAccountFetcher exposes HeadlessAccountUsecase under the

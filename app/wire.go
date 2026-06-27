@@ -76,9 +76,10 @@ func ProvideWorkerManager(
 // streams.
 func ProvideHostEventHandlers(
 	loggingHandler *worker.LoggingHostEventHandler,
+	sessionLifecycleHandler *worker.SessionLifecycleHandler,
 	upgradeOrchestrator *worker.HostUpgradeOrchestrator,
 ) []worker.HostEventHandler {
-	return []worker.HostEventHandler{loggingHandler, upgradeOrchestrator}
+	return []worker.HostEventHandler{loggingHandler, sessionLifecycleHandler, upgradeOrchestrator}
 }
 
 // ProvideHeadlessAccountFetcher exposes HeadlessAccountUsecase under the
@@ -131,6 +132,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		worker.NewSQLHostEventStore,
 		wire.Bind(new(worker.HostEventStore), new(*worker.SQLHostEventStore)),
 		worker.NewLoggingHostEventHandler,
+		worker.NewSessionLifecycleHandler,
 		worker.NewHostUpgradeOrchestrator,
 		wire.Bind(new(port.HostDrainer), new(*worker.HostUpgradeOrchestrator)),
 		ProvideHeadlessAccountFetcher,
