@@ -1,1 +1,0 @@
-ALTER TABLE sessions ADD COLUMN IF NOT EXISTS current_state JSONB;
