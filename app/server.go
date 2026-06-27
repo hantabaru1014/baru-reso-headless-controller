@@ -24,8 +24,7 @@ import (
 type Server struct {
 	userService        *rpc.UserService
 	controllerService  *rpc.ControllerService
-	imageChecker       *worker.ImageChecker
-	eventWatcher       *worker.EventWatcher
+	workerManager      *worker.Manager
 	blobClient         blobstore.Client
 	resoniteLinkBridge *resonitelink.Bridge
 	httpServer         *http.Server
@@ -34,16 +33,14 @@ type Server struct {
 func NewServer(
 	userService *rpc.UserService,
 	controllerService *rpc.ControllerService,
-	imageChecker *worker.ImageChecker,
-	eventWatcher *worker.EventWatcher,
+	workerManager *worker.Manager,
 	blobClient blobstore.Client,
 	resoniteLinkBridge *resonitelink.Bridge,
 ) *Server {
 	return &Server{
 		userService:        userService,
 		controllerService:  controllerService,
-		imageChecker:       imageChecker,
-		eventWatcher:       eventWatcher,
+		workerManager:      workerManager,
 		blobClient:         blobClient,
 		resoniteLinkBridge: resoniteLinkBridge,
 	}
@@ -128,8 +125,7 @@ func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 
 	cancel()
 
-	s.imageChecker.Start()
-	s.eventWatcher.Start()
+	s.workerManager.Start()
 
 	router := mux.NewRouter()
 
@@ -172,13 +168,25 @@ func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 }
 
 // Shutdown は現在進行中のリクエストを完了させてからサーバーを停止する.
+// Workers and the HTTP server share the same deadline and drain in
+// parallel so a slow worker does not push HTTP shutdown past it.
 func (s *Server) Shutdown(ctx context.Context) error {
-	s.imageChecker.Stop()
-	s.eventWatcher.Stop()
+	workerErrCh := make(chan error, 1)
 
+	go func() {
+		workerErrCh <- s.workerManager.Stop(ctx)
+	}()
+
+	var httpErr error
 	if s.httpServer != nil {
-		return s.httpServer.Shutdown(ctx)
+		httpErr = s.httpServer.Shutdown(ctx)
 	}
 
-	return nil
+	workerErr := <-workerErrCh
+
+	if httpErr != nil {
+		return httpErr
+	}
+
+	return workerErr
 }

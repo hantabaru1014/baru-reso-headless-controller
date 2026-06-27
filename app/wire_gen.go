@@ -46,10 +46,16 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	blobUsecase := usecase.NewBlobUsecase(sessionRepository, headlessHostRepository, minioClient)
 	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, blobUsecase, defaultClient)
 	workerConfig := ProvideWorkerConfig(cfg)
-	imageChecker := worker.NewImageChecker(dockerHostConnector, sessionUsecase, workerConfig)
-	eventWatcher := worker.NewEventWatcher(dockerHostConnector, queries, workerConfig)
+	imageChecker := worker.NewImageChecker(dockerHostConnector, workerConfig)
+	dockerEventWatcher := worker.NewDockerEventWatcher(dockerHostConnector, queries, workerConfig)
+	sqlHostEventStore := worker.NewSQLHostEventStore(queries)
+	loggingHostEventHandler := worker.NewLoggingHostEventHandler()
+	v := ProvideHostEventHandlers(loggingHostEventHandler)
+	hostEventWatcher := worker.NewHostEventWatcher(headlessHostRepository, sqlHostEventStore, workerConfig, v)
+	v2 := ProvideWorkerRunners(imageChecker, dockerEventWatcher, hostEventWatcher)
+	manager := worker.NewManager(v2)
 	bridge := resonitelink.NewBridge(headlessHostRepository, sessionRepository, resoniteLinkConfig)
-	server := NewServer(userService, controllerService, imageChecker, eventWatcher, minioClient, bridge)
+	server := NewServer(userService, controllerService, manager, minioClient, bridge)
 	return server, nil
 }
 
@@ -101,6 +107,30 @@ func ProvideRustFSConfig(cfg *config.EnvConfig) *config.RustFSConfig {
 
 func ProvideResoniteLinkConfig(cfg *config.EnvConfig) *config.ResoniteLinkConfig {
 	return &cfg.ResoniteLink
+}
+
+// ProvideWorkerRunners groups the concrete background workers that the
+// server supervises into a slice the worker.Manager consumes. Add new
+// workers here when introducing one.
+func ProvideWorkerRunners(
+	imageChecker *worker.ImageChecker,
+	dockerEventWatcher *worker.DockerEventWatcher,
+	hostEventWatcher *worker.HostEventWatcher,
+) []worker.Runner {
+	return []worker.Runner{
+		imageChecker,
+		dockerEventWatcher,
+		hostEventWatcher,
+	}
+}
+
+// ProvideHostEventHandlers gathers consumers for the per-host event
+// streams. Today only a logging handler is registered; add real handlers
+// here as they come online.
+func ProvideHostEventHandlers(
+	loggingHandler *worker.LoggingHostEventHandler,
+) []worker.HostEventHandler {
+	return []worker.HostEventHandler{loggingHandler}
 }
 
 var ConfigSet = wire.NewSet(

@@ -45,6 +45,10 @@ type WorkerConfig struct {
 	AutoPullNewImage      bool
 	EventReconnectDelay   time.Duration
 	EventMaxReconnectWait time.Duration
+	// HostEventPollInterval controls how often HostEventWatcher reconciles
+	// its set of per-host event-stream subscriptions against the RUNNING
+	// hosts in the DB.
+	HostEventPollInterval time.Duration
 }
 
 type ServerConfig struct {
@@ -97,6 +101,7 @@ func LoadEnvConfig() (*EnvConfig, error) {
 	cfg.Worker.AutoPullNewImage = os.Getenv("AUTO_PULL_NEW_IMAGE") == "true"
 	cfg.Worker.EventReconnectDelay = getEnvDuration("EVENT_WATCHER_RECONNECT_DELAY", 5*time.Second)    //nolint:mnd // default
 	cfg.Worker.EventMaxReconnectWait = getEnvDuration("EVENT_WATCHER_MAX_RECONNECT_WAIT", 5*time.Minute) //nolint:mnd // default
+	cfg.Worker.HostEventPollInterval = getEnvDuration("HOST_EVENT_POLL_INTERVAL", 10*time.Second)        //nolint:mnd // default
 
 	cfg.Server.Host = getEnvWithDefault("HOST", ":8014")
 	cfg.Server.FrontDevMode = os.Getenv("FDEV") == "true"
