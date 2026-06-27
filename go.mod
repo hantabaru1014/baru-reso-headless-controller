@@ -12,7 +12,6 @@ require (
 require (
 	github.com/dchest/uniuri v1.2.0
 	github.com/docker/docker v28.5.2+incompatible
-	github.com/go-co-op/gocron v1.37.0
 	github.com/go-errors/errors v1.5.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/gorilla/mux v1.8.1
@@ -72,7 +71,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
@@ -82,7 +80,6 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.44.0 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/sync v0.20.0
 	gotest.tools/v3 v3.5.1 // indirect
 )

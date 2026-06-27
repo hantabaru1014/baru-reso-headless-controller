@@ -43,6 +43,12 @@ type Host struct {
 	InstanceCount                  int32
 }
 
+type HostEventCheckpoint struct {
+	HostID      string
+	LastEventID string
+	UpdatedAt   pgtype.Timestamptz
+}
+
 type RegistrationToken struct {
 	Token      string
 	ResoniteID string

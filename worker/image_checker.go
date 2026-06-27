@@ -5,67 +5,65 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/go-co-op/gocron"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
-	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
 
+const imageCheckTimeout = 5 * time.Minute
+
+// ImageChecker periodically polls the container registry for new tags of
+// the configured headless image and, if AUTO_PULL_NEW_IMAGE is enabled,
+// pulls them so a new container start does not have to wait for the
+// download.
 type ImageChecker struct {
-	scheduler        *gocron.Scheduler
-	dc               *hostconnector.DockerHostConnector
-	suc              *usecase.SessionUsecase
+	dc *hostconnector.DockerHostConnector
+
 	interval         time.Duration
 	autoPullNewImage bool
 	lastTag          *port.ContainerImage
 }
 
-func NewImageChecker(dc *hostconnector.DockerHostConnector, suc *usecase.SessionUsecase, cfg *config.WorkerConfig) *ImageChecker {
+var _ Runner = (*ImageChecker)(nil)
+
+func NewImageChecker(dc *hostconnector.DockerHostConnector, cfg *config.WorkerConfig) *ImageChecker {
 	return &ImageChecker{
-		scheduler:        gocron.NewScheduler(time.UTC),
 		dc:               dc,
-		suc:              suc,
 		interval:         cfg.ImageCheckInterval,
 		autoPullNewImage: cfg.AutoPullNewImage,
-		lastTag:          nil,
 	}
 }
 
-func (ic *ImageChecker) Start() {
-	// 初回実行
-	ic.checkNewImages()
+func (c *ImageChecker) Name() string { return "image-checker" }
 
-	// スケジュールを設定
-	_, err := ic.scheduler.Every(ic.interval).Do(ic.checkNewImages)
-	if err != nil {
-		slog.Error("Failed to schedule image check", "error", err)
+func (c *ImageChecker) Run(ctx context.Context) error {
+	c.checkNewImages(ctx)
 
-		return
+	ticker := time.NewTicker(c.interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			c.checkNewImages(ctx)
+		}
 	}
-
-	// スケジューラを開始
-	ic.scheduler.StartAsync()
-	slog.Debug("Container image checker started", "interval", ic.interval)
 }
 
-func (ic *ImageChecker) Stop() {
-	ic.scheduler.Stop()
-	slog.Debug("Container image checker stopped")
-}
-
-func (ic *ImageChecker) checkNewImages() {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute) //nolint:mnd // reasonable timeout for image check
+func (c *ImageChecker) checkNewImages(parent context.Context) {
+	ctx, cancel := context.WithTimeout(parent, imageCheckTimeout)
 	defer cancel()
 
 	var lastTag *string
-	if ic.lastTag != nil {
-		lastTag = &ic.lastTag.Tag
+	if c.lastTag != nil {
+		lastTag = &c.lastTag.Tag
 	}
 
-	tags, err := ic.dc.ListContainerTags(ctx, lastTag)
+	tags, err := c.dc.ListContainerTags(ctx, lastTag)
 	if err != nil {
-		slog.Error("Failed to list container tags", "error", err)
+		slog.Error("failed to list container tags", "error", err)
 
 		return
 	}
@@ -77,21 +75,22 @@ func (ic *ImageChecker) checkNewImages() {
 	// 最新のタグは配列の最後に入っている
 	newestTag := tags[len(tags)-1]
 
-	// 前回の最新タグがない、またはタグが変わった場合に通知
-	if ic.lastTag == nil || ic.lastTag.Tag != newestTag.Tag {
-		slog.Info("New container image found", "latestTag", newestTag)
-		// 最新のタグを保存
-		ic.lastTag = newestTag
+	if c.lastTag != nil && c.lastTag.Tag == newestTag.Tag {
+		return
+	}
 
-		// 必要に応じて新しいイメージをプル
-		if ic.autoPullNewImage {
-			slog.Info("Pulling latest container image", "tag", newestTag)
+	slog.Info("new container image found", "latestTag", newestTag)
+	c.lastTag = newestTag
 
-			if _, err := ic.dc.PullContainerImage(ctx, newestTag.Tag); err != nil {
-				slog.Error("Failed to pull container image", "tag", newestTag, "error", err)
-			} else {
-				slog.Info("Successfully pulled container image", "tag", newestTag)
-			}
-		}
+	if !c.autoPullNewImage {
+		return
+	}
+
+	slog.Info("pulling latest container image", "tag", newestTag)
+
+	if _, err := c.dc.PullContainerImage(ctx, newestTag.Tag); err != nil {
+		slog.Error("failed to pull container image", "tag", newestTag, "error", err)
+	} else {
+		slog.Info("successfully pulled container image", "tag", newestTag)
 	}
 }

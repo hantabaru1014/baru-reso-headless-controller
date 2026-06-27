@@ -46,6 +46,30 @@ func ProvideResoniteLinkConfig(cfg *config.EnvConfig) *config.ResoniteLinkConfig
 	return &cfg.ResoniteLink
 }
 
+// ProvideWorkerRunners groups the concrete background workers that the
+// server supervises into a slice the worker.Manager consumes. Add new
+// workers here when introducing one.
+func ProvideWorkerRunners(
+	imageChecker *worker.ImageChecker,
+	dockerEventWatcher *worker.DockerEventWatcher,
+	hostEventWatcher *worker.HostEventWatcher,
+) []worker.Runner {
+	return []worker.Runner{
+		imageChecker,
+		dockerEventWatcher,
+		hostEventWatcher,
+	}
+}
+
+// ProvideHostEventHandlers gathers consumers for the per-host event
+// streams. Today only a logging handler is registered; add real handlers
+// here as they come online.
+func ProvideHostEventHandlers(
+	loggingHandler *worker.LoggingHostEventHandler,
+) []worker.HostEventHandler {
+	return []worker.HostEventHandler{loggingHandler}
+}
+
 var ConfigSet = wire.NewSet(
 	ProvideDatabaseConfig,
 	ProvideDockerConfig,
@@ -84,7 +108,14 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 
 		// worker
 		worker.NewImageChecker,
-		worker.NewEventWatcher,
+		worker.NewDockerEventWatcher,
+		worker.NewHostEventWatcher,
+		worker.NewSQLHostEventStore,
+		wire.Bind(new(worker.HostEventStore), new(*worker.SQLHostEventStore)),
+		worker.NewLoggingHostEventHandler,
+		ProvideHostEventHandlers,
+		ProvideWorkerRunners,
+		worker.NewManager,
 
 		// usecase
 		usecase.NewHeadlessHostUsecase,

@@ -353,6 +353,13 @@ func (d *DockerHostConnector) Remove(ctx context.Context, connect_string HostCon
 	return nil
 }
 
+// ParseConnectString splits a `containerID:port` connect string into its
+// parts. Exported so other packages can decode the same format without
+// re-implementing the parser.
+func ParseConnectString(connect_string HostConnectString) (string, int, error) {
+	return parseConnectString(connect_string)
+}
+
 func parseConnectString(connect_string HostConnectString) (string, int, error) {
 	splitted := strings.Split(string(connect_string), ":")
 	if len(splitted) != 2 { //nolint:mnd // id:port format

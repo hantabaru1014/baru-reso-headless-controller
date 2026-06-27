@@ -661,3 +661,23 @@ func (mr *MockHeadlessControlServiceClientMockRecorder) UpdateUserRole(ctx, in a
 	varargs := append([]any{ctx, in}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserRole", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).UpdateUserRole), varargs...)
 }
+
+// WatchHostEvents mocks base method.
+func (m *MockHeadlessControlServiceClient) WatchHostEvents(ctx context.Context, in *headlessv1.WatchHostEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[headlessv1.HostEvent], error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "WatchHostEvents", varargs...)
+	ret0, _ := ret[0].(grpc.ServerStreamingClient[headlessv1.HostEvent])
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// WatchHostEvents indicates an expected call of WatchHostEvents.
+func (mr *MockHeadlessControlServiceClientMockRecorder) WatchHostEvents(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WatchHostEvents", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).WatchHostEvents), varargs...)
+}

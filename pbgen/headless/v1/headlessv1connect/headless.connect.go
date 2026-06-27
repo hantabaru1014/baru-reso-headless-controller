@@ -102,6 +102,9 @@ const (
 	// HeadlessControlServiceResoniteLinkStreamProcedure is the fully-qualified name of the
 	// HeadlessControlService's ResoniteLinkStream RPC.
 	HeadlessControlServiceResoniteLinkStreamProcedure = "/headless.v1.HeadlessControlService/ResoniteLinkStream"
+	// HeadlessControlServiceWatchHostEventsProcedure is the fully-qualified name of the
+	// HeadlessControlService's WatchHostEvents RPC.
+	HeadlessControlServiceWatchHostEventsProcedure = "/headless.v1.HeadlessControlService/WatchHostEvents"
 	// HeadlessControlServiceGetAccountInfoProcedure is the fully-qualified name of the
 	// HeadlessControlService's GetAccountInfo RPC.
 	HeadlessControlServiceGetAccountInfoProcedure = "/headless.v1.HeadlessControlService/GetAccountInfo"
@@ -153,6 +156,8 @@ type HeadlessControlServiceClient interface {
 	GetStartupConfigToRestore(context.Context, *connect.Request[v1.GetStartupConfigToRestoreRequest]) (*connect.Response[v1.GetStartupConfigToRestoreResponse], error)
 	DownloadSessionWorld(context.Context, *connect.Request[v1.DownloadSessionWorldRequest]) (*connect.ServerStreamForClient[v1.DownloadSessionWorldResponse], error)
 	ResoniteLinkStream(context.Context) *connect.BidiStreamForClient[v1.ResoniteLinkStreamRequest, v1.ResoniteLinkStreamResponse]
+	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+	WatchHostEvents(context.Context, *connect.Request[v1.WatchHostEventsRequest]) (*connect.ServerStreamForClient[v1.HostEvent], error)
 	// Cloud系
 	GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v1.FetchWorldInfoResponse], error)
@@ -313,6 +318,12 @@ func NewHeadlessControlServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(headlessControlServiceMethods.ByName("ResoniteLinkStream")),
 			connect.WithClientOptions(opts...),
 		),
+		watchHostEvents: connect.NewClient[v1.WatchHostEventsRequest, v1.HostEvent](
+			httpClient,
+			baseURL+HeadlessControlServiceWatchHostEventsProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("WatchHostEvents")),
+			connect.WithClientOptions(opts...),
+		),
 		getAccountInfo: connect.NewClient[v1.GetAccountInfoRequest, v1.GetAccountInfoResponse](
 			httpClient,
 			baseURL+HeadlessControlServiceGetAccountInfoProcedure,
@@ -389,6 +400,7 @@ type headlessControlServiceClient struct {
 	getStartupConfigToRestore *connect.Client[v1.GetStartupConfigToRestoreRequest, v1.GetStartupConfigToRestoreResponse]
 	downloadSessionWorld      *connect.Client[v1.DownloadSessionWorldRequest, v1.DownloadSessionWorldResponse]
 	resoniteLinkStream        *connect.Client[v1.ResoniteLinkStreamRequest, v1.ResoniteLinkStreamResponse]
+	watchHostEvents           *connect.Client[v1.WatchHostEventsRequest, v1.HostEvent]
 	getAccountInfo            *connect.Client[v1.GetAccountInfoRequest, v1.GetAccountInfoResponse]
 	fetchWorldInfo            *connect.Client[v1.FetchWorldInfoRequest, v1.FetchWorldInfoResponse]
 	searchUserInfo            *connect.Client[v1.SearchUserInfoRequest, v1.SearchUserInfoResponse]
@@ -514,6 +526,11 @@ func (c *headlessControlServiceClient) ResoniteLinkStream(ctx context.Context) *
 	return c.resoniteLinkStream.CallBidiStream(ctx)
 }
 
+// WatchHostEvents calls headless.v1.HeadlessControlService.WatchHostEvents.
+func (c *headlessControlServiceClient) WatchHostEvents(ctx context.Context, req *connect.Request[v1.WatchHostEventsRequest]) (*connect.ServerStreamForClient[v1.HostEvent], error) {
+	return c.watchHostEvents.CallServerStream(ctx, req)
+}
+
 // GetAccountInfo calls headless.v1.HeadlessControlService.GetAccountInfo.
 func (c *headlessControlServiceClient) GetAccountInfo(ctx context.Context, req *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error) {
 	return c.getAccountInfo.CallUnary(ctx, req)
@@ -580,6 +597,8 @@ type HeadlessControlServiceHandler interface {
 	GetStartupConfigToRestore(context.Context, *connect.Request[v1.GetStartupConfigToRestoreRequest]) (*connect.Response[v1.GetStartupConfigToRestoreResponse], error)
 	DownloadSessionWorld(context.Context, *connect.Request[v1.DownloadSessionWorldRequest], *connect.ServerStream[v1.DownloadSessionWorldResponse]) error
 	ResoniteLinkStream(context.Context, *connect.BidiStream[v1.ResoniteLinkStreamRequest, v1.ResoniteLinkStreamResponse]) error
+	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+	WatchHostEvents(context.Context, *connect.Request[v1.WatchHostEventsRequest], *connect.ServerStream[v1.HostEvent]) error
 	// Cloud系
 	GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v1.FetchWorldInfoResponse], error)
@@ -736,6 +755,12 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 		connect.WithSchema(headlessControlServiceMethods.ByName("ResoniteLinkStream")),
 		connect.WithHandlerOptions(opts...),
 	)
+	headlessControlServiceWatchHostEventsHandler := connect.NewServerStreamHandler(
+		HeadlessControlServiceWatchHostEventsProcedure,
+		svc.WatchHostEvents,
+		connect.WithSchema(headlessControlServiceMethods.ByName("WatchHostEvents")),
+		connect.WithHandlerOptions(opts...),
+	)
 	headlessControlServiceGetAccountInfoHandler := connect.NewUnaryHandler(
 		HeadlessControlServiceGetAccountInfoProcedure,
 		svc.GetAccountInfo,
@@ -832,6 +857,8 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 			headlessControlServiceDownloadSessionWorldHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceResoniteLinkStreamProcedure:
 			headlessControlServiceResoniteLinkStreamHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceWatchHostEventsProcedure:
+			headlessControlServiceWatchHostEventsHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceGetAccountInfoProcedure:
 			headlessControlServiceGetAccountInfoHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceFetchWorldInfoProcedure:
@@ -947,6 +974,10 @@ func (UnimplementedHeadlessControlServiceHandler) DownloadSessionWorld(context.C
 
 func (UnimplementedHeadlessControlServiceHandler) ResoniteLinkStream(context.Context, *connect.BidiStream[v1.ResoniteLinkStreamRequest, v1.ResoniteLinkStreamResponse]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.ResoniteLinkStream is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) WatchHostEvents(context.Context, *connect.Request[v1.WatchHostEventsRequest], *connect.ServerStream[v1.HostEvent]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.WatchHostEvents is not implemented"))
 }
 
 func (UnimplementedHeadlessControlServiceHandler) GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error) {
