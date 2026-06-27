@@ -60,6 +60,7 @@ func ProvideWorkerManager(
 	dockerEventWatcher *worker.DockerEventWatcher,
 	hostEventWatcher *worker.HostEventWatcher,
 	upgradeOrchestrator *worker.HostUpgradeOrchestrator,
+	scheduledOpExecutor *worker.ScheduledOperationExecutor,
 	sessionStopper port.SessionStopper,
 ) *worker.Manager {
 	upgradeOrchestrator.SetSessionStopper(sessionStopper)
@@ -70,7 +71,20 @@ func ProvideWorkerManager(
 		dockerEventWatcher,
 		hostEventWatcher,
 		upgradeOrchestrator,
+		scheduledOpExecutor,
 	})
+}
+
+// ProvideScheduledOperationExecutor は scheduled session operation worker を
+// 構築する. SessionUsecase をそのまま SessionOperator として渡し、interface
+// 経由で worker パッケージから usecase パッケージへの依存を切る.
+func ProvideScheduledOperationExecutor(
+	repo port.ScheduledSessionOperationRepository,
+	suc *usecase.SessionUsecase,
+	srepo port.SessionRepository,
+	stateCache port.SessionStateCache,
+) *worker.ScheduledOperationExecutor {
+	return worker.NewScheduledOperationExecutor(repo, suc, srepo, stateCache, worker.ScheduledOperationExecutorOptions{})
 }
 
 // ProvideHostEventHandlers gathers consumers for the per-host event
@@ -127,6 +141,8 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		adapter.NewHeadlessHostRepository,
 		wire.Bind(new(port.SessionRepository), new(*adapter.SessionRepository)),
 		adapter.NewSessionRepository,
+		wire.Bind(new(port.ScheduledSessionOperationRepository), new(*adapter.ScheduledSessionOperationRepository)),
+		adapter.NewScheduledSessionOperationRepository,
 
 		// in-memory session-state cache (volatile snapshot owned by container)
 		sessionstate.NewMemoryCache,
@@ -143,6 +159,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		worker.NewSessionLifecycleHandler,
 		worker.NewHostUpgradeOrchestrator,
 		wire.Bind(new(port.HostDrainer), new(*worker.HostUpgradeOrchestrator)),
+		ProvideScheduledOperationExecutor,
 		ProvideHeadlessAccountFetcher,
 		ProvideHostEventHandlers,
 		ProvideWorkerManager,
@@ -153,6 +170,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		usecase.NewHeadlessAccountUsecase,
 		usecase.NewSessionUsecase,
 		usecase.NewBlobUsecase,
+		usecase.NewScheduledSessionOperationUsecase,
 		wire.Bind(new(port.SessionStopper), new(*usecase.SessionUsecase)),
 
 		// controller
@@ -188,6 +206,8 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 		adapter.NewHeadlessHostRepository,
 		wire.Bind(new(port.SessionRepository), new(*adapter.SessionRepository)),
 		adapter.NewSessionRepository,
+		wire.Bind(new(port.ScheduledSessionOperationRepository), new(*adapter.ScheduledSessionOperationRepository)),
+		adapter.NewScheduledSessionOperationRepository,
 
 		// CLI has no upgrade orchestrator running, so SessionUsecase
 		// gets a no-op drainer.
@@ -204,6 +224,7 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 		usecase.NewHeadlessAccountUsecase,
 		usecase.NewSessionUsecase,
 		usecase.NewHeadlessHostUsecase,
+		usecase.NewScheduledSessionOperationUsecase,
 
 		NewCli,
 	)

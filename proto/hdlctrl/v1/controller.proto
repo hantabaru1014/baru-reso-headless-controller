@@ -60,6 +60,11 @@ service ControllerService {
   rpc KickUser(KickUserRequest) returns (KickUserResponse);
   rpc BanUser(BanUserRequest) returns (BanUserResponse);
   rpc IssueResoniteLinkConnection(IssueResoniteLinkConnectionRequest) returns (IssueResoniteLinkConnectionResponse);
+
+  // 予約操作系
+  rpc CreateScheduledSessionOperation(CreateScheduledSessionOperationRequest) returns (CreateScheduledSessionOperationResponse);
+  rpc ListScheduledSessionOperations(ListScheduledSessionOperationsRequest) returns (ListScheduledSessionOperationsResponse);
+  rpc CancelScheduledSessionOperation(CancelScheduledSessionOperationRequest) returns (CancelScheduledSessionOperationResponse);
 }
 
 message RefetchHeadlessAccountInfoRequest {
@@ -625,3 +630,77 @@ message SendContactMessageRequest {
 }
 
 message SendContactMessageResponse {}
+
+// 予約操作系メッセージ
+
+enum ScheduledOperationStatus {
+  SCHEDULED_OPERATION_STATUS_UNSPECIFIED = 0;
+  SCHEDULED_OPERATION_STATUS_PENDING = 1;
+  SCHEDULED_OPERATION_STATUS_RUNNING = 2;
+  SCHEDULED_OPERATION_STATUS_SUCCEEDED = 3;
+  SCHEDULED_OPERATION_STATUS_FAILED = 4;
+  SCHEDULED_OPERATION_STATUS_CANCELED = 5;
+}
+
+// 予約する操作.
+message ScheduledOperation {
+  oneof operation {
+    StartWorldRequest start_session = 1;
+    StopSessionRequest stop_session = 2;
+    UpdateSessionParametersRequest update_parameters = 3;
+    UpdateSessionExtraSettingsRequest update_extra_settings = 4;
+  }
+}
+
+// 発火条件.後続 PR で条件系 trigger を oneof に追加する想定.
+message ScheduledTrigger {
+  oneof trigger {
+    TimeTrigger time = 1;
+  }
+}
+
+message TimeTrigger {
+  google.protobuf.Timestamp scheduled_at = 1;
+}
+
+message ScheduledSessionOperation {
+  string id = 1;
+  ScheduledOperation operation = 2;
+  ScheduledTrigger trigger = 3;
+  google.protobuf.Timestamp next_fire_at = 4;
+  optional string host_id = 5;
+  optional string session_id = 6;
+  ScheduledOperationStatus status = 7;
+  optional string last_error = 8;
+  optional google.protobuf.Timestamp executed_at = 9;
+  optional string created_by = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+message CreateScheduledSessionOperationRequest {
+  ScheduledOperation operation = 1;
+  ScheduledTrigger trigger = 2;
+}
+
+message CreateScheduledSessionOperationResponse {
+  ScheduledSessionOperation scheduled_operation = 1;
+}
+
+message ListScheduledSessionOperationsRequest {
+  optional string session_id = 1;
+  optional string host_id = 2;
+  optional ScheduledOperationStatus status = 3;
+  PageRequest page = 4;
+}
+
+message ListScheduledSessionOperationsResponse {
+  repeated ScheduledSessionOperation scheduled_operations = 1;
+  PageResponse page = 2;
+}
+
+message CancelScheduledSessionOperationRequest {
+  string id = 1;
+}
+
+message CancelScheduledSessionOperationResponse {}

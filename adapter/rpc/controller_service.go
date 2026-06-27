@@ -64,10 +64,11 @@ type ControllerService struct {
 	hauc           *usecase.HeadlessAccountUsecase
 	suc            *usecase.SessionUsecase
 	buc            *usecase.BlobUsecase
+	souc           *usecase.ScheduledSessionOperationUsecase
 	skyfrostClient skyfrost.Client
 }
 
-func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase, suc *usecase.SessionUsecase, buc *usecase.BlobUsecase, skyfrostClient skyfrost.Client) *ControllerService {
+func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase, suc *usecase.SessionUsecase, buc *usecase.BlobUsecase, souc *usecase.ScheduledSessionOperationUsecase, skyfrostClient skyfrost.Client) *ControllerService {
 	return &ControllerService{
 		hhrepo:         hhrepo,
 		srepo:          srepo,
@@ -75,6 +76,7 @@ func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.Session
 		hauc:           hauc,
 		suc:            suc,
 		buc:            buc,
+		souc:           souc,
 		skyfrostClient: skyfrostClient,
 	}
 }
@@ -1154,28 +1156,11 @@ func (c *ControllerService) DeleteEndedSession(ctx context.Context, req *connect
 
 // UpdateSessionExtraSettings implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) UpdateSessionExtraSettings(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateSessionExtraSettingsRequest]) (*connect.Response[hdlctrlv1.UpdateSessionExtraSettingsResponse], error) {
-	// TODO: いい感じにusecaseに移動する
-	s, err := c.suc.GetSession(ctx, req.Msg.GetSessionId())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
-	}
-
-	if req.Msg.AutoUpgrade != nil {
-		s.AutoUpgrade = req.Msg.GetAutoUpgrade()
-	}
-
-	if req.Msg.Memo != nil {
-		s.Memo = req.Msg.GetMemo()
-	}
-
-	err = c.srepo.Upsert(ctx, s)
-	if err != nil {
+	if err := c.suc.UpdateSessionExtraSettings(ctx, req.Msg.GetSessionId(), req.Msg.AutoUpgrade, req.Msg.Memo); err != nil {
 		return nil, convertErr(err)
 	}
 
-	res := connect.NewResponse(&hdlctrlv1.UpdateSessionExtraSettingsResponse{})
-
-	return res, nil
+	return connect.NewResponse(&hdlctrlv1.UpdateSessionExtraSettingsResponse{}), nil
 }
 
 // convertErr converts domain errors to appropriate Connect RPC error codes.

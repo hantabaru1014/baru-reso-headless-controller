@@ -50,7 +50,9 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		return nil, err
 	}
 	blobUsecase := usecase.NewBlobUsecase(sessionRepository, headlessHostRepository, minioClient)
-	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, blobUsecase, defaultClient)
+	scheduledSessionOperationRepository := adapter.NewScheduledSessionOperationRepository(queries)
+	scheduledSessionOperationUsecase := usecase.NewScheduledSessionOperationUsecase(scheduledSessionOperationRepository)
+	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, blobUsecase, scheduledSessionOperationUsecase, defaultClient)
 	imageChecker := worker.NewImageChecker(dockerHostConnector, workerConfig)
 	dockerEventWatcher := worker.NewDockerEventWatcher(dockerHostConnector, queries, workerConfig)
 	sqlHostEventStore := worker.NewSQLHostEventStore(queries)
@@ -59,7 +61,8 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	loggingHostEventHandler := worker.NewLoggingHostEventHandler()
 	v := ProvideHostEventHandlers(sessionStateSyncHandler, sessionLifecycleHandler, hostUpgradeOrchestrator, loggingHostEventHandler)
 	hostEventWatcher := worker.NewHostEventWatcher(headlessHostRepository, sqlHostEventStore, workerConfig, v)
-	manager := ProvideWorkerManager(imageChecker, dockerEventWatcher, hostEventWatcher, hostUpgradeOrchestrator, sessionUsecase)
+	scheduledOperationExecutor := ProvideScheduledOperationExecutor(scheduledSessionOperationRepository, sessionUsecase, sessionRepository, memoryCache)
+	manager := ProvideWorkerManager(imageChecker, dockerEventWatcher, hostEventWatcher, hostUpgradeOrchestrator, scheduledOperationExecutor, sessionUsecase)
 	bridge := resonitelink.NewBridge(headlessHostRepository, sessionRepository, resoniteLinkConfig)
 	server := NewServer(userService, controllerService, manager, minioClient, bridge)
 	return server, nil
@@ -82,7 +85,9 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, noopHostDrainer, memoryCache, serverConfig, resoniteLinkConfig)
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
-	cli := NewCli(queries, userUsecase, headlessHostUsecase, defaultClient)
+	scheduledSessionOperationRepository := adapter.NewScheduledSessionOperationRepository(queries)
+	scheduledSessionOperationUsecase := usecase.NewScheduledSessionOperationUsecase(scheduledSessionOperationRepository)
+	cli := NewCli(queries, userUsecase, headlessHostUsecase, scheduledSessionOperationUsecase, defaultClient)
 	return cli
 }
 
@@ -130,6 +135,7 @@ func ProvideWorkerManager(
 	dockerEventWatcher *worker.DockerEventWatcher,
 	hostEventWatcher *worker.HostEventWatcher,
 	upgradeOrchestrator *worker.HostUpgradeOrchestrator,
+	scheduledOpExecutor *worker.ScheduledOperationExecutor,
 	sessionStopper port.SessionStopper,
 ) *worker.Manager {
 	upgradeOrchestrator.SetSessionStopper(sessionStopper)
@@ -140,7 +146,20 @@ func ProvideWorkerManager(
 		dockerEventWatcher,
 		hostEventWatcher,
 		upgradeOrchestrator,
+		scheduledOpExecutor,
 	})
+}
+
+// ProvideScheduledOperationExecutor は scheduled session operation worker を
+// 構築する. SessionUsecase をそのまま SessionOperator として渡し、interface
+// 経由で worker パッケージから usecase パッケージへの依存を切る.
+func ProvideScheduledOperationExecutor(
+	repo port.ScheduledSessionOperationRepository,
+	suc *usecase.SessionUsecase,
+	srepo port.SessionRepository,
+	stateCache port.SessionStateCache,
+) *worker.ScheduledOperationExecutor {
+	return worker.NewScheduledOperationExecutor(repo, suc, srepo, stateCache, worker.ScheduledOperationExecutorOptions{})
 }
 
 // ProvideHostEventHandlers gathers consumers for the per-host event

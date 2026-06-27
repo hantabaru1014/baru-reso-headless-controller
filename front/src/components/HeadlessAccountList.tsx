@@ -36,7 +36,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import {
   HeadlessAccount,
   UserInfo,
-} from "front/pbgen/hdlctrl/v1/controller_pb";
+} from "../../pbgen/hdlctrl/v1/controller_pb";
 import prettyBytes from "@/libs/prettyBytes";
 import { resolveUrl } from "@/libs/skyfrostUtils";
 import { MoreVertical } from "lucide-react";

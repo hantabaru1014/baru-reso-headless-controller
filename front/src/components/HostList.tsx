@@ -34,7 +34,7 @@ import { SelectField } from "./base/SelectField";
 import {
   HeadlessHost,
   HeadlessHostAutoUpdatePolicy,
-} from "front/pbgen/hdlctrl/v1/controller_pb";
+} from "../../pbgen/hdlctrl/v1/controller_pb";
 import { DataTable } from "./base/DataTable";
 import { toast } from "sonner";
 import { CheckboxField, TextField } from "./base";

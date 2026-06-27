@@ -478,6 +478,29 @@ func (u *SessionUsecase) hydrateCurrentState(sessions entity.SessionList) {
 	}
 }
 
+// UpdateSessionExtraSettings は memo / auto_upgrade を更新する.
+// 内部的に GetSession (cache hydrate 込み) → Upsert で書き戻す.
+func (u *SessionUsecase) UpdateSessionExtraSettings(ctx context.Context, sessionID string, autoUpgrade *bool, memo *string) error {
+	s, err := u.GetSession(ctx, sessionID)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	if autoUpgrade != nil {
+		s.AutoUpgrade = *autoUpgrade
+	}
+
+	if memo != nil {
+		s.Memo = *memo
+	}
+
+	if err := u.sessionRepo.Upsert(ctx, s); err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	return nil
+}
+
 // getFreeSessionPort は環境変数で指定されたポート範囲から空きポートを探して返す
 // 環境変数が設定されていない場合は0を返す.
 func (u *SessionUsecase) getFreeSessionPort(ctx context.Context) (int, error) {

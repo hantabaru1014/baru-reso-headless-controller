@@ -61,8 +61,6 @@ export default function UserSettings() {
 
   return (
     <div className="container max-w-2xl mx-auto py-6">
-      <h1 className="text-2xl font-bold mb-6">ユーザー設定</h1>
-
       <Card>
         <CardHeader>
           <CardTitle>パスワード変更</CardTitle>

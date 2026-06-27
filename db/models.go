@@ -57,6 +57,25 @@ type RegistrationToken struct {
 	CreatedAt  pgtype.Timestamptz
 }
 
+type ScheduledSessionOperation struct {
+	ID               pgtype.UUID
+	OperationType    int32
+	OperationPayload []byte
+	TriggerType      int32
+	TriggerConfig    []byte
+	NextFireAt       pgtype.Timestamptz
+	HostID           pgtype.Text
+	SessionID        pgtype.Text
+	Status           int32
+	LastError        pgtype.Text
+	ClaimedBy        pgtype.Text
+	ClaimedAt        pgtype.Timestamptz
+	ExecutedAt       pgtype.Timestamptz
+	CreatedBy        pgtype.Text
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
 type Session struct {
 	ID                             string
 	Name                           string

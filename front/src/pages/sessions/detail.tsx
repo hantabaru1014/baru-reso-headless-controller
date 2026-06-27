@@ -1,6 +1,7 @@
 import { useParams } from "react-router";
 import SessionForm from "../../components/SessionForm";
 import SessionUserList from "../../components/SessionUserList";
+import ScheduledOperationList from "../../components/ScheduledOperationList";
 import { useQuery } from "@connectrpc/connect-query";
 import { getSessionDetails } from "../../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { SessionStatus } from "../../../pbgen/hdlctrl/v1/controller_pb";
@@ -23,6 +24,10 @@ export default function SessionDetail() {
               <SessionUserList sessionId={id} />
             </div>
           )}
+          <div className="w-full space-y-2 border-t pt-4">
+            <h2 className="text-lg font-semibold">予約操作</h2>
+            <ScheduledOperationList sessionId={id} />
+          </div>
         </>
       ) : (
         <div className="w-full">
