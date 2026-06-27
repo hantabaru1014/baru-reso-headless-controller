@@ -164,6 +164,39 @@ func (r *SessionRepository) ListByHostAndStatus(ctx context.Context, hostID stri
 	return result, nil
 }
 
+func (r *SessionRepository) InsertFromEvent(ctx context.Context, session *entity.Session) error {
+	// event 由来の session は startup_parameters を知らないため、nil の場合は
+	// 空 proto で埋める (sessions.startup_parameters の NOT NULL 制約を満たす)。
+	startupSource := session.StartupParameters
+	if startupSource == nil {
+		startupSource = &headlessv1.WorldStartupParameters{}
+	}
+
+	startupParams, err := protojson.Marshal(startupSource)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	startedAt := pgtype.Timestamptz{Valid: session.StartedAt != nil}
+	if session.StartedAt != nil {
+		startedAt.Time = *session.StartedAt
+	}
+
+	if err := r.q.InsertSessionFromEvent(ctx, db.InsertSessionFromEventParams{
+		ID:                             session.ID,
+		Name:                           session.Name,
+		Status:                         int32(session.Status),
+		StartedAt:                      startedAt,
+		HostID:                         session.HostID,
+		StartupParameters:              startupParams,
+		StartupParametersSchemaVersion: 1,
+	}); err != nil {
+		return errors.WrapPrefix(convertDBErr(err), "session", 0)
+	}
+
+	return nil
+}
+
 func (r *SessionRepository) ApplySessionStarted(ctx context.Context, id, hostID, name string, occurredAt time.Time) (bool, error) {
 	rows, err := r.q.ApplySessionStarted(ctx, db.ApplySessionStartedParams{
 		ID:        id,
@@ -179,11 +212,12 @@ func (r *SessionRepository) ApplySessionStarted(ctx context.Context, id, hostID,
 	return rows > 0, nil
 }
 
-func (r *SessionRepository) ApplySessionEnded(ctx context.Context, id string, occurredAt time.Time) (bool, error) {
+func (r *SessionRepository) ApplySessionEnded(ctx context.Context, id, hostID string, occurredAt time.Time) (bool, error) {
 	rows, err := r.q.ApplySessionEnded(ctx, db.ApplySessionEndedParams{
 		ID:      id,
 		Status:  int32(entity.SessionStatus_ENDED),
 		EndedAt: pgtype.Timestamptz{Time: occurredAt, Valid: true},
+		HostID:  hostID,
 	})
 	if err != nil {
 		return false, errors.WrapPrefix(convertDBErr(err), "session", 0)

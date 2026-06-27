@@ -29,6 +29,11 @@ type SessionRepository interface {
 	ListPaged(ctx context.Context, opts SessionListPageOptions) (*SessionListPageResult, error)
 	Delete(ctx context.Context, id string) error
 
+	// InsertFromEvent は host 由来の SessionStarted で「DB に存在しない session」を
+	// 作るための ON CONFLICT DO NOTHING な INSERT。競合 path (SessionUsecase.StartSession 等)
+	// が先に row を作っていた場合は何もしない (handler 側で続けて ApplySessionStarted を
+	// 呼ぶ前提)。
+	InsertFromEvent(ctx context.Context, session *entity.Session) error
 	// ApplySessionStarted は host 由来の SessionStarted を反映する部分更新。
 	// occurred_at が現在の started_at より新しい場合のみ status/started_at/ended_at/name/host_id を更新する。
 	// 更新が実際に行われた場合は true を返す (skip された場合は false)。
@@ -36,5 +41,7 @@ type SessionRepository interface {
 	ApplySessionStarted(ctx context.Context, id, hostID, name string, occurredAt time.Time) (bool, error)
 	// ApplySessionEnded は host 由来の SessionEnded を反映する部分更新。
 	// occurred_at が現在の ended_at より新しい場合のみ status/ended_at を更新する。
-	ApplySessionEnded(ctx context.Context, id string, occurredAt time.Time) (bool, error)
+	// hostID が現所有 host と一致する場合のみ反映 (旧 host から遅延配信された
+	// SessionEnded で現所有 host の session を倒さないようにする)。
+	ApplySessionEnded(ctx context.Context, id, hostID string, occurredAt time.Time) (bool, error)
 }

@@ -20,8 +20,13 @@ import (
 // It mimics the real adapter's behaviour as closely as practical:
 //   - Upsert rejects sessions whose StartupParameters is nil (mirrors the
 //     sessions.startup_parameters JSONB NOT NULL constraint).
+//   - InsertFromEvent is a no-op when a row already exists (mirrors the
+//     ON CONFLICT DO NOTHING semantics).
 //   - ApplySessionStarted / ApplySessionEnded enforce the same occurred_at
-//     guard their SQL counterparts do.
+//     and host_id guards their SQL counterparts do.
+//
+// The real SQL guards are additionally covered by an integration test in
+// adapter/session_repository_test.go.
 type fakeSessionRepo struct {
 	port.SessionRepository
 
@@ -72,6 +77,29 @@ func (r *fakeSessionRepo) Upsert(_ context.Context, session *entity.Session) err
 	return nil
 }
 
+func (r *fakeSessionRepo) InsertFromEvent(_ context.Context, session *entity.Session) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.upsertErr != nil {
+		return r.upsertErr
+	}
+
+	if session.StartupParameters == nil {
+		return errors.New("startup_parameters must not be nil (would violate NOT NULL)")
+	}
+
+	if _, exists := r.sessions[session.ID]; exists {
+		// ON CONFLICT DO NOTHING
+		return nil
+	}
+
+	clone := *session
+	r.sessions[session.ID] = &clone
+
+	return nil
+}
+
 func (r *fakeSessionRepo) UpdateStatus(_ context.Context, id string, status entity.SessionStatus) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -108,12 +136,16 @@ func (r *fakeSessionRepo) ApplySessionStarted(_ context.Context, id, hostID, nam
 	return true, nil
 }
 
-func (r *fakeSessionRepo) ApplySessionEnded(_ context.Context, id string, occurredAt time.Time) (bool, error) {
+func (r *fakeSessionRepo) ApplySessionEnded(_ context.Context, id, hostID string, occurredAt time.Time) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	s, ok := r.sessions[id]
 	if !ok {
+		return false, nil
+	}
+
+	if s.HostID != hostID {
 		return false, nil
 	}
 
@@ -330,18 +362,35 @@ func TestSessionLifecycleHandler_SessionStarted(t *testing.T) {
 		assert.True(t, got.StartedAt.Equal(newStart))
 	})
 
-	t.Run("Get エラー時は state を変更しない", func(t *testing.T) {
+	t.Run("InsertFromEvent エラー時は state を変更しない", func(t *testing.T) {
 		t.Parallel()
 
 		repo := newFakeSessionRepo()
-		repo.getErr = errors.New("db down")
+		repo.upsertErr = errors.New("db down")
 
 		h := NewSessionLifecycleHandler(repo)
 		h.HandleHostEvent(ctx, "host-1",
 			sessionStartedEvent(time.Now(), "session-1", "anything"))
 
 		assert.Nil(t, repo.snapshot("session-1"),
-			"transient errors must not silently insert a partial session")
+			"transient insert errors must not silently leave a partial session")
+	})
+
+	t.Run("occurred_at が未指定なら event 全体を drop する", func(t *testing.T) {
+		t.Parallel()
+
+		repo := newFakeSessionRepo()
+		h := NewSessionLifecycleHandler(repo)
+
+		h.HandleHostEvent(ctx, "host-1", &headlessv1.HostEvent{
+			Id: "01EVENT",
+			Payload: &headlessv1.HostEvent_SessionStarted{
+				SessionStarted: &headlessv1.SessionStarted{SessionId: "session-1", SessionName: "n"},
+			},
+		})
+
+		assert.Nil(t, repo.snapshot("session-1"),
+			"event with missing occurred_at must not create a zero-time row")
 	})
 }
 
@@ -496,6 +545,15 @@ func TestSessionLifecycleHandler_HandleHostEventStreamReset(t *testing.T) {
 			StartedAt:         &startedAt,
 			StartupParameters: &headlessv1.WorldStartupParameters{},
 		})
+		// STARTING session も触られないことを assert (ListByHostAndStatus が
+		// status=RUNNING のみ拾うことの回帰検知)。
+		repo.seed(&entity.Session{
+			ID:                "starting-1",
+			Status:            entity.SessionStatus_STARTING,
+			HostID:            "host-1",
+			StartedAt:         &startedAt,
+			StartupParameters: &headlessv1.WorldStartupParameters{},
+		})
 		repo.seed(&entity.Session{
 			ID:                "other-host-running",
 			Status:            entity.SessionStatus_RUNNING,
@@ -511,6 +569,8 @@ func TestSessionLifecycleHandler_HandleHostEventStreamReset(t *testing.T) {
 			"host-1 RUNNING session must be demoted to UNKNOWN")
 		assert.Equal(t, entity.SessionStatus_ENDED, repo.snapshot("ended-1").Status,
 			"non-RUNNING sessions on the same host must be left alone")
+		assert.Equal(t, entity.SessionStatus_STARTING, repo.snapshot("starting-1").Status,
+			"STARTING sessions must not be demoted (would clobber in-flight StartSession)")
 		assert.Equal(t, entity.SessionStatus_RUNNING, repo.snapshot("other-host-running").Status,
 			"sessions on a different host must be left alone")
 	})

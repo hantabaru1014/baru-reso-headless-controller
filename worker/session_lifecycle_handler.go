@@ -28,6 +28,13 @@ func NewSessionLifecycleHandler(sessionRepo port.SessionRepository) *SessionLife
 var _ HostEventHandler = (*SessionLifecycleHandler)(nil)
 
 func (h *SessionLifecycleHandler) HandleHostEvent(ctx context.Context, hostID string, ev *headlessv1.HostEvent) {
+	if ev.GetOccurredAt() == nil {
+		slog.Warn("session-lifecycle: dropping event with missing occurred_at",
+			"hostID", hostID, "eventID", ev.GetId())
+
+		return
+	}
+
 	occurredAt := ev.GetOccurredAt().AsTime()
 
 	switch payload := ev.GetPayload().(type) {
@@ -70,38 +77,28 @@ func (h *SessionLifecycleHandler) handleSessionStarted(ctx context.Context, host
 	sessionID := payload.GetSessionId()
 	logArgs := []any{"hostID", hostID, "eventID", eventID, "sessionID", sessionID}
 
-	existing, err := h.sessionRepo.Get(ctx, sessionID)
-
-	switch {
-	case errors.Is(err, domain.ErrNotFound):
-		// host 側で UI などから直接 world が起動された (controller を経由していない)。
-		// startup_parameters は NOT NULL なので空 proto で埋める。
-		newSession := &entity.Session{
-			ID:                sessionID,
-			Name:              payload.GetSessionName(),
-			Status:            entity.SessionStatus_RUNNING,
-			HostID:            hostID,
-			StartedAt:         &occurredAt,
-			StartupParameters: &headlessv1.WorldStartupParameters{},
-		}
-		if err := h.sessionRepo.Upsert(ctx, newSession); err != nil {
-			slog.Error("session-lifecycle: failed to create session from SessionStarted",
-				append(logArgs, "error", err)...)
-		}
-
-		return
-	case err != nil:
-		slog.Error("session-lifecycle: failed to load session for SessionStarted",
+	// 競合 path (SessionUsecase.StartSession 等) と race にならないよう、
+	// 「未存在なら作る」と「部分更新」を分離して両方無条件に呼ぶ:
+	//   1. InsertFromEvent は ON CONFLICT DO NOTHING なので、既に row があれば
+	//      何もせず memo / owner_id / startup_parameters を壊さない。
+	//   2. ApplySessionStarted は started_at < occurred_at 条件で部分 UPDATE。
+	//      新しい event なら name/status/started_at/ended_at/host_id だけ反映、
+	//      古い event なら no-op。
+	// この順序なら「先に何が書かれたか問わず、最終状態は SessionStarted が
+	// 反映され、かつ無関係なフィールドは保持される」が成立。
+	newSession := &entity.Session{
+		ID:                sessionID,
+		Name:              payload.GetSessionName(),
+		Status:            entity.SessionStatus_RUNNING,
+		HostID:            hostID,
+		StartedAt:         &occurredAt,
+		StartupParameters: &headlessv1.WorldStartupParameters{},
+	}
+	if err := h.sessionRepo.InsertFromEvent(ctx, newSession); err != nil {
+		slog.Error("session-lifecycle: failed to insert session from SessionStarted",
 			append(logArgs, "error", err)...)
 
 		return
-	}
-
-	if existing.HostID != hostID {
-		// SessionStarted は新しい host から来ているはずなので、host 移動とみなして
-		// 受け入れる (ApplySessionStarted が host_id も更新する)。
-		slog.Info("session-lifecycle: session migrated to a different host",
-			append(logArgs, "previousHostID", existing.HostID)...)
 	}
 
 	applied, err := h.sessionRepo.ApplySessionStarted(ctx, sessionID, hostID, payload.GetSessionName(), occurredAt)
@@ -138,7 +135,7 @@ func (h *SessionLifecycleHandler) handleSessionEnded(ctx context.Context, hostID
 
 	if existing.HostID != hostID {
 		// 古い host から遅延配信された SessionEnded で現所有 host の session を
-		// 倒さないようにスキップする。
+		// 倒さないようにスキップする (SQL の host_id 一致条件と二重防御)。
 		slog.Warn("session-lifecycle: SessionEnded from non-owning host; skipping",
 			append(logArgs, "ownerHostID", existing.HostID)...)
 
@@ -152,7 +149,7 @@ func (h *SessionLifecycleHandler) handleSessionEnded(ctx context.Context, hostID
 		return
 	}
 
-	applied, err := h.sessionRepo.ApplySessionEnded(ctx, sessionID, occurredAt)
+	applied, err := h.sessionRepo.ApplySessionEnded(ctx, sessionID, hostID, occurredAt)
 	if err != nil {
 		slog.Error("session-lifecycle: failed to apply SessionEnded",
 			append(logArgs, "error", err)...)
