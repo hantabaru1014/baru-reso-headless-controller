@@ -22,27 +22,30 @@ import (
 )
 
 type Server struct {
-	userService        *rpc.UserService
-	controllerService  *rpc.ControllerService
-	workerManager      *worker.Manager
-	blobClient         blobstore.Client
-	resoniteLinkBridge *resonitelink.Bridge
-	httpServer         *http.Server
+	userService         *rpc.UserService
+	controllerService   *rpc.ControllerService
+	notificationService *rpc.NotificationService
+	workerManager       *worker.Manager
+	blobClient          blobstore.Client
+	resoniteLinkBridge  *resonitelink.Bridge
+	httpServer          *http.Server
 }
 
 func NewServer(
 	userService *rpc.UserService,
 	controllerService *rpc.ControllerService,
+	notificationService *rpc.NotificationService,
 	workerManager *worker.Manager,
 	blobClient blobstore.Client,
 	resoniteLinkBridge *resonitelink.Bridge,
 ) *Server {
 	return &Server{
-		userService:        userService,
-		controllerService:  controllerService,
-		workerManager:      workerManager,
-		blobClient:         blobClient,
-		resoniteLinkBridge: resoniteLinkBridge,
+		userService:         userService,
+		controllerService:   controllerService,
+		notificationService: notificationService,
+		workerManager:       workerManager,
+		blobClient:          blobClient,
+		resoniteLinkBridge:  resoniteLinkBridge,
 	}
 }
 
@@ -135,6 +138,10 @@ func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 	}
 	{
 		p, h := s.controllerService.NewHandler()
+		router.PathPrefix(p).Handler(h)
+	}
+	{
+		p, h := s.notificationService.NewHandler()
 		router.PathPrefix(p).Handler(h)
 	}
 

@@ -18,6 +18,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/blobstore"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/notification"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/hantabaru1014/baru-reso-headless-controller/worker"
 )
@@ -52,19 +53,22 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	blobUsecase := usecase.NewBlobUsecase(sessionRepository, headlessHostRepository, minioClient)
 	scheduledSessionOperationRepository := adapter.NewScheduledSessionOperationRepository(queries)
 	scheduledSessionOperationUsecase := usecase.NewScheduledSessionOperationUsecase(scheduledSessionOperationRepository)
-	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, blobUsecase, scheduledSessionOperationUsecase, defaultClient)
+	memoryBus := notification.NewBus()
+	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, blobUsecase, scheduledSessionOperationUsecase, defaultClient, memoryBus)
+	notificationService := rpc.NewNotificationService(memoryBus)
 	imageChecker := worker.NewImageChecker(dockerHostConnector, workerConfig)
-	dockerEventWatcher := worker.NewDockerEventWatcher(dockerHostConnector, queries, workerConfig)
+	dockerEventWatcher := worker.NewDockerEventWatcher(dockerHostConnector, queries, memoryBus, workerConfig)
 	sqlHostEventStore := worker.NewSQLHostEventStore(queries)
 	sessionStateSyncHandler := worker.NewSessionStateSyncHandler(sessionRepository, headlessHostRepository, memoryCache)
 	sessionLifecycleHandler := worker.NewSessionLifecycleHandler(sessionRepository)
+	notificationDispatcher := worker.NewNotificationDispatcher(memoryBus)
 	loggingHostEventHandler := worker.NewLoggingHostEventHandler()
-	v := ProvideHostEventHandlers(sessionStateSyncHandler, sessionLifecycleHandler, hostUpgradeOrchestrator, loggingHostEventHandler)
+	v := ProvideHostEventHandlers(sessionStateSyncHandler, sessionLifecycleHandler, hostUpgradeOrchestrator, notificationDispatcher, loggingHostEventHandler)
 	hostEventWatcher := worker.NewHostEventWatcher(headlessHostRepository, sqlHostEventStore, workerConfig, v)
 	scheduledOperationExecutor := ProvideScheduledOperationExecutor(scheduledSessionOperationRepository, sessionUsecase, sessionRepository, memoryCache)
 	manager := ProvideWorkerManager(imageChecker, dockerEventWatcher, hostEventWatcher, hostUpgradeOrchestrator, scheduledOperationExecutor, sessionUsecase)
 	bridge := resonitelink.NewBridge(headlessHostRepository, sessionRepository, resoniteLinkConfig)
-	server := NewServer(userService, controllerService, manager, minioClient, bridge)
+	server := NewServer(userService, controllerService, notificationService, manager, minioClient, bridge)
 	return server, nil
 }
 
@@ -163,15 +167,21 @@ func ProvideScheduledOperationExecutor(
 }
 
 // ProvideHostEventHandlers gathers consumers for the per-host event
-// streams. Order matters: the logging handler runs last so other handlers'
-// DB writes are visible by the time we log the event.
+// streams. Order matters:
+//   - DB-mutating handlers (state sync, lifecycle, upgrade orchestrator) run
+//     first so the DB reflects the new state.
+//   - NotificationDispatcher runs after those so frontend clients that
+//     re-fetch on receipt of the notification get the post-mutation rows.
+//   - LoggingHostEventHandler runs last so log lines reflect what all the
+//     other handlers actually saw.
 func ProvideHostEventHandlers(
 	sessionStateSyncHandler *worker.SessionStateSyncHandler,
 	sessionLifecycleHandler *worker.SessionLifecycleHandler,
 	upgradeOrchestrator *worker.HostUpgradeOrchestrator,
+	notificationDispatcher *worker.NotificationDispatcher,
 	loggingHandler *worker.LoggingHostEventHandler,
 ) []worker.HostEventHandler {
-	return []worker.HostEventHandler{sessionStateSyncHandler, sessionLifecycleHandler, upgradeOrchestrator, loggingHandler}
+	return []worker.HostEventHandler{sessionStateSyncHandler, sessionLifecycleHandler, upgradeOrchestrator, notificationDispatcher, loggingHandler}
 }
 
 // ProvideHeadlessAccountFetcher exposes HeadlessAccountUsecase under the

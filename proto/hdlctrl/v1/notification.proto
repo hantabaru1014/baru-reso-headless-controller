@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package hdlctrl.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// NotificationService は server-streaming でフロントエンドに対して
+// イベントを push する. 認証済みクライアントは SubscribeNotifications を
+// 1 本張り、受信したイベントから関連する TanStack Query を invalidate する.
+service NotificationService {
+  rpc SubscribeNotifications(SubscribeNotificationsRequest) returns (stream NotificationEvent);
+}
+
+message SubscribeNotificationsRequest {}
+
+// NotificationEvent はフロントエンドの個別ページ/コンポーネントが
+// 「自身の表示に関係するイベントか」を判定し、必要なクエリを invalidate
+// するための最小情報のみ運ぶ. データ本体は送らない (再フェッチ前提).
+message NotificationEvent {
+  // 将来的な resume 用 ULID. 初版では未使用.
+  string id = 1;
+  google.protobuf.Timestamp occurred_at = 2;
+
+  oneof payload {
+    // HTTP/1.1 chunked transfer や中間 proxy のアイドルタイムアウト対策の
+    // ためのキープアライブ. クライアントは受信時に何もしない.
+    KeepAlive keep_alive = 3;
+
+    SessionUpdatedEvent session_updated = 10;
+    SessionUserChangedEvent session_user_changed = 11;
+    SessionLifecycleEvent session_lifecycle = 12;
+    HostUpdatedEvent host_updated = 20;
+    HostListChangedEvent host_list_changed = 21;
+
+    // 将来の非同期 job 完了 toast 用. 初版では publish されない.
+    JobCompletedEvent job_completed = 90;
+  }
+}
+
+message KeepAlive {}
+
+// セッションの中身 (ワールド情報, パラメータ, ユーザー一覧の総数) が
+// 更新されたことを通知する. 受信側は session 詳細を再フェッチする.
+message SessionUpdatedEvent {
+  string session_id = 1;
+  string host_id = 2;
+}
+
+// セッションへのユーザー入退室を通知する. user_name は toast 用に
+// 載せておくが, 初版ではフロントから利用しない.
+message SessionUserChangedEvent {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    KIND_JOINED = 1;
+    KIND_LEFT = 2;
+  }
+  string session_id = 1;
+  string host_id = 2;
+  Kind kind = 3;
+  string user_name = 4;
+}
+
+// セッションが開始/終了したことを通知する. ホスト詳細・一覧の
+// アクティブセッション表示にも影響する.
+message SessionLifecycleEvent {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    KIND_STARTED = 1;
+    KIND_ENDED = 2;
+  }
+  string session_id = 1;
+  string host_id = 2;
+  Kind kind = 3;
+}
+
+// ホストの状態 (status, settings 等) が更新されたことを通知する.
+message HostUpdatedEvent {
+  string host_id = 1;
+}
+
+// ホスト一覧の構成自体が変わった (起動/削除) ことを通知する.
+// 個別 host 詳細の再取得は不要なので host_id は持たない.
+message HostListChangedEvent {}
+
+// 非同期 job の完了 toast 用. 初版では publish されない.
+message JobCompletedEvent {
+  enum Level {
+    LEVEL_UNSPECIFIED = 0;
+    LEVEL_INFO = 1;
+    LEVEL_SUCCESS = 2;
+    LEVEL_ERROR = 3;
+  }
+  string job_id = 1;
+  Level level = 2;
+  string message = 3;
+}

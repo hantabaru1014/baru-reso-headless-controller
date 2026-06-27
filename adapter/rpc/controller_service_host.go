@@ -70,6 +70,8 @@ func (c *ControllerService) StartHeadlessHost(ctx context.Context, req *connect.
 		return nil, convertErr(err)
 	}
 
+	c.publishHostListChanged()
+
 	res := connect.NewResponse(&hdlctrlv1.StartHeadlessHostResponse{
 		HostId: hostId,
 	})
@@ -199,6 +201,8 @@ func (c *ControllerService) UpdateHeadlessHostSettings(ctx context.Context, req 
 			}
 		}
 	}
+
+	c.publishHostUpdated(req.Msg.GetHostId())
 
 	res := connect.NewResponse(&hdlctrlv1.UpdateHeadlessHostSettingsResponse{})
 
@@ -387,6 +391,8 @@ func (c *ControllerService) DeleteHeadlessHost(ctx context.Context, req *connect
 	if err != nil {
 		return nil, convertErr(err)
 	}
+
+	c.publishHostListChanged()
 
 	return connect.NewResponse(&hdlctrlv1.DeleteHeadlessHostResponse{}), nil
 }

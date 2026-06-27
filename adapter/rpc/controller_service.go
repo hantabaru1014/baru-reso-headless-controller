@@ -12,6 +12,7 @@ import (
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/notification"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
 
@@ -58,9 +59,10 @@ type ControllerService struct {
 	buc            *usecase.BlobUsecase
 	souc           *usecase.ScheduledSessionOperationUsecase
 	skyfrostClient skyfrost.Client
+	bus            notification.Bus
 }
 
-func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase, suc *usecase.SessionUsecase, buc *usecase.BlobUsecase, souc *usecase.ScheduledSessionOperationUsecase, skyfrostClient skyfrost.Client) *ControllerService {
+func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase, suc *usecase.SessionUsecase, buc *usecase.BlobUsecase, souc *usecase.ScheduledSessionOperationUsecase, skyfrostClient skyfrost.Client, bus notification.Bus) *ControllerService {
 	return &ControllerService{
 		hhrepo:         hhrepo,
 		srepo:          srepo,
@@ -70,6 +72,7 @@ func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.Session
 		buc:            buc,
 		souc:           souc,
 		skyfrostClient: skyfrostClient,
+		bus:            bus,
 	}
 }
 
@@ -108,4 +111,15 @@ func convertRpcClientErr(err error) error {
 	}
 
 	return connect.NewError(connect.CodeInternal, err)
+}
+
+// publishHostUpdated は単一ホストの再フェッチを促す通知を発行する.
+// container 状態の変化は DockerEventWatcher 側でも publish されるので,
+// ここでは「container 状態は変えないが UI 表示は更新したい」ケースで使う.
+func (c *ControllerService) publishHostUpdated(hostID string) {
+	c.bus.Publish(notification.HostUpdated(hostID, "", nil))
+}
+
+func (c *ControllerService) publishHostListChanged() {
+	c.bus.Publish(notification.HostListChanged())
 }
