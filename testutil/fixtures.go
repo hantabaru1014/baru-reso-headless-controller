@@ -11,11 +11,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
-	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // CreateTestUser creates a test user in the database.
@@ -111,25 +109,8 @@ func CreateTestHeadlessHost(t *testing.T, queries *db.Queries, accountID, name s
 func CreateTestSession(t *testing.T, queries *db.Queries, hostID, name string, status entity.SessionStatus) db.Session {
 	t.Helper()
 
-	return CreateTestSessionWithStartupParameters(t, queries, hostID, name, status, nil)
-}
-
-// CreateTestSessionWithStartupParameters creates a test session with explicit
-// startup_parameters JSONB, simulating various pre-existing DB state in tests.
-func CreateTestSessionWithStartupParameters(t *testing.T, queries *db.Queries, hostID, name string, status entity.SessionStatus, startupParameters *headlessv1.WorldStartupParameters) db.Session {
-	t.Helper()
-
 	id := uniuri.New()
 	startupParams := []byte(`{"maxUsers": 8}`)
-
-	if startupParameters != nil {
-		b, err := protojson.Marshal(startupParameters)
-		if err != nil {
-			t.Fatalf("failed to marshal startup_parameters: %v", err)
-		}
-
-		startupParams = b
-	}
 
 	session, err := queries.UpsertSession(t.Context(), db.UpsertSessionParams{
 		ID:                             id,

@@ -13,7 +13,6 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	hostconnectormock "github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector/mock"
-	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/sessionstate"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
@@ -75,11 +74,10 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 	// Setup repositories with real implementations
 	srepo := adapter.NewSessionRepository(queries)
 	hhrepo := adapter.NewHeadlessHostRepository(queries, mockHostConnector, &cfg.GRPC)
-	stateCache := sessionstate.NewMemoryCache()
 
 	// Setup usecases with real repositories
 	hauc := usecase.NewHeadlessAccountUsecase(queries, mockSkyfrost)
-	suc := usecase.NewSessionUsecase(srepo, hhrepo, stateCache, &cfg.Server, &cfg.ResoniteLink)
+	suc := usecase.NewSessionUsecase(srepo, hhrepo, &cfg.GRPC, &cfg.Server, &cfg.ResoniteLink)
 	hhuc := usecase.NewHeadlessHostUsecase(hhrepo, srepo, suc, hauc)
 	buc := usecase.NewBlobUsecase(srepo, hhrepo, mockBlobstore)
 
@@ -1517,6 +1515,17 @@ func TestControllerService_ShutdownHeadlessHost(t *testing.T) {
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
 
+		// Mock HostConnector - SearchSessions calls GetRpcClient to list sessions
+		setup.mockHostConnector.EXPECT().
+			GetRpcClient(gomock.Any(), gomock.Any()).
+			Return(setup.mockRpcClient, nil)
+
+		setup.mockRpcClient.EXPECT().
+			ListSessions(gomock.Any(), gomock.Any()).
+			Return(&headlessv1.ListSessionsResponse{
+				Sessions: []*headlessv1.Session{},
+			}, nil)
+
 		// Mock HostConnector - Stop calls GetRpcClient to fetch startup config
 		setup.mockHostConnector.EXPECT().
 			GetRpcClient(gomock.Any(), gomock.Any()).
@@ -1571,6 +1580,17 @@ func TestControllerService_KillHeadlessHost(t *testing.T) {
 		// Create test account and host
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
+
+		// Mock HostConnector - SearchSessions calls GetRpcClient to list sessions
+		setup.mockHostConnector.EXPECT().
+			GetRpcClient(gomock.Any(), gomock.Any()).
+			Return(setup.mockRpcClient, nil)
+
+		setup.mockRpcClient.EXPECT().
+			ListSessions(gomock.Any(), gomock.Any()).
+			Return(&headlessv1.ListSessionsResponse{
+				Sessions: []*headlessv1.Session{},
+			}, nil)
 
 		// Mock HostConnector - Kill
 		setup.mockHostConnector.EXPECT().
@@ -2346,22 +2366,22 @@ func TestControllerService_SaveSessionWorld(t *testing.T) {
 			Return(setup.mockRpcClient, nil).
 			AnyTimes()
 
-		// SessionUsecase.GetSession は cache miss 時に container の GetSession を打って
-		// cache を populate する。テストでは cache 未投入なのでこの呼び出しが発生する。
+		// Mock RPC call to get session (called by SaveSessionWorld usecase)
 		setup.mockRpcClient.EXPECT().
 			GetSession(gomock.Any(), gomock.Any()).
 			Return(&headlessv1.GetSessionResponse{
-				Session: &headlessv1.Session{Id: session.ID, Name: session.Name},
+				Session: &headlessv1.Session{
+					Id:       session.ID,
+					Name:     session.Name,
+					WorldUrl: "resrec:///U-test/R-test-world",
+				},
 			}, nil).
 			AnyTimes()
 
-		// Mock RPC call to save world. container 側が新しく saved_world_url を返すので
-		// preset 由来の初回 save でも stale な CurrentState ではなく同期的に正しい URL を返す。
+		// Mock RPC call to save world
 		setup.mockRpcClient.EXPECT().
 			SaveSessionWorld(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.SaveSessionWorldResponse{
-				SavedWorldUrl: "resrec:///U-test/R-test-world",
-			}, nil)
+			Return(&headlessv1.SaveSessionWorldResponse{}, nil)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.SaveSessionWorldRequest{
 			SessionId: session.ID,

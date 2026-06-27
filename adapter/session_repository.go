@@ -2,7 +2,6 @@ package adapter
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -91,51 +90,6 @@ func (r *SessionRepository) UpdateStatus(ctx context.Context, id string, status 
 		ID:     id,
 		Status: int32(status),
 	})
-}
-
-func (r *SessionRepository) ApplySessionParametersChanged(ctx context.Context, id string, snapshot *headlessv1.Session) error {
-	if snapshot == nil {
-		return nil
-	}
-
-	// tags は JSON array として渡す。空配列で「タグ全消し」を表現できる。
-	// 必ず非 nil の []string を marshal して "[]" を保証する (nil だと "null" に
-	// なって JSONB || 演算で型不整合になる)。
-	tagSlice := snapshot.GetTags()
-	if tagSlice == nil {
-		tagSlice = []string{}
-	}
-
-	tagsJSON, err := json.Marshal(tagSlice)
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-
-	return r.q.ApplySessionParametersChanged(ctx, db.ApplySessionParametersChangedParams{
-		ID:                         id,
-		Name:                       snapshot.GetName(),
-		Description:                snapshot.GetDescription(),
-		MaxUsers:                   snapshot.GetMaxUsers(),
-		AccessLevel:                snapshot.GetAccessLevel().String(),
-		HideFromPublicListing:      snapshot.GetHideFromPublicListing(),
-		AwayKickMinutes:            snapshot.GetAwayKickMinutes(),
-		IdleRestartIntervalSeconds: snapshot.GetIdleRestartIntervalSeconds(),
-		SaveOnExit:                 snapshot.GetSaveOnExit(),
-		AutoSaveIntervalSeconds:    snapshot.GetAutoSaveIntervalSeconds(),
-		AutoSleep:                  snapshot.GetAutoSleep(),
-		Tags:                       tagsJSON,
-	})
-}
-
-func (r *SessionRepository) UpdateAfterWorldSaved(ctx context.Context, id string, worldURL string) error {
-	return r.q.UpdateSessionAfterWorldSaved(ctx, db.UpdateSessionAfterWorldSavedParams{
-		ID:       id,
-		WorldUrl: worldURL,
-	})
-}
-
-func (r *SessionRepository) DowngradeToUnknownIfRunning(ctx context.Context, id string) error {
-	return r.q.DowngradeSessionToUnknownIfRunning(ctx, id)
 }
 
 func (r *SessionRepository) Get(ctx context.Context, id string) (*entity.Session, error) {
@@ -337,8 +291,6 @@ func sessionToEntity(s db.Session) (*entity.Session, error) {
 		memo = s.Memo.String
 	}
 
-	// CurrentState は揮発状態のため DB に持たず in-memory cache (port.SessionStateCache)
-	// が権威。Caller 側で cache から populate される。
 	return &entity.Session{
 		ID:                s.ID,
 		Name:              s.Name,

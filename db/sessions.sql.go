@@ -45,67 +45,6 @@ func (q *Queries) ApplySessionEnded(ctx context.Context, arg ApplySessionEndedPa
 	return result.RowsAffected(), nil
 }
 
-const applySessionParametersChanged = `-- name: ApplySessionParametersChanged :exec
-UPDATE sessions
-SET name = $1::text,
-    startup_parameters = startup_parameters || jsonb_build_object(
-        'name', $1::text,
-        'description', $2::text,
-        'maxUsers', $3::int,
-        'accessLevel', $4::text,
-        'hideFromPublicListing', $5::bool,
-        'awayKickMinutes', $6::real,
-        'idleRestartIntervalSeconds', $7::int,
-        'saveOnExit', $8::bool,
-        'autoSaveIntervalSeconds', $9::int,
-        'autoSleep', $10::bool,
-        'tags', $11::jsonb
-    )
-WHERE id = $12
-`
-
-type ApplySessionParametersChangedParams struct {
-	Name                       string
-	Description                string
-	MaxUsers                   int32
-	AccessLevel                string
-	HideFromPublicListing      bool
-	AwayKickMinutes            float32
-	IdleRestartIntervalSeconds int32
-	SaveOnExit                 bool
-	AutoSaveIntervalSeconds    int32
-	AutoSleep                  bool
-	Tags                       []byte
-	ID                         string
-}
-
-// event 駆動の SessionParametersChanged 反映用。SessionInfo の overlap field を
-// startup_parameters JSONB に merge することで、in-world で session 設定が
-// 変わったときに次回 restart 時にもその変更が反映されるようにする。
-//
-// JSONB の `||` で右オペランドの値が左を上書きする。tags は配列ごと差し替えに
-// なるため、空配列を渡せば「タグ全消し」を表現できる。
-// protojson の field 名は camelCase (sessions.startup_parameters 列も
-// protojson 形式)。AccessLevel は enum 文字列 (`ACCESS_LEVEL_ANYONE` 等) を渡す。
-// name 列は startup_parameters とは別に持つので両方更新する。
-func (q *Queries) ApplySessionParametersChanged(ctx context.Context, arg ApplySessionParametersChangedParams) error {
-	_, err := q.db.Exec(ctx, applySessionParametersChanged,
-		arg.Name,
-		arg.Description,
-		arg.MaxUsers,
-		arg.AccessLevel,
-		arg.HideFromPublicListing,
-		arg.AwayKickMinutes,
-		arg.IdleRestartIntervalSeconds,
-		arg.SaveOnExit,
-		arg.AutoSaveIntervalSeconds,
-		arg.AutoSleep,
-		arg.Tags,
-		arg.ID,
-	)
-	return err
-}
-
 const applySessionStarted = `-- name: ApplySessionStarted :execrows
 UPDATE sessions
 SET
@@ -149,18 +88,6 @@ DELETE FROM sessions WHERE id = $1
 
 func (q *Queries) DeleteSession(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, deleteSession, id)
-	return err
-}
-
-const downgradeSessionToUnknownIfRunning = `-- name: DowngradeSessionToUnknownIfRunning :exec
-UPDATE sessions SET status = 0 WHERE id = $1 AND status = 2
-`
-
-// StreamReset reconcile 期間中に gRPC StopSession 等で正常終端した session を、
-// host snapshot に居ないという根拠だけで UNKNOWN へ降格しないようガードする。
-// 2 = SessionStatus_RUNNING, 0 = SessionStatus_UNKNOWN
-func (q *Queries) DowngradeSessionToUnknownIfRunning(ctx context.Context, id string) error {
-	_, err := q.db.Exec(ctx, downgradeSessionToUnknownIfRunning, id)
 	return err
 }
 
@@ -413,34 +340,6 @@ func (q *Queries) ListSessionsPaged(ctx context.Context, arg ListSessionsPagedPa
 		return nil, err
 	}
 	return items, nil
-}
-
-const updateSessionAfterWorldSaved = `-- name: UpdateSessionAfterWorldSaved :exec
-UPDATE sessions
-SET startup_parameters = jsonb_set(
-        COALESCE(startup_parameters, '{}'::jsonb) - 'loadWorldPresetName',
-        '{loadWorldUrl}',
-        to_jsonb($1::text)
-    )
-WHERE id = $2
-`
-
-type UpdateSessionAfterWorldSavedParams struct {
-	WorldUrl string
-	ID       string
-}
-
-// event 駆動の WorldSaved 反映用。world_url 1 値だけ受け取り、protojson の
-// JSONB に対して jsonb_set で in-place 書き換えする。handler は Get→mutate→Update
-// を往復しないので、gRPC UpdateSessionParameters / Upsert と race しても他
-// フィールドを stale snapshot で revert しない。
-//
-// protojson は oneof を active case のキーだけ出力するため、preset case が
-// 残っていると `loadWorld` で 2 つのキーが現れて parse 不能になる。
-// 先に `loadWorldPresetName` を `-` で削ってから `loadWorldUrl` を書き込む。
-func (q *Queries) UpdateSessionAfterWorldSaved(ctx context.Context, arg UpdateSessionAfterWorldSavedParams) error {
-	_, err := q.db.Exec(ctx, updateSessionAfterWorldSaved, arg.WorldUrl, arg.ID)
-	return err
 }
 
 const updateSessionStatus = `-- name: UpdateSessionStatus :exec
