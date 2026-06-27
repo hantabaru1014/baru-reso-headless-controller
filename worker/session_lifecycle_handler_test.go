@@ -520,68 +520,38 @@ func TestSessionLifecycleHandler_SessionEnded(t *testing.T) {
 	})
 }
 
-func TestSessionLifecycleHandler_HandleHostEventStreamReset(t *testing.T) {
+// TestSessionLifecycleHandler_HandleHostEventStreamReset verifies the
+// handler intentionally does NOT touch DB rows on stream reset. The blanket
+// RUNNING→UNKNOWN demote that lived here previously would shadow
+// SessionStateSyncHandler.HandleHostEventStreamReset, which already does a
+// per-session reconcile via ListSessions + DowngradeToUnknownIfRunning.
+func TestSessionLifecycleHandler_HandleHostEventStreamReset_IsNoOp(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
+	startedAt := time.Date(2025, 4, 1, 0, 0, 0, 0, time.UTC)
 
-	t.Run("hostID 配下の RUNNING セッションのみ UNKNOWN に倒す", func(t *testing.T) {
-		t.Parallel()
-
-		startedAt := time.Date(2025, 4, 1, 0, 0, 0, 0, time.UTC)
-
-		repo := newFakeSessionRepo()
-		repo.seed(&entity.Session{
-			ID:                "running-1",
-			Status:            entity.SessionStatus_RUNNING,
-			HostID:            "host-1",
-			StartedAt:         &startedAt,
-			StartupParameters: &headlessv1.WorldStartupParameters{},
-		})
-		repo.seed(&entity.Session{
-			ID:                "ended-1",
-			Status:            entity.SessionStatus_ENDED,
-			HostID:            "host-1",
-			StartedAt:         &startedAt,
-			StartupParameters: &headlessv1.WorldStartupParameters{},
-		})
-		// STARTING session も触られないことを assert (ListByHostAndStatus が
-		// status=RUNNING のみ拾うことの回帰検知)。
-		repo.seed(&entity.Session{
-			ID:                "starting-1",
-			Status:            entity.SessionStatus_STARTING,
-			HostID:            "host-1",
-			StartedAt:         &startedAt,
-			StartupParameters: &headlessv1.WorldStartupParameters{},
-		})
-		repo.seed(&entity.Session{
-			ID:                "other-host-running",
-			Status:            entity.SessionStatus_RUNNING,
-			HostID:            "host-2",
-			StartedAt:         &startedAt,
-			StartupParameters: &headlessv1.WorldStartupParameters{},
-		})
-
-		h := NewSessionLifecycleHandler(repo)
-		h.HandleHostEventStreamReset(ctx, "host-1")
-
-		assert.Equal(t, entity.SessionStatus_UNKNOWN, repo.snapshot("running-1").Status,
-			"host-1 RUNNING session must be demoted to UNKNOWN")
-		assert.Equal(t, entity.SessionStatus_ENDED, repo.snapshot("ended-1").Status,
-			"non-RUNNING sessions on the same host must be left alone")
-		assert.Equal(t, entity.SessionStatus_STARTING, repo.snapshot("starting-1").Status,
-			"STARTING sessions must not be demoted (would clobber in-flight StartSession)")
-		assert.Equal(t, entity.SessionStatus_RUNNING, repo.snapshot("other-host-running").Status,
-			"sessions on a different host must be left alone")
+	repo := newFakeSessionRepo()
+	repo.seed(&entity.Session{
+		ID:                "running-1",
+		Status:            entity.SessionStatus_RUNNING,
+		HostID:            "host-1",
+		StartedAt:         &startedAt,
+		StartupParameters: &headlessv1.WorldStartupParameters{},
+	})
+	repo.seed(&entity.Session{
+		ID:                "running-other-host",
+		Status:            entity.SessionStatus_RUNNING,
+		HostID:            "host-2",
+		StartedAt:         &startedAt,
+		StartupParameters: &headlessv1.WorldStartupParameters{},
 	})
 
-	t.Run("対象が無い場合は no-op", func(t *testing.T) {
-		t.Parallel()
+	h := NewSessionLifecycleHandler(repo)
+	h.HandleHostEventStreamReset(t.Context(), "host-1")
 
-		repo := newFakeSessionRepo()
-		h := NewSessionLifecycleHandler(repo)
-		h.HandleHostEventStreamReset(ctx, "host-empty")
-	})
+	assert.Equal(t, entity.SessionStatus_RUNNING, repo.snapshot("running-1").Status,
+		"lifecycle handler must not demote on reset (sync handler owns that decision)")
+	assert.Equal(t, entity.SessionStatus_RUNNING, repo.snapshot("running-other-host").Status)
 }
 
 func TestSessionLifecycleHandler_IgnoresUnrelatedPayloads(t *testing.T) {

@@ -95,10 +95,6 @@ func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId
 	startedAt := resp.GetOpenedSession().GetStartedAt().AsTime()
 	openedSession := resp.GetOpenedSession()
 
-	// 起動直後 SessionParametersChanged event より先に GetSession 等が来ても
-	// CurrentState を返せるよう、cache に最初の snapshot を入れておく。
-	u.stateCache.Set(openedSession.GetId(), openedSession)
-
 	session := &entity.Session{
 		ID:                openedSession.GetId(),
 		Name:              openedSession.GetName(),
@@ -113,10 +109,13 @@ func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId
 		session.Memo = *memo
 	}
 
-	err = u.sessionRepo.Upsert(ctx, session)
-	if err != nil {
+	if err := u.sessionRepo.Upsert(ctx, session); err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
+
+	// Upsert 後に cache.Set: 反転すると DB upsert 失敗時に cache に orphan が
+	// 残って、SessionEnded event も来ないので controller 再起動まで漏れたままになる。
+	u.stateCache.Set(hostId, openedSession.GetId(), openedSession)
 
 	return session, nil
 }
@@ -151,9 +150,15 @@ func (u *SessionUsecase) StopSession(ctx context.Context, id string) error {
 	s.EndedAt = &now
 	s.Status = entity.SessionStatus_ENDED
 
+	if err := u.sessionRepo.Upsert(ctx, s); err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	// Upsert 後に cache.Delete: 反転すると Upsert 失敗時に cache だけ消えて
+	// 次の GetSession で container 問い合わせ → CRASHED 降格、の連鎖になりうる。
 	u.stateCache.Delete(id)
 
-	return u.sessionRepo.Upsert(ctx, s)
+	return nil
 }
 
 func (u *SessionUsecase) GetSession(ctx context.Context, id string) (*entity.Session, error) {
@@ -162,39 +167,56 @@ func (u *SessionUsecase) GetSession(ctx context.Context, id string) (*entity.Ses
 		return nil, errors.Wrap(err, 0)
 	}
 
-	if dbSession.Status != entity.SessionStatus_STARTING && dbSession.Status != entity.SessionStatus_RUNNING {
+	// ENDED は終端なので container 問い合わせ不要。それ以外 (STARTING / RUNNING /
+	// CRASHED / UNKNOWN) は cache 経路に乗せる: transient な RPC 失敗で CRASHED に
+	// 落ちていた session も、container が応答するようになれば自動的に RUNNING に
+	// 戻る (= self-healing)。
+	if dbSession.Status == entity.SessionStatus_ENDED {
 		return dbSession, nil
 	}
 
-	// cache hit ならそのまま返す。
 	if snapshot, ok := u.stateCache.Get(id); ok {
 		dbSession.CurrentState = snapshot
+		// cache hit = event が届いている = container は session を抱えている。
+		// CRASHED / UNKNOWN に降格していたら RUNNING に戻す。
+		if dbSession.Status != entity.SessionStatus_RUNNING {
+			_ = u.sessionRepo.UpdateStatus(ctx, id, entity.SessionStatus_RUNNING)
+			dbSession.Status = entity.SessionStatus_RUNNING
+		}
 
 		return dbSession, nil
 	}
 
-	// cache miss は controller 再起動直後や、まだ event が届いていないケース。
-	// container から取り直し cache を populate する。RPC が引けない / 失敗したら
-	// CRASHED に降ろして DB session を返す (UI 側は CurrentState=nil でも optional
-	// chain で扱える)。
+	// cache miss: controller 再起動直後 / event 未到達 / 過去に CRASHED 降格した
+	// session の復旧試行 など。container から取り直す。
 	client, clientErr := u.hostRepo.GetRpcClient(ctx, dbSession.HostID)
 	if clientErr != nil {
-		_ = u.sessionRepo.UpdateStatus(ctx, id, entity.SessionStatus_CRASHED)
-		dbSession.Status = entity.SessionStatus_CRASHED
+		if dbSession.Status != entity.SessionStatus_CRASHED {
+			_ = u.sessionRepo.UpdateStatus(ctx, id, entity.SessionStatus_CRASHED)
+			dbSession.Status = entity.SessionStatus_CRASHED
+		}
 
-		return dbSession, nil //nolint:nilerr // CRASHED 降格として吸収する設計
+		return dbSession, nil
 	}
 
 	resp, rpcErr := client.GetSession(ctx, &headlessv1.GetSessionRequest{SessionId: id})
 	if rpcErr != nil || resp.GetSession() == nil {
-		_ = u.sessionRepo.UpdateStatus(ctx, id, entity.SessionStatus_CRASHED)
-		dbSession.Status = entity.SessionStatus_CRASHED
+		if dbSession.Status != entity.SessionStatus_CRASHED {
+			_ = u.sessionRepo.UpdateStatus(ctx, id, entity.SessionStatus_CRASHED)
+			dbSession.Status = entity.SessionStatus_CRASHED
+		}
 
-		return dbSession, nil //nolint:nilerr // CRASHED 降格として吸収する設計
+		return dbSession, nil
 	}
 
-	u.stateCache.Set(id, resp.GetSession())
+	u.stateCache.Set(dbSession.HostID, id, resp.GetSession())
 	dbSession.CurrentState = resp.GetSession()
+
+	// container が応答した = session は生きている。CRASHED/UNKNOWN だったら戻す。
+	if dbSession.Status != entity.SessionStatus_RUNNING {
+		_ = u.sessionRepo.UpdateStatus(ctx, id, entity.SessionStatus_RUNNING)
+		dbSession.Status = entity.SessionStatus_RUNNING
+	}
 
 	return dbSession, nil
 }
@@ -342,23 +364,30 @@ func (u *SessionUsecase) UpdateSessionParameters(ctx context.Context, id string,
 	}
 
 	updateStartupParamsByUpdateRequest(s.StartupParameters, params)
-
-	// container の最新 snapshot で cache を更新しておく。SessionParametersChanged
-	// event 経由でも同じ snapshot が流れてくるが、handler の到達を待たずに
-	// 即時に最新 state を見せる。
-	if newSession.GetSession() != nil {
-		u.stateCache.Set(id, newSession.GetSession())
-	}
-
 	s.Name = newSession.GetSession().GetName()
 
-	return u.sessionRepo.Upsert(ctx, s)
+	if err := u.sessionRepo.Upsert(ctx, s); err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	// Upsert 成功後に cache を最新 snapshot で更新。SessionParametersChanged event
+	// 経由でも同じ snapshot が流れてくるが (どちらが先でも最終状態は convergent)、
+	// handler の到達を待たずに即時に最新 state を見せたい。
+	if newSession.GetSession() != nil {
+		u.stateCache.Set(s.HostID, id, newSession.GetSession())
+	}
+
+	return nil
 }
 
 func (u *SessionUsecase) DeleteSession(ctx context.Context, id string) error {
+	if err := u.sessionRepo.Delete(ctx, id); err != nil {
+		return err
+	}
+
 	u.stateCache.Delete(id)
 
-	return u.sessionRepo.Delete(ctx, id)
+	return nil
 }
 
 func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMode SaveMode) (string, error) {

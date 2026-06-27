@@ -151,15 +151,30 @@ func (r *syncFakeRepo) snapshot() syncSnapshot {
 
 // fakeCache captures cache writes / deletes so tests can assert the handler
 // routes events through both the DB and the in-memory cache.
+type setCall struct {
+	hostID    string
+	sessionID string
+}
+
+type pruneCall struct {
+	hostID  string
+	liveIDs map[string]struct{}
+}
+
 type fakeCache struct {
-	mu       sync.Mutex
-	sessions map[string]*headlessv1.Session
-	deletes  []string
-	sets     []string
+	mu           sync.Mutex
+	sessions     map[string]*headlessv1.Session
+	sessionHosts map[string]string
+	deletes      []string
+	sets         []setCall
+	prunes       []pruneCall
 }
 
 func newFakeCache() *fakeCache {
-	return &fakeCache{sessions: make(map[string]*headlessv1.Session)}
+	return &fakeCache{
+		sessions:     make(map[string]*headlessv1.Session),
+		sessionHosts: make(map[string]string),
+	}
 }
 
 func (c *fakeCache) Get(id string) (*headlessv1.Session, bool) {
@@ -171,12 +186,13 @@ func (c *fakeCache) Get(id string) (*headlessv1.Session, bool) {
 	return s, ok
 }
 
-func (c *fakeCache) Set(id string, snapshot *headlessv1.Session) {
+func (c *fakeCache) Set(hostID, id string, snapshot *headlessv1.Session) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	c.sessions[id] = snapshot
-	c.sets = append(c.sets, id)
+	c.sessionHosts[id] = hostID
+	c.sets = append(c.sets, setCall{hostID: hostID, sessionID: id})
 }
 
 func (c *fakeCache) Delete(id string) {
@@ -184,7 +200,28 @@ func (c *fakeCache) Delete(id string) {
 	defer c.mu.Unlock()
 
 	delete(c.sessions, id)
+	delete(c.sessionHosts, id)
 	c.deletes = append(c.deletes, id)
+}
+
+func (c *fakeCache) PruneHost(hostID string, liveIDs map[string]struct{}) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.prunes = append(c.prunes, pruneCall{hostID: hostID, liveIDs: liveIDs})
+
+	for sid, h := range c.sessionHosts {
+		if h != hostID {
+			continue
+		}
+
+		if _, alive := liveIDs[sid]; alive {
+			continue
+		}
+
+		delete(c.sessions, sid)
+		delete(c.sessionHosts, sid)
+	}
 }
 
 // stubHostRepo only implements GetRpcClient; other methods will panic.
@@ -279,7 +316,7 @@ func TestSessionStateSyncHandler_WorldSaved_UpdatesCacheWorldUrlAndStartupParame
 
 	repo := newSyncFakeRepo()
 	cache := newFakeCache()
-	cache.Set("s1", &headlessv1.Session{Id: "s1", Name: "n", WorldUrl: "old", MaxUsers: 16})
+	cache.Set("h1", "s1", &headlessv1.Session{Id: "s1", Name: "n", WorldUrl: "old", MaxUsers: 16})
 
 	h := NewSessionStateSyncHandler(repo, &stubHostRepo{}, cache)
 	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
@@ -342,7 +379,7 @@ func TestSessionStateSyncHandler_SessionEnded_DeletesCache(t *testing.T) {
 
 	repo := newSyncFakeRepo()
 	cache := newFakeCache()
-	cache.Set("s1", &headlessv1.Session{Id: "s1"})
+	cache.Set("h1", "s1", &headlessv1.Session{Id: "s1"})
 
 	h := NewSessionStateSyncHandler(repo, &stubHostRepo{}, cache)
 	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
@@ -373,9 +410,9 @@ func TestSessionStateSyncHandler_StreamReset_RebuildsCacheAndDemotesLost(t *test
 	repo.seed(&entity.Session{ID: "s-ended", HostID: "h1", Status: entity.SessionStatus_ENDED})
 
 	cache := newFakeCache()
-	// 過去に観測済み (handler が trackSession 済み相当) で stream reset 期間中に
-	// 消えたとみなされる stale な entry を仕込む
-	cache.Set("s-stale", &headlessv1.Session{Id: "s-stale"})
+	// host h1 で過去に観測された (= cache に entry がある) が stream reset 期間中に
+	// container 側からは消えてしまった stale entry。PruneHost で掃除される。
+	cache.Set("h1", "s-stale", &headlessv1.Session{Id: "s-stale"})
 
 	client := &stubControlClient{
 		listSessionsResp: &headlessv1.ListSessionsResponse{
@@ -387,9 +424,6 @@ func TestSessionStateSyncHandler_StreamReset_RebuildsCacheAndDemotesLost(t *test
 	hosts := &stubHostRepo{clients: map[string]headlessv1.HeadlessControlServiceClient{"h1": client}}
 
 	h := NewSessionStateSyncHandler(repo, hosts, cache)
-	// host h1 で過去に s-stale を観測した状態を擬似的に踏ませる
-	h.trackSession("h1", "s-stale")
-
 	h.HandleHostEventStreamReset(context.Background(), "h1")
 
 	got, ok := cache.Get("s-alive")
@@ -436,4 +470,54 @@ func TestSessionStateSyncHandler_StreamReset_ListSessionsErrorSilenced(t *testin
 
 	snap := repo.snapshot()
 	assert.Empty(t, snap.Downgrades, "ListSessions failure -> no demotion (avoid false positives)")
+}
+
+// TestSessionStateSyncHandler_StreamReset_LifecycleHandlerDoesNotShadow verifies
+// the regression that the previous SessionLifecycleHandler.HandleHostEventStreamReset
+// blanket-demoted everything to UNKNOWN, clobbering the per-session reconciliation
+// this handler had just performed. HostEventWatcher.notifyReset dispatches all
+// handlers in sequence; we simulate that here by calling both in the wired order
+// and asserting the live session stays RUNNING.
+func TestSessionStateSyncHandler_StreamReset_LifecycleHandlerDoesNotShadow(t *testing.T) {
+	t.Parallel()
+
+	repo := newSyncFakeRepo()
+	repo.seed(&entity.Session{ID: "s-alive", HostID: "h1", Status: entity.SessionStatus_RUNNING})
+	repo.seed(&entity.Session{ID: "s-lost", HostID: "h1", Status: entity.SessionStatus_RUNNING})
+
+	cache := newFakeCache()
+	client := &stubControlClient{
+		listSessionsResp: &headlessv1.ListSessionsResponse{
+			Sessions: []*headlessv1.Session{
+				{Id: "s-alive", Name: "alive"},
+			},
+		},
+	}
+	hosts := &stubHostRepo{clients: map[string]headlessv1.HeadlessControlServiceClient{"h1": client}}
+
+	sync := NewSessionStateSyncHandler(repo, hosts, cache)
+	lifecycle := NewSessionLifecycleHandler(repo)
+
+	// HostEventWatcher.notifyReset と同じ順序で呼ぶ
+	sync.HandleHostEventStreamReset(context.Background(), "h1")
+	lifecycle.HandleHostEventStreamReset(context.Background(), "h1")
+
+	snap := repo.snapshot()
+
+	// s-alive は live snapshot にいるので RUNNING のまま残るべき
+	// (lifecycle の blanket UNKNOWN 化が復活していたら UNKNOWN になる)
+	var aliveStatusUpdates int
+
+	for _, st := range snap.StatusCalls {
+		if st.id == "s-alive" {
+			aliveStatusUpdates++
+		}
+	}
+
+	assert.Equal(t, 0, aliveStatusUpdates,
+		"live session must not have its status changed by either handler")
+
+	// s-lost は sync 側 (guarded downgrade) で 1 回だけ降格される
+	require.Len(t, snap.Downgrades, 1)
+	assert.Equal(t, "s-lost", snap.Downgrades[0])
 }

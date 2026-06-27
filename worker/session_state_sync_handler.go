@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"sync"
 
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
@@ -13,34 +12,34 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// SessionStateSyncHandler bridges HostEvent stream and the in-memory
-// SessionStateCache plus the DB-side partial updates that persist what
-// matters for restart (startup_parameters overlap fields, load_world_url).
+// SessionStateSyncHandler bridges the HostEvent stream and:
+//   - the in-memory SessionStateCache (volatile CurrentState snapshot owned by container)
+//   - the DB-side partial updates that persist what matters for restart
+//     (startup_parameters overlap fields, load_world_url).
 //
+// Concrete event routing:
 //   - SessionParametersChanged → cache.Set + DB ApplySessionParametersChanged
-//     so in-world edits survive a host restart via startup_parameters.
-//   - WorldSaved → update the WorldUrl in cache + DB.startup_parameters.loadWorldUrl
-//     so a restart loads the freshly saved record.
-//   - SessionEnded → cache.Delete (lifecycle handler still owns DB row demotion).
-//   - HandleHostEventStreamReset → ListSessions() to repopulate cache from
-//     scratch for the affected host, demote DB rows that are gone.
+//     so in-world edits both stay visible in the UI and survive a host restart
+//     via startup_parameters.
+//   - WorldSaved → patch the cached snapshot's WorldUrl (via proto.Clone because
+//     cache aliasing contract forbids mutation) + DB UpdateAfterWorldSaved so a
+//     restart loads the freshly saved record.
+//   - SessionEnded → cache.Delete. DB row demotion is SessionLifecycleHandler's job.
+//   - HandleHostEventStreamReset → ListSessions on the host to authoritatively
+//     rebuild cache for the host (PruneHost evicts entries the host no longer
+//     reports), and DowngradeToUnknownIfRunning for RUNNING DB rows that the
+//     host no longer reports (likely a missed SessionEnded).
 type SessionStateSyncHandler struct {
 	sessionRepo port.SessionRepository
 	hostRepo    port.HeadlessHostRepository
 	cache       port.SessionStateCache
-
-	mu sync.Mutex
-	// per-host index of which session IDs we've populated into cache, so we
-	// can prune cache entries that disappear when the host's stream resets.
-	hostSessions map[string]map[string]struct{}
 }
 
 func NewSessionStateSyncHandler(sessionRepo port.SessionRepository, hostRepo port.HeadlessHostRepository, cache port.SessionStateCache) *SessionStateSyncHandler {
 	return &SessionStateSyncHandler{
-		sessionRepo:  sessionRepo,
-		hostRepo:     hostRepo,
-		cache:        cache,
-		hostSessions: make(map[string]map[string]struct{}),
+		sessionRepo: sessionRepo,
+		hostRepo:    hostRepo,
+		cache:       cache,
 	}
 }
 
@@ -53,14 +52,14 @@ func (h *SessionStateSyncHandler) HandleHostEvent(ctx context.Context, hostID st
 	case *headlessv1.HostEvent_WorldSaved:
 		h.applyWorldSaved(ctx, hostID, p.WorldSaved)
 	case *headlessv1.HostEvent_SessionEnded:
-		h.applySessionEnded(hostID, p.SessionEnded)
+		h.applySessionEnded(p.SessionEnded)
 	}
 }
 
-// HandleHostEventStreamReset reconciles cache + DB after the event buffer
-// overflowed. We ListSessions to authoritatively rebuild the cache for
-// this host and DowngradeToUnknownIfRunning for any RUNNING row the host
-// no longer reports (likely a missed SessionEnded).
+// HandleHostEventStreamReset rebuilds the cache from the host snapshot and
+// demotes DB rows the host no longer reports. SessionLifecycleHandler's
+// HandleHostEventStreamReset is intentionally a no-op so it cannot clobber
+// these per-session decisions.
 func (h *SessionStateSyncHandler) HandleHostEventStreamReset(ctx context.Context, hostID string) {
 	runningSessions, err := h.sessionRepo.ListByHostAndStatus(ctx, hostID, entity.SessionStatus_RUNNING)
 	if err != nil {
@@ -84,25 +83,25 @@ func (h *SessionStateSyncHandler) HandleHostEventStreamReset(ctx context.Context
 	}
 
 	live := make(map[string]*headlessv1.Session, len(listResp.GetSessions()))
+	liveIDs := make(map[string]struct{}, len(listResp.GetSessions()))
+
 	for _, s := range listResp.GetSessions() {
 		live[s.GetId()] = s
+		liveIDs[s.GetId()] = struct{}{}
 	}
 
-	// cache の host 別 index にあって live にない entry は削除 (cache cleanup)。
-	for sessionID := range h.snapshotHostSessionIDs(hostID) {
-		if _, ok := live[sessionID]; !ok {
-			h.cache.Delete(sessionID)
-			h.untrackSession(hostID, sessionID)
-		}
-	}
-
-	// live snapshot を cache に投入し index も更新。
+	// cache を host snapshot で再構築。live にあるものは Set し直し、無いものは
+	// PruneHost でまとめて削除する。cache 自身が host_id を index しているので、
+	// handler 経由で Set した entry も usecase 側経路 (StartSession / GetSession
+	// cache-miss / UpdateSessionParameters) で Set した entry も同様に掃除される。
 	for sessionID, snapshot := range live {
-		h.cache.Set(sessionID, snapshot)
-		h.trackSession(hostID, sessionID)
+		h.cache.Set(hostID, sessionID, snapshot)
 	}
 
-	// DB の RUNNING で host snapshot に居ないものは UNKNOWN へ降格 (guarded)。
+	h.cache.PruneHost(hostID, liveIDs)
+
+	// DB の RUNNING で host snapshot に居ないものは UNKNOWN へ降格 (guarded、
+	// gRPC StopSession で並列に ENDED へ落ちたものは巻き戻さない)。
 	for _, s := range runningSessions {
 		if _, ok := live[s.ID]; ok {
 			continue
@@ -122,8 +121,10 @@ func (h *SessionStateSyncHandler) applySessionParametersChanged(ctx context.Cont
 		return
 	}
 
-	h.cache.Set(sessionID, snapshot)
-	h.trackSession(hostID, sessionID)
+	// 同じ snapshot を SessionUsecase.UpdateSessionParameters も cache.Set する
+	// 経路があるが、a→d / d→a どちらの順序で観測されても最終 cache 状態は
+	// convergent (どちらも container 由来の同じ snapshot)。
+	h.cache.Set(hostID, sessionID, snapshot)
 
 	if err := h.sessionRepo.ApplySessionParametersChanged(ctx, sessionID, snapshot); err != nil {
 		if !errors.Is(err, domain.ErrNotFound) {
@@ -141,16 +142,16 @@ func (h *SessionStateSyncHandler) applyWorldSaved(ctx context.Context, hostID st
 		return
 	}
 
-	// cache に既存 snapshot があれば WorldUrl だけ書き換えた clone を Set し直す
-	// (snapshot を直接 mutate すると Get で受け取った reader に副作用が出る)
+	// cache aliasing contract: Get で受け取った snapshot を直接 mutate すると、
+	// 別 caller が Get 済みの pointer にも副作用が出る (UI 表示中の race など)。
+	// 必ず proto.Clone してから書き換え、Set し直す。
 	if existing, ok := h.cache.Get(sessionID); ok {
 		cloned, ok := proto.Clone(existing).(*headlessv1.Session)
 		if !ok {
 			slog.Warn("session-state-sync: failed to clone cached session", "sessionID", sessionID)
 		} else {
 			cloned.WorldUrl = worldURL
-			h.cache.Set(sessionID, cloned)
-			h.trackSession(hostID, sessionID)
+			h.cache.Set(hostID, sessionID, cloned)
 		}
 	}
 
@@ -161,53 +162,9 @@ func (h *SessionStateSyncHandler) applyWorldSaved(ctx context.Context, hostID st
 	}
 }
 
-func (h *SessionStateSyncHandler) applySessionEnded(hostID string, payload *headlessv1.SessionEnded) {
+func (h *SessionStateSyncHandler) applySessionEnded(payload *headlessv1.SessionEnded) {
 	sessionID := payload.GetSessionId()
 	// DB 側 status / ended_at の更新は SessionLifecycleHandler が担当。
 	// ここは cache の cleanup のみ。
 	h.cache.Delete(sessionID)
-	h.untrackSession(hostID, sessionID)
-}
-
-func (h *SessionStateSyncHandler) trackSession(hostID, sessionID string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	set, ok := h.hostSessions[hostID]
-	if !ok {
-		set = make(map[string]struct{})
-		h.hostSessions[hostID] = set
-	}
-
-	set[sessionID] = struct{}{}
-}
-
-func (h *SessionStateSyncHandler) untrackSession(hostID, sessionID string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	if set, ok := h.hostSessions[hostID]; ok {
-		delete(set, sessionID)
-
-		if len(set) == 0 {
-			delete(h.hostSessions, hostID)
-		}
-	}
-}
-
-func (h *SessionStateSyncHandler) snapshotHostSessionIDs(hostID string) map[string]struct{} {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	set, ok := h.hostSessions[hostID]
-	if !ok {
-		return nil
-	}
-
-	out := make(map[string]struct{}, len(set))
-	for k := range set {
-		out[k] = struct{}{}
-	}
-
-	return out
 }
