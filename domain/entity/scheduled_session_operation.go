@@ -18,9 +18,9 @@ const (
 type ScheduledTriggerType int32
 
 const (
-	ScheduledTriggerType_UNKNOWN ScheduledTriggerType = 0
-	ScheduledTriggerType_TIME    ScheduledTriggerType = 1
-	// 後続 PR 用: ScheduledTriggerType_CONDITION ScheduledTriggerType = 2.
+	ScheduledTriggerType_UNKNOWN            ScheduledTriggerType = 0
+	ScheduledTriggerType_TIME               ScheduledTriggerType = 1
+	ScheduledTriggerType_SESSION_USER_COUNT ScheduledTriggerType = 2
 )
 
 type ScheduledOperationStatus int32

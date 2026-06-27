@@ -256,6 +256,31 @@ func buildTriggerFromProto(tr *hdlctrlv1.ScheduledTrigger) (scheduled_op.Trigger
 		}
 
 		return triggers.NewTimeTrigger(ts.AsTime()), nil
+	case *hdlctrlv1.ScheduledTrigger_SessionUserCount:
+		c := x.SessionUserCount
+		sid := c.GetSessionId()
+
+		if sid == "" {
+			return nil, errors.New("session_user_count trigger: session_id is required")
+		}
+
+		var cmp triggers.SessionUserCountComparator
+
+		switch c.GetComparator() {
+		case hdlctrlv1.SessionUserCountTrigger_COMPARATOR_LESS_OR_EQUAL:
+			cmp = triggers.SessionUserCountComparator_LESS_OR_EQUAL
+		case hdlctrlv1.SessionUserCountTrigger_COMPARATOR_GREATER_OR_EQUAL:
+			cmp = triggers.SessionUserCountComparator_GREATER_OR_EQUAL
+		default:
+			return nil, errors.New("session_user_count trigger: comparator is required")
+		}
+
+		threshold := c.GetThreshold()
+		if threshold < 0 {
+			return nil, errors.New("session_user_count trigger: threshold must be >= 0")
+		}
+
+		return triggers.NewSessionUserCountTrigger(sid, cmp, threshold), nil
 	default:
 		return nil, errors.New("trigger oneof is not set")
 	}
@@ -329,6 +354,25 @@ func triggerToProto(t scheduled_op.Trigger) (*hdlctrlv1.ScheduledTrigger, error)
 			Trigger: &hdlctrlv1.ScheduledTrigger_Time{
 				Time: &hdlctrlv1.TimeTrigger{
 					ScheduledAt: timestamppb.New(v.ScheduledAt),
+				},
+			},
+		}, nil
+	case *triggers.SessionUserCountTrigger:
+		var cmp hdlctrlv1.SessionUserCountTrigger_Comparator
+
+		switch v.Comparator {
+		case triggers.SessionUserCountComparator_LESS_OR_EQUAL:
+			cmp = hdlctrlv1.SessionUserCountTrigger_COMPARATOR_LESS_OR_EQUAL
+		case triggers.SessionUserCountComparator_GREATER_OR_EQUAL:
+			cmp = hdlctrlv1.SessionUserCountTrigger_COMPARATOR_GREATER_OR_EQUAL
+		}
+
+		return &hdlctrlv1.ScheduledTrigger{
+			Trigger: &hdlctrlv1.ScheduledTrigger_SessionUserCount{
+				SessionUserCount: &hdlctrlv1.SessionUserCountTrigger{
+					SessionId:  v.SessionID,
+					Comparator: cmp,
+					Threshold:  v.Threshold,
 				},
 			},
 		}, nil

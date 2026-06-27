@@ -15,12 +15,13 @@ export function RadioGroupField({
   helperText?: React.ReactNode;
   options: { label: string; value: string }[];
 }) {
+  const prefix = useId();
   return (
     <div>
       {label && <FieldHeader label={label} helperText={helperText} />}
       <RadioGroup {...props}>
         {options.map((option) => {
-          const id = useId();
+          const id = `${prefix}-${option.value}`;
           return (
             <div className="flex items-center space-x-2" key={option.value}>
               <RadioGroupItem value={option.value} id={id} />

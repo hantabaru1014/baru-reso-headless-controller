@@ -21,6 +21,7 @@ import {
   operationKindLabel,
   scheduledOperationStatusToLabel,
 } from "../libs/scheduledOperationUtils";
+import { SessionUserCountTrigger_Comparator } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { usePaginationState } from "../hooks/usePaginationState";
 import SessionTip from "./SessionTip";
 import HostTip from "./HostTip";
@@ -112,9 +113,32 @@ export default function ScheduledOperationList({ sessionId }: Props) {
         },
       },
       {
-        id: "nextFire",
-        header: "実行予定",
-        cell: ({ row }) => formatScheduled(row.original.nextFireAt),
+        id: "trigger",
+        header: "実行条件",
+        cell: ({ row }) => {
+          const trig = row.original.trigger?.trigger;
+          if (trig?.case === "time") {
+            return formatScheduled(trig.value.scheduledAt);
+          }
+          if (trig?.case === "sessionUserCount") {
+            const v = trig.value;
+            const op =
+              v.comparator ===
+              SessionUserCountTrigger_Comparator.GREATER_OR_EQUAL
+                ? "≥"
+                : "≤";
+            return (
+              <span className="inline-flex items-center gap-1">
+                <SessionTip sessionId={v.sessionId} />
+                <span className="text-muted-foreground">のユーザー数</span>
+                <span>
+                  {op} {v.threshold}
+                </span>
+              </span>
+            );
+          }
+          return "-";
+        },
       },
       {
         id: "status",

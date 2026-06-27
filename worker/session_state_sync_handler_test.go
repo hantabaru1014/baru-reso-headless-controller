@@ -374,6 +374,82 @@ func TestSessionStateSyncHandler_WorldSaved_EmptyUrlSkipped(t *testing.T) {
 	assert.Empty(t, snap.WorldSaveds)
 }
 
+func TestSessionStateSyncHandler_UserJoinedSession_BumpsCacheUsersCount(t *testing.T) {
+	t.Parallel()
+
+	repo := newSyncFakeRepo()
+	cache := newFakeCache()
+	cache.Set("h1", "s1", &headlessv1.Session{Id: "s1", UsersCount: 2})
+
+	h := NewSessionStateSyncHandler(repo, &stubHostRepo{}, cache)
+	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
+		Payload: &headlessv1.HostEvent_UserJoinedSession{
+			UserJoinedSession: &headlessv1.UserJoinedSession{SessionId: "s1"},
+		},
+	})
+
+	got, ok := cache.Get("s1")
+	require.True(t, ok)
+	assert.Equal(t, int32(3), got.GetUsersCount())
+}
+
+func TestSessionStateSyncHandler_UserLeftSession_DecrementsCacheUsersCount(t *testing.T) {
+	t.Parallel()
+
+	repo := newSyncFakeRepo()
+	cache := newFakeCache()
+	cache.Set("h1", "s1", &headlessv1.Session{Id: "s1", UsersCount: 2})
+
+	h := NewSessionStateSyncHandler(repo, &stubHostRepo{}, cache)
+	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
+		Payload: &headlessv1.HostEvent_UserLeftSession{
+			UserLeftSession: &headlessv1.UserLeftSession{SessionId: "s1"},
+		},
+	})
+
+	got, ok := cache.Get("s1")
+	require.True(t, ok)
+	assert.Equal(t, int32(1), got.GetUsersCount())
+}
+
+func TestSessionStateSyncHandler_UserLeftSession_ClampsAtZero(t *testing.T) {
+	t.Parallel()
+
+	repo := newSyncFakeRepo()
+	cache := newFakeCache()
+	cache.Set("h1", "s1", &headlessv1.Session{Id: "s1", UsersCount: 0})
+
+	h := NewSessionStateSyncHandler(repo, &stubHostRepo{}, cache)
+	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
+		Payload: &headlessv1.HostEvent_UserLeftSession{
+			UserLeftSession: &headlessv1.UserLeftSession{SessionId: "s1"},
+		},
+	})
+
+	got, ok := cache.Get("s1")
+	require.True(t, ok)
+	assert.Equal(t, int32(0), got.GetUsersCount(), "UsersCount は 0 未満にならない")
+}
+
+func TestSessionStateSyncHandler_UserJoinedSession_NoCacheEntryIgnored(t *testing.T) {
+	t.Parallel()
+
+	repo := newSyncFakeRepo()
+	cache := newFakeCache()
+	h := NewSessionStateSyncHandler(repo, &stubHostRepo{}, cache)
+
+	// cache miss は no-op (event 順序 / 起動前). 後続の SessionParametersChanged や
+	// StreamReset で正しい count が seed される.
+	h.HandleHostEvent(context.Background(), "h1", &headlessv1.HostEvent{
+		Payload: &headlessv1.HostEvent_UserJoinedSession{
+			UserJoinedSession: &headlessv1.UserJoinedSession{SessionId: "s-missing"},
+		},
+	})
+
+	_, ok := cache.Get("s-missing")
+	assert.False(t, ok)
+}
+
 func TestSessionStateSyncHandler_SessionEnded_DeletesCache(t *testing.T) {
 	t.Parallel()
 
