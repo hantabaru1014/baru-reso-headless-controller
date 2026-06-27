@@ -32,6 +32,9 @@ import { ColumnDef } from "@tanstack/react-table";
 import { UserInSession as UserInSessionProto } from "../../pbgen/headless/v1/headless_pb";
 import { DataTable } from "./base";
 import { toast } from "sonner";
+import { useMemo } from "react";
+
+const PAGE_SIZE_OPTIONS = [10, 20, 30];
 
 function UserInviteDialog({
   isOpen: open,
@@ -166,6 +169,30 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
   const { data: hostData } = useQuery(getHeadlessHost, {
     hostId: hostId ?? "",
   });
+
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
+
+  const users = useMemo<UserInSession[]>(
+    () =>
+      data?.users?.map((user, i) => ({
+        ...user,
+        isHost: i === 0, // TODO: ちゃんとホストユーザーのIDを返すようにする
+      })) ?? [],
+    [data?.users],
+  );
+
+  const totalPages = Math.max(1, Math.ceil(users.length / pageSize));
+  const effectivePageIndex = Math.min(pageIndex, totalPages - 1);
+
+  const pagedUsers = useMemo(
+    () =>
+      users.slice(
+        effectivePageIndex * pageSize,
+        (effectivePageIndex + 1) * pageSize,
+      ),
+    [users, effectivePageIndex, pageSize],
+  );
 
   const handleUpdateRole = async (userId: string, role: string) => {
     try {
@@ -314,13 +341,16 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
         </div>
         <DataTable
           columns={columns}
-          data={
-            data?.users?.map((user, i) => ({
-              ...user,
-              isHost: i === 0, // TODO: ちゃんとホストユーザーのIDを返すようにする
-            })) || []
-          }
+          data={pagedUsers}
           isLoading={isPending}
+          pagination={{
+            pageIndex: effectivePageIndex,
+            pageSize,
+            totalCount: users.length,
+            pageSizeOptions: PAGE_SIZE_OPTIONS,
+            onPageIndexChange: setPageIndex,
+            onPageSizeChange: setPageSize,
+          }}
         />
       </div>
       <UserInviteDialog
