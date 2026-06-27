@@ -71,9 +71,11 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 	suc := usecase.NewSessionUsecase(srepo, hhrepo, port.NoopHostDrainer{}, stateCache, &cfg.Server, &cfg.ResoniteLink)
 	hhuc := usecase.NewHeadlessHostUsecase(hhrepo, srepo, suc, hauc)
 	buc := usecase.NewBlobUsecase(srepo, hhrepo, mockBlobstore)
+	sorepo := adapter.NewScheduledSessionOperationRepository(queries)
+	souc := usecase.NewScheduledSessionOperationUsecase(sorepo)
 
 	// Setup service with real repositories
-	service := NewControllerService(hhrepo, srepo, hhuc, hauc, suc, buc, mockSkyfrost)
+	service := NewControllerService(hhrepo, srepo, hhuc, hauc, suc, buc, souc, mockSkyfrost)
 
 	return &controllerServiceTestSetup{
 		service:           service,

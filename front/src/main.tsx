@@ -10,6 +10,8 @@ import RegisterPage from "./pages/register";
 import Sessions from "./pages/sessions";
 import SessionDetail from "./pages/sessions/detail";
 import SessionNew from "./pages/sessions/new";
+import ScheduledOperationsIndex from "./pages/sessions/scheduled";
+import ScheduledOperationNew from "./pages/sessions/scheduled/new";
 import Hosts from "./pages/hosts";
 import HostDetail from "./pages/hosts/detail";
 import HeadlessAccounts from "./pages/headlessAccounts";
@@ -26,6 +28,7 @@ const router = createBrowserRouter([
           {
             index: true,
             Component: DashboardPage,
+            handle: { title: "ダッシュボード" },
           },
           {
             path: "sessions",
@@ -33,14 +36,32 @@ const router = createBrowserRouter([
               {
                 index: true,
                 Component: Sessions,
+                handle: { title: "セッション" },
               },
               {
                 path: "new",
                 Component: SessionNew,
+                handle: { title: "新規セッション" },
+              },
+              {
+                path: "scheduled",
+                children: [
+                  {
+                    index: true,
+                    Component: ScheduledOperationsIndex,
+                    handle: { title: "予約操作" },
+                  },
+                  {
+                    path: "new",
+                    Component: ScheduledOperationNew,
+                    handle: { title: "新規予約" },
+                  },
+                ],
               },
               {
                 path: ":id",
                 Component: SessionDetail,
+                handle: { title: "セッション詳細" },
               },
             ],
           },
@@ -50,10 +71,12 @@ const router = createBrowserRouter([
               {
                 index: true,
                 Component: Hosts,
+                handle: { title: "ホスト" },
               },
               {
                 path: ":id",
                 Component: HostDetail,
+                handle: { title: "ホスト詳細" },
               },
             ],
           },
@@ -63,12 +86,14 @@ const router = createBrowserRouter([
               {
                 index: true,
                 Component: HeadlessAccounts,
+                handle: { title: "ヘッドレスアカウント" },
               },
             ],
           },
           {
             path: "user-settings",
             Component: UserSettings,
+            handle: { title: "ユーザー設定" },
           },
         ],
       },

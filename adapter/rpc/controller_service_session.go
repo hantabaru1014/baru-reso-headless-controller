@@ -295,26 +295,9 @@ func (c *ControllerService) DeleteEndedSession(ctx context.Context, req *connect
 
 // UpdateSessionExtraSettings implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) UpdateSessionExtraSettings(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateSessionExtraSettingsRequest]) (*connect.Response[hdlctrlv1.UpdateSessionExtraSettingsResponse], error) {
-	// TODO: いい感じにusecaseに移動する
-	s, err := c.suc.GetSession(ctx, req.Msg.GetSessionId())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
-	}
-
-	if req.Msg.AutoUpgrade != nil {
-		s.AutoUpgrade = req.Msg.GetAutoUpgrade()
-	}
-
-	if req.Msg.Memo != nil {
-		s.Memo = req.Msg.GetMemo()
-	}
-
-	err = c.srepo.Upsert(ctx, s)
-	if err != nil {
+	if err := c.suc.UpdateSessionExtraSettings(ctx, req.Msg.GetSessionId(), req.Msg.AutoUpgrade, req.Msg.Memo); err != nil { //nolint:protogetter // optional 3 値を保つため pointer field を直接渡す
 		return nil, convertErr(err)
 	}
 
-	res := connect.NewResponse(&hdlctrlv1.UpdateSessionExtraSettingsResponse{})
-
-	return res, nil
+	return connect.NewResponse(&hdlctrlv1.UpdateSessionExtraSettingsResponse{}), nil
 }

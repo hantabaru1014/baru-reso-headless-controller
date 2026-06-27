@@ -470,6 +470,29 @@ func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMo
 	}
 }
 
+// UpdateSessionExtraSettings は memo / auto_upgrade を更新する.
+// 内部的に GetSession (cache hydrate 込み) → Upsert で書き戻す.
+func (u *SessionUsecase) UpdateSessionExtraSettings(ctx context.Context, sessionID string, autoUpgrade *bool, memo *string) error {
+	s, err := u.GetSession(ctx, sessionID)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	if autoUpgrade != nil {
+		s.AutoUpgrade = *autoUpgrade
+	}
+
+	if memo != nil {
+		s.Memo = *memo
+	}
+
+	if err := u.sessionRepo.Upsert(ctx, s); err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	return nil
+}
+
 func (u *SessionUsecase) hydrateCurrentState(sessions entity.SessionList) {
 	for _, s := range sessions {
 		if snapshot, ok := u.stateCache.Get(s.ID); ok {

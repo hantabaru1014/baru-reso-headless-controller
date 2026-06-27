@@ -169,6 +169,15 @@ const (
 	// ControllerServiceIssueResoniteLinkConnectionProcedure is the fully-qualified name of the
 	// ControllerService's IssueResoniteLinkConnection RPC.
 	ControllerServiceIssueResoniteLinkConnectionProcedure = "/hdlctrl.v1.ControllerService/IssueResoniteLinkConnection"
+	// ControllerServiceCreateScheduledSessionOperationProcedure is the fully-qualified name of the
+	// ControllerService's CreateScheduledSessionOperation RPC.
+	ControllerServiceCreateScheduledSessionOperationProcedure = "/hdlctrl.v1.ControllerService/CreateScheduledSessionOperation"
+	// ControllerServiceListScheduledSessionOperationsProcedure is the fully-qualified name of the
+	// ControllerService's ListScheduledSessionOperations RPC.
+	ControllerServiceListScheduledSessionOperationsProcedure = "/hdlctrl.v1.ControllerService/ListScheduledSessionOperations"
+	// ControllerServiceCancelScheduledSessionOperationProcedure is the fully-qualified name of the
+	// ControllerService's CancelScheduledSessionOperation RPC.
+	ControllerServiceCancelScheduledSessionOperationProcedure = "/hdlctrl.v1.ControllerService/CancelScheduledSessionOperation"
 )
 
 // ControllerServiceClient is a client for the hdlctrl.v1.ControllerService service.
@@ -223,6 +232,10 @@ type ControllerServiceClient interface {
 	KickUser(context.Context, *connect.Request[v1.KickUserRequest]) (*connect.Response[v1.KickUserResponse], error)
 	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
 	IssueResoniteLinkConnection(context.Context, *connect.Request[v1.IssueResoniteLinkConnectionRequest]) (*connect.Response[v1.IssueResoniteLinkConnectionResponse], error)
+	// 予約操作系
+	CreateScheduledSessionOperation(context.Context, *connect.Request[v1.CreateScheduledSessionOperationRequest]) (*connect.Response[v1.CreateScheduledSessionOperationResponse], error)
+	ListScheduledSessionOperations(context.Context, *connect.Request[v1.ListScheduledSessionOperationsRequest]) (*connect.Response[v1.ListScheduledSessionOperationsResponse], error)
+	CancelScheduledSessionOperation(context.Context, *connect.Request[v1.CancelScheduledSessionOperationRequest]) (*connect.Response[v1.CancelScheduledSessionOperationResponse], error)
 }
 
 // NewControllerServiceClient constructs a client for the hdlctrl.v1.ControllerService service. By
@@ -506,6 +519,24 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(controllerServiceMethods.ByName("IssueResoniteLinkConnection")),
 			connect.WithClientOptions(opts...),
 		),
+		createScheduledSessionOperation: connect.NewClient[v1.CreateScheduledSessionOperationRequest, v1.CreateScheduledSessionOperationResponse](
+			httpClient,
+			baseURL+ControllerServiceCreateScheduledSessionOperationProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("CreateScheduledSessionOperation")),
+			connect.WithClientOptions(opts...),
+		),
+		listScheduledSessionOperations: connect.NewClient[v1.ListScheduledSessionOperationsRequest, v1.ListScheduledSessionOperationsResponse](
+			httpClient,
+			baseURL+ControllerServiceListScheduledSessionOperationsProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("ListScheduledSessionOperations")),
+			connect.WithClientOptions(opts...),
+		),
+		cancelScheduledSessionOperation: connect.NewClient[v1.CancelScheduledSessionOperationRequest, v1.CancelScheduledSessionOperationResponse](
+			httpClient,
+			baseURL+ControllerServiceCancelScheduledSessionOperationProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("CancelScheduledSessionOperation")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -556,6 +587,9 @@ type controllerServiceClient struct {
 	kickUser                         *connect.Client[v1.KickUserRequest, v1.KickUserResponse]
 	banUser                          *connect.Client[v1.BanUserRequest, v1.BanUserResponse]
 	issueResoniteLinkConnection      *connect.Client[v1.IssueResoniteLinkConnectionRequest, v1.IssueResoniteLinkConnectionResponse]
+	createScheduledSessionOperation  *connect.Client[v1.CreateScheduledSessionOperationRequest, v1.CreateScheduledSessionOperationResponse]
+	listScheduledSessionOperations   *connect.Client[v1.ListScheduledSessionOperationsRequest, v1.ListScheduledSessionOperationsResponse]
+	cancelScheduledSessionOperation  *connect.Client[v1.CancelScheduledSessionOperationRequest, v1.CancelScheduledSessionOperationResponse]
 }
 
 // ListHeadlessHost calls hdlctrl.v1.ControllerService.ListHeadlessHost.
@@ -784,6 +818,23 @@ func (c *controllerServiceClient) IssueResoniteLinkConnection(ctx context.Contex
 	return c.issueResoniteLinkConnection.CallUnary(ctx, req)
 }
 
+// CreateScheduledSessionOperation calls
+// hdlctrl.v1.ControllerService.CreateScheduledSessionOperation.
+func (c *controllerServiceClient) CreateScheduledSessionOperation(ctx context.Context, req *connect.Request[v1.CreateScheduledSessionOperationRequest]) (*connect.Response[v1.CreateScheduledSessionOperationResponse], error) {
+	return c.createScheduledSessionOperation.CallUnary(ctx, req)
+}
+
+// ListScheduledSessionOperations calls hdlctrl.v1.ControllerService.ListScheduledSessionOperations.
+func (c *controllerServiceClient) ListScheduledSessionOperations(ctx context.Context, req *connect.Request[v1.ListScheduledSessionOperationsRequest]) (*connect.Response[v1.ListScheduledSessionOperationsResponse], error) {
+	return c.listScheduledSessionOperations.CallUnary(ctx, req)
+}
+
+// CancelScheduledSessionOperation calls
+// hdlctrl.v1.ControllerService.CancelScheduledSessionOperation.
+func (c *controllerServiceClient) CancelScheduledSessionOperation(ctx context.Context, req *connect.Request[v1.CancelScheduledSessionOperationRequest]) (*connect.Response[v1.CancelScheduledSessionOperationResponse], error) {
+	return c.cancelScheduledSessionOperation.CallUnary(ctx, req)
+}
+
 // ControllerServiceHandler is an implementation of the hdlctrl.v1.ControllerService service.
 type ControllerServiceHandler interface {
 	// ホスト系
@@ -836,6 +887,10 @@ type ControllerServiceHandler interface {
 	KickUser(context.Context, *connect.Request[v1.KickUserRequest]) (*connect.Response[v1.KickUserResponse], error)
 	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
 	IssueResoniteLinkConnection(context.Context, *connect.Request[v1.IssueResoniteLinkConnectionRequest]) (*connect.Response[v1.IssueResoniteLinkConnectionResponse], error)
+	// 予約操作系
+	CreateScheduledSessionOperation(context.Context, *connect.Request[v1.CreateScheduledSessionOperationRequest]) (*connect.Response[v1.CreateScheduledSessionOperationResponse], error)
+	ListScheduledSessionOperations(context.Context, *connect.Request[v1.ListScheduledSessionOperationsRequest]) (*connect.Response[v1.ListScheduledSessionOperationsResponse], error)
+	CancelScheduledSessionOperation(context.Context, *connect.Request[v1.CancelScheduledSessionOperationRequest]) (*connect.Response[v1.CancelScheduledSessionOperationResponse], error)
 }
 
 // NewControllerServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -1115,6 +1170,24 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		connect.WithSchema(controllerServiceMethods.ByName("IssueResoniteLinkConnection")),
 		connect.WithHandlerOptions(opts...),
 	)
+	controllerServiceCreateScheduledSessionOperationHandler := connect.NewUnaryHandler(
+		ControllerServiceCreateScheduledSessionOperationProcedure,
+		svc.CreateScheduledSessionOperation,
+		connect.WithSchema(controllerServiceMethods.ByName("CreateScheduledSessionOperation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceListScheduledSessionOperationsHandler := connect.NewUnaryHandler(
+		ControllerServiceListScheduledSessionOperationsProcedure,
+		svc.ListScheduledSessionOperations,
+		connect.WithSchema(controllerServiceMethods.ByName("ListScheduledSessionOperations")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceCancelScheduledSessionOperationHandler := connect.NewUnaryHandler(
+		ControllerServiceCancelScheduledSessionOperationProcedure,
+		svc.CancelScheduledSessionOperation,
+		connect.WithSchema(controllerServiceMethods.ByName("CancelScheduledSessionOperation")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/hdlctrl.v1.ControllerService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ControllerServiceListHeadlessHostProcedure:
@@ -1207,6 +1280,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceBanUserHandler.ServeHTTP(w, r)
 		case ControllerServiceIssueResoniteLinkConnectionProcedure:
 			controllerServiceIssueResoniteLinkConnectionHandler.ServeHTTP(w, r)
+		case ControllerServiceCreateScheduledSessionOperationProcedure:
+			controllerServiceCreateScheduledSessionOperationHandler.ServeHTTP(w, r)
+		case ControllerServiceListScheduledSessionOperationsProcedure:
+			controllerServiceListScheduledSessionOperationsHandler.ServeHTTP(w, r)
+		case ControllerServiceCancelScheduledSessionOperationProcedure:
+			controllerServiceCancelScheduledSessionOperationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1394,4 +1473,16 @@ func (UnimplementedControllerServiceHandler) BanUser(context.Context, *connect.R
 
 func (UnimplementedControllerServiceHandler) IssueResoniteLinkConnection(context.Context, *connect.Request[v1.IssueResoniteLinkConnectionRequest]) (*connect.Response[v1.IssueResoniteLinkConnectionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.IssueResoniteLinkConnection is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) CreateScheduledSessionOperation(context.Context, *connect.Request[v1.CreateScheduledSessionOperationRequest]) (*connect.Response[v1.CreateScheduledSessionOperationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.CreateScheduledSessionOperation is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) ListScheduledSessionOperations(context.Context, *connect.Request[v1.ListScheduledSessionOperationsRequest]) (*connect.Response[v1.ListScheduledSessionOperationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.ListScheduledSessionOperations is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) CancelScheduledSessionOperation(context.Context, *connect.Request[v1.CancelScheduledSessionOperationRequest]) (*connect.Response[v1.CancelScheduledSessionOperationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.CancelScheduledSessionOperation is not implemented"))
 }

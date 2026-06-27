@@ -29,7 +29,7 @@ import { UserList } from "./base/UserList";
 import { RefetchButton } from "./base/RefetchButton";
 import { ScrollBase } from "./base/ScrollBase";
 import { ColumnDef } from "@tanstack/react-table";
-import { UserInSession as UserInSessionProto } from "front/pbgen/headless/v1/headless_pb";
+import { UserInSession as UserInSessionProto } from "../../pbgen/headless/v1/headless_pb";
 import { DataTable } from "./base";
 import { toast } from "sonner";
 

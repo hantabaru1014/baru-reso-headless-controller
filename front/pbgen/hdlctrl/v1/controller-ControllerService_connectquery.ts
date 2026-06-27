@@ -238,3 +238,20 @@ export const banUser = ControllerService.method.banUser;
  * @generated from rpc hdlctrl.v1.ControllerService.IssueResoniteLinkConnection
  */
 export const issueResoniteLinkConnection = ControllerService.method.issueResoniteLinkConnection;
+
+/**
+ * 予約操作系
+ *
+ * @generated from rpc hdlctrl.v1.ControllerService.CreateScheduledSessionOperation
+ */
+export const createScheduledSessionOperation = ControllerService.method.createScheduledSessionOperation;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.ListScheduledSessionOperations
+ */
+export const listScheduledSessionOperations = ControllerService.method.listScheduledSessionOperations;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.CancelScheduledSessionOperation
+ */
+export const cancelScheduledSessionOperation = ControllerService.method.cancelScheduledSessionOperation;

@@ -56,10 +56,11 @@ type ControllerService struct {
 	hauc           *usecase.HeadlessAccountUsecase
 	suc            *usecase.SessionUsecase
 	buc            *usecase.BlobUsecase
+	souc           *usecase.ScheduledSessionOperationUsecase
 	skyfrostClient skyfrost.Client
 }
 
-func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase, suc *usecase.SessionUsecase, buc *usecase.BlobUsecase, skyfrostClient skyfrost.Client) *ControllerService {
+func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase, suc *usecase.SessionUsecase, buc *usecase.BlobUsecase, souc *usecase.ScheduledSessionOperationUsecase, skyfrostClient skyfrost.Client) *ControllerService {
 	return &ControllerService{
 		hhrepo:         hhrepo,
 		srepo:          srepo,
@@ -67,6 +68,7 @@ func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.Session
 		hauc:           hauc,
 		suc:            suc,
 		buc:            buc,
+		souc:           souc,
 		skyfrostClient: skyfrostClient,
 	}
 }

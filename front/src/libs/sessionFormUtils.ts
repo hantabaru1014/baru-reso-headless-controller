@@ -1,4 +1,163 @@
-import { WorldStartupParameters } from "../../pbgen/headless/v1/headless_pb";
+import { create } from "@bufbuild/protobuf";
+import {
+  WorldStartupParameters,
+  WorldStartupParametersSchema,
+} from "../../pbgen/headless/v1/headless_pb";
+import { z } from "zod";
+
+/**
+ * 新規セッション/予約フォーム共通の zod スキーマ。
+ */
+export const sessionFormSchema = z
+  .object({
+    hostId: z.string().min(1, "ホストを選択してください"),
+    worldSource: z.enum(["url", "template"]),
+    name: z.string().min(1, "セッション名を入力してください"),
+    customSessionId: z.string().optional(),
+    description: z.string().optional(),
+    tags: z.string().optional(),
+    maxUsers: z.number().int().min(1, "最低1人以上の設定が必要です"),
+    accessLevel: z.number().int().min(1).max(6),
+    worldUrl: z.string().optional(),
+    worldTemplate: z.enum(["grid", "platform", "blank"]),
+    autoInviteUsernames: z
+      .array(
+        z.object({
+          userName: z.string(),
+          userId: z.string(),
+          iconUrl: z.string().optional(),
+          joinAllowedOnly: z.boolean(),
+        }),
+      )
+      .optional(),
+    hideFromPublicListing: z.boolean(),
+    defaultUserRoles: z
+      .array(
+        z.object({
+          role: z.string(),
+          userName: z.string(),
+          iconUrl: z.string().optional(),
+        }),
+      )
+      .optional(),
+    awayKickMinutes: z.number(),
+    idleRestartIntervalSeconds: z.number().int(),
+    saveOnExit: z.boolean(),
+    autoSaveIntervalSeconds: z.number().int(),
+    autoSleep: z.boolean(),
+    inviteRequestHandlerUsernames: z.string().optional(),
+    forcePort: z.number().int().optional(),
+    parentSessionIds: z.string().optional(),
+    autoRecover: z.boolean().optional(),
+    forcedRestartIntervalSeconds: z.number().int().optional(),
+    useCustomJoinVerifier: z.boolean().optional(),
+    mobileFriendly: z.boolean().optional(),
+    overrideCorrespondingWorldId: z
+      .string()
+      .optional()
+      .refine(
+        (value) => {
+          if (!value) return true;
+          return /^[^/]+\/[^/]+$/.test(value);
+        },
+        { message: "ownerId/id の形式で入力してください" },
+      ),
+    keepOriginalRoles: z.boolean().optional(),
+    roleCloudVariable: z.string().optional(),
+    allowUserCloudVariable: z.string().optional(),
+    denyUserCloudVariable: z.string().optional(),
+    requiredUserJoinCloudVariable: z.string().optional(),
+    requiredUserJoinCloudVariableDenyMessage: z.string().optional(),
+    autoInviteMessage: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.worldSource === "url") {
+        return !!data.worldUrl;
+      }
+      return true;
+    },
+    { message: "URLを入力してください", path: ["worldUrl"] },
+  );
+
+export type SessionFormValues = z.infer<typeof sessionFormSchema>;
+
+const processCSV = (csv: string | undefined): string[] =>
+  csv
+    ?.split(",")
+    .map((n) => n.trim())
+    .filter((n) => n) || [];
+
+const processRecordId = (
+  recordId: string | undefined,
+): { id: string; ownerId: string } | undefined => {
+  if (!recordId) return undefined;
+  const parts = recordId.split("/");
+  if (parts.length !== 2) return undefined;
+  return { ownerId: parts[0], id: parts[1] };
+};
+
+/**
+ * SessionFormValues → WorldStartupParameters proto に変換する。
+ * StartWorld と Schedule START の両方で利用される。
+ */
+export function buildStartWorldParameters(
+  data: SessionFormValues,
+): WorldStartupParameters {
+  return create(WorldStartupParametersSchema, {
+    loadWorld:
+      data.worldSource === "url"
+        ? { case: "loadWorldUrl", value: data.worldUrl || "" }
+        : { case: "loadWorldPresetName", value: data.worldTemplate },
+    name: data.name,
+    description: data.description || "",
+    tags: processCSV(data.tags),
+    maxUsers: data.maxUsers,
+    accessLevel: data.accessLevel,
+    customSessionId: data.customSessionId || "",
+    autoInviteUsernames:
+      data.autoInviteUsernames
+        ?.filter((u) => !u.joinAllowedOnly)
+        .map((u) => u.userName) || [],
+    joinAllowedUserIds:
+      data.autoInviteUsernames
+        ?.filter((u) => u.joinAllowedOnly)
+        .map((u) => u.userId) || [],
+    hideFromPublicListing: data.hideFromPublicListing,
+    defaultUserRoles: data.defaultUserRoles || [],
+    awayKickMinutes: data.awayKickMinutes,
+    idleRestartIntervalSeconds: data.idleRestartIntervalSeconds,
+    saveOnExit: data.saveOnExit,
+    autoSaveIntervalSeconds: data.autoSaveIntervalSeconds,
+    autoSleep: data.autoSleep,
+    inviteRequestHandlerUsernames: processCSV(
+      data.inviteRequestHandlerUsernames,
+    ),
+    forcePort: data.forcePort,
+    parentSessionIds: processCSV(data.parentSessionIds),
+    autoRecover: data.autoRecover,
+    forcedRestartIntervalSeconds: data.forcedRestartIntervalSeconds,
+    useCustomJoinVerifier: data.useCustomJoinVerifier,
+    mobileFriendly: data.mobileFriendly,
+    overrideCorrespondingWorldId: processRecordId(
+      data.overrideCorrespondingWorldId,
+    ),
+    keepOriginalRoles: data.keepOriginalRoles,
+    roleCloudVariable: data.roleCloudVariable,
+    allowUserCloudVariable: data.allowUserCloudVariable,
+    denyUserCloudVariable: data.denyUserCloudVariable,
+    requiredUserJoinCloudVariable: data.requiredUserJoinCloudVariable,
+    requiredUserJoinCloudVariableDenyMessage:
+      data.requiredUserJoinCloudVariableDenyMessage,
+    autoInviteMessage: data.autoInviteMessage,
+  });
+}
+
+export function removeUndefined<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined),
+  ) as Partial<T>;
+}
 
 /**
  * フォームの入力値の型定義（クエリパラメータから読み取り可能なフィールド）

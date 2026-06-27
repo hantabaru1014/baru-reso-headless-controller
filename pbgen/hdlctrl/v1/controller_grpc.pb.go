@@ -65,6 +65,9 @@ const (
 	ControllerService_KickUser_FullMethodName                         = "/hdlctrl.v1.ControllerService/KickUser"
 	ControllerService_BanUser_FullMethodName                          = "/hdlctrl.v1.ControllerService/BanUser"
 	ControllerService_IssueResoniteLinkConnection_FullMethodName      = "/hdlctrl.v1.ControllerService/IssueResoniteLinkConnection"
+	ControllerService_CreateScheduledSessionOperation_FullMethodName  = "/hdlctrl.v1.ControllerService/CreateScheduledSessionOperation"
+	ControllerService_ListScheduledSessionOperations_FullMethodName   = "/hdlctrl.v1.ControllerService/ListScheduledSessionOperations"
+	ControllerService_CancelScheduledSessionOperation_FullMethodName  = "/hdlctrl.v1.ControllerService/CancelScheduledSessionOperation"
 )
 
 // ControllerServiceClient is the client API for ControllerService service.
@@ -121,6 +124,10 @@ type ControllerServiceClient interface {
 	KickUser(ctx context.Context, in *KickUserRequest, opts ...grpc.CallOption) (*KickUserResponse, error)
 	BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*BanUserResponse, error)
 	IssueResoniteLinkConnection(ctx context.Context, in *IssueResoniteLinkConnectionRequest, opts ...grpc.CallOption) (*IssueResoniteLinkConnectionResponse, error)
+	// 予約操作系
+	CreateScheduledSessionOperation(ctx context.Context, in *CreateScheduledSessionOperationRequest, opts ...grpc.CallOption) (*CreateScheduledSessionOperationResponse, error)
+	ListScheduledSessionOperations(ctx context.Context, in *ListScheduledSessionOperationsRequest, opts ...grpc.CallOption) (*ListScheduledSessionOperationsResponse, error)
+	CancelScheduledSessionOperation(ctx context.Context, in *CancelScheduledSessionOperationRequest, opts ...grpc.CallOption) (*CancelScheduledSessionOperationResponse, error)
 }
 
 type controllerServiceClient struct {
@@ -581,6 +588,36 @@ func (c *controllerServiceClient) IssueResoniteLinkConnection(ctx context.Contex
 	return out, nil
 }
 
+func (c *controllerServiceClient) CreateScheduledSessionOperation(ctx context.Context, in *CreateScheduledSessionOperationRequest, opts ...grpc.CallOption) (*CreateScheduledSessionOperationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateScheduledSessionOperationResponse)
+	err := c.cc.Invoke(ctx, ControllerService_CreateScheduledSessionOperation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) ListScheduledSessionOperations(ctx context.Context, in *ListScheduledSessionOperationsRequest, opts ...grpc.CallOption) (*ListScheduledSessionOperationsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListScheduledSessionOperationsResponse)
+	err := c.cc.Invoke(ctx, ControllerService_ListScheduledSessionOperations_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) CancelScheduledSessionOperation(ctx context.Context, in *CancelScheduledSessionOperationRequest, opts ...grpc.CallOption) (*CancelScheduledSessionOperationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CancelScheduledSessionOperationResponse)
+	err := c.cc.Invoke(ctx, ControllerService_CancelScheduledSessionOperation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ControllerServiceServer is the server API for ControllerService service.
 // All implementations must embed UnimplementedControllerServiceServer
 // for forward compatibility.
@@ -635,6 +672,10 @@ type ControllerServiceServer interface {
 	KickUser(context.Context, *KickUserRequest) (*KickUserResponse, error)
 	BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error)
 	IssueResoniteLinkConnection(context.Context, *IssueResoniteLinkConnectionRequest) (*IssueResoniteLinkConnectionResponse, error)
+	// 予約操作系
+	CreateScheduledSessionOperation(context.Context, *CreateScheduledSessionOperationRequest) (*CreateScheduledSessionOperationResponse, error)
+	ListScheduledSessionOperations(context.Context, *ListScheduledSessionOperationsRequest) (*ListScheduledSessionOperationsResponse, error)
+	CancelScheduledSessionOperation(context.Context, *CancelScheduledSessionOperationRequest) (*CancelScheduledSessionOperationResponse, error)
 	mustEmbedUnimplementedControllerServiceServer()
 }
 
@@ -779,6 +820,15 @@ func (UnimplementedControllerServiceServer) BanUser(context.Context, *BanUserReq
 }
 func (UnimplementedControllerServiceServer) IssueResoniteLinkConnection(context.Context, *IssueResoniteLinkConnectionRequest) (*IssueResoniteLinkConnectionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method IssueResoniteLinkConnection not implemented")
+}
+func (UnimplementedControllerServiceServer) CreateScheduledSessionOperation(context.Context, *CreateScheduledSessionOperationRequest) (*CreateScheduledSessionOperationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateScheduledSessionOperation not implemented")
+}
+func (UnimplementedControllerServiceServer) ListScheduledSessionOperations(context.Context, *ListScheduledSessionOperationsRequest) (*ListScheduledSessionOperationsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListScheduledSessionOperations not implemented")
+}
+func (UnimplementedControllerServiceServer) CancelScheduledSessionOperation(context.Context, *CancelScheduledSessionOperationRequest) (*CancelScheduledSessionOperationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CancelScheduledSessionOperation not implemented")
 }
 func (UnimplementedControllerServiceServer) mustEmbedUnimplementedControllerServiceServer() {}
 func (UnimplementedControllerServiceServer) testEmbeddedByValue()                           {}
@@ -1611,6 +1661,60 @@ func _ControllerService_IssueResoniteLinkConnection_Handler(srv interface{}, ctx
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_CreateScheduledSessionOperation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateScheduledSessionOperationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).CreateScheduledSessionOperation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_CreateScheduledSessionOperation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).CreateScheduledSessionOperation(ctx, req.(*CreateScheduledSessionOperationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_ListScheduledSessionOperations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListScheduledSessionOperationsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).ListScheduledSessionOperations(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_ListScheduledSessionOperations_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).ListScheduledSessionOperations(ctx, req.(*ListScheduledSessionOperationsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_CancelScheduledSessionOperation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelScheduledSessionOperationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).CancelScheduledSessionOperation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_CancelScheduledSessionOperation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).CancelScheduledSessionOperation(ctx, req.(*CancelScheduledSessionOperationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ControllerService_ServiceDesc is the grpc.ServiceDesc for ControllerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1797,6 +1901,18 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "IssueResoniteLinkConnection",
 			Handler:    _ControllerService_IssueResoniteLinkConnection_Handler,
+		},
+		{
+			MethodName: "CreateScheduledSessionOperation",
+			Handler:    _ControllerService_CreateScheduledSessionOperation_Handler,
+		},
+		{
+			MethodName: "ListScheduledSessionOperations",
+			Handler:    _ControllerService_ListScheduledSessionOperations_Handler,
+		},
+		{
+			MethodName: "CancelScheduledSessionOperation",
+			Handler:    _ControllerService_CancelScheduledSessionOperation_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
