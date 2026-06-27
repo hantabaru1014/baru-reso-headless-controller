@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-errors/errors"
 
-	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/converter"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
@@ -58,6 +57,14 @@ type HostUpgradeOrchestrator struct {
 	// to break the SessionUsecase ↔ orchestrator construction cycle.
 	stopperMu      sync.RWMutex
 	sessionStopper port.SessionStopper
+
+	// lifecycleCtx is the ctx the Manager passed to Run. OnNewImage
+	// spawns its per-host work in a goroutine using this ctx (rather
+	// than the short-lived ctx ImageChecker hands to observers) so
+	// long restarts can complete and so Manager-initiated shutdown
+	// still cancels the work. Mirrors HostEventWatcher.
+	lifecycleMu  sync.RWMutex
+	lifecycleCtx context.Context //nolint:containedctx // see comment above
 }
 
 // drainState is everything the orchestrator captured at enroll time —
@@ -146,6 +153,10 @@ func (o *HostUpgradeOrchestrator) IsHostDraining(hostID string) bool {
 // without the UserLeftSession event reaching us (cold start, stream
 // reset).
 func (o *HostUpgradeOrchestrator) Run(ctx context.Context) error {
+	o.lifecycleMu.Lock()
+	o.lifecycleCtx = ctx
+	o.lifecycleMu.Unlock()
+
 	ticker := time.NewTicker(o.interval)
 	defer ticker.Stop()
 
@@ -159,41 +170,20 @@ func (o *HostUpgradeOrchestrator) Run(ctx context.Context) error {
 	}
 }
 
-// OnNewImage is the ImageChecker subscription. It enrolls each running
-// USERS_EMPTY host whose AppVersion differs from the new tag, snapshots
-// the startup config + account (BEFORE any sessions are stopped), seeds
-// the per-host user-count cache from RPC, then triggers a reconcile.
-func (o *HostUpgradeOrchestrator) OnNewImage(ctx context.Context, latest *port.ContainerImage) {
+// OnNewImage is the ImageChecker subscription. It returns immediately
+// after dispatching the work to a goroutine so the caller's tick loop is
+// not blocked by RPC fetches or Restart calls (which can take minutes).
+// The orchestrator's lifecycle ctx (captured by Run) bounds the work so
+// Manager shutdown cancels it cleanly.
+func (o *HostUpgradeOrchestrator) OnNewImage(_ context.Context, latest *port.ContainerImage) {
 	if latest == nil || latest.IsPreRelease {
 		return
 	}
 
-	hosts, err := o.hostRepo.ListAll(ctx, port.HeadlessHostFetchOptions{})
-	if err != nil {
-		slog.Error("upgrade-orchestrator: failed to list hosts", "error", err)
-
-		return
-	}
-
-	for _, h := range hosts {
-		if h.Status != entity.HeadlessHostStatus_RUNNING {
-			continue
-		}
-
-		if h.AutoUpdatePolicy != entity.HostAutoUpdatePolicy_USERS_EMPTY {
-			continue
-		}
-
-		if h.AppVersion == latest.AppVersion && h.ResoniteVersion == latest.ResoniteVersion {
-			continue
-		}
-
-		if o.IsHostDraining(h.ID) {
-			continue
-		}
-
-		o.enrollHost(ctx, h.ID, latest.Tag)
-	}
+	// The ImageChecker tick ctx has a 5-minute deadline that can be
+	// shorter than a Restart, so we intentionally swap in the
+	// orchestrator's lifecycle ctx for the goroutined work.
+	go o.handleNewImage(o.lifecycle(), latest) //nolint:contextcheck // see comment above
 }
 
 // HandleHostEvent implements HostEventHandler. Cache updates happen
@@ -264,27 +254,55 @@ func (o *HostUpgradeOrchestrator) drainingHostIDs() []string {
 
 // enrollHost captures the snapshot data the eventual restart will need
 // and adds the host to drainTargets. Failure to snapshot leaves the
-// host unenrolled — better than enrolling with a bad snapshot that
-// would restart the host with empty start_worlds.
-func (o *HostUpgradeOrchestrator) enrollHost(ctx context.Context, hostID, targetTag string) {
-	// CRITICAL: this Find must run with IncludeStartWorlds:true BEFORE
-	// any sessions are stopped, because the underlying RPC reads
-	// start_worlds from the running container's live state. Once
-	// stopSession drains the sessions there is nothing left to capture.
-	host, err := o.hostRepo.Find(ctx, hostID, port.HeadlessHostFetchOptions{
+// host unenrolled — the next ImageChecker tick will retry.
+//
+// `host` carries the row-level fields (Name, AccountId, AutoUpdatePolicy,
+// Memo) which are populated from the DB and therefore reliable. We do
+// NOT trust host.HostSettings here because the repository's Find path
+// silently swallows RPC errors and leaves that field as a zero value —
+// which on restart would produce an empty start_worlds and lose user
+// data. Instead we fetch the startup config DIRECTLY via the RPC client
+// so any error propagates (and aborts the enroll) rather than silently
+// becoming a bad snapshot.
+//
+// NOTE: once a host is enrolled, edits to its startup_config via the UI
+// will NOT be picked up by the eventual restart — the snapshot taken
+// here is authoritative until the upgrade completes or aborts.
+func (o *HostUpgradeOrchestrator) enrollHost(ctx context.Context, host *entity.HeadlessHost, targetTag string) {
+	client, err := o.hostRepo.GetRpcClient(ctx, host.ID)
+	if err != nil {
+		slog.Warn("upgrade-orchestrator: cannot reach host RPC; deferring enroll",
+			"hostID", host.ID, "error", err)
+
+		return
+	}
+
+	// CRITICAL: this must run BEFORE any sessions are stopped, because
+	// GetStartupConfigToRestore reads start_worlds from the running
+	// container's live state. Once stopSession drains the sessions
+	// there is nothing left to capture.
+	cfgResp, err := client.GetStartupConfigToRestore(ctx, &headlessv1.GetStartupConfigToRestoreRequest{
 		IncludeStartWorlds: true,
 	})
 	if err != nil {
-		slog.Error("upgrade-orchestrator: snapshot host failed; skipping enroll",
-			"hostID", hostID, "error", err)
+		slog.Warn("upgrade-orchestrator: GetStartupConfigToRestore failed; deferring enroll",
+			"hostID", host.ID, "error", err)
+
+		return
+	}
+
+	startupConfig := cfgResp.GetStartupConfig()
+	if startupConfig == nil {
+		slog.Warn("upgrade-orchestrator: empty startup config response; deferring enroll",
+			"hostID", host.ID)
 
 		return
 	}
 
 	account, err := o.accountRepo.GetHeadlessAccount(ctx, host.AccountId)
 	if err != nil {
-		slog.Error("upgrade-orchestrator: account fetch failed; skipping enroll",
-			"hostID", hostID, "error", err)
+		slog.Warn("upgrade-orchestrator: account fetch failed; deferring enroll",
+			"hostID", host.ID, "error", err)
 
 		return
 	}
@@ -294,7 +312,7 @@ func (o *HostUpgradeOrchestrator) enrollHost(ctx context.Context, hostID, target
 		restartParms: port.HeadlessHostStartParams{
 			Name:              host.Name,
 			ContainerImageTag: targetTag,
-			StartupConfig:     converter.HeadlessHostSettingsToStartupConfigProto(&host.HostSettings),
+			StartupConfig:     startupConfig,
 			HeadlessAccount:   *account,
 			AutoUpdatePolicy:  host.AutoUpdatePolicy,
 			Memo:              host.Memo,
@@ -303,28 +321,28 @@ func (o *HostUpgradeOrchestrator) enrollHost(ctx context.Context, hostID, target
 
 	o.mu.Lock()
 
-	if _, already := o.drainTargets[hostID]; already {
+	if _, already := o.drainTargets[host.ID]; already {
 		o.mu.Unlock()
 
 		return
 	}
 
-	o.drainTargets[hostID] = state
+	o.drainTargets[host.ID] = state
 	o.mu.Unlock()
 
 	slog.Info("upgrade-orchestrator: enrolled host for drain",
-		"hostID", hostID, "currentAppVersion", host.AppVersion, "targetTag", targetTag)
+		"hostID", host.ID, "currentAppVersion", host.AppVersion, "targetTag", targetTag)
 
 	// Reseed cache from live RPC so the very next reconcile has a
 	// trustworthy baseline. Without this, controller-restart races
 	// (a user-leave event arriving after a checkpoint with no matching
 	// user-join replay) could leave a session falsely at 0.
-	if err := o.seedSessionUserCache(ctx, hostID); err != nil {
+	if err := o.seedSessionUserCache(ctx, host.ID); err != nil {
 		slog.Warn("upgrade-orchestrator: initial cache seed failed; reconcile will RPC-verify",
-			"hostID", hostID, "error", err)
+			"hostID", host.ID, "error", err)
 	}
 
-	o.reconcileHost(ctx, hostID)
+	o.reconcileHost(ctx, host.ID)
 }
 
 // seedSessionUserCache replaces the per-host user-count submap with the
@@ -583,6 +601,13 @@ func (o *HostUpgradeOrchestrator) forgetSession(hostID, sessionID string) {
 // hostReconcileMutex returns the per-host reconcile lock, allocating it
 // on first use. Per-host (rather than global) so unrelated draining
 // hosts can reconcile in parallel.
+// TODO: reconcileLock entries are never deleted, so a long-running
+// controller that has churned through many distinct host IDs will leak
+// one mutex per ever-drained host. Deleting on restart-success risks
+// "in-flight reconcile holds a stale lock; new reconcile acquires a
+// fresh one and the two run in parallel"; we'll need a more careful
+// scheme (e.g. refcounting) to GC them safely. Not urgent for current
+// deployments.
 func (o *HostUpgradeOrchestrator) hostReconcileMutex(hostID string) *sync.Mutex {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -594,4 +619,54 @@ func (o *HostUpgradeOrchestrator) hostReconcileMutex(hostID string) *sync.Mutex 
 	}
 
 	return m
+}
+
+// lifecycle returns the Manager-supplied ctx if Run is currently
+// executing, falling back to context.Background otherwise (only matters
+// in tests that drive OnNewImage without spinning up the runner loop).
+func (o *HostUpgradeOrchestrator) lifecycle() context.Context {
+	o.lifecycleMu.RLock()
+	defer o.lifecycleMu.RUnlock()
+
+	if o.lifecycleCtx == nil {
+		return context.Background()
+	}
+
+	return o.lifecycleCtx
+}
+
+// handleNewImage is the synchronous body of OnNewImage. Split out so
+// tests can drive it deterministically without depending on goroutine
+// scheduling.
+func (o *HostUpgradeOrchestrator) handleNewImage(ctx context.Context, latest *port.ContainerImage) {
+	if latest == nil || latest.IsPreRelease {
+		return
+	}
+
+	hosts, err := o.hostRepo.ListAll(ctx, port.HeadlessHostFetchOptions{})
+	if err != nil {
+		slog.Error("upgrade-orchestrator: failed to list hosts", "error", err)
+
+		return
+	}
+
+	for _, h := range hosts {
+		if h.Status != entity.HeadlessHostStatus_RUNNING {
+			continue
+		}
+
+		if h.AutoUpdatePolicy != entity.HostAutoUpdatePolicy_USERS_EMPTY {
+			continue
+		}
+
+		if h.AppVersion == latest.AppVersion && h.ResoniteVersion == latest.ResoniteVersion {
+			continue
+		}
+
+		if o.IsHostDraining(h.ID) {
+			continue
+		}
+
+		o.enrollHost(ctx, h, latest.Tag)
+	}
 }

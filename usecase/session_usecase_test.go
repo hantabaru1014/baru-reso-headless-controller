@@ -1,11 +1,14 @@
 package usecase
 
 import (
+	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,9 +19,22 @@ type stubHostDrainer struct {
 
 func (s stubHostDrainer) IsHostDraining(hostID string) bool { return s.drainingIDs[hostID] }
 
-func newUsecaseUnderTest(drainer stubHostDrainer) *SessionUsecase {
+// stubHostRepo only implements the GetRpcClient method that
+// SessionUsecase.StartSession reaches after the drain guard. Every
+// other method panics so accidental use shows up loudly.
+type stubHostRepo struct {
+	port.HeadlessHostRepository
+
+	rpcClientErr error
+}
+
+func (s *stubHostRepo) GetRpcClient(_ context.Context, _ string) (headlessv1.HeadlessControlServiceClient, error) {
+	return nil, s.rpcClientErr
+}
+
+func newUsecaseUnderTest(drainer stubHostDrainer, hostRepo port.HeadlessHostRepository) *SessionUsecase {
 	return NewSessionUsecase(
-		nil, nil,
+		nil, hostRepo,
 		drainer,
 		&config.GRPCConfig{CallTimeout: time.Second},
 		&config.ServerConfig{},
@@ -50,7 +66,7 @@ func TestStartSession_RejectsDrainingHost(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			suc := newUsecaseUnderTest(stubHostDrainer{drainingIDs: draining})
+			suc := newUsecaseUnderTest(stubHostDrainer{drainingIDs: draining}, &stubHostRepo{})
 
 			_, err := suc.StartSession(t.Context(), tc.hostID, nil,
 				&headlessv1.WorldStartupParameters{}, nil)
@@ -60,24 +76,27 @@ func TestStartSession_RejectsDrainingHost(t *testing.T) {
 	}
 }
 
-// TestStartSession_BypassesDrainCheckForUnrelatedHost verifies the
-// drainer is consulted with the exact host id (not broadly applied) by
-// confirming that a request for host B is NOT rejected just because host
-// A is draining. We use a nil hostRepo so any code path past the drain
-// guard panics — we recover and assert nothing returned ErrHostDraining.
+// TestStartSession_BypassesDrainCheckForUnrelatedHost verifies the drainer
+// is consulted with the exact host id rather than broadly applied: a
+// request for host B must NOT be rejected just because host A is draining.
+// We arrange for the host repo to return a sentinel error after the drain
+// guard so we can distinguish "drain guard fired" from "code progressed
+// past it".
 func TestStartSession_BypassesDrainCheckForUnrelatedHost(t *testing.T) {
 	t.Parallel()
 
-	suc := newUsecaseUnderTest(stubHostDrainer{drainingIDs: map[string]bool{"host-a": true}})
-
-	defer func() {
-		_ = recover()
-	}()
+	sentinel := errors.New("expected: stub host repo refused")
+	suc := newUsecaseUnderTest(
+		stubHostDrainer{drainingIDs: map[string]bool{"host-a": true}},
+		&stubHostRepo{rpcClientErr: sentinel},
+	)
 
 	_, err := suc.StartSession(t.Context(), "host-b", nil,
 		&headlessv1.WorldStartupParameters{}, nil)
-	if err != nil {
-		assert.NotErrorIs(t, err, ErrHostDraining,
-			"draining host A must not affect StartSession on host B")
-	}
+	require.Error(t, err)
+	require.NotErrorIs(t, err, ErrHostDraining,
+		"draining host A must not affect StartSession on host B")
+	require.ErrorIs(t, err, sentinel,
+		"StartSession should have progressed past the drain guard to the host repo")
 }
+

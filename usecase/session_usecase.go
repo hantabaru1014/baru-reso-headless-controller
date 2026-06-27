@@ -76,7 +76,7 @@ func (u *SessionUsecase) IssueResoniteLinkToken(ctx context.Context, sessionID, 
 }
 
 func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId *string, params *headlessv1.WorldStartupParameters, memo *string) (*entity.Session, error) {
-	if u.hostDrainer != nil && u.hostDrainer.IsHostDraining(hostId) {
+	if u.hostDrainer.IsHostDraining(hostId) {
 		return nil, ErrHostDraining
 	}
 
