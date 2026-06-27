@@ -485,6 +485,18 @@ func (c *ControllerService) UpdateHeadlessHostSettings(ctx context.Context, req 
 		}
 	}
 
+	if req.Msg.AutoUpdatePolicy != nil &&
+		req.Msg.GetAutoUpdatePolicy() != hdlctrlv1.HeadlessHostAutoUpdatePolicy_HEADLESS_HOST_AUTO_UPDATE_POLICY_UNKNOWN {
+		err := c.hhrepo.UpdateAutoUpdatePolicy(
+			ctx,
+			req.Msg.GetHostId(),
+			entity.HostAutoUpdatePolicy(req.Msg.GetAutoUpdatePolicy()),
+		)
+		if err != nil {
+			return nil, convertErr(err)
+		}
+	}
+
 	hasUpdateReq := false
 	updateReq := &headlessv1.UpdateHostSettingsRequest{}
 	settings := host.HostSettings

@@ -54,6 +54,14 @@ func (h *HeadlessHostRepository) UpdateHostSettings(ctx context.Context, id stri
 	})
 }
 
+// UpdateAutoUpdatePolicy implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) UpdateAutoUpdatePolicy(ctx context.Context, id string, policy entity.HostAutoUpdatePolicy) error {
+	return h.q.UpdateHostAutoUpdatePolicy(ctx, db.UpdateHostAutoUpdatePolicyParams{
+		ID:               id,
+		AutoUpdatePolicy: int32(policy),
+	})
+}
+
 // Find implements port.HeadlessHostRepository.
 func (h *HeadlessHostRepository) Find(ctx context.Context, id string, fetchOptions port.HeadlessHostFetchOptions) (*entity.HeadlessHost, error) {
 	host, err := h.q.GetHost(ctx, id)

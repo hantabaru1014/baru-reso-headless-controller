@@ -1157,11 +1157,13 @@ func TestControllerService_UpdateHeadlessHostSettings(t *testing.T) {
 
 		newName := "UpdatedHost"
 		newTickRate := float32(120)
+		newPolicy := hdlctrlv1.HeadlessHostAutoUpdatePolicy_HEADLESS_HOST_AUTO_UPDATE_POLICY_USERS_EMPTY
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.UpdateHeadlessHostSettingsRequest{
-			HostId:   host.ID,
-			Name:     &newName,
-			TickRate: &newTickRate,
+			HostId:           host.ID,
+			Name:             &newName,
+			TickRate:         &newTickRate,
+			AutoUpdatePolicy: &newPolicy,
 		})
 
 		res, err := client.UpdateHeadlessHostSettings(t.Context(), req)
@@ -1172,6 +1174,8 @@ func TestControllerService_UpdateHeadlessHostSettings(t *testing.T) {
 		updatedHost, err := setup.queries.GetHost(t.Context(), host.ID)
 		require.NoError(t, err)
 		assert.Equal(t, newName, updatedHost.Name)
+		assert.Equal(t, int32(entity.HostAutoUpdatePolicy_USERS_EMPTY), updatedHost.AutoUpdatePolicy,
+			"AutoUpdatePolicy passed in request should be persisted")
 	})
 
 	t.Run("成功: 実行中のホストの設定を更新", func(t *testing.T) {

@@ -24,8 +24,12 @@ import {
   DropdownMenuTrigger,
 } from "./ui";
 import { EditableTextField } from "./base/EditableTextField";
+import { EditableSelectField } from "./base/EditableSelectField";
 import { ReadOnlyField } from "./base/ReadOnlyField";
-import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
+import {
+  HeadlessHostAutoUpdatePolicy,
+  HeadlessHostStatus,
+} from "../../pbgen/hdlctrl/v1/controller_pb";
 import { hostStatusToLabel } from "../libs/hostUtils";
 import { useNavigate } from "react-router";
 import { AllowedAccessEntry_AccessType } from "../../pbgen/headless/v1/headless_pb";
@@ -522,6 +526,30 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
             value={
               data?.host?.fps ? Math.floor(data?.host?.fps * 10) / 10 : "N/A"
             }
+            isLoading={isPending}
+          />
+          <EditableSelectField
+            label="自動アップグレード"
+            helperText="新しいバージョンがリリースされたら、セッション参加者が 0 人になった瞬間に自動で最新バージョンへ再起動します"
+            options={[
+              {
+                id: "users-empty",
+                label: "有効 (ユーザが 0 人のとき)",
+                value: HeadlessHostAutoUpdatePolicy.USERS_EMPTY,
+              },
+              {
+                id: "never",
+                label: "無効",
+                value: HeadlessHostAutoUpdatePolicy.NEVER,
+              },
+            ]}
+            selectedId={
+              data?.host?.autoUpdatePolicy ===
+              HeadlessHostAutoUpdatePolicy.USERS_EMPTY
+                ? "users-empty"
+                : "never"
+            }
+            onSave={(v) => handleSave("autoUpdatePolicy", v)}
             isLoading={isPending}
           />
           {settings && (
