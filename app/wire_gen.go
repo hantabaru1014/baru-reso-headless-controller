@@ -12,6 +12,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/resonitelink"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/rpc"
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/sessionstate"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/blobstore"
@@ -38,9 +39,10 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	headlessAccountFetcher := ProvideHeadlessAccountFetcher(headlessAccountUsecase)
 	workerConfig := ProvideWorkerConfig(cfg)
 	hostUpgradeOrchestrator := worker.NewHostUpgradeOrchestrator(headlessHostRepository, sessionRepository, headlessAccountFetcher, workerConfig)
+	memoryCache := sessionstate.NewMemoryCache()
 	serverConfig := ProvideServerConfig(cfg)
 	resoniteLinkConfig := ProvideResoniteLinkConfig(cfg)
-	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, hostUpgradeOrchestrator, grpcConfig, serverConfig, resoniteLinkConfig)
+	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, hostUpgradeOrchestrator, memoryCache, serverConfig, resoniteLinkConfig)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
 	rustFSConfig := ProvideRustFSConfig(cfg)
 	minioClient, err := blobstore.NewMinioClient(rustFSConfig)
@@ -52,9 +54,10 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	imageChecker := worker.NewImageChecker(dockerHostConnector, workerConfig)
 	dockerEventWatcher := worker.NewDockerEventWatcher(dockerHostConnector, queries, workerConfig)
 	sqlHostEventStore := worker.NewSQLHostEventStore(queries)
-	loggingHostEventHandler := worker.NewLoggingHostEventHandler()
+	sessionStateSyncHandler := worker.NewSessionStateSyncHandler(sessionRepository, headlessHostRepository, memoryCache)
 	sessionLifecycleHandler := worker.NewSessionLifecycleHandler(sessionRepository)
-	v := ProvideHostEventHandlers(loggingHostEventHandler, sessionLifecycleHandler, hostUpgradeOrchestrator)
+	loggingHostEventHandler := worker.NewLoggingHostEventHandler()
+	v := ProvideHostEventHandlers(sessionStateSyncHandler, sessionLifecycleHandler, hostUpgradeOrchestrator, loggingHostEventHandler)
 	hostEventWatcher := worker.NewHostEventWatcher(headlessHostRepository, sqlHostEventStore, workerConfig, v)
 	manager := ProvideWorkerManager(imageChecker, dockerEventWatcher, hostEventWatcher, hostUpgradeOrchestrator, sessionUsecase)
 	bridge := resonitelink.NewBridge(headlessHostRepository, sessionRepository, resoniteLinkConfig)
@@ -73,9 +76,10 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 	headlessHostRepository := adapter.NewHeadlessHostRepository(queries, dockerHostConnector, grpcConfig)
 	sessionRepository := adapter.NewSessionRepository(queries)
 	noopHostDrainer := port.NoopHostDrainer{}
+	memoryCache := sessionstate.NewMemoryCache()
 	serverConfig := ProvideServerConfig(cfg)
 	resoniteLinkConfig := ProvideResoniteLinkConfig(cfg)
-	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, noopHostDrainer, grpcConfig, serverConfig, resoniteLinkConfig)
+	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, noopHostDrainer, memoryCache, serverConfig, resoniteLinkConfig)
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
 	cli := NewCli(queries, userUsecase, headlessHostUsecase, defaultClient)
@@ -140,13 +144,15 @@ func ProvideWorkerManager(
 }
 
 // ProvideHostEventHandlers gathers consumers for the per-host event
-// streams.
+// streams. Order matters: the logging handler runs last so other handlers'
+// DB writes are visible by the time we log the event.
 func ProvideHostEventHandlers(
-	loggingHandler *worker.LoggingHostEventHandler,
+	sessionStateSyncHandler *worker.SessionStateSyncHandler,
 	sessionLifecycleHandler *worker.SessionLifecycleHandler,
 	upgradeOrchestrator *worker.HostUpgradeOrchestrator,
+	loggingHandler *worker.LoggingHostEventHandler,
 ) []worker.HostEventHandler {
-	return []worker.HostEventHandler{loggingHandler, sessionLifecycleHandler, upgradeOrchestrator}
+	return []worker.HostEventHandler{sessionStateSyncHandler, sessionLifecycleHandler, upgradeOrchestrator, loggingHandler}
 }
 
 // ProvideHeadlessAccountFetcher exposes HeadlessAccountUsecase under the

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/sessionstate"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
@@ -36,7 +37,7 @@ func newUsecaseUnderTest(drainer stubHostDrainer, hostRepo port.HeadlessHostRepo
 	return NewSessionUsecase(
 		nil, hostRepo,
 		drainer,
-		&config.GRPCConfig{CallTimeout: time.Second},
+		sessionstate.NewMemoryCache(),
 		&config.ServerConfig{},
 		&config.ResoniteLinkConfig{TokenTTL: time.Minute},
 	)

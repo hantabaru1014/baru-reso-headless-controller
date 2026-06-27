@@ -121,7 +121,7 @@ func LoadEnvConfig() (*EnvConfig, error) {
 	cfg.Server.SessionPortMin = portMin
 	cfg.Server.SessionPortMax = portMax
 
-	cfg.ResoniteLink.TokenTTL = getEnvDuration("RESONITE_LINK_TOKEN_TTL", 5*time.Minute)   //nolint:mnd // default
+	cfg.ResoniteLink.TokenTTL = getEnvDuration("RESONITE_LINK_TOKEN_TTL", 5*time.Hour)    //nolint:mnd // default
 	cfg.ResoniteLink.ReadyTimeout = getEnvDuration("RESONITE_LINK_READY_TIMEOUT", 5*time.Second) //nolint:mnd // default
 	cfg.ResoniteLink.AllowedOrigins = parseCSV(os.Getenv("RESONITE_LINK_ALLOWED_ORIGINS"))
 

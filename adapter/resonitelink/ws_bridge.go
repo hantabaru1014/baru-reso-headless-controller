@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -27,6 +28,17 @@ import (
 // WSPath は HTTP サーバが Bridge をマウントするパス.
 // 発行する ws_path もこのパスを使う (mount 先と発行先のずれを防ぐため共有).
 const WSPath = "/resonite-link/ws"
+
+// peer が無言で死んだ場合に gRPC stream を握り続けて
+// 接続数カウントが減らなくなるのを防ぐための liveness 設定.
+const (
+	// pongWait は次の pong / メッセージを受信するまで待てる最大時間.
+	pongWait = 60 * time.Second
+	// pingPeriod は ping を送る周期. pongWait より十分短く.
+	pingPeriod = (pongWait * 9) / 10 //nolint:mnd // 9/10: pong 到着前に次の ping を送るためのマージン
+	// writeWait は 1 フレームの書き込みに許容するタイムアウト.
+	writeWait = 10 * time.Second
+)
 
 // BuildWSPath は token を埋めた path + query を返す.
 // host は呼び出し側 (フロントエンド) で補完する.
@@ -82,7 +94,11 @@ func (b *Bridge) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	streamCtx, cancel := context.WithCancel(r.Context())
+	// token の有効期限を streamCtx の deadline に載せる. これで token 期限到達時に
+	// gRPC stream と pumpFrames 配下の goroutine が ctx 経由で自然に終わり、
+	// container 側の clients count もそのまま減る. ParseResoniteLinkToken は
+	// jwt.WithExpirationRequired を強制しているので ExpiresAt は必ず非 nil.
+	streamCtx, cancel := context.WithDeadline(r.Context(), claims.ExpiresAt.Time)
 	defer cancel()
 
 	client, err := b.hhrepo.GetRpcClient(streamCtx, sess.HostID)
@@ -128,7 +144,7 @@ func (b *Bridge) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	defer func() { _ = conn.Close() }()
 
-	if err := pumpFrames(streamCtx, conn, stream); err != nil {
+	if err := pumpFrames(streamCtx, cancel, conn, stream); err != nil {
 		slog.Debug("resonite link bridge ended", "session_id", claims.SessionID, "error", err)
 	}
 }
@@ -152,15 +168,70 @@ func waitReady(stream headlessv1.HeadlessControlService_ResoniteLinkStreamClient
 	return nil
 }
 
+// cancelStream はこの bridge に対応する gRPC streamCtx を cancel するためのもの.
+// pumpFrames 内で片方の経路が終了したとき、もう片方が ReadMessage / stream.Recv で
+// 永久ブロックしないよう、conn.Close と合わせて gRPC stream も起こす.
 func pumpFrames(
 	ctx context.Context,
+	cancelStream context.CancelFunc,
 	conn *websocket.Conn,
 	stream headlessv1.HeadlessControlService_ResoniteLinkStreamClient,
 ) error {
-	eg, _ := errgroup.WithContext(ctx)
+	// peer が無言で死んだら ReadMessage を確実に起こすため
+	// pongWait の deadline を設定し、pong / メッセージ受信のたびに延長する.
+	_ = conn.SetReadDeadline(time.Now().Add(pongWait))
+	conn.SetPongHandler(func(string) error {
+		_ = conn.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
+
+	// conn.WriteMessage / WriteControl は並行呼び出し不可なので writer をシリアライズする.
+	var writeMu sync.Mutex
+
+	writeFrame := func(messageType int, data []byte) error {
+		writeMu.Lock()
+		defer writeMu.Unlock()
+
+		_ = conn.SetWriteDeadline(time.Now().Add(writeWait))
+
+		return conn.WriteMessage(messageType, data)
+	}
+
+	// どこかの経路が終わったら conn を閉じて gRPC stream を cancel し、
+	// 反対側の Read / Recv を起こす. conn.Close も CancelFunc も idempotent なので
+	// 複数 goroutine の defer から呼ばれて問題ない. cancelStream は ctx も cancel するため
+	// ping ticker は ctx.Done() で抜ける.
+	closeAll := func() {
+		_ = conn.Close()
+
+		cancelStream()
+	}
+
+	var eg errgroup.Group
+
+	// ping ticker: peer 生存確認.
+	eg.Go(func() error {
+		defer closeAll()
+
+		ticker := time.NewTicker(pingPeriod)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-ticker.C:
+				if err := writeFrame(websocket.PingMessage, nil); err != nil {
+					return err
+				}
+			}
+		}
+	})
 
 	// WebSocket -> gRPC
 	eg.Go(func() error {
+		defer closeAll()
+
 		for {
 			messageType, data, err := conn.ReadMessage()
 			if err != nil {
@@ -171,6 +242,9 @@ func pumpFrames(
 
 				return err
 			}
+
+			// メッセージが届いている間は peer 生存なので deadline 延長.
+			_ = conn.SetReadDeadline(time.Now().Add(pongWait))
 
 			var req *headlessv1.ResoniteLinkStreamRequest
 
@@ -191,11 +265,13 @@ func pumpFrames(
 
 	// gRPC -> WebSocket
 	eg.Go(func() error {
+		defer closeAll()
+
 		for {
 			msg, err := stream.Recv()
 			if err != nil {
 				if errors.Is(err, io.EOF) {
-					_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+					_ = writeFrame(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 					return nil
 				}
 
@@ -204,11 +280,11 @@ func pumpFrames(
 
 			switch p := msg.GetPayload().(type) {
 			case *headlessv1.ResoniteLinkStreamResponse_TextFrame:
-				if err := conn.WriteMessage(websocket.TextMessage, []byte(p.TextFrame)); err != nil {
+				if err := writeFrame(websocket.TextMessage, []byte(p.TextFrame)); err != nil {
 					return err
 				}
 			case *headlessv1.ResoniteLinkStreamResponse_BinaryFrame:
-				if err := conn.WriteMessage(websocket.BinaryMessage, p.BinaryFrame); err != nil {
+				if err := writeFrame(websocket.BinaryMessage, p.BinaryFrame); err != nil {
 					return err
 				}
 			}
