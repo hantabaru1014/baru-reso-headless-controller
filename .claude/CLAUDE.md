@@ -93,7 +93,14 @@ Key directories:
 
 ### Backend (Go) Tests
 
-#### RPC Service Tests (`adapter/rpc/controller_service_test.go`)
+#### RPC Service Tests (`adapter/rpc/controller_service_*_test.go`)
+
+ControllerService のテストは proto (`proto/hdlctrl/v1/controller.proto`) のドメイン境界 (`// ホスト系` / `// アカウント系` / `// Cloud系` / `// コンタクト・チャット系` / `// セッション系`) に揃えて分割されている:
+
+- 共有 setup (`controllerServiceTestSetup`, `setupControllerServiceTest`, `setupAuthenticatedClient`) と認証テストは `controller_service_test.go`
+- 機能別: `controller_service_{host,account,cloud,contact,session}_test.go`
+
+新規テストは対象 RPC が属する proto ブロックに対応するファイルに追加する。
 
 When adding tests for new functionality in RPC services:
 
