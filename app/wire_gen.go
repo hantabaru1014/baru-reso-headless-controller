@@ -35,7 +35,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	sessionRepository := adapter.NewSessionRepository(queries)
 	serverConfig := ProvideServerConfig(cfg)
 	resoniteLinkConfig := ProvideResoniteLinkConfig(cfg)
-	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, grpcConfig, serverConfig, resoniteLinkConfig)
+	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, serverConfig, resoniteLinkConfig)
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
 	rustFSConfig := ProvideRustFSConfig(cfg)
@@ -49,8 +49,9 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	imageChecker := worker.NewImageChecker(dockerHostConnector, workerConfig)
 	dockerEventWatcher := worker.NewDockerEventWatcher(dockerHostConnector, queries, workerConfig)
 	sqlHostEventStore := worker.NewSQLHostEventStore(queries)
+	sessionStateSyncHandler := worker.NewSessionStateSyncHandler(sessionRepository, headlessHostRepository)
 	loggingHostEventHandler := worker.NewLoggingHostEventHandler()
-	v := ProvideHostEventHandlers(loggingHostEventHandler)
+	v := ProvideHostEventHandlers(sessionStateSyncHandler, loggingHostEventHandler)
 	hostEventWatcher := worker.NewHostEventWatcher(headlessHostRepository, sqlHostEventStore, workerConfig, v)
 	v2 := ProvideWorkerRunners(imageChecker, dockerEventWatcher, hostEventWatcher)
 	manager := worker.NewManager(v2)
@@ -71,7 +72,7 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 	sessionRepository := adapter.NewSessionRepository(queries)
 	serverConfig := ProvideServerConfig(cfg)
 	resoniteLinkConfig := ProvideResoniteLinkConfig(cfg)
-	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, grpcConfig, serverConfig, resoniteLinkConfig)
+	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, serverConfig, resoniteLinkConfig)
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
 	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
 	cli := NewCli(queries, userUsecase, headlessHostUsecase, defaultClient)
@@ -125,12 +126,13 @@ func ProvideWorkerRunners(
 }
 
 // ProvideHostEventHandlers gathers consumers for the per-host event
-// streams. Today only a logging handler is registered; add real handlers
-// here as they come online.
+// streams. Order matters: the logging handler runs last so other handlers'
+// DB writes are visible by the time we log the event.
 func ProvideHostEventHandlers(
+	sessionStateSyncHandler *worker.SessionStateSyncHandler,
 	loggingHandler *worker.LoggingHostEventHandler,
 ) []worker.HostEventHandler {
-	return []worker.HostEventHandler{loggingHandler}
+	return []worker.HostEventHandler{sessionStateSyncHandler, loggingHandler}
 }
 
 var ConfigSet = wire.NewSet(

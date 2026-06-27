@@ -10,9 +10,10 @@ INSERT INTO sessions (
     startup_parameters,
     startup_parameters_schema_version,
     auto_upgrade,
-    memo
+    memo,
+    current_state
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 ) ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     status = EXCLUDED.status,
@@ -23,11 +24,15 @@ INSERT INTO sessions (
     startup_parameters = EXCLUDED.startup_parameters,
     startup_parameters_schema_version = EXCLUDED.startup_parameters_schema_version,
     auto_upgrade = EXCLUDED.auto_upgrade,
-    memo = EXCLUDED.memo
+    memo = EXCLUDED.memo,
+    current_state = EXCLUDED.current_state
 RETURNING *;
 
 -- name: UpdateSessionStatus :exec
 UPDATE sessions SET status = $2 WHERE id = $1;
+
+-- name: UpdateSessionCurrentState :exec
+UPDATE sessions SET current_state = $2 WHERE id = $1;
 
 -- name: GetSession :one
 SELECT * FROM sessions WHERE id = $1 LIMIT 1;

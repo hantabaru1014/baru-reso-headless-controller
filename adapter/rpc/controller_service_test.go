@@ -77,7 +77,7 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 
 	// Setup usecases with real repositories
 	hauc := usecase.NewHeadlessAccountUsecase(queries, mockSkyfrost)
-	suc := usecase.NewSessionUsecase(srepo, hhrepo, &cfg.GRPC, &cfg.Server, &cfg.ResoniteLink)
+	suc := usecase.NewSessionUsecase(srepo, hhrepo, &cfg.Server, &cfg.ResoniteLink)
 	hhuc := usecase.NewHeadlessHostUsecase(hhrepo, srepo, suc, hauc)
 	buc := usecase.NewBlobUsecase(srepo, hhrepo, mockBlobstore)
 
@@ -1515,17 +1515,6 @@ func TestControllerService_ShutdownHeadlessHost(t *testing.T) {
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
 
-		// Mock HostConnector - SearchSessions calls GetRpcClient to list sessions
-		setup.mockHostConnector.EXPECT().
-			GetRpcClient(gomock.Any(), gomock.Any()).
-			Return(setup.mockRpcClient, nil)
-
-		setup.mockRpcClient.EXPECT().
-			ListSessions(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.ListSessionsResponse{
-				Sessions: []*headlessv1.Session{},
-			}, nil)
-
 		// Mock HostConnector - Stop calls GetRpcClient to fetch startup config
 		setup.mockHostConnector.EXPECT().
 			GetRpcClient(gomock.Any(), gomock.Any()).
@@ -1580,17 +1569,6 @@ func TestControllerService_KillHeadlessHost(t *testing.T) {
 		// Create test account and host
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
-
-		// Mock HostConnector - SearchSessions calls GetRpcClient to list sessions
-		setup.mockHostConnector.EXPECT().
-			GetRpcClient(gomock.Any(), gomock.Any()).
-			Return(setup.mockRpcClient, nil)
-
-		setup.mockRpcClient.EXPECT().
-			ListSessions(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.ListSessionsResponse{
-				Sessions: []*headlessv1.Session{},
-			}, nil)
 
 		// Mock HostConnector - Kill
 		setup.mockHostConnector.EXPECT().
@@ -2355,27 +2333,18 @@ func TestControllerService_SaveSessionWorld(t *testing.T) {
 
 		client := setupAuthenticatedClient(t, setup.service)
 
-		// Create test account, host, and session
+		// Create test account, host, and session (CurrentState is populated as if
+		// the host-event watcher had already broadcast the latest WorldSaved snapshot).
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
 		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
-		session := testutil.CreateTestSession(t, setup.queries, host.ID, "TestSession", entity.SessionStatus_RUNNING)
+		session := testutil.CreateTestSessionWithCurrentState(t, setup.queries, host.ID, "TestSession", entity.SessionStatus_RUNNING, &headlessv1.Session{
+			WorldUrl: "resrec:///U-test/R-test-world",
+		})
 
 		// Mock HostConnector - GetRpcClient
 		setup.mockHostConnector.EXPECT().
 			GetRpcClient(gomock.Any(), gomock.Any()).
 			Return(setup.mockRpcClient, nil).
-			AnyTimes()
-
-		// Mock RPC call to get session (called by SaveSessionWorld usecase)
-		setup.mockRpcClient.EXPECT().
-			GetSession(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.GetSessionResponse{
-				Session: &headlessv1.Session{
-					Id:       session.ID,
-					Name:     session.Name,
-					WorldUrl: "resrec:///U-test/R-test-world",
-				},
-			}, nil).
 			AnyTimes()
 
 		// Mock RPC call to save world

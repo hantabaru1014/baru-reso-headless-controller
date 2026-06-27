@@ -21,7 +21,7 @@ func (q *Queries) DeleteSession(ctx context.Context, id string) error {
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at FROM sessions WHERE id = $1 LIMIT 1
+SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at, current_state FROM sessions WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
@@ -41,12 +41,13 @@ func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
 		&i.Memo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CurrentState,
 	)
 	return i, err
 }
 
 const listSessions = `-- name: ListSessions :many
-SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at FROM sessions ORDER BY started_at DESC
+SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at, current_state FROM sessions ORDER BY started_at DESC
 `
 
 func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
@@ -72,6 +73,7 @@ func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
 			&i.Memo,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CurrentState,
 		); err != nil {
 			return nil, err
 		}
@@ -84,7 +86,7 @@ func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
 }
 
 const listSessionsByStatus = `-- name: ListSessionsByStatus :many
-SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at FROM sessions WHERE status = $1 ORDER BY started_at DESC
+SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at, current_state FROM sessions WHERE status = $1 ORDER BY started_at DESC
 `
 
 func (q *Queries) ListSessionsByStatus(ctx context.Context, status int32) ([]Session, error) {
@@ -110,6 +112,7 @@ func (q *Queries) ListSessionsByStatus(ctx context.Context, status int32) ([]Ses
 			&i.Memo,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CurrentState,
 		); err != nil {
 			return nil, err
 		}
@@ -122,7 +125,7 @@ func (q *Queries) ListSessionsByStatus(ctx context.Context, status int32) ([]Ses
 }
 
 const listSessionsPaged = `-- name: ListSessionsPaged :many
-SELECT sessions.id, sessions.name, sessions.status, sessions.started_at, sessions.owner_id, sessions.ended_at, sessions.host_id, sessions.startup_parameters, sessions.startup_parameters_schema_version, sessions.auto_upgrade, sessions.memo, sessions.created_at, sessions.updated_at, COUNT(*) OVER() AS total_count
+SELECT sessions.id, sessions.name, sessions.status, sessions.started_at, sessions.owner_id, sessions.ended_at, sessions.host_id, sessions.startup_parameters, sessions.startup_parameters_schema_version, sessions.auto_upgrade, sessions.memo, sessions.created_at, sessions.updated_at, sessions.current_state, COUNT(*) OVER() AS total_count
 FROM sessions
 WHERE ($1::int IS NULL OR status = $1::int)
   AND ($2::text IS NULL OR host_id = $2::text)
@@ -173,6 +176,7 @@ func (q *Queries) ListSessionsPaged(ctx context.Context, arg ListSessionsPagedPa
 			&i.Session.Memo,
 			&i.Session.CreatedAt,
 			&i.Session.UpdatedAt,
+			&i.Session.CurrentState,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err
@@ -183,6 +187,20 @@ func (q *Queries) ListSessionsPaged(ctx context.Context, arg ListSessionsPagedPa
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateSessionCurrentState = `-- name: UpdateSessionCurrentState :exec
+UPDATE sessions SET current_state = $2 WHERE id = $1
+`
+
+type UpdateSessionCurrentStateParams struct {
+	ID           string
+	CurrentState []byte
+}
+
+func (q *Queries) UpdateSessionCurrentState(ctx context.Context, arg UpdateSessionCurrentStateParams) error {
+	_, err := q.db.Exec(ctx, updateSessionCurrentState, arg.ID, arg.CurrentState)
+	return err
 }
 
 const updateSessionStatus = `-- name: UpdateSessionStatus :exec
@@ -211,9 +229,10 @@ INSERT INTO sessions (
     startup_parameters,
     startup_parameters_schema_version,
     auto_upgrade,
-    memo
+    memo,
+    current_state
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 ) ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     status = EXCLUDED.status,
@@ -224,8 +243,9 @@ INSERT INTO sessions (
     startup_parameters = EXCLUDED.startup_parameters,
     startup_parameters_schema_version = EXCLUDED.startup_parameters_schema_version,
     auto_upgrade = EXCLUDED.auto_upgrade,
-    memo = EXCLUDED.memo
-RETURNING id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at
+    memo = EXCLUDED.memo,
+    current_state = EXCLUDED.current_state
+RETURNING id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at, current_state
 `
 
 type UpsertSessionParams struct {
@@ -240,6 +260,7 @@ type UpsertSessionParams struct {
 	StartupParametersSchemaVersion int32
 	AutoUpgrade                    bool
 	Memo                           pgtype.Text
+	CurrentState                   []byte
 }
 
 func (q *Queries) UpsertSession(ctx context.Context, arg UpsertSessionParams) (Session, error) {
@@ -255,6 +276,7 @@ func (q *Queries) UpsertSession(ctx context.Context, arg UpsertSessionParams) (S
 		arg.StartupParametersSchemaVersion,
 		arg.AutoUpgrade,
 		arg.Memo,
+		arg.CurrentState,
 	)
 	var i Session
 	err := row.Scan(
@@ -271,6 +293,7 @@ func (q *Queries) UpsertSession(ctx context.Context, arg UpsertSessionParams) (S
 		&i.Memo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CurrentState,
 	)
 	return i, err
 }

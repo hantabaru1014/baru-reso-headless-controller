@@ -11,9 +11,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // CreateTestUser creates a test user in the database.
@@ -109,8 +111,27 @@ func CreateTestHeadlessHost(t *testing.T, queries *db.Queries, accountID, name s
 func CreateTestSession(t *testing.T, queries *db.Queries, hostID, name string, status entity.SessionStatus) db.Session {
 	t.Helper()
 
+	return CreateTestSessionWithCurrentState(t, queries, hostID, name, status, nil)
+}
+
+// CreateTestSessionWithCurrentState creates a test session and persists the given
+// CurrentState snapshot, simulating an event-driven update from the host.
+func CreateTestSessionWithCurrentState(t *testing.T, queries *db.Queries, hostID, name string, status entity.SessionStatus, currentState *headlessv1.Session) db.Session {
+	t.Helper()
+
 	id := uniuri.New()
 	startupParams := []byte(`{"maxUsers": 8}`)
+
+	var currentStateBytes []byte
+
+	if currentState != nil {
+		b, err := protojson.Marshal(currentState)
+		if err != nil {
+			t.Fatalf("failed to marshal current_state: %v", err)
+		}
+
+		currentStateBytes = b
+	}
 
 	session, err := queries.UpsertSession(t.Context(), db.UpsertSessionParams{
 		ID:                             id,
@@ -124,6 +145,7 @@ func CreateTestSession(t *testing.T, queries *db.Queries, hostID, name string, s
 		StartupParametersSchemaVersion: 1,
 		AutoUpgrade:                    false,
 		Memo:                           pgtype.Text{Valid: false},
+		CurrentState:                   currentStateBytes,
 	})
 	if err != nil {
 		t.Fatalf("failed to create test session: %v", err)

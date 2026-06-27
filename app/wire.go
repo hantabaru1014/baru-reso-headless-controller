@@ -62,12 +62,13 @@ func ProvideWorkerRunners(
 }
 
 // ProvideHostEventHandlers gathers consumers for the per-host event
-// streams. Today only a logging handler is registered; add real handlers
-// here as they come online.
+// streams. Order matters: the logging handler runs last so other handlers'
+// DB writes are visible by the time we log the event.
 func ProvideHostEventHandlers(
+	sessionStateSyncHandler *worker.SessionStateSyncHandler,
 	loggingHandler *worker.LoggingHostEventHandler,
 ) []worker.HostEventHandler {
-	return []worker.HostEventHandler{loggingHandler}
+	return []worker.HostEventHandler{sessionStateSyncHandler, loggingHandler}
 }
 
 var ConfigSet = wire.NewSet(
@@ -113,6 +114,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		worker.NewSQLHostEventStore,
 		wire.Bind(new(worker.HostEventStore), new(*worker.SQLHostEventStore)),
 		worker.NewLoggingHostEventHandler,
+		worker.NewSessionStateSyncHandler,
 		ProvideHostEventHandlers,
 		ProvideWorkerRunners,
 		worker.NewManager,

@@ -28,10 +28,18 @@ func (r *SessionRepository) Upsert(ctx context.Context, session *entity.Session)
 	var (
 		err           error
 		startupParams []byte
+		currentState  []byte
 	)
 
 	if session.StartupParameters != nil {
 		startupParams, err = protojson.Marshal(session.StartupParameters)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+	}
+
+	if session.CurrentState != nil {
+		currentState, err = protojson.Marshal(session.CurrentState)
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
@@ -77,6 +85,7 @@ func (r *SessionRepository) Upsert(ctx context.Context, session *entity.Session)
 		StartupParametersSchemaVersion: 1,
 		AutoUpgrade:                    session.AutoUpgrade,
 		Memo:                           memo,
+		CurrentState:                   currentState,
 	})
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -196,6 +205,17 @@ func sessionToEntity(s db.Session) (*entity.Session, error) {
 		return nil, errors.Wrap(err, 0)
 	}
 
+	var currentState *headlessv1.Session
+
+	if len(s.CurrentState) > 0 {
+		cs := &headlessv1.Session{}
+		if err := protojson.Unmarshal(s.CurrentState, cs); err != nil {
+			return nil, errors.Wrap(err, 0)
+		}
+
+		currentState = cs
+	}
+
 	var ownerId *string
 	if s.OwnerID.Valid {
 		ownerId = &s.OwnerID.String
@@ -217,6 +237,7 @@ func sessionToEntity(s db.Session) (*entity.Session, error) {
 		StartupParameters: &startupParams,
 		AutoUpgrade:       s.AutoUpgrade,
 		Memo:              memo,
+		CurrentState:      currentState,
 	}, nil
 }
 

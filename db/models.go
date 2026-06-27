@@ -71,6 +71,7 @@ type Session struct {
 	Memo                           pgtype.Text
 	CreatedAt                      pgtype.Timestamptz
 	UpdatedAt                      pgtype.Timestamptz
+	CurrentState                   []byte
 }
 
 type User struct {
