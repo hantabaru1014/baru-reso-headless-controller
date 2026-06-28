@@ -271,8 +271,10 @@ func buildTriggerFromProto(tr *hdlctrlv1.ScheduledTrigger) (scheduled_op.Trigger
 			cmp = triggers.SessionUserCountComparator_LESS_OR_EQUAL
 		case hdlctrlv1.SessionUserCountTrigger_COMPARATOR_GREATER_OR_EQUAL:
 			cmp = triggers.SessionUserCountComparator_GREATER_OR_EQUAL
-		default:
+		case hdlctrlv1.SessionUserCountTrigger_COMPARATOR_UNSPECIFIED:
 			return nil, errors.New("session_user_count trigger: comparator is required")
+		default:
+			return nil, errors.New("session_user_count trigger: unknown comparator")
 		}
 
 		threshold := c.GetThreshold()

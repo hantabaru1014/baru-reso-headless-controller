@@ -63,32 +63,6 @@ func (h *SessionStateSyncHandler) HandleHostEvent(ctx context.Context, hostID st
 	}
 }
 
-// bumpUsersCount は cached snapshot の UsersCount を delta だけ動かす.
-// cache aliasing contract のため Get → proto.Clone → mutate → Set し直す.
-// session が cache に存在しない (起動前 / event 未到達) 場合は skip:
-// 次の SessionParametersChanged か StreamReset で ListSessions から再 seed される.
-// 0 未満には clamp する (UserJoined を観測する前に UserLeft だけ到達した場合).
-func (h *SessionStateSyncHandler) bumpUsersCount(hostID, sessionID string, delta int32) {
-	existing, ok := h.cache.Get(sessionID)
-	if !ok {
-		return
-	}
-
-	cloned, ok := proto.Clone(existing).(*headlessv1.Session)
-	if !ok {
-		slog.Warn("session-state-sync: failed to clone cached session for users_count bump", "sessionID", sessionID)
-		return
-	}
-
-	next := cloned.GetUsersCount() + delta
-	if next < 0 {
-		next = 0
-	}
-
-	cloned.UsersCount = next
-	h.cache.Set(hostID, sessionID, cloned)
-}
-
 // HandleHostEventStreamReset rebuilds the cache from the host snapshot and
 // demotes DB rows the host no longer reports. SessionLifecycleHandler's
 // HandleHostEventStreamReset is intentionally a no-op so it cannot clobber
@@ -200,4 +174,25 @@ func (h *SessionStateSyncHandler) applySessionEnded(payload *headlessv1.SessionE
 	// DB 側 status / ended_at の更新は SessionLifecycleHandler が担当。
 	// ここは cache の cleanup のみ。
 	h.cache.Delete(sessionID)
+}
+
+// bumpUsersCount は cached snapshot の UsersCount を delta だけ動かす.
+// cache aliasing contract のため Get → proto.Clone → mutate → Set し直す.
+// session が cache に存在しない (起動前 / event 未到達) 場合は skip:
+// 次の SessionParametersChanged か StreamReset で ListSessions から再 seed される.
+// 0 未満には clamp する (UserJoined を観測する前に UserLeft だけ到達した場合).
+func (h *SessionStateSyncHandler) bumpUsersCount(hostID, sessionID string, delta int32) {
+	existing, ok := h.cache.Get(sessionID)
+	if !ok {
+		return
+	}
+
+	cloned, ok := proto.Clone(existing).(*headlessv1.Session)
+	if !ok {
+		slog.Warn("session-state-sync: failed to clone cached session for users_count bump", "sessionID", sessionID)
+		return
+	}
+
+	cloned.UsersCount = max(cloned.GetUsersCount()+delta, 0)
+	h.cache.Set(hostID, sessionID, cloned)
 }
