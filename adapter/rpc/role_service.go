@@ -1,4 +1,3 @@
-// role_service.go は RoleService の connect RPC handler.
 package rpc
 
 import (
@@ -76,7 +75,7 @@ var _ = registerRPCPermission(
 func (s *RoleService) ListRoles(ctx context.Context, req *connect.Request[hdlctrlv1.ListRolesRequest]) (*connect.Response[hdlctrlv1.ListRolesResponse], error) {
 	var groupID *string
 
-	if req.Msg.GroupId != nil && *req.Msg.GroupId != "" {
+	if req.Msg.GroupId != nil && req.Msg.GetGroupId() != "" {
 		g := req.Msg.GetGroupId()
 		groupID = &g
 	}
@@ -103,7 +102,7 @@ var _ = registerRPCPermission(
 func (s *RoleService) CreateRole(ctx context.Context, req *connect.Request[hdlctrlv1.CreateRoleRequest]) (*connect.Response[hdlctrlv1.CreateRoleResponse], error) {
 	var groupID *string
 
-	if req.Msg.GroupId != nil && *req.Msg.GroupId != "" {
+	if req.Msg.GroupId != nil && req.Msg.GetGroupId() != "" {
 		g := req.Msg.GetGroupId()
 		groupID = &g
 	}
@@ -137,7 +136,7 @@ func (s *RoleService) UpdateRole(ctx context.Context, req *connect.Request[hdlct
 		Name: req.Msg.Name,
 	}
 
-	if req.Msg.PermissionKeys != nil {
+	if req.Msg.GetPermissionKeys() != nil {
 		keys := req.Msg.GetPermissionKeys().GetKeys()
 		params.PermissionKeys = &keys
 		params.OverwritePermKeys = true
@@ -271,6 +270,8 @@ func protoRoleScopeToEntity(s hdlctrlv1.RoleScope) entity.RoleScope {
 		return entity.RoleScope_Normal
 	case hdlctrlv1.RoleScope_ROLE_SCOPE_SYSTEM:
 		return entity.RoleScope_System
+	case hdlctrlv1.RoleScope_ROLE_SCOPE_UNSPECIFIED:
+		return ""
 	}
 
 	return ""

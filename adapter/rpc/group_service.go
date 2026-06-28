@@ -1,5 +1,3 @@
-// group_service.go は GroupService の connect RPC handler.
-// 仕様: docs/permissions.md 9.
 package rpc
 
 import (

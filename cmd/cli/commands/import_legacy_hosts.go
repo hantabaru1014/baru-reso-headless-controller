@@ -112,6 +112,7 @@ func NewImportLegacyHostsCommand(q *db.Queries, skyfrostClient skyfrost.Client) 
 					}
 
 					systemUserID := domain.SystemUserID
+
 					createParams := db.CreateHostParams{
 						ID:                             id,
 						Name:                           name,

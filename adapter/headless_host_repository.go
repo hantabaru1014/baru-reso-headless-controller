@@ -25,6 +25,13 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+const (
+	// createHostCleanupTimeout は CreateHost 失敗時にコンテナを補償停止するのに与える上限時間.
+	createHostCleanupTimeout = 30 * time.Second
+	// createHostCleanupStopGrace は補償停止時に container Stop に与える grace period (秒).
+	createHostCleanupStopGrace = 10
+)
+
 var _ port.HeadlessHostRepository = (*HeadlessHostRepository)(nil)
 
 type HeadlessHostRepository struct {
@@ -410,10 +417,10 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, connector port.HostC
 		// Start() 直後はまだ skyfrost 認証も world 起動も完了しておらずユーザーセッションは
 		// 存在しないので、Stop + Remove で巻き戻すのが安全. 補償自体の失敗は warning に留め
 		// 元の DB エラーを優先して返す. ctx が canceled でも補償は走らせたいので detach する.
-		cleanupCtx, cleanupCancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.WithoutCancel(ctx), createHostCleanupTimeout)
 		defer cleanupCancel()
 
-		if stopErr := connectorImpl.Stop(cleanupCtx, newConnectStr, 10); stopErr != nil {
+		if stopErr := connectorImpl.Stop(cleanupCtx, newConnectStr, createHostCleanupStopGrace); stopErr != nil {
 			slog.Warn("headless_host_repository: failed to stop container after CreateHost error",
 				"connect_string", string(newConnectStr), "stop_error", stopErr)
 		}

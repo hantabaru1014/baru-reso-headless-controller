@@ -211,6 +211,7 @@ func (u *RoleUsecase) DeleteRole(ctx context.Context, id string) error {
 // requireRoleMutation は role の所属 (global / グループ内) に応じた permission を要求する.
 // グローバル (role.GroupID == nil): system:role.manage.
 // グループ内: group:members.manage on role.GroupID.
+//nolint:funcorder // 関連 method (UpdateRole / DeleteRole) 直下にヘルパーを置く方が読みやすい
 func (u *RoleUsecase) requireRoleMutation(ctx context.Context, role *entity.Role) error {
 	if role.GroupID == nil || *role.GroupID == "" {
 		return u.permUC.RequireSystemPermission(ctx, entity.PermKey_SystemRoleManage)

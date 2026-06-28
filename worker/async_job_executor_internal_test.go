@@ -63,7 +63,7 @@ func (s *stubUserChecker) UserExistsByID(_ context.Context, _ string) (bool, err
 type stubSessionOperator struct {
 	stopErr error
 
-	gotCtx context.Context
+	gotCtx context.Context //nolint:containedctx // test stub: capture ctx for assertion
 }
 
 func (s *stubSessionOperator) StartSession(_ context.Context, _ string, _ string, _ *string, _ *headlessv1.WorldStartupParameters, _ *string) (*entity.Session, error) {

@@ -39,6 +39,7 @@ func NewScheduledSessionOperationUsecase(
 
 // resolveTargetGroupID は HostID または SessionID から対象の group_id を引く.
 // どちらも未指定なら error.
+//nolint:funcorder // Create/List/Cancel の手前にヘルパーを置く方が読みやすい
 func (u *ScheduledSessionOperationUsecase) resolveTargetGroupID(ctx context.Context, hostID, sessionID *string) (string, error) {
 	if sessionID != nil && *sessionID != "" {
 		s, err := u.sessionRepo.Get(ctx, *sessionID)
@@ -192,6 +193,7 @@ func (u *ScheduledSessionOperationUsecase) List(ctx context.Context, filter List
 // listFilteredByGroups は repo.List の結果を accessible グループの op のみに in-app で絞る.
 // scheduled_session_operations は group_id 列を持たないため、各 op の target host/session から
 // 都度 group_id を引いて判定する. データ量は通常少ない (worker tick 単位の予約) ので問題ない想定.
+//nolint:funcorder // List の直下にヘルパーを置く方が読みやすい
 func (u *ScheduledSessionOperationUsecase) listFilteredByGroups(ctx context.Context, filter ListScheduledSessionOperationsFilter, accessible map[string]bool) (*ListScheduledSessionOperationsResult, error) {
 	// page を取り払って全件取得 → 絞り込み → in-app paging.
 	rawFilter := filter
@@ -217,7 +219,7 @@ func (u *ScheduledSessionOperationUsecase) listFilteredByGroups(ctx context.Cont
 		}
 	}
 
-	total := int32(len(filtered))
+	total := int32(len(filtered)) //nolint:gosec // 件数は in-memory 上限内, overflow しない
 
 	// in-app paging.
 	start := filter.PageIndex * filter.PageSize

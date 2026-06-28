@@ -454,6 +454,7 @@ func TestUserService_CreateRegistrationToken(t *testing.T) {
 		setup.mockSkyfrost.EXPECT().
 			FetchUserInfo(gomock.Any(), resoniteID).
 			Return(&skyfrost.UserInfo{ID: resoniteID, UserName: "newuser_display"}, nil)
+
 		validateRes, err := client.ValidateRegistrationToken(t.Context(), connect.NewRequest(&hdlctrlv1.ValidateRegistrationTokenRequest{
 			Token: res.Msg.GetToken(),
 		}))

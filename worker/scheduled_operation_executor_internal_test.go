@@ -47,7 +47,7 @@ func (r *stubScheduledRepo) Requeue(_ context.Context, _ string, _ time.Time) er
 type scheduledSessionOpStub struct {
 	stopErr error
 
-	gotCtx context.Context
+	gotCtx context.Context //nolint:containedctx // test stub: capture ctx for assertion
 }
 
 func (s *scheduledSessionOpStub) StartSession(_ context.Context, _, _ string, _ *string, _ *headlessv1.WorldStartupParameters, _ *string) (*entity.Session, error) {
@@ -74,8 +74,8 @@ func newScheduledExecutor(repo port.ScheduledSessionOperationRepository, checker
 
 // newStopSessionOp は STOP_SESSION + TIME trigger (期日 1 時間前) の op を作る.
 func newStopSessionOp(createdBy *string) *entity.ScheduledSessionOperation {
-	payload, _ := json.Marshal(map[string]string{"session_id": "S-1"})
-	trigCfg, _ := json.Marshal(map[string]string{"scheduled_at": time.Now().Add(-time.Hour).UTC().Format(time.RFC3339Nano)})
+	payload, _ := json.Marshal(map[string]string{"session_id": "S-1"})                                                            //nolint:errchkjson // test fixture
+	trigCfg, _ := json.Marshal(map[string]string{"scheduled_at": time.Now().Add(-time.Hour).UTC().Format(time.RFC3339Nano)}) //nolint:errchkjson // test fixture
 
 	return &entity.ScheduledSessionOperation{
 		ID:               "op-1",

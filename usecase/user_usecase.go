@@ -181,6 +181,7 @@ func (u *UserUsecase) CreateRegistrationTokenWithInfo(ctx context.Context, reson
 	}, nil
 }
 
+//nolint:funcorder // CreateRegistrationToken / WithInfo のヘルパー. 直下に置く方が読みやすい
 func (u *UserUsecase) createRegistrationToken(ctx context.Context, resoniteId, personalRoleID string) (string, time.Time, error) {
 	token, err := generateSecureToken(registrationTokenLength)
 	if err != nil {
@@ -207,7 +208,7 @@ func (u *UserUsecase) createRegistrationToken(ctx context.Context, resoniteId, p
 	return token, expiresAt, nil
 }
 
-// ListUsers は全ユーザーを id 昇順で返す. (認証済みなら誰でも呼べる)
+// ListUsers は全ユーザーを id 昇順で返す. (認証済みなら誰でも呼べる).
 func (u *UserUsecase) ListUsers(ctx context.Context) ([]db.User, error) {
 	users, err := u.queries.ListUsers(ctx)
 	if err != nil {

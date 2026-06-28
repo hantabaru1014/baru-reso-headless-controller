@@ -49,7 +49,7 @@ var rpcPermissionRules = map[string]permissionCheck{}
 //
 // 同一 procedure を二重登録した場合は panic で初期化を止める (誤った宣言を
 // fail-fast に検知するため).
-func registerRPCPermission(procedure string, check permissionCheck) struct{} {
+func registerRPCPermission(procedure string, check permissionCheck) struct{} { //nolint:unparam // 戻り値は `var _ = registerRPCPermission(...)` を file-scope で書くためのダミー
 	if rpcPermissionRules == nil {
 		rpcPermissionRules = map[string]permissionCheck{}
 	}

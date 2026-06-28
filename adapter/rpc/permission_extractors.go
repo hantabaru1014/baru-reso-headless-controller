@@ -1,5 +1,3 @@
-// permission_extractors.go は permission_interceptor.go が使う request → ID 抽出
-// クロージャの定義をまとめたファイル. 1 RPC 1 抽出関数で type-safe に書く.
 package rpc
 
 import (

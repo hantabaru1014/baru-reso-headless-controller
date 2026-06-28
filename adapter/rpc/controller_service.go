@@ -180,27 +180,24 @@ func (c *ControllerService) publishHostListChanged() {
 //
 // permission interceptor は List 系を requireAuthOnly で通すため、認可ロジックは
 // この helper で集約する.
-func (c *ControllerService) resolveListGroupFilter(ctx context.Context, requestedGroupID *string, permKey string) ([]string, error) {
+func (c *ControllerService) resolveListGroupFilter(ctx context.Context, requestedGroupID, permKey string) ([]string, error) {
 	claims, err := auth.GetAuthClaimsFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	if requestedGroupID != nil {
-		gid := strings.TrimSpace(*requestedGroupID)
-		if gid != "" {
-			ok, err := c.permUC.CanReadGroup(ctx, claims.UserID, gid, permKey)
-			if err != nil {
-				return nil, convertErr(err)
-			}
-
-			if !ok {
-				return nil, connect.NewError(connect.CodePermissionDenied,
-					errors.New("permission required: "+permKey))
-			}
-
-			return []string{gid}, nil
+	if gid := strings.TrimSpace(requestedGroupID); gid != "" {
+		ok, err := c.permUC.CanReadGroup(ctx, claims.UserID, gid, permKey)
+		if err != nil {
+			return nil, convertErr(err)
 		}
+
+		if !ok {
+			return nil, connect.NewError(connect.CodePermissionDenied,
+				errors.New("permission required: "+permKey))
+		}
+
+		return []string{gid}, nil
 	}
 
 	groupIDs, _, err := c.permUC.ResolveListGroupFilter(ctx, claims.UserID, permKey)

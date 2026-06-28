@@ -83,6 +83,7 @@ func TestControllerService_ListHeadlessAccounts(t *testing.T) {
 		client2 := setupAuthenticatedClient(t, setup2.service)
 
 		const otherUserID = "U-other-acc"
+
 		personalGID := testutil.SetupNormalUserWithPersonalGroup(t, setup2.queries, otherUserID)
 
 		sharedGID := "group-shared-acc"
@@ -123,7 +124,7 @@ func TestControllerService_ListHeadlessAccounts(t *testing.T) {
 		require.Error(t, err)
 
 		connectErr := &connect.Error{}
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 
 		// case 4: 既定ユーザー (system-admin) が同じ group_id を指定 -> system:group.list 経由で許可.

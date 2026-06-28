@@ -159,7 +159,7 @@ func TestControllerService_StartHeadlessHost(t *testing.T) {
 		require.Error(t, err)
 
 		connectErr := &connect.Error{}
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 		assert.Contains(t, connectErr.Message(), entity.PermKey_AccountUse)
 	})
@@ -186,7 +186,7 @@ func TestControllerService_StartHeadlessHost(t *testing.T) {
 		require.Error(t, err)
 
 		connectErr := &connect.Error{}
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 		assert.Contains(t, connectErr.Message(), entity.PermKey_HostWrite)
 	})
@@ -964,6 +964,7 @@ func TestControllerService_ListHeadlessHost(t *testing.T) {
 		// non-admin ユーザーを personal グループ単独所属で用意し、別 normal グループを
 		// 作って admin として追加. 既存の "migrated-pre-permission" には所属させない.
 		const otherUserID = "U-other"
+
 		personalGID := testutil.SetupNormalUserWithPersonalGroup(t, setup.queries, otherUserID)
 
 		sharedGID := "group-shared"
@@ -990,6 +991,7 @@ func TestControllerService_ListHeadlessHost(t *testing.T) {
 		for _, h := range resAuto.Msg.GetHosts() {
 			gotNames[h.GetName()] = true
 		}
+
 		assert.True(t, gotNames["PersonalHost"], "expected PersonalHost in result")
 		assert.True(t, gotNames["SharedHost"], "expected SharedHost in result")
 		assert.False(t, gotNames["MigratedHost1"], "MigratedHost1 should be filtered out")
@@ -1016,7 +1018,7 @@ func TestControllerService_ListHeadlessHost(t *testing.T) {
 		require.Error(t, err)
 
 		connectErr := &connect.Error{}
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 
 		// case 4: 既定ユーザー (system-admin) が同じ group_id を指定 -> system:group.list 経由で許可.

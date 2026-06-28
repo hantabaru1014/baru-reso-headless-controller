@@ -346,12 +346,7 @@ func (c *ControllerService) SearchSessions(ctx context.Context, req *connect.Req
 		return nil, err
 	}
 
-	var requestedGroupID *string
-	if p := req.Msg.GetParameters(); p != nil {
-		requestedGroupID = p.GroupId
-	}
-
-	groupIDs, err := c.resolveListGroupFilter(ctx, requestedGroupID, entity.PermKey_SessionRead)
+	groupIDs, err := c.resolveListGroupFilter(ctx, req.Msg.GetParameters().GetGroupId(), entity.PermKey_SessionRead)
 	if err != nil {
 		return nil, err
 	}

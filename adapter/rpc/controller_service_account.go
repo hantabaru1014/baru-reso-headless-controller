@@ -53,7 +53,7 @@ func (c *ControllerService) ListHeadlessAccounts(ctx context.Context, req *conne
 		return nil, err
 	}
 
-	groupIDs, err := c.resolveListGroupFilter(ctx, req.Msg.GroupId, entity.PermKey_AccountRead)
+	groupIDs, err := c.resolveListGroupFilter(ctx, req.Msg.GetGroupId(), entity.PermKey_AccountRead)
 	if err != nil {
 		return nil, err
 	}

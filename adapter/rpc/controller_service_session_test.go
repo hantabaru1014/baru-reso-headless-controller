@@ -750,7 +750,7 @@ func TestControllerService_StartWorld(t *testing.T) {
 		require.Error(t, err)
 
 		connectErr := &connect.Error{}
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 		assert.Contains(t, connectErr.Message(), entity.PermKey_HostUse)
 	})
@@ -777,7 +777,7 @@ func TestControllerService_StartWorld(t *testing.T) {
 		require.Error(t, err)
 
 		connectErr := &connect.Error{}
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 		assert.Contains(t, connectErr.Message(), entity.PermKey_AccountUse)
 	})
@@ -804,7 +804,7 @@ func TestControllerService_StartWorld(t *testing.T) {
 		require.Error(t, err)
 
 		connectErr := &connect.Error{}
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 		assert.Contains(t, connectErr.Message(), entity.PermKey_SessionWrite)
 	})
@@ -1310,6 +1310,7 @@ func TestControllerService_SearchSessions(t *testing.T) {
 		client := setupAuthenticatedClient(t, setup.service)
 
 		const otherUserID = "U-other-sess"
+
 		personalGID := testutil.SetupNormalUserWithPersonalGroup(t, setup.queries, otherUserID)
 
 		sharedGID := "group-shared-sess"
@@ -1366,7 +1367,7 @@ func TestControllerService_SearchSessions(t *testing.T) {
 		require.Error(t, err)
 
 		connectErr := &connect.Error{}
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 
 		// case 4: 既定ユーザー (system-admin / system:group.list) は全件閲覧可.

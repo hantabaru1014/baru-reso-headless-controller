@@ -429,7 +429,7 @@ func (c *ControllerService) ListHeadlessHost(ctx context.Context, req *connect.R
 		return nil, err
 	}
 
-	groupIDs, err := c.resolveListGroupFilter(ctx, req.Msg.GroupId, entity.PermKey_HostRead)
+	groupIDs, err := c.resolveListGroupFilter(ctx, req.Msg.GetGroupId(), entity.PermKey_HostRead)
 	if err != nil {
 		return nil, err
 	}

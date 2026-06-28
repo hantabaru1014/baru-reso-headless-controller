@@ -96,7 +96,7 @@ func (u *PermissionUsecase) HasSystemPermission(ctx context.Context, userID, key
 	return slices.Contains(sysPerms, key), nil
 }
 
-// ResolveGroupForUser は user の指定 groupID 解決を行う.
+// ResolveGroupIDForUser は user の指定 groupID 解決を行う.
 // groupID が空文字なら personal group を返す.
 func (u *PermissionUsecase) ResolveGroupIDForUser(ctx context.Context, userID, requestedGroupID string) (string, error) {
 	if requestedGroupID != "" {
@@ -119,7 +119,7 @@ func (u *PermissionUsecase) ResolveGroupIDForUser(ctx context.Context, userID, r
 //     「ヒット 0 件」を意味する (= 所属グループが無い / read 権限を持つグループが無い).
 //
 // permKey が空の場合は所属グループ全件を返す (= 任意の所属でフィルタ).
-func (u *PermissionUsecase) ResolveListGroupFilter(ctx context.Context, userID, permKey string) (groupIDs []string, listAll bool, err error) {
+func (u *PermissionUsecase) ResolveListGroupFilter(ctx context.Context, userID, permKey string) ([]string, bool, error) {
 	canListAll, err := u.HasSystemPermission(ctx, userID, entity.PermKey_SystemGroupList)
 	if err != nil {
 		return nil, false, errors.Wrap(err, 0)
@@ -176,8 +176,9 @@ func (u *PermissionUsecase) CanReadGroup(ctx context.Context, userID, groupID, p
 	return u.HasPermission(ctx, userID, groupID, permKey)
 }
 
-// GetMyPermissionsSummary は user の各グループに対する有効 permission を集約して返す.
-// フロントエンド の UI 出し分けに使う.
+// GroupPermissionSummary は GetMyPermissionsSummary が返す要素.
+// user の各グループに対する有効 permission を集約してフロントエンドの
+// UI 出し分けに使う.
 type GroupPermissionSummary struct {
 	GroupID        string
 	RoleID         string

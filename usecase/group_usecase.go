@@ -246,6 +246,7 @@ func (u *GroupUsecase) UpdateGroupMemberRole(ctx context.Context, groupID, userI
 //
 // system-scope role / system グループへの assignment は HasPermission の
 // system:group.manage bypass や system permission 経由で透過的に成立する.
+//nolint:funcorder // 関連 method (AddGroupMember / UpdateGroupMemberRole) 直下にヘルパーを置く方が読みやすい
 func (u *GroupUsecase) requirePermSubsetOfCaller(ctx context.Context, group *entity.Group, role *entity.Role) error {
 	if len(role.PermissionKeys) == 0 {
 		return nil

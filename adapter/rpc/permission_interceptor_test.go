@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -63,7 +62,7 @@ func TestPermissionInterceptor_DeniesUserWithoutPermission(t *testing.T) {
 	require.Error(t, err)
 
 	connectErr := &connect.Error{}
-	require.True(t, errors.As(err, &connectErr))
+	require.ErrorAs(t, err, &connectErr)
 	assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 }
 
@@ -117,7 +116,7 @@ func TestPermissionInterceptor_DeniesNonMemberOfGroup(t *testing.T) {
 	require.Error(t, err)
 
 	connectErr := &connect.Error{}
-	require.True(t, errors.As(err, &connectErr))
+	require.ErrorAs(t, err, &connectErr)
 	assert.Equal(t, connect.CodePermissionDenied, connectErr.Code(),
 		"non-member should get PermissionDenied on protected RPC")
 }
