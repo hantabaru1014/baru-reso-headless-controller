@@ -17,9 +17,11 @@ func NewUserCommand(uu *usecase.UserUsecase, skyfrostClient skyfrost.Client) *co
 		Short: "Generate a registration link for a new user",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			ctx := cmd.Context()
+
 			resoniteId := args[0]
 
-			userInfo, err := skyfrostClient.FetchUserInfo(cmd.Context(), resoniteId)
+			userInfo, err := skyfrostClient.FetchUserInfo(ctx, resoniteId)
 			if err != nil {
 				cmd.PrintErrln("Failed to validate Resonite ID:", err)
 				cmd.PrintErrln("Please check if the Resonite ID is correct.")
@@ -27,7 +29,7 @@ func NewUserCommand(uu *usecase.UserUsecase, skyfrostClient skyfrost.Client) *co
 				return
 			}
 
-			token, err := uu.CreateRegistrationToken(cmd.Context(), resoniteId)
+			token, err := uu.CreateRegistrationToken(ctx, resoniteId)
 			if err != nil {
 				cmd.PrintErrln("Failed to create registration token:", err)
 
@@ -44,19 +46,23 @@ func NewUserCommand(uu *usecase.UserUsecase, skyfrostClient skyfrost.Client) *co
 		},
 	}
 
+	var personalRoleID string
+
 	createUserCmd := &cobra.Command{
 		Use:   "create <id> <password> <resoniteId>",
 		Short: "Create a user directly (deprecated, use 'invite' instead)",
 		Args:  cobra.ExactArgs(3), //nolint:mnd // 3 required args: id, password, resoniteId
 		Run: func(cmd *cobra.Command, args []string) {
-			err := uu.CreateUser(cmd.Context(), args[0], args[1], args[2])
+			ctx := cmd.Context()
+
+			err := uu.CreateUser(ctx, args[0], args[1], args[2], personalRoleID)
 			if err != nil {
 				cmd.PrintErrln(err)
 
 				return
 			}
 
-			_, err = uu.GetUserWithPassword(cmd.Context(), args[0], args[1])
+			_, err = uu.GetUserWithPassword(ctx, args[0], args[1])
 			if err != nil {
 				cmd.PrintErrln("Failed validate created user:", err)
 
@@ -66,13 +72,17 @@ func NewUserCommand(uu *usecase.UserUsecase, skyfrostClient skyfrost.Client) *co
 			cmd.Println("User created successfully")
 		},
 	}
+	createUserCmd.Flags().StringVar(&personalRoleID, "personal-role", "",
+		"role_id to assign to the user in their personal group (default: seed-admin)")
 
 	deleteUserCmd := &cobra.Command{
 		Use:   "delete <id>",
 		Short: "Delete a user",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			err := uu.DeleteUser(cmd.Context(), args[0])
+			ctx := cmd.Context()
+
+			err := uu.DeleteUser(ctx, args[0])
 			if err != nil {
 				cmd.PrintErrln(err)
 

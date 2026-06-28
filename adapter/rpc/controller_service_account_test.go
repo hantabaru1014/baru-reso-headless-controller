@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/testutil"
@@ -27,8 +28,10 @@ func TestControllerService_ListHeadlessAccounts(t *testing.T) {
 		testutil.CreateTestHeadlessAccount(t, setup.queries, id, id+"@example.test", "password")
 	}
 
-	t.Run("成功: ヘッドレスアカウントのリストを取得 (ページング検証)", func(t *testing.T) {
+	t.Run("成功: ヘッドレスアカウントのリストを取得 (ページング検証 / system:group.list 保持者は全件)", func(t *testing.T) {
 		// page 未指定 -> デフォルト 20 件
+		// 既定ユーザーは system-admin (system:group.list 保持) なので
+		// group_id 未指定でも全グループのアカウントを返す.
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessAccountsRequest{})
 
 		res, err := client.ListHeadlessAccounts(t.Context(), req)
@@ -71,6 +74,66 @@ func TestControllerService_ListHeadlessAccounts(t *testing.T) {
 		assert.Len(t, res4.Msg.GetAccounts(), totalAccounts)
 		assert.Equal(t, int32(100), res4.Msg.GetPage().GetPageSize())
 	})
+
+	t.Run("グループフィルタ: 指定 / 未指定 / 権限なしの分岐", func(t *testing.T) {
+		// 別 setup で fresh DB を使う (totalAccounts と混じらないように)
+		setup2 := setupControllerServiceTest(t)
+		defer setup2.Cleanup()
+
+		client2 := setupAuthenticatedClient(t, setup2.service)
+
+		const otherUserID = "U-other-acc"
+		personalGID := testutil.SetupNormalUserWithPersonalGroup(t, setup2.queries, otherUserID)
+
+		sharedGID := "group-shared-acc"
+		testutil.CreateTestGroup(t, setup2.queries, sharedGID, otherUserID)
+
+		testutil.CreateTestHeadlessAccount(t, setup2.queries, "U-migrated1", "m1@example.test", "p")
+		testutil.CreateTestHeadlessAccount(t, setup2.queries, "U-migrated2", "m2@example.test", "p")
+		testutil.CreateTestHeadlessAccountInGroup(t, setup2.queries, "U-personal", "p@example.test", "p", personalGID)
+		testutil.CreateTestHeadlessAccountInGroup(t, setup2.queries, "U-shared", "s@example.test", "p", sharedGID)
+
+		// case 1: non-admin / group_id 未指定 -> personal + shared の 2 件のみ.
+		reqAuto := testutil.CreateAuthenticatedRequest(
+			t, &hdlctrlv1.ListHeadlessAccountsRequest{},
+			otherUserID, "U-other-resonite", "https://example.test/icon.png",
+		)
+		resAuto, err := client2.ListHeadlessAccounts(t.Context(), reqAuto)
+		require.NoError(t, err)
+		assert.Equal(t, int32(2), resAuto.Msg.GetPage().GetTotalCount(),
+			"non-admin should only see accounts in groups they belong to")
+
+		// case 2: non-admin / 自分が所属する group_id を指定 -> その group のみ.
+		reqExplicit := testutil.CreateAuthenticatedRequest(
+			t, &hdlctrlv1.ListHeadlessAccountsRequest{GroupId: &sharedGID},
+			otherUserID, "U-other-resonite", "https://example.test/icon.png",
+		)
+		resExplicit, err := client2.ListHeadlessAccounts(t.Context(), reqExplicit)
+		require.NoError(t, err)
+		assert.Equal(t, int32(1), resExplicit.Msg.GetPage().GetTotalCount())
+
+		// case 3: non-admin / 権限の無い group_id 指定 -> PermissionDenied.
+		forbiddenGID := entity.MigratedPrePermissionGroupID
+
+		reqForbidden := testutil.CreateAuthenticatedRequest(
+			t, &hdlctrlv1.ListHeadlessAccountsRequest{GroupId: &forbiddenGID},
+			otherUserID, "U-other-resonite", "https://example.test/icon.png",
+		)
+		_, err = client2.ListHeadlessAccounts(t.Context(), reqForbidden)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.True(t, errors.As(err, &connectErr))
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+
+		// case 4: 既定ユーザー (system-admin) が同じ group_id を指定 -> system:group.list 経由で許可.
+		reqAdmin := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessAccountsRequest{
+			GroupId: &sharedGID,
+		})
+		resAdmin, err := client2.ListHeadlessAccounts(t.Context(), reqAdmin)
+		require.NoError(t, err)
+		assert.Equal(t, int32(1), resAdmin.Msg.GetPage().GetTotalCount())
+	})
 }
 
 func TestControllerService_CreateHeadlessAccount(t *testing.T) {
@@ -106,6 +169,37 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 		account, err := setup.queries.GetHeadlessAccount(t.Context(), "U-testuser123")
 		require.NoError(t, err)
 		assert.Equal(t, "testuser@example.test", account.Credential)
+	})
+
+	t.Run("成功: 最小権限 caller (account:write) で group_id 指定で作成", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		setup.mockSkyfrost.EXPECT().
+			UserLogin(gomock.Any(), "mp@example.test", "p").
+			Return(&skyfrost.UserSession{UserId: "U-mp-newacc"}, nil)
+		setup.mockSkyfrost.EXPECT().
+			FetchUserInfo(gomock.Any(), "U-mp-newacc").
+			Return(&skyfrost.UserInfo{ID: "U-mp-newacc", UserName: "mp"}, nil)
+
+		const groupID = "g-mp-createacc"
+		// caller is added to groupID with exactly account:write
+		gid := groupID
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.CreateHeadlessAccountRequest{
+			Credential: "mp@example.test",
+			Password:   "p",
+			GroupId:    &gid,
+		}, "U-mp-createacc", groupID, []string{entity.PermKey_AccountWrite})
+
+		_, err := client.CreateHeadlessAccount(t.Context(), req)
+		require.NoError(t, err)
+
+		// 作成された account は指定 group_id に所属している.
+		acc, err := setup.queries.GetHeadlessAccount(t.Context(), "U-mp-newacc")
+		require.NoError(t, err)
+		assert.Equal(t, groupID, acc.GroupID)
 	})
 
 	t.Run("失敗: 無効な認証情報でアカウント作成", func(t *testing.T) {
@@ -193,21 +287,42 @@ func TestControllerService_DeleteHeadlessAccount(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("成功: 存在しないアカウントを削除（何も起こらない）", func(t *testing.T) {
+	t.Run("成功: 最小権限 caller (account:write) で削除", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
 		client := setupAuthenticatedClient(t, setup.service)
 
-		// DeleteHeadlessAccountは:execで実装されているため、
-		// 存在しないアカウントを削除してもエラーにならない（何も削除されないだけ）
+		const groupID = "g-mp-delacc"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-target", "x@example.test", "p", groupID)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.DeleteHeadlessAccountRequest{
+			AccountId: "U-mp-target",
+		}, "U-mp-delacc", groupID, []string{entity.PermKey_AccountWrite})
+
+		_, err := client.DeleteHeadlessAccount(t.Context(), req)
+		require.NoError(t, err)
+	})
+
+	// 権限システム導入後は permission interceptor が account の所属グループを
+	// 確認するため、存在しないアカウントは NotFound を返す.
+	t.Run("失敗: 存在しないアカウントは NotFound", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.DeleteHeadlessAccountRequest{
 			AccountId: "U-nonexistent",
 		})
 
-		res, err := client.DeleteHeadlessAccount(t.Context(), req)
-		require.NoError(t, err)
-		assert.NotNil(t, res.Msg)
+		_, err := client.DeleteHeadlessAccount(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
+		require.True(t, ok, "expected connect.Error")
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 }
 
@@ -250,24 +365,39 @@ func TestControllerService_UpdateHeadlessAccountCredentials(t *testing.T) {
 		assert.Equal(t, "new@example.test", account.Credential)
 	})
 
-	t.Run("成功: 存在しないアカウントの認証情報を更新（何も起こらない）", func(t *testing.T) {
+	t.Run("成功: 最小権限 caller (account:write) で更新", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
 		client := setupAuthenticatedClient(t, setup.service)
 
-		// Mock skyfrost to return successful login
-		setup.mockSkyfrost.EXPECT().
-			UserLogin(gomock.Any(), "nonexist@example.test", "password").
-			Return(&skyfrost.UserSession{UserId: "U-nonexist"}, nil)
+		const groupID = "g-mp-updcred"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-cred", "old@example.test", "old", groupID)
 
 		setup.mockSkyfrost.EXPECT().
-			FetchUserInfo(gomock.Any(), "U-nonexist").
-			Return(&skyfrost.UserInfo{
-				ID:       "U-nonexist",
-				UserName: "NonExist",
-				IconUrl:  "https://example.test/icon.png",
-			}, nil)
+			UserLogin(gomock.Any(), "new@example.test", "new").
+			Return(&skyfrost.UserSession{UserId: "U-mp-cred"}, nil)
+		setup.mockSkyfrost.EXPECT().
+			FetchUserInfo(gomock.Any(), "U-mp-cred").
+			Return(&skyfrost.UserInfo{ID: "U-mp-cred", UserName: "mp"}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.UpdateHeadlessAccountCredentialsRequest{
+			AccountId:  "U-mp-cred",
+			Credential: "new@example.test",
+			Password:   "new",
+		}, "U-mp-updcred", groupID, []string{entity.PermKey_AccountWrite})
+
+		_, err := client.UpdateHeadlessAccountCredentials(t.Context(), req)
+		require.NoError(t, err)
+	})
+
+	// 権限システム導入後は permission interceptor が account の所属グループを
+	// 確認するため、存在しないアカウントは NotFound を返す.
+	t.Run("失敗: 存在しないアカウントは NotFound", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.UpdateHeadlessAccountCredentialsRequest{
 			AccountId:  "U-nonexist",
@@ -275,9 +405,13 @@ func TestControllerService_UpdateHeadlessAccountCredentials(t *testing.T) {
 			Password:   "password",
 		})
 
-		// UPDATE statement does not fail for non-existent records, it just updates 0 rows
 		_, err := client.UpdateHeadlessAccountCredentials(t.Context(), req)
-		require.NoError(t, err)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
+		require.True(t, ok, "expected connect.Error")
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 
 	t.Run("失敗: 無効な新しい認証情報", func(t *testing.T) {
@@ -339,7 +473,30 @@ func TestControllerService_GetHeadlessAccountStorageInfo(t *testing.T) {
 		assert.Equal(t, int64(1024*1024*500), res.Msg.GetStorageQuotaBytes())
 	})
 
-	t.Run("失敗: 存在しないアカウント", func(t *testing.T) {
+	t.Run("成功: 最小権限 caller (account:read) で取得", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-storage"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-stor", "stor@example.test", "p", groupID)
+
+		setup.mockSkyfrost.EXPECT().
+			GetStorageInfo(gomock.Any(), "stor@example.test", "p", "U-mp-stor").
+			Return(&skyfrost.StorageInfo{UsedBytes: 1, QuotaBytes: 2}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.GetHeadlessAccountStorageInfoRequest{
+			AccountId: "U-mp-stor",
+		}, "U-mp-storage", groupID, []string{entity.PermKey_AccountRead})
+
+		_, err := client.GetHeadlessAccountStorageInfo(t.Context(), req)
+		require.NoError(t, err)
+	})
+
+	// 権限システム導入後は permission interceptor が account の所属グループを
+	// 確認するため、存在しないアカウントは NotFound を返す.
+	t.Run("失敗: 存在しないアカウントは NotFound", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
@@ -355,7 +512,7 @@ func TestControllerService_GetHeadlessAccountStorageInfo(t *testing.T) {
 		connectErr := &connect.Error{}
 		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
-		assert.Equal(t, connect.CodeInternal, connectErr.Code())
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 
 	t.Run("失敗: ストレージ情報の取得に失敗", func(t *testing.T) {
@@ -420,16 +577,34 @@ func TestControllerService_RefetchHeadlessAccountInfo(t *testing.T) {
 		assert.Equal(t, "https://example.test/new-icon.png", account.LastIconUrl.String)
 	})
 
-	t.Run("失敗: 存在しないアカウント", func(t *testing.T) {
+	t.Run("成功: 最小権限 caller (account:write) で実行", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
 		client := setupAuthenticatedClient(t, setup.service)
 
-		// Mock skyfrost to return error for non-existent user
+		const groupID = "g-mp-refetch"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-ref", "r@example.test", "p", groupID)
+
 		setup.mockSkyfrost.EXPECT().
-			FetchUserInfo(gomock.Any(), "U-nonexist").
-			Return(nil, connect.NewError(connect.CodeNotFound, nil))
+			FetchUserInfo(gomock.Any(), "U-mp-ref").
+			Return(&skyfrost.UserInfo{ID: "U-mp-ref", UserName: "New"}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.RefetchHeadlessAccountInfoRequest{
+			AccountId: "U-mp-ref",
+		}, "U-mp-refetch", groupID, []string{entity.PermKey_AccountWrite})
+
+		_, err := client.RefetchHeadlessAccountInfo(t.Context(), req)
+		require.NoError(t, err)
+	})
+
+	// 権限システム導入後は permission interceptor が account の所属グループを
+	// 確認するため、存在しないアカウントは NotFound を返す.
+	t.Run("失敗: 存在しないアカウントは NotFound", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.RefetchHeadlessAccountInfoRequest{
 			AccountId: "U-nonexist",
@@ -441,7 +616,7 @@ func TestControllerService_RefetchHeadlessAccountInfo(t *testing.T) {
 		connectErr := &connect.Error{}
 		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
-		assert.Equal(t, connect.CodeInternal, connectErr.Code())
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 
 	t.Run("失敗: ユーザー情報の取得に失敗", func(t *testing.T) {

@@ -524,6 +524,16 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
             }
             isLoading={isPending}
           />
+          <ReadOnlyField
+            label="所属グループ"
+            value={data?.host?.groupId}
+            isLoading={isPending}
+          />
+          <ReadOnlyField
+            label="作成者"
+            value={data?.host?.createdBy ?? "不明"}
+            isLoading={isPending}
+          />
           <EditableSelectField
             label="自動アップグレード"
             helperText="新しいバージョンがリリースされたら、セッション参加者が 0 人になった瞬間に自動で最新バージョンへ再起動します"

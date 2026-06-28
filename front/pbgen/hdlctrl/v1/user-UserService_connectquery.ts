@@ -32,3 +32,34 @@ export const refreshToken = UserService.method.refreshToken;
  * @generated from rpc hdlctrl.v1.UserService.ChangePassword
  */
 export const changePassword = UserService.method.changePassword;
+
+/**
+ * 管理用RPC (system:user.* 権限が必要)
+ * システム上の全ユーザーを返す.
+ *
+ * @generated from rpc hdlctrl.v1.UserService.ListUsers
+ */
+export const listUsers = UserService.method.listUsers;
+
+/**
+ * 指定 user_id のユーザーを返す. 認証済みユーザーなら誰でも呼べる
+ * (グループメンバー名解決などに利用).
+ *
+ * @generated from rpc hdlctrl.v1.UserService.GetUser
+ */
+export const getUser = UserService.method.getUser;
+
+/**
+ * Resonite ID を指定して登録トークンを発行する.
+ * フロントエンドが招待リンクを生成するために、Resonite ユーザー情報も併せて返す.
+ *
+ * @generated from rpc hdlctrl.v1.UserService.CreateRegistrationToken
+ */
+export const createRegistrationToken = UserService.method.createRegistrationToken;
+
+/**
+ * 指定 user_id のユーザーを削除する. 自分自身は削除できない.
+ *
+ * @generated from rpc hdlctrl.v1.UserService.DeleteUser
+ */
+export const deleteUser = UserService.method.deleteUser;

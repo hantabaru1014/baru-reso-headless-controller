@@ -52,6 +52,28 @@ func TestControllerService_AcceptFriendRequests(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("成功: 最小権限 caller (account:use) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-accept"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-acc-accept", "x@example.test", "p", groupID)
+		testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-acc-accept", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+
+		setup.mockHostConnector.EXPECT().GetRpcClient(gomock.Any(), gomock.Any()).Return(setup.mockRpcClient, nil)
+		setup.mockRpcClient.EXPECT().AcceptFriendRequests(gomock.Any(), gomock.Any()).Return(&headlessv1.AcceptFriendRequestsResponse{}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.AcceptFriendRequestsRequest{
+			HeadlessAccountId: "U-mp-acc-accept",
+			TargetUserId:      "U-target",
+		}, "U-mp-accept", groupID, []string{entity.PermKey_AccountUse})
+
+		_, err := client.AcceptFriendRequests(t.Context(), req)
+		require.NoError(t, err)
+	})
+
 	t.Run("失敗: 起動中のホストがない", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
@@ -145,7 +167,30 @@ func TestControllerService_GetFriendRequests(t *testing.T) {
 		assert.Len(t, res.Msg.GetRequestedContacts(), 2)
 	})
 
-	t.Run("失敗: 存在しないアカウント", func(t *testing.T) {
+	t.Run("成功: 最小権限 caller (account:use) で取得", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-friendreq"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-fr", "fr@example.test", "p", groupID)
+
+		setup.mockSkyfrost.EXPECT().
+			GetContacts(gomock.Any(), "fr@example.test", "p").
+			Return([]skyfrost.Contact{}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.GetFriendRequestsRequest{
+			HeadlessAccountId: "U-mp-fr",
+		}, "U-mp-friendreq", groupID, []string{entity.PermKey_AccountUse})
+
+		_, err := client.GetFriendRequests(t.Context(), req)
+		require.NoError(t, err)
+	})
+
+	// 権限システム導入後は permission interceptor が account の所属グループを
+	// 確認するため、存在しないアカウントは NotFound を返す.
+	t.Run("失敗: 存在しないアカウントは NotFound", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
@@ -161,7 +206,7 @@ func TestControllerService_GetFriendRequests(t *testing.T) {
 		connectErr := &connect.Error{}
 		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
-		assert.Equal(t, connect.CodeInternal, connectErr.Code())
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 
 	t.Run("失敗: コンタクト取得に失敗", func(t *testing.T) {
@@ -232,6 +277,30 @@ func TestControllerService_SearchUserInfo(t *testing.T) {
 		assert.Equal(t, "U-found", res.Msg.GetUsers()[0].GetId())
 	})
 
+	t.Run("成功: 最小権限 caller (host:use) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-suserinfo"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-su-acc", "x@example.test", "p", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-su-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+
+		setup.mockHostConnector.EXPECT().GetRpcClient(gomock.Any(), gomock.Any()).Return(setup.mockRpcClient, nil)
+		setup.mockRpcClient.EXPECT().SearchUserInfo(gomock.Any(), gomock.Any()).Return(&headlessv1.SearchUserInfoResponse{}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.SearchUserInfoRequest{
+			HostId: host.ID,
+			Parameters: &headlessv1.SearchUserInfoRequest{
+				User: &headlessv1.SearchUserInfoRequest_UserName{UserName: "test"},
+			},
+		}, "U-mp-suserinfo", groupID, []string{entity.PermKey_HostUse})
+
+		_, err := client.SearchUserInfo(t.Context(), req)
+		require.NoError(t, err)
+	})
+
 	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
@@ -292,6 +361,28 @@ func TestControllerService_FetchWorldInfo(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
 		assert.Equal(t, "TestWorld", res.Msg.GetName())
+	})
+
+	t.Run("成功: 最小権限 caller (host:use) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-fworld"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-fw-acc", "x@example.test", "p", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-fw-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+
+		setup.mockHostConnector.EXPECT().GetRpcClient(gomock.Any(), gomock.Any()).Return(setup.mockRpcClient, nil)
+		setup.mockRpcClient.EXPECT().FetchWorldInfo(gomock.Any(), gomock.Any()).Return(&headlessv1.FetchWorldInfoResponse{Name: "MP"}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.FetchWorldInfoRequest{
+			HostId: host.ID,
+			Url:    "resrec:///U-mp/R-12345",
+		}, "U-mp-fworld", groupID, []string{entity.PermKey_HostUse})
+
+		_, err := client.FetchWorldInfo(t.Context(), req)
+		require.NoError(t, err)
 	})
 
 	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {

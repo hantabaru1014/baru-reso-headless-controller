@@ -1,8 +1,10 @@
 package rpc
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
@@ -58,11 +60,28 @@ type ControllerService struct {
 	buc            *usecase.BlobUsecase
 	souc           *usecase.ScheduledSessionOperationUsecase
 	ajuc           *async_job.Usecase
+	permUC         *usecase.PermissionUsecase
+	groupRepo      port.GroupRepository
+	roleRepo       port.RoleRepository
 	skyfrostClient skyfrost.Client
 	bus            notification.Bus
 }
 
-func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase, suc *usecase.SessionUsecase, buc *usecase.BlobUsecase, souc *usecase.ScheduledSessionOperationUsecase, ajuc *async_job.Usecase, skyfrostClient skyfrost.Client, bus notification.Bus) *ControllerService {
+func NewControllerService(
+	hhrepo port.HeadlessHostRepository,
+	srepo port.SessionRepository,
+	hhuc *usecase.HeadlessHostUsecase,
+	hauc *usecase.HeadlessAccountUsecase,
+	suc *usecase.SessionUsecase,
+	buc *usecase.BlobUsecase,
+	souc *usecase.ScheduledSessionOperationUsecase,
+	ajuc *async_job.Usecase,
+	permUC *usecase.PermissionUsecase,
+	groupRepo port.GroupRepository,
+	roleRepo port.RoleRepository,
+	skyfrostClient skyfrost.Client,
+	bus notification.Bus,
+) *ControllerService {
 	return &ControllerService{
 		hhrepo:         hhrepo,
 		srepo:          srepo,
@@ -72,13 +91,26 @@ func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.Session
 		buc:            buc,
 		souc:           souc,
 		ajuc:           ajuc,
+		permUC:         permUC,
+		groupRepo:      groupRepo,
+		roleRepo:       roleRepo,
 		skyfrostClient: skyfrostClient,
 		bus:            bus,
 	}
 }
 
 func (c *ControllerService) NewHandler() (string, http.Handler) {
-	interceptors := connect.WithInterceptors(logging.NewErrorLogInterceptor(), auth.NewAuthInterceptor())
+	interceptors := connect.WithInterceptors(
+		logging.NewErrorLogInterceptor(),
+		auth.NewAuthInterceptor(),
+		NewPermissionInterceptor(c.permUC, PermissionDeps{
+			HostRepo:    c.hhrepo,
+			SessionRepo: c.srepo,
+			AccountUC:   c.hauc,
+			GroupRepo:   c.groupRepo,
+			RoleRepo:    c.roleRepo,
+		}),
+	)
 
 	return hdlctrlv1connect.NewControllerServiceHandler(c, interceptors)
 }
@@ -91,6 +123,14 @@ func convertErr(err error) error {
 
 	if errors.Is(err, domain.ErrNotFound) {
 		return connect.NewError(connect.CodeNotFound, err)
+	}
+
+	if errors.Is(err, domain.ErrUnauthenticated) {
+		return connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	if errors.Is(err, domain.ErrPermissionDenied) {
+		return connect.NewError(connect.CodePermissionDenied, err)
 	}
 
 	// ErrHostDraining is a precondition violation — the host has been
@@ -123,4 +163,51 @@ func (c *ControllerService) publishHostUpdated(hostID string) {
 
 func (c *ControllerService) publishHostListChanged() {
 	c.bus.Publish(notification.HostListChanged())
+}
+
+// resolveListGroupFilter は List 系 RPC 共通のグループフィルタ解決ヘルパー.
+//
+// requestedGroupID:
+//   - nil または空文字: 自動絞り込み. system:group.list 保持なら nil (= 全件),
+//     それ以外は user が permKey を持つグループ群に絞り込み.
+//   - 非空: 指定グループに絞り込み. ただし user が当該グループの permKey または
+//     system:group.list を持たない場合は PermissionDenied.
+//
+// 戻り値 groupIDs は repository / sqlc の sqlc.narg('group_ids') にそのまま渡せる:
+//   - nil: 全件
+//   - 空 slice: ゼロ件
+//   - 非空 slice: ANY 絞り込み
+//
+// permission interceptor は List 系を requireAuthOnly で通すため、認可ロジックは
+// この helper で集約する.
+func (c *ControllerService) resolveListGroupFilter(ctx context.Context, requestedGroupID *string, permKey string) ([]string, error) {
+	claims, err := auth.GetAuthClaimsFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	if requestedGroupID != nil {
+		gid := strings.TrimSpace(*requestedGroupID)
+		if gid != "" {
+			ok, err := c.permUC.CanReadGroup(ctx, claims.UserID, gid, permKey)
+			if err != nil {
+				return nil, convertErr(err)
+			}
+
+			if !ok {
+				return nil, connect.NewError(connect.CodePermissionDenied,
+					errors.New("permission required: "+permKey))
+			}
+
+			return []string{gid}, nil
+		}
+	}
+
+	groupIDs, _, err := c.permUC.ResolveListGroupFilter(ctx, claims.UserID, permKey)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+	// listAll == true なら groupIDs == nil で「全件」を伝える.
+	// それ以外 (所属あり/なし) は groupIDs (空も含む) をそのまま返す.
+	return groupIDs, nil
 }

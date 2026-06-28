@@ -32,6 +32,22 @@ type ContainerLog struct {
 	ID   pgtype.Int8
 }
 
+type Group struct {
+	ID        string
+	Name      string
+	Type      string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type GroupMember struct {
+	GroupID  string
+	UserID   string
+	RoleID   string
+	AddedBy  pgtype.Text
+	JoinedAt pgtype.Timestamptz
+}
+
 type HeadlessAccount struct {
 	ResoniteID      string
 	Credential      string
@@ -40,6 +56,8 @@ type HeadlessAccount struct {
 	LastIconUrl     pgtype.Text
 	CreatedAt       pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
+	GroupID         string
+	CreatedBy       pgtype.Text
 }
 
 type Host struct {
@@ -47,7 +65,7 @@ type Host struct {
 	Name                           string
 	Status                         int32
 	AccountID                      string
-	OwnerID                        pgtype.Text
+	CreatedBy                      pgtype.Text
 	LastStartupConfig              []byte
 	LastStartupConfigSchemaVersion int32
 	ConnectorType                  string
@@ -58,6 +76,7 @@ type Host struct {
 	CreatedAt                      pgtype.Timestamptz
 	UpdatedAt                      pgtype.Timestamptz
 	InstanceCount                  int32
+	GroupID                        string
 }
 
 type HostEventCheckpoint struct {
@@ -72,6 +91,21 @@ type RegistrationToken struct {
 	ExpiresAt  pgtype.Timestamptz
 	UsedAt     pgtype.Timestamptz
 	CreatedAt  pgtype.Timestamptz
+}
+
+type Role struct {
+	ID        string
+	GroupID   pgtype.Text
+	Name      string
+	Scope     string
+	IsBuiltin bool
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type RolePermission struct {
+	RoleID        string
+	PermissionKey string
 }
 
 type ScheduledSessionOperation struct {
@@ -98,7 +132,7 @@ type Session struct {
 	Name                           string
 	Status                         int32
 	StartedAt                      pgtype.Timestamptz
-	OwnerID                        pgtype.Text
+	CreatedBy                      pgtype.Text
 	EndedAt                        pgtype.Timestamptz
 	HostID                         string
 	StartupParameters              []byte
@@ -107,6 +141,7 @@ type Session struct {
 	Memo                           pgtype.Text
 	CreatedAt                      pgtype.Timestamptz
 	UpdatedAt                      pgtype.Timestamptz
+	GroupID                        string
 }
 
 type User struct {

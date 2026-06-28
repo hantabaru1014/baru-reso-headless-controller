@@ -1,0 +1,258 @@
+syntax = "proto3";
+
+package hdlctrl.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// グループ (RBAC のスコープ単位) を管理する.
+// 詳細: docs/permissions.md
+service GroupService {
+  // グループ系
+  rpc CreateGroup(CreateGroupRequest) returns (CreateGroupResponse);
+  rpc GetGroup(GetGroupRequest) returns (GetGroupResponse);
+  // ログインユーザーが所属するグループを返す.
+  // system:group.list を持つ場合は全グループを返す.
+  rpc ListGroups(ListGroupsRequest) returns (ListGroupsResponse);
+  rpc UpdateGroup(UpdateGroupRequest) returns (UpdateGroupResponse);
+  rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupResponse);
+
+  // メンバー系
+  rpc ListGroupMembers(ListGroupMembersRequest) returns (ListGroupMembersResponse);
+  rpc AddGroupMember(AddGroupMemberRequest) returns (AddGroupMemberResponse);
+  rpc RemoveGroupMember(RemoveGroupMemberRequest) returns (RemoveGroupMemberResponse);
+  rpc UpdateGroupMemberRole(UpdateGroupMemberRoleRequest) returns (UpdateGroupMemberRoleResponse);
+}
+
+// ロール (パーミッション集合) と利用可能パーミッションを管理する.
+service RoleService {
+  // ロール一覧.
+  // group_id 指定時: そのグループ内のカスタムロール + scope が合致するグローバルロール (seed + グローバルカスタム).
+  // group_id 未指定時: グローバルロール (seed + グローバルカスタム) のみ.
+  rpc ListRoles(ListRolesRequest) returns (ListRolesResponse);
+  // group_id 未指定時はグローバルカスタムロールを作成 (system:role.manage 必要).
+  // 指定時はそのグループ内のカスタムロールを作成 (group:members.manage 必要).
+  rpc CreateRole(CreateRoleRequest) returns (CreateRoleResponse);
+  // seed ロール (is_builtin=true) は編集不可.
+  rpc UpdateRole(UpdateRoleRequest) returns (UpdateRoleResponse);
+  // seed ロール (is_builtin=true) は削除不可.
+  rpc DeleteRole(DeleteRoleRequest) returns (DeleteRoleResponse);
+  // ロール編集画面で選択肢を提示するために利用可能な permission_key 一覧を返す.
+  rpc ListPermissions(ListPermissionsRequest) returns (ListPermissionsResponse);
+
+  // ログインユーザーのグループ別パーミッションサマリを返す.
+  // フロントエンドの UI 出し分け (メニュー/ボタンの活性制御) 用.
+  rpc GetMyPermissions(GetMyPermissionsRequest) returns (GetMyPermissionsResponse);
+}
+
+// グループ種別.
+enum GroupType {
+  GROUP_TYPE_UNSPECIFIED = 0;
+  // ユーザー個人のリソース置き場. ユーザー作成時に自動生成. 名前編集/メンバー追加不可.
+  GROUP_TYPE_PERSONAL = 1;
+  // 複数ユーザーで共有するグループ. ユーザーが任意に作成.
+  GROUP_TYPE_NORMAL = 2;
+  // システム全体の管理権限を持つ singleton グループ. 削除不可・名前固定.
+  GROUP_TYPE_SYSTEM = 3;
+}
+
+// ロールが割り当て可能なグループ種別の範囲.
+enum RoleScope {
+  ROLE_SCOPE_UNSPECIFIED = 0;
+  // personal / normal グループに割り当て可能.
+  ROLE_SCOPE_NORMAL = 1;
+  // system グループに割り当て可能.
+  ROLE_SCOPE_SYSTEM = 2;
+}
+
+message Group {
+  string id = 1;
+  string name = 2;
+  GroupType type = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+message GroupMember {
+  string group_id = 1;
+  string user_id = 2;
+  string role_id = 3;
+  // メンバーを追加したユーザー. NULL の場合はシステム自動作成 (personal 自動登録等).
+  optional string added_by = 4;
+  google.protobuf.Timestamp joined_at = 5;
+}
+
+message Role {
+  string id = 1;
+  // NULL の場合はグローバルロール. 指定がある場合はそのグループ内専用のカスタムロール.
+  optional string group_id = 2;
+  string name = 3;
+  RoleScope scope = 4;
+  // seed ロール (admin / user / session-operator / system-admin) は true.
+  // true のロールは編集/削除不可.
+  bool is_builtin = 5;
+  repeated string permission_keys = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// パーミッションキーの定義. ListPermissions の戻り値で UI 用に説明を含めて返す.
+message PermissionKey {
+  // 例: "host:read", "session:write", "system:user.create"
+  string key = 1;
+  // ロケール非依存の英語短説明 (フロント側で翻訳する想定).
+  string description = 2;
+  RoleScope scope = 3;
+}
+
+// ログインユーザーが特定グループで持つ実効パーミッション.
+message GroupPermissions {
+  string group_id = 1;
+  string role_id = 2;
+  // ワイルドカード展開後の最終的な permission_key 一覧 (例: "host:*" は展開済み).
+  repeated string permission_keys = 3;
+}
+
+message MyPermissions {
+  // ユーザーが所属するグループそれぞれのパーミッションサマリ.
+  repeated GroupPermissions groups = 1;
+  // 横断的に持つシステム権限 (system:* 由来) のサマリ. groups の要素にも個別に
+  // 反映されるが, グループ非依存に判定したい場合のためフラットにも返す.
+  repeated string system_permission_keys = 2;
+}
+
+// repeated フィールドの "明示的に指定したか" を表現するためのラッパー.
+// Update 系 RPC で「省略=無変更 / 指定=完全置換 (空配列なら全削除)」を区別するのに使う.
+message PermissionKeyList {
+  repeated string keys = 1;
+}
+
+// --- Group RPC messages ---
+
+message CreateGroupRequest {
+  string name = 1;
+}
+
+message CreateGroupResponse {
+  Group group = 1;
+}
+
+message GetGroupRequest {
+  string group_id = 1;
+}
+
+message GetGroupResponse {
+  Group group = 1;
+}
+
+message ListGroupsRequest {}
+
+message ListGroupsResponse {
+  repeated Group groups = 1;
+}
+
+message UpdateGroupRequest {
+  string group_id = 1;
+  optional string name = 2;
+}
+
+message UpdateGroupResponse {
+  Group group = 1;
+}
+
+message DeleteGroupRequest {
+  string group_id = 1;
+}
+
+message DeleteGroupResponse {}
+
+message ListGroupMembersRequest {
+  string group_id = 1;
+}
+
+message ListGroupMembersResponse {
+  repeated GroupMember members = 1;
+}
+
+message AddGroupMemberRequest {
+  string group_id = 1;
+  string user_id = 2;
+  string role_id = 3;
+}
+
+message AddGroupMemberResponse {
+  GroupMember member = 1;
+}
+
+message RemoveGroupMemberRequest {
+  string group_id = 1;
+  string user_id = 2;
+}
+
+message RemoveGroupMemberResponse {}
+
+message UpdateGroupMemberRoleRequest {
+  string group_id = 1;
+  string user_id = 2;
+  string role_id = 3;
+}
+
+message UpdateGroupMemberRoleResponse {
+  GroupMember member = 1;
+}
+
+// --- Role RPC messages ---
+
+message ListRolesRequest {
+  // 指定時: そのグループに割り当て可能なロール (グループ内カスタム + scope 合致のグローバル).
+  // 未指定時: グローバルロール (seed + グローバルカスタム) のみ.
+  optional string group_id = 1;
+}
+
+message ListRolesResponse {
+  repeated Role roles = 1;
+}
+
+message CreateRoleRequest {
+  // 指定時: グループ内カスタムロール. 未指定時: グローバルカスタムロール.
+  optional string group_id = 1;
+  string name = 2;
+  RoleScope scope = 3;
+  repeated string permission_keys = 4;
+}
+
+message CreateRoleResponse {
+  Role role = 1;
+}
+
+message UpdateRoleRequest {
+  string role_id = 1;
+  optional string name = 2;
+  // 省略時は permission_keys を変更しない.
+  // 指定時はその keys で完全置換 (空配列を渡せば全削除).
+  optional PermissionKeyList permission_keys = 3;
+}
+
+message UpdateRoleResponse {
+  Role role = 1;
+}
+
+message DeleteRoleRequest {
+  string role_id = 1;
+}
+
+message DeleteRoleResponse {}
+
+message ListPermissionsRequest {
+  // 指定 scope に属する permission_key だけを返す.
+  RoleScope scope = 1;
+}
+
+message ListPermissionsResponse {
+  repeated PermissionKey permissions = 1;
+}
+
+message GetMyPermissionsRequest {}
+
+message GetMyPermissionsResponse {
+  MyPermissions permissions = 1;
+}

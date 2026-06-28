@@ -234,8 +234,11 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
             ホスト: <HostTip hostId={data?.session?.hostId} />
           </span>
           <span>開始: {formatTimestamp(data?.session?.startedAt)}</span>
-          {data?.session?.ownerId && (
-            <span>オーナー: {data?.session?.ownerId}</span>
+          {data?.session?.groupId && (
+            <span>所属グループ: {data?.session?.groupId}</span>
+          )}
+          {data?.session?.createdBy && (
+            <span>作成者: {data?.session?.createdBy}</span>
           )}
           {data?.session?.endedAt && (
             <span>終了: {formatTimestamp(data?.session?.endedAt)}</span>

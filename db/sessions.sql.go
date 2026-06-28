@@ -128,7 +128,7 @@ type ApplySessionStartedParams struct {
 
 // host から届く SessionStarted を反映する部分更新。
 // occurred_at が現在の started_at より新しい場合のみ更新する (idempotent / 巻き戻し防止)。
-// 他フィールド (memo, auto_upgrade, startup_parameters, owner_id 等) には触れない。
+// 他フィールド (memo, auto_upgrade, startup_parameters, created_by 等) には触れない。
 func (q *Queries) ApplySessionStarted(ctx context.Context, arg ApplySessionStartedParams) (int64, error) {
 	result, err := q.db.Exec(ctx, applySessionStarted,
 		arg.ID,
@@ -165,7 +165,7 @@ func (q *Queries) DowngradeSessionToUnknownIfRunning(ctx context.Context, id str
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at FROM sessions WHERE id = $1 LIMIT 1
+SELECT id, name, status, started_at, created_by, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at, group_id FROM sessions WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
@@ -176,7 +176,7 @@ func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
 		&i.Name,
 		&i.Status,
 		&i.StartedAt,
-		&i.OwnerID,
+		&i.CreatedBy,
 		&i.EndedAt,
 		&i.HostID,
 		&i.StartupParameters,
@@ -185,11 +185,12 @@ func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
 		&i.Memo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.GroupID,
 	)
 	return i, err
 }
 
-const insertSessionFromEvent = `-- name: InsertSessionFromEvent :exec
+const insertSessionFromEvent = `-- name: InsertSessionFromEvent :execrows
 INSERT INTO sessions (
     id,
     name,
@@ -198,10 +199,20 @@ INSERT INTO sessions (
     host_id,
     startup_parameters,
     startup_parameters_schema_version,
-    auto_upgrade
-) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, FALSE
+    auto_upgrade,
+    group_id
 )
+SELECT
+    $1::text,
+    $2::text,
+    $3::int,
+    $4::timestamptz,
+    $5::text,
+    $6::jsonb,
+    $7::int,
+    FALSE,
+    h.group_id
+FROM hosts h WHERE h.id = $5::text
 ON CONFLICT (id) DO NOTHING
 `
 
@@ -217,10 +228,13 @@ type InsertSessionFromEventParams struct {
 
 // host 由来の SessionStarted で「DB に存在しない session」を作る用の挿入。
 // ON CONFLICT DO NOTHING にすることで、competing path (SessionUsecase.StartSession など)
-// が同 id で先に row を作っていた場合に memo / owner_id / startup_parameters 等を
+// が同 id で先に row を作っていた場合に memo / created_by / startup_parameters 等を
 // 上書きしないことを保証する (handler は続けて ApplySessionStarted で部分更新する)。
-func (q *Queries) InsertSessionFromEvent(ctx context.Context, arg InsertSessionFromEventParams) error {
-	_, err := q.db.Exec(ctx, insertSessionFromEvent,
+//
+// group_id は host から自動導出する (event には含まれない / host のグループに従う)。
+// 対象 host が存在しない場合は INSERT も発生しない。
+func (q *Queries) InsertSessionFromEvent(ctx context.Context, arg InsertSessionFromEventParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertSessionFromEvent,
 		arg.ID,
 		arg.Name,
 		arg.Status,
@@ -229,11 +243,14 @@ func (q *Queries) InsertSessionFromEvent(ctx context.Context, arg InsertSessionF
 		arg.StartupParameters,
 		arg.StartupParametersSchemaVersion,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const listSessions = `-- name: ListSessions :many
-SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at FROM sessions ORDER BY started_at DESC
+SELECT id, name, status, started_at, created_by, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at, group_id FROM sessions ORDER BY started_at DESC
 `
 
 func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
@@ -250,7 +267,7 @@ func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
 			&i.Name,
 			&i.Status,
 			&i.StartedAt,
-			&i.OwnerID,
+			&i.CreatedBy,
 			&i.EndedAt,
 			&i.HostID,
 			&i.StartupParameters,
@@ -259,6 +276,7 @@ func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
 			&i.Memo,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.GroupID,
 		); err != nil {
 			return nil, err
 		}
@@ -271,7 +289,7 @@ func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
 }
 
 const listSessionsByHostAndStatus = `-- name: ListSessionsByHostAndStatus :many
-SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at FROM sessions WHERE host_id = $1 AND status = $2 ORDER BY started_at DESC
+SELECT id, name, status, started_at, created_by, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at, group_id FROM sessions WHERE host_id = $1 AND status = $2 ORDER BY started_at DESC
 `
 
 type ListSessionsByHostAndStatusParams struct {
@@ -293,7 +311,7 @@ func (q *Queries) ListSessionsByHostAndStatus(ctx context.Context, arg ListSessi
 			&i.Name,
 			&i.Status,
 			&i.StartedAt,
-			&i.OwnerID,
+			&i.CreatedBy,
 			&i.EndedAt,
 			&i.HostID,
 			&i.StartupParameters,
@@ -302,6 +320,7 @@ func (q *Queries) ListSessionsByHostAndStatus(ctx context.Context, arg ListSessi
 			&i.Memo,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.GroupID,
 		); err != nil {
 			return nil, err
 		}
@@ -314,7 +333,7 @@ func (q *Queries) ListSessionsByHostAndStatus(ctx context.Context, arg ListSessi
 }
 
 const listSessionsByStatus = `-- name: ListSessionsByStatus :many
-SELECT id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at FROM sessions WHERE status = $1 ORDER BY started_at DESC
+SELECT id, name, status, started_at, created_by, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at, group_id FROM sessions WHERE status = $1 ORDER BY started_at DESC
 `
 
 func (q *Queries) ListSessionsByStatus(ctx context.Context, status int32) ([]Session, error) {
@@ -331,7 +350,7 @@ func (q *Queries) ListSessionsByStatus(ctx context.Context, status int32) ([]Ses
 			&i.Name,
 			&i.Status,
 			&i.StartedAt,
-			&i.OwnerID,
+			&i.CreatedBy,
 			&i.EndedAt,
 			&i.HostID,
 			&i.StartupParameters,
@@ -340,6 +359,7 @@ func (q *Queries) ListSessionsByStatus(ctx context.Context, status int32) ([]Ses
 			&i.Memo,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.GroupID,
 		); err != nil {
 			return nil, err
 		}
@@ -352,17 +372,19 @@ func (q *Queries) ListSessionsByStatus(ctx context.Context, status int32) ([]Ses
 }
 
 const listSessionsPaged = `-- name: ListSessionsPaged :many
-SELECT sessions.id, sessions.name, sessions.status, sessions.started_at, sessions.owner_id, sessions.ended_at, sessions.host_id, sessions.startup_parameters, sessions.startup_parameters_schema_version, sessions.auto_upgrade, sessions.memo, sessions.created_at, sessions.updated_at, COUNT(*) OVER() AS total_count
+SELECT sessions.id, sessions.name, sessions.status, sessions.started_at, sessions.created_by, sessions.ended_at, sessions.host_id, sessions.startup_parameters, sessions.startup_parameters_schema_version, sessions.auto_upgrade, sessions.memo, sessions.created_at, sessions.updated_at, sessions.group_id, COUNT(*) OVER() AS total_count
 FROM sessions
 WHERE ($1::int IS NULL OR status = $1::int)
   AND ($2::text IS NULL OR host_id = $2::text)
-ORDER BY started_at DESC
-LIMIT $4::int OFFSET $3::int
+  AND ($3::text[] IS NULL OR group_id = ANY($3::text[]))
+ORDER BY started_at DESC NULLS LAST, id ASC
+LIMIT $5::int OFFSET $4::int
 `
 
 type ListSessionsPagedParams struct {
 	Status     pgtype.Int4
 	HostID     pgtype.Text
+	GroupIds   []string
 	PageOffset int32
 	PageSize   int32
 }
@@ -373,12 +395,14 @@ type ListSessionsPagedRow struct {
 }
 
 // ページング付きセッション一覧。
-// status / host_id は nullable パラメータ (sqlc.narg)。NULL なら未指定として扱う。
+// status / host_id / group_ids は nullable パラメータ (sqlc.narg)。NULL なら未指定として扱う。
+// group_ids は ANY 配列フィルタ。空配列を渡すと結果ゼロ件 (= 所属グループが無いユーザー)。
 // total_count は全行同じ値が入る。
 func (q *Queries) ListSessionsPaged(ctx context.Context, arg ListSessionsPagedParams) ([]ListSessionsPagedRow, error) {
 	rows, err := q.db.Query(ctx, listSessionsPaged,
 		arg.Status,
 		arg.HostID,
+		arg.GroupIds,
 		arg.PageOffset,
 		arg.PageSize,
 	)
@@ -394,7 +418,7 @@ func (q *Queries) ListSessionsPaged(ctx context.Context, arg ListSessionsPagedPa
 			&i.Session.Name,
 			&i.Session.Status,
 			&i.Session.StartedAt,
-			&i.Session.OwnerID,
+			&i.Session.CreatedBy,
 			&i.Session.EndedAt,
 			&i.Session.HostID,
 			&i.Session.StartupParameters,
@@ -403,6 +427,7 @@ func (q *Queries) ListSessionsPaged(ctx context.Context, arg ListSessionsPagedPa
 			&i.Session.Memo,
 			&i.Session.CreatedAt,
 			&i.Session.UpdatedAt,
+			&i.Session.GroupID,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err
@@ -463,27 +488,28 @@ INSERT INTO sessions (
     name,
     status,
     started_at,
-    owner_id,
+    created_by,
     ended_at,
     host_id,
     startup_parameters,
     startup_parameters_schema_version,
     auto_upgrade,
-    memo
+    memo,
+    group_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 ) ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     status = EXCLUDED.status,
     started_at = EXCLUDED.started_at,
-    owner_id = EXCLUDED.owner_id,
+    created_by = COALESCE(sessions.created_by, EXCLUDED.created_by),
     ended_at = EXCLUDED.ended_at,
     host_id = EXCLUDED.host_id,
     startup_parameters = EXCLUDED.startup_parameters,
     startup_parameters_schema_version = EXCLUDED.startup_parameters_schema_version,
     auto_upgrade = EXCLUDED.auto_upgrade,
     memo = EXCLUDED.memo
-RETURNING id, name, status, started_at, owner_id, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at
+RETURNING id, name, status, started_at, created_by, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at, group_id
 `
 
 type UpsertSessionParams struct {
@@ -491,28 +517,34 @@ type UpsertSessionParams struct {
 	Name                           string
 	Status                         int32
 	StartedAt                      pgtype.Timestamptz
-	OwnerID                        pgtype.Text
+	CreatedBy                      pgtype.Text
 	EndedAt                        pgtype.Timestamptz
 	HostID                         string
 	StartupParameters              []byte
 	StartupParametersSchemaVersion int32
 	AutoUpgrade                    bool
 	Memo                           pgtype.Text
+	GroupID                        string
 }
 
+// group_id は INSERT 時のみ設定し、ON CONFLICT 時には更新しない (グループ移動は別 RPC で扱う)。
+// created_by は基本的に不変だが、event 由来の InsertSessionFromEvent が先に NULL で
+// INSERT した後、ユーザー由来の Upsert が衝突したケースを救うために COALESCE で
+// 「既存が NULL の場合のみ EXCLUDED.created_by で埋める」挙動にする。
 func (q *Queries) UpsertSession(ctx context.Context, arg UpsertSessionParams) (Session, error) {
 	row := q.db.QueryRow(ctx, upsertSession,
 		arg.ID,
 		arg.Name,
 		arg.Status,
 		arg.StartedAt,
-		arg.OwnerID,
+		arg.CreatedBy,
 		arg.EndedAt,
 		arg.HostID,
 		arg.StartupParameters,
 		arg.StartupParametersSchemaVersion,
 		arg.AutoUpgrade,
 		arg.Memo,
+		arg.GroupID,
 	)
 	var i Session
 	err := row.Scan(
@@ -520,7 +552,7 @@ func (q *Queries) UpsertSession(ctx context.Context, arg UpsertSessionParams) (S
 		&i.Name,
 		&i.Status,
 		&i.StartedAt,
-		&i.OwnerID,
+		&i.CreatedBy,
 		&i.EndedAt,
 		&i.HostID,
 		&i.StartupParameters,
@@ -529,6 +561,7 @@ func (q *Queries) UpsertSession(ctx context.Context, arg UpsertSessionParams) (S
 		&i.Memo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.GroupID,
 	)
 	return i, err
 }

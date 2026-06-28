@@ -9,11 +9,19 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/async_job"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/notification"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
+
+// UserExistenceChecker は job 実行前に created_by ユーザーが存在することを
+// 確認するための narrow interface. *db.Queries の GetUser を薄くラップする
+// 実装を adapter 側で提供する想定 (NewQueriesUserExistenceChecker).
+type UserExistenceChecker interface {
+	UserExistsByID(ctx context.Context, userID string) (bool, error)
+}
 
 // AsyncJobExecutor は非同期 job (ホスト/セッションの起動・停止系) を回す worker.
 // ScheduledOperationExecutor と同じ FOR UPDATE SKIP LOCKED claim パターンで
@@ -22,9 +30,10 @@ import (
 // 完了時には notification.Bus.PublishTo(createdBy, JobCompletedEvent) で
 // 投入元の user にだけ通知を push する.
 type AsyncJobExecutor struct {
-	repo       port.AsyncJobRepository
-	dispatcher *async_job.Dispatcher
-	bus        notification.Bus
+	repo        port.AsyncJobRepository
+	dispatcher  *async_job.Dispatcher
+	bus         notification.Bus
+	userChecker UserExistenceChecker
 
 	instanceID     string
 	tickInterval   time.Duration
@@ -62,6 +71,7 @@ func NewAsyncJobExecutor(
 	repo port.AsyncJobRepository,
 	dispatcher *async_job.Dispatcher,
 	bus notification.Bus,
+	userChecker UserExistenceChecker,
 	opts AsyncJobExecutorOptions,
 ) *AsyncJobExecutor {
 	if opts.InstanceID == "" {
@@ -101,6 +111,7 @@ func NewAsyncJobExecutor(
 		repo:           repo,
 		dispatcher:     dispatcher,
 		bus:            bus,
+		userChecker:    userChecker,
 		instanceID:     opts.InstanceID,
 		tickInterval:   opts.TickInterval,
 		staleAfter:     opts.StaleAfter,
@@ -185,8 +196,46 @@ const persistTimeout = 10 * time.Second
 func (e *AsyncJobExecutor) executeOne(ctx context.Context, job *entity.AsyncJob) {
 	logger := slog.With("job_id", job.ID, "type", job.JobType)
 
+	// created_by が無い / DB 上のユーザーが消えている場合は実行主体を立てられないので
+	// 即 FAILED にする. systemPrivilege fallback はしない (作成権限の追跡を維持するため).
+	if job.CreatedBy == nil || *job.CreatedBy == "" {
+		logger.Error("async-job-executor: job has no created_by; marking failed")
+		e.markFailed(ctx, job, errors.New("job has no created_by"))
+
+		return
+	}
+
+	if e.userChecker != nil {
+		exists, err := e.userChecker.UserExistsByID(ctx, *job.CreatedBy)
+		if err != nil {
+			// ctx キャンセル (worker shutdown 等) は transient. 永続的に FAILED 化
+			// せず claim を残し、stale sweep でリトライ可能にする.
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				logger.Warn("async-job-executor: check created_by user canceled; will retry", "error", err)
+				return
+			}
+
+			logger.Error("async-job-executor: check created_by user failed", "error", err)
+			e.markFailed(ctx, job, errors.WrapPrefix(err, "check created_by user", 0))
+
+			return
+		}
+
+		if !exists {
+			logger.Error("async-job-executor: created_by user does not exist; marking failed", "user_id", *job.CreatedBy)
+			e.markFailed(ctx, job, errors.Errorf("created_by user %q does not exist", *job.CreatedBy))
+
+			return
+		}
+	}
+
 	actCtx, cancel := context.WithTimeout(ctx, e.actionTimeout)
 	defer cancel()
+
+	// 以降の usecase 呼び出しは created_by を実行主体とする ctx で行う.
+	// 権限剥奪後の job 実行は usecase 層の Require* で PermissionDenied になり
+	// 自然に FAILED に倒れる.
+	actCtx = auth.WithActAsUser(actCtx, *job.CreatedBy)
 
 	defer func() {
 		if rv := recover(); rv != nil {

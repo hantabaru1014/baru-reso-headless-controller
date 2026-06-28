@@ -18,14 +18,16 @@ func init() {
 // StartSessionAction は START_SESSION 予約用. payload は WorldStartupParameters の protojson.
 type StartSessionAction struct {
 	HostID            string          `json:"host_id"`
+	GroupID           string          `json:"group_id"`
 	UserID            *string         `json:"user_id,omitempty"`
 	Memo              *string         `json:"memo,omitempty"`
 	StartupParamsJSON json.RawMessage `json:"startup_parameters"`
 }
 
-func NewStartSessionAction(hostID string, userID *string, memo *string, params json.RawMessage) *StartSessionAction {
+func NewStartSessionAction(hostID string, groupID string, userID *string, memo *string, params json.RawMessage) *StartSessionAction {
 	return &StartSessionAction{
 		HostID:            hostID,
+		GroupID:           groupID,
 		UserID:            userID,
 		Memo:              memo,
 		StartupParamsJSON: params,
@@ -44,7 +46,7 @@ func (a *StartSessionAction) Execute(ctx context.Context, deps scheduled_op.Acti
 		}
 	}
 
-	_, err := deps.Session.StartSession(ctx, a.HostID, a.UserID, params, a.Memo)
+	_, err := deps.Session.StartSession(ctx, a.HostID, a.GroupID, a.UserID, params, a.Memo)
 
 	return err
 }

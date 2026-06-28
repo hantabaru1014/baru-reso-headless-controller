@@ -68,16 +68,27 @@ func RunMigrations(t *testing.T) {
 }
 
 // CleanupTables truncates all tables in the test database
-// Automatically detects all tables in the public schema (excluding migrations table).
+// Automatically detects all tables in the public schema (excluding migrations table
+// and permission seed tables — groups / roles / role_permissions / group_members は
+// マイグレーション時に投入された seed が ON DELETE CASCADE で吹き飛ぶと
+// permission interceptor がまともに動かなくなるためここでは触らない.
+// users を TRUNCATE する際に group_members は ON DELETE CASCADE で連動削除される).
 func CleanupTables(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 
 	// Get all table names from the public schema, excluding the migrations table
+	// and permission seed tables.
 	query := `
 		SELECT tablename
 		FROM pg_tables
 		WHERE schemaname = 'public'
-		AND tablename != 'schema_migrations'
+		AND tablename NOT IN (
+			'schema_migrations',
+			'groups',
+			'roles',
+			'role_permissions',
+			'group_members'
+		)
 		ORDER BY tablename
 	`
 
@@ -110,5 +121,13 @@ func CleanupTables(t *testing.T, pool *pgxpool.Pool) {
 		if _, err := pool.Exec(t.Context(), truncateQuery); err != nil {
 			t.Logf("warning: failed to truncate table %s: %v", table, err)
 		}
+	}
+
+	// permission seed テーブルは TRUNCATE しないが、各テストが投入する personal /
+	// normal グループは累積するため明示的に削除する (system と migrated-pre-permission
+	// は seed なので残す). CASCADE で group_members / roles も連動削除される.
+	if _, err := pool.Exec(t.Context(),
+		"DELETE FROM groups WHERE id NOT IN ('system', 'migrated-pre-permission')"); err != nil {
+		t.Logf("warning: failed to delete per-test groups: %v", err)
 	}
 }

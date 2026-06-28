@@ -7,6 +7,9 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import { keepPreviousData } from "@tanstack/react-query";
 import { usePaginationState } from "../hooks/usePaginationState";
+import { useDefaultGroupId } from "../hooks/useDefaultGroupId";
+import { useAtomValue } from "jotai";
+import { currentGroupIdAtom } from "../atoms/currentGroupAtom";
 import { useEffect } from "react";
 import {
   Dialog,
@@ -39,6 +42,10 @@ import { DataTable } from "./base/DataTable";
 import { toast } from "sonner";
 import { CheckboxField, TextField } from "./base";
 import { ResoniteUserIcon } from "./ResoniteUserIcon";
+import { GroupSelectField } from "./GroupSelectField";
+import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
+import { usePermissions } from "../hooks/usePermissions";
+import { PERMISSION_KEYS } from "../libs/permissionUtils";
 
 const newHostFormSchema = z.object({
   name: z.string().min(1, "ホスト名は必須です"),
@@ -46,6 +53,7 @@ const newHostFormSchema = z.object({
   usernameOverride: z.string().optional(),
   tag: z.string().min(1, "バージョンは必須です"),
   accountId: z.string().min(1, "ホストユーザは必須です"),
+  groupId: z.string().min(1, "所属グループは必須です"),
   autoUpdate: z.boolean(),
 });
 type NewHostFormData = z.infer<typeof newHostFormSchema>;
@@ -61,11 +69,15 @@ function NewHostDialog({
   const { mutateAsync: mutateStartHost, isPending } =
     useMutation(startHeadlessHost);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const defaultGroupId = useDefaultGroupId(PERMISSION_KEYS.HOST_WRITE);
 
   const {
     control,
     handleSubmit,
     reset,
+    watch,
+    setValue,
+    getValues,
     formState: { errors },
   } = useForm<NewHostFormData>({
     resolver: zodResolver(newHostFormSchema),
@@ -75,9 +87,19 @@ function NewHostDialog({
       usernameOverride: "",
       tag: "latestRelease",
       accountId: "",
+      groupId: "",
       autoUpdate: false,
     },
   });
+
+  const selectedGroupId = watch("groupId");
+
+  // 非同期に解決される default group をユーザーが触っていなければ反映する.
+  useEffect(() => {
+    if (defaultGroupId && !getValues("groupId")) {
+      setValue("groupId", defaultGroupId);
+    }
+  }, [defaultGroupId, getValues, setValue]);
 
   const onSubmit = async (data: NewHostFormData) => {
     try {
@@ -92,6 +114,7 @@ function NewHostDialog({
         autoUpdatePolicy: data.autoUpdate
           ? HeadlessHostAutoUpdatePolicy.USERS_EMPTY
           : HeadlessHostAutoUpdatePolicy.NEVER,
+        groupId: data.groupId || undefined,
       });
       // 非同期 job として実行されるので「受け付けた」だけ通知し、
       // 完了は notificationDispatch 経由の JobCompletedEvent toast で出す.
@@ -151,26 +174,45 @@ function NewHostDialog({
             )}
           />
           <Controller
+            name="groupId"
+            control={control}
+            render={({ field }) => (
+              <GroupSelectField
+                value={field.value}
+                onChange={field.onChange}
+                requiredPermission={PERMISSION_KEYS.HOST_WRITE}
+                helperText="ホストを所属させるグループ。アカウントは同じグループのものから選びます"
+                error={errors.groupId?.message}
+              />
+            )}
+          />
+          <Controller
             name="accountId"
             control={control}
             render={({ field }) => (
               <SelectField
                 label="ホストユーザ"
+                helperText="選択中のグループに所属するアカウントのみ表示されます"
                 options={
-                  accounts?.accounts.map((account) => ({
-                    id: account.userId,
-                    label: (
-                      <span className="flex items-center gap-2">
-                        <ResoniteUserIcon
-                          iconUrl={account.iconUrl}
-                          alt={`${account.userName}のアイコン`}
-                        />
-                        <span className="text-sm font-medium">
-                          {account.userName}
+                  accounts?.accounts
+                    .filter(
+                      (account) =>
+                        !selectedGroupId || account.groupId === selectedGroupId,
+                    )
+                    .map((account) => ({
+                      id: account.userId,
+                      label: (
+                        <span className="flex items-center gap-2">
+                          <ResoniteUserIcon
+                            iconUrl={account.iconUrl}
+                            alt={`${account.userName}のアイコン`}
+                          />
+                          <span className="text-sm font-medium">
+                            {account.userName}
+                          </span>
                         </span>
-                      </span>
-                    ),
-                  })) ?? []
+                      ),
+                    })) ?? []
                 }
                 selectedId={field.value}
                 onChange={(option) => field.onChange(option.id)}
@@ -272,13 +314,20 @@ const columns: ColumnDef<HeadlessHost>[] = [
 export default function HostList() {
   const { pageIndex, pageSize, setPageIndex, setPageSize, syncFromServer } =
     usePaginationState({ defaultPageSize: 20 });
+  const currentGroupId = useAtomValue(currentGroupIdAtom);
   const { data, isPending, refetch } = useQuery(
     listHeadlessHost,
-    { page: { pageIndex, pageSize } },
+    {
+      page: { pageIndex, pageSize },
+      groupId: currentGroupId ?? undefined,
+    },
     { placeholderData: keepPreviousData },
   );
   const navigate = useNavigate();
   const [isNewHostDialogOpen, setIsNewHostDialogOpen] = useState(false);
+  const { groupsWithPermission } = usePermissions();
+  const canStartHost =
+    groupsWithPermission(PERMISSION_KEYS.HOST_WRITE).length > 0;
 
   useEffect(() => {
     if (data?.page) {
@@ -290,9 +339,13 @@ export default function HostList() {
     <div className="space-y-4">
       <div className="flex justify-end gap-2">
         <RefetchButton refetch={refetch} />
-        <Button onClick={() => setIsNewHostDialogOpen(true)}>
+        <PermissionGuardedButton
+          allowed={canStartHost}
+          disabledReason="ホストを起動できる権限を持つグループがありません"
+          onClick={() => setIsNewHostDialogOpen(true)}
+        >
           ヘッドレスを開始
-        </Button>
+        </PermissionGuardedButton>
       </div>
       <DataTable
         columns={columns}

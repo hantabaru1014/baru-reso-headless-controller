@@ -27,8 +27,10 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { SelectField, TextField } from "./base";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import SessionStartupFields from "./SessionStartupFields";
+import { usePermissions } from "../hooks/usePermissions";
+import { PERMISSION_KEYS } from "../libs/permissionUtils";
 import {
   ScheduledOperationSchema,
   ScheduledTriggerSchema,
@@ -51,6 +53,7 @@ export default function NewSessionForm() {
   const { mutateAsync: mutateSchedule, isPending: isPendingSchedule } =
     useMutation(createScheduledSessionOperation);
   const { data: hostList } = useQuery(listHeadlessHost);
+  const { hasPermission } = usePermissions();
 
   const {
     control,
@@ -134,14 +137,24 @@ export default function NewSessionForm() {
     }
   };
 
-  const runningHosts =
-    hostList?.hosts
-      .filter((host) => host.status === HeadlessHostStatus.RUNNING)
-      .map((host) => ({
-        id: host.id,
-        label: `${host.name} (${host.id.slice(0, 6)}) - ${host.accountName} - ${host.resoniteVersion}`,
-        value: host,
-      })) ?? [];
+  // セッション開始には host:use + session:write が host.group_id に対して必要.
+  // 権限を持たないグループのホストは選択肢に出さない.
+  const runningHosts = useMemo(
+    () =>
+      hostList?.hosts
+        .filter((host) => host.status === HeadlessHostStatus.RUNNING)
+        .filter(
+          (host) =>
+            hasPermission(host.groupId, PERMISSION_KEYS.HOST_USE) &&
+            hasPermission(host.groupId, PERMISSION_KEYS.SESSION_WRITE),
+        )
+        .map((host) => ({
+          id: host.id,
+          label: `${host.name} (${host.id.slice(0, 6)}) - ${host.accountName} - ${host.resoniteVersion}`,
+          value: host,
+        })) ?? [],
+    [hostList?.hosts, hasPermission],
+  );
 
   return (
     <>

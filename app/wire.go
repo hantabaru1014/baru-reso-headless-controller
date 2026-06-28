@@ -87,8 +87,9 @@ func ProvideScheduledOperationExecutor(
 	suc *usecase.SessionUsecase,
 	srepo port.SessionRepository,
 	stateCache port.SessionStateCache,
+	userChecker worker.UserExistenceChecker,
 ) *worker.ScheduledOperationExecutor {
-	return worker.NewScheduledOperationExecutor(repo, suc, srepo, stateCache, worker.ScheduledOperationExecutorOptions{})
+	return worker.NewScheduledOperationExecutor(repo, suc, srepo, stateCache, userChecker, worker.ScheduledOperationExecutorOptions{})
 }
 
 // ProvideAsyncJobDispatcher はホスト/セッションの非同期 job を実行する dispatcher を
@@ -107,8 +108,9 @@ func ProvideAsyncJobExecutor(
 	repo port.AsyncJobRepository,
 	dispatcher *async_job.Dispatcher,
 	bus notification.Bus,
+	userChecker worker.UserExistenceChecker,
 ) *worker.AsyncJobExecutor {
-	return worker.NewAsyncJobExecutor(repo, dispatcher, bus, worker.AsyncJobExecutorOptions{})
+	return worker.NewAsyncJobExecutor(repo, dispatcher, bus, userChecker, worker.AsyncJobExecutorOptions{})
 }
 
 // ProvideHostEventHandlers gathers consumers for the per-host event
@@ -152,7 +154,8 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		ConfigSet,
 
 		// db
-		db.NewQueries,
+		db.NewConnPool,
+		db.NewQueriesFromPool,
 
 		// host connector
 		hostconnector.NewDockerHostConnector,
@@ -175,6 +178,14 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		adapter.NewScheduledSessionOperationRepository,
 		wire.Bind(new(port.AsyncJobRepository), new(*adapter.AsyncJobRepository)),
 		adapter.NewAsyncJobRepository,
+		wire.Bind(new(worker.UserExistenceChecker), new(*adapter.UserExistenceChecker)),
+		adapter.NewUserExistenceChecker,
+		wire.Bind(new(port.GroupRepository), new(*adapter.GroupRepository)),
+		adapter.NewGroupRepository,
+		wire.Bind(new(port.RoleRepository), new(*adapter.RoleRepository)),
+		adapter.NewRoleRepository,
+		wire.Bind(new(port.GroupMemberRepository), new(*adapter.GroupMemberRepository)),
+		adapter.NewGroupMemberRepository,
 
 		// in-memory session-state cache (volatile snapshot owned by container)
 		sessionstate.NewMemoryCache,
@@ -210,6 +221,9 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		usecase.NewSessionUsecase,
 		usecase.NewBlobUsecase,
 		usecase.NewScheduledSessionOperationUsecase,
+		usecase.NewPermissionUsecase,
+		usecase.NewGroupUsecase,
+		usecase.NewRoleUsecase,
 		async_job.NewUsecase,
 		wire.Bind(new(port.SessionStopper), new(*usecase.SessionUsecase)),
 
@@ -217,6 +231,8 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		rpc.NewUserService,
 		rpc.NewControllerService,
 		rpc.NewNotificationService,
+		rpc.NewGroupService,
+		rpc.NewRoleService,
 
 		// resonite link bridge
 		resonitelink.NewBridge,
@@ -232,7 +248,8 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 		ConfigSet,
 
 		// db
-		db.NewQueries,
+		db.NewConnPool,
+		db.NewQueriesFromPool,
 
 		// host connector
 		hostconnector.NewDockerHostConnector,
@@ -249,6 +266,12 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 		adapter.NewSessionRepository,
 		wire.Bind(new(port.ScheduledSessionOperationRepository), new(*adapter.ScheduledSessionOperationRepository)),
 		adapter.NewScheduledSessionOperationRepository,
+		wire.Bind(new(port.GroupRepository), new(*adapter.GroupRepository)),
+		adapter.NewGroupRepository,
+		wire.Bind(new(port.RoleRepository), new(*adapter.RoleRepository)),
+		adapter.NewRoleRepository,
+		wire.Bind(new(port.GroupMemberRepository), new(*adapter.GroupMemberRepository)),
+		adapter.NewGroupMemberRepository,
 
 		// CLI has no upgrade orchestrator running, so SessionUsecase
 		// gets a no-op drainer.
@@ -266,6 +289,8 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 		usecase.NewSessionUsecase,
 		usecase.NewHeadlessHostUsecase,
 		usecase.NewScheduledSessionOperationUsecase,
+		usecase.NewPermissionUsecase,
+		usecase.NewGroupUsecase,
 
 		NewCli,
 	)

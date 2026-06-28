@@ -148,6 +148,9 @@ message StartHeadlessHostRequest {
   optional headless.v1.StartupConfig startup_config = 4;
   optional HeadlessHostAutoUpdatePolicy auto_update_policy = 5;
   optional string memo = 6;
+  // 起動するホストの所属グループ. 未指定の場合は呼び出しユーザーの personal グループ.
+  // 指定する場合は account の group_id と一致する必要がある (同一グループ制約).
+  optional string group_id = 7;
 }
 
 message StartHeadlessHostResponse {
@@ -162,12 +165,18 @@ message CreateHeadlessAccountRequest {
   reserved 1; // 廃止したプロパティ
   string credential = 2; // email or userId
   string password = 3;
+  // 作成するアカウントの所属グループ. 未指定の場合は呼び出しユーザーの personal グループ.
+  optional string group_id = 4;
 }
 
 message CreateHeadlessAccountResponse {}
 
 message ListHeadlessAccountsRequest {
   PageRequest page = 1;
+  // 指定したグループに所属するアカウントのみを返す.
+  // 未指定の場合は呼び出しユーザーが account:read を持つグループ群に絞り込む.
+  // system:group.list 保持者は未指定時に全件返却.
+  optional string group_id = 2;
 }
 
 message ListHeadlessAccountsResponse {
@@ -350,6 +359,10 @@ message GetOwnWorldsResponse {
 
 message ListHeadlessHostRequest {
   PageRequest page = 1;
+  // 指定したグループに所属するホストのみを返す.
+  // 未指定の場合は呼び出しユーザーが host:read を持つグループ群に絞り込む.
+  // system:group.list 保持者は未指定時に全件返却.
+  optional string group_id = 2;
 }
 
 message ListHeadlessHostResponse {
@@ -379,6 +392,10 @@ message SearchSessionsRequest {
   message SearchParameters {
     optional string host_id = 1;
     optional SessionStatus status = 2;
+    // 指定したグループに所属するセッションのみを返す.
+    // 未指定の場合は呼び出しユーザーが session:read を持つグループ群に絞り込む.
+    // system:group.list 保持者は未指定時に全件返却.
+    optional string group_id = 3;
   }
   SearchParameters parameters = 1;
   PageRequest page = 2;
@@ -402,6 +419,9 @@ message StartWorldRequest {
   string host_id = 1;
   headless.v1.WorldStartupParameters parameters = 2;
   string memo = 3;
+  // 起動するセッションの所属グループ. 未指定の場合は呼び出しユーザーの personal グループ.
+  // 指定する場合は host / account の group_id と一致する必要がある (同一グループ制約).
+  optional string group_id = 4;
 }
 
 message StartWorldResponse {
@@ -562,6 +582,11 @@ message HeadlessHost {
   string memo = 13;
   HeadlessHostSettings host_settings = 14;
   int32 instance_id = 15;
+  // 所属グループ ID. 権限判定の基準となる.
+  string group_id = 16;
+  // 作成者 user_id. 権限とは独立した記録用途.
+  // ユーザー削除等で参照先が消えうるため nullable.
+  optional string created_by = 17;
 }
 
 message Session {
@@ -573,15 +598,27 @@ message Session {
   optional google.protobuf.Timestamp ended_at = 6;
   headless.v1.WorldStartupParameters startup_parameters = 7;
   optional headless.v1.Session current_state = 8;
-  optional string owner_id = 9;
+  // 旧: 作成者 user_id. 権限システム導入に伴い created_by に統合.
+  // 移行期間中は created_by と同値を返す.
+  optional string owner_id = 9 [deprecated = true];
   bool auto_upgrade = 10;
   string memo = 11;
+  // 所属グループ ID. 権限判定の基準となる.
+  // host.group_id == account.group_id == session.group_id (同一グループ制約).
+  string group_id = 12;
+  // 作成者 user_id. 権限とは独立した記録用途.
+  optional string created_by = 13;
 }
 
 message HeadlessAccount {
   string user_id = 1;
   string user_name = 2;
   string icon_url = 3;
+  // 所属グループ ID. 権限判定の基準となる.
+  string group_id = 4;
+  // 作成者 user_id. 権限とは独立した記録用途.
+  // 既存データは nullable, 新規作成時は呼び出しユーザーが入る.
+  optional string created_by = 5;
 }
 
 message UserInfo {

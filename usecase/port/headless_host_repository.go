@@ -40,6 +40,7 @@ type HeadlessHostStartParams struct {
 	StartupConfig     *headlessv1.StartupConfig
 	AutoUpdatePolicy  entity.HostAutoUpdatePolicy
 	Memo              string
+	GroupID           string // 起動するホストの所属グループ ID. 必須.
 }
 
 type HeadlessHostFetchOptions struct {
@@ -50,6 +51,11 @@ type HostListPageOptions struct {
 	PageIndex    int32
 	PageSize     int32
 	FetchOptions HeadlessHostFetchOptions
+	// GroupIDs はグループフィルタ.
+	//   - nil: 全グループ対象 (system:group.list 保持者 / 認可レイヤで判断済み)
+	//   - 空 slice: マッチゼロ件 (= 所属グループが無いユーザーの自動絞り込み結果)
+	//   - 非空 slice: 指定 group_id 群でのみ絞り込み
+	GroupIDs []string
 }
 
 type HostListPageResult struct {
@@ -75,6 +81,9 @@ type HeadlessHostRepository interface {
 	ListPaged(ctx context.Context, opts HostListPageOptions) (*HostListPageResult, error)
 	ListRunningByAccount(ctx context.Context, accountId string) (entity.HeadlessHostList, error)
 	Find(ctx context.Context, id string, fetchOptions HeadlessHostFetchOptions) (*entity.HeadlessHost, error)
+	// GetGroupID は host の group_id だけを DB のみで返す軽量メソッド.
+	// permission interceptor が container RPC を起こさないようにするための専用 API.
+	GetGroupID(ctx context.Context, id string) (string, error)
 	GetRpcClient(ctx context.Context, id string) (headlessv1.HeadlessControlServiceClient, error)
 	GetLogs(ctx context.Context, params GetLogsParams) (LogLineList, error)
 	GetInstanceTimestamps(ctx context.Context, hostID string) (InstanceTimestampList, error)

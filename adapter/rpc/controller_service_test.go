@@ -50,6 +50,11 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 	queries, pool := testutil.SetupTestDB(t)
 	testutil.CleanupTables(t, pool)
 
+	// permission interceptor を素通りさせるため、デフォルト test user を system-admin
+	// として bootstrap. 個別 user で動かしたいテストは別途 SetupSystemAdminUser を
+	// 呼び直すこと.
+	testutil.SetupDefaultSystemAdminUser(t, queries)
+
 	// Setup mocks for external dependencies only
 	ctrl := gomock.NewController(t)
 	mockHostConnector := hostconnectormock.NewMockHostConnector(ctrl)
@@ -67,19 +72,25 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 	srepo := adapter.NewSessionRepository(queries)
 	hhrepo := adapter.NewHeadlessHostRepository(queries, mockHostConnector, &cfg.GRPC)
 	stateCache := sessionstate.NewMemoryCache()
+	groupRepo := adapter.NewGroupRepository(queries)
+	roleRepo := adapter.NewRoleRepository(queries)
+	memberRepo := adapter.NewGroupMemberRepository(queries)
+
+	// permUC を usecase 群より先に作る必要がある (PermissionUsecase 引数に渡すため).
+	permUC := usecase.NewPermissionUsecase(groupRepo, memberRepo, roleRepo)
 
 	// Setup usecases with real repositories
-	hauc := usecase.NewHeadlessAccountUsecase(queries, mockSkyfrost)
-	suc := usecase.NewSessionUsecase(srepo, hhrepo, port.NoopHostDrainer{}, stateCache, &cfg.Server, &cfg.ResoniteLink)
-	hhuc := usecase.NewHeadlessHostUsecase(hhrepo, srepo, suc, hauc)
+	hauc := usecase.NewHeadlessAccountUsecase(queries, mockSkyfrost, permUC)
+	suc := usecase.NewSessionUsecase(srepo, hhrepo, port.NoopHostDrainer{}, stateCache, &cfg.Server, &cfg.ResoniteLink, permUC)
+	hhuc := usecase.NewHeadlessHostUsecase(hhrepo, srepo, suc, hauc, permUC)
 	buc := usecase.NewBlobUsecase(srepo, hhrepo, mockBlobstore)
 	sorepo := adapter.NewScheduledSessionOperationRepository(queries)
-	souc := usecase.NewScheduledSessionOperationUsecase(sorepo)
+	souc := usecase.NewScheduledSessionOperationUsecase(sorepo, hhrepo, srepo, permUC)
 	ajrepo := adapter.NewAsyncJobRepository(queries)
 	ajuc := async_job.NewUsecase(ajrepo)
 
 	// Setup service with real repositories
-	service := NewControllerService(hhrepo, srepo, hhuc, hauc, suc, buc, souc, ajuc, mockSkyfrost, notification.NewBus())
+	service := NewControllerService(hhrepo, srepo, hhuc, hauc, suc, buc, souc, ajuc, permUC, groupRepo, roleRepo, mockSkyfrost, notification.NewBus())
 
 	return &controllerServiceTestSetup{
 		service:           service,
@@ -91,6 +102,21 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 		queries:           queries,
 		pool:              pool,
 	}
+}
+
+// authAsMinPerm は「permKeys ちょうどしか持たないユーザー」を作り、そのユーザーで
+// 認証された connect.Request を返す helper. groupID には対象リソースが所属する
+// グループを渡す. 「最小権限ちょうど」での RPC 成功 / 「1 perm 不足」での
+// PermissionDenied を簡潔に書くためのもの.
+//
+// userID はテスト関数内で一意な値を渡す (subtest 間で同じ ID を使い回すと
+// CreateTestUser が衝突するため、各 subtest で新規 setup を使う前提).
+func authAsMinPerm[T any](t *testing.T, queries *db.Queries, msg *T, userID, groupID string, permKeys []string) *connect.Request[T] {
+	t.Helper()
+
+	testutil.SetupUserWithExactPermissions(t, queries, userID, groupID, permKeys)
+
+	return testutil.CreateAuthenticatedRequest(t, msg, userID, "U-resonite-"+userID, "")
 }
 
 func setupAuthenticatedClient(t *testing.T, service *ControllerService) hdlctrlv1connect.ControllerServiceClient {

@@ -18,18 +18,35 @@ type HeadlessHostUsecase struct {
 	srepo  port.SessionRepository
 	huc    *SessionUsecase
 	hauc   *HeadlessAccountUsecase
+	permUC *PermissionUsecase
 }
 
-func NewHeadlessHostUsecase(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, huc *SessionUsecase, hauc *HeadlessAccountUsecase) *HeadlessHostUsecase {
+func NewHeadlessHostUsecase(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, huc *SessionUsecase, hauc *HeadlessAccountUsecase, permUC *PermissionUsecase) *HeadlessHostUsecase {
 	return &HeadlessHostUsecase{
 		hhrepo: hhrepo,
 		srepo:  srepo,
 		huc:    huc,
 		hauc:   hauc,
+		permUC: permUC,
 	}
 }
 
+// HeadlessHostStart は host:write + account:use を params.GroupID に対して要求する.
+// RPC interceptor (checkStartHeadlessHost) と同等のチェックを usecase 層で最終ガードする.
 func (hhuc *HeadlessHostUsecase) HeadlessHostStart(ctx context.Context, params port.HeadlessHostStartParams, userId *string) (string, error) {
+	if err := hhuc.permUC.RequirePermissionForGroup(ctx, params.GroupID, entity.PermKey_HostWrite); err != nil {
+		return "", err
+	}
+
+	if err := hhuc.permUC.RequirePermissionForGroup(ctx, params.GroupID, entity.PermKey_AccountUse); err != nil {
+		return "", err
+	}
+
+	// 同一グループ制約: account.group_id == params.group_id を usecase 側でも検証.
+	if params.HeadlessAccount.GroupID != "" && params.HeadlessAccount.GroupID != params.GroupID {
+		return "", errors.New("account group does not match host group")
+	}
+
 	tag, err := hhuc.resolveTagToUse(ctx, &params.ContainerImageTag)
 	if err != nil {
 		return "", errors.Wrap(err, 0)
@@ -49,11 +66,20 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostList(ctx context.Context) (entity.H
 	return hosts, nil
 }
 
-func (hhuc *HeadlessHostUsecase) HeadlessHostListPaged(ctx context.Context, pageIndex, pageSize int32) (*port.HostListPageResult, error) {
+// HeadlessHostListPagedOptions は HeadlessHostListPaged の引数.
+// GroupIDs の semantics は port.HostListPageOptions.GroupIDs と同一.
+type HeadlessHostListPagedOptions struct {
+	PageIndex int32
+	PageSize  int32
+	GroupIDs  []string
+}
+
+func (hhuc *HeadlessHostUsecase) HeadlessHostListPaged(ctx context.Context, opts HeadlessHostListPagedOptions) (*port.HostListPageResult, error) {
 	result, err := hhuc.hhrepo.ListPaged(ctx, port.HostListPageOptions{
-		PageIndex:    pageIndex,
-		PageSize:     pageSize,
+		PageIndex:    opts.PageIndex,
+		PageSize:     opts.PageSize,
 		FetchOptions: port.HeadlessHostFetchOptions{},
+		GroupIDs:     opts.GroupIDs,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
@@ -72,12 +98,20 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostGet(ctx context.Context, id string)
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostDelete(ctx context.Context, id string) error {
+	if err := hhuc.requireHostWrite(ctx, id); err != nil {
+		return err
+	}
+
 	return hhuc.hhrepo.Delete(ctx, id)
 }
 
 // HeadlessHostRestart restarts the headless host with the specified ID.
 // If newTag is "latestRelease", it will use the latest release tag.
 func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id string, newTag *string, withWorldRestart bool, timeoutSeconds int) error {
+	if err := hhuc.requireHostWrite(ctx, id); err != nil {
+		return err
+	}
+
 	host, err := hhuc.hhrepo.Find(ctx, id, port.HeadlessHostFetchOptions{
 		IncludeStartWorlds: withWorldRestart,
 	})
@@ -223,6 +257,10 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostGetInstances(ctx context.Context, h
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostShutdown(ctx context.Context, id string) error {
+	if err := hhuc.requireHostWrite(ctx, id); err != nil {
+		return err
+	}
+
 	status := entity.SessionStatus_RUNNING
 
 	sessions, err := hhuc.huc.SearchSessions(ctx, SearchSessionsFilter{
@@ -248,6 +286,10 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostShutdown(ctx context.Context, id st
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostKill(ctx context.Context, id string) error {
+	if err := hhuc.requireHostWrite(ctx, id); err != nil {
+		return err
+	}
+
 	status := entity.SessionStatus_RUNNING
 
 	sessions, err := hhuc.huc.SearchSessions(ctx, SearchSessionsFilter{
@@ -269,6 +311,17 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostKill(ctx context.Context, id string
 	}
 
 	return nil
+}
+
+// requireHostWrite は hostID の group を引いて host:write を要求する.
+// host が存在しなければ repo 由来のエラー (典型的に domain.ErrNotFound) を返す.
+func (hhuc *HeadlessHostUsecase) requireHostWrite(ctx context.Context, hostID string) error {
+	groupID, err := hhuc.hhrepo.GetGroupID(ctx, hostID)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	return hhuc.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_HostWrite)
 }
 
 func (hhuc *HeadlessHostUsecase) resolveTagToUse(ctx context.Context, tagInput *string) (string, error) {

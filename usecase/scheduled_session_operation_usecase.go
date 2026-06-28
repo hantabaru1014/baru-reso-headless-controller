@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-errors/errors"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/scheduled_op"
@@ -16,11 +17,48 @@ import (
 )
 
 type ScheduledSessionOperationUsecase struct {
-	repo port.ScheduledSessionOperationRepository
+	repo        port.ScheduledSessionOperationRepository
+	hostRepo    port.HeadlessHostRepository
+	sessionRepo port.SessionRepository
+	permUC      *PermissionUsecase
 }
 
-func NewScheduledSessionOperationUsecase(repo port.ScheduledSessionOperationRepository) *ScheduledSessionOperationUsecase {
-	return &ScheduledSessionOperationUsecase{repo: repo}
+func NewScheduledSessionOperationUsecase(
+	repo port.ScheduledSessionOperationRepository,
+	hostRepo port.HeadlessHostRepository,
+	sessionRepo port.SessionRepository,
+	permUC *PermissionUsecase,
+) *ScheduledSessionOperationUsecase {
+	return &ScheduledSessionOperationUsecase{
+		repo:        repo,
+		hostRepo:    hostRepo,
+		sessionRepo: sessionRepo,
+		permUC:      permUC,
+	}
+}
+
+// resolveTargetGroupID は HostID または SessionID から対象の group_id を引く.
+// どちらも未指定なら error.
+func (u *ScheduledSessionOperationUsecase) resolveTargetGroupID(ctx context.Context, hostID, sessionID *string) (string, error) {
+	if sessionID != nil && *sessionID != "" {
+		s, err := u.sessionRepo.Get(ctx, *sessionID)
+		if err != nil {
+			return "", errors.Wrap(err, 0)
+		}
+
+		return s.GroupID, nil
+	}
+
+	if hostID != nil && *hostID != "" {
+		gid, err := u.hostRepo.GetGroupID(ctx, *hostID)
+		if err != nil {
+			return "", errors.Wrap(err, 0)
+		}
+
+		return gid, nil
+	}
+
+	return "", errors.New("either host_id or session_id is required")
 }
 
 type CreateScheduledSessionOperationParams struct {
@@ -38,6 +76,16 @@ func (u *ScheduledSessionOperationUsecase) Create(ctx context.Context, params Cr
 
 	if params.Trigger == nil {
 		return nil, errors.New("create scheduled operation: trigger is required")
+	}
+
+	// 対象 host/session の group に対して session:write を要求する.
+	groupID, err := u.resolveTargetGroupID(ctx, params.HostID, params.SessionID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := u.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_SessionWrite); err != nil {
+		return nil, err
 	}
 
 	actionPayload, err := params.Action.Marshal()
@@ -89,12 +137,52 @@ type ListScheduledSessionOperationsFilter = port.ScheduledSessionOperationListFi
 type ListScheduledSessionOperationsResult = port.ScheduledSessionOperationListResult
 
 func (u *ScheduledSessionOperationUsecase) List(ctx context.Context, filter ListScheduledSessionOperationsFilter) (*ListScheduledSessionOperationsResult, error) {
+	// host_id / session_id 指定が無い場合は全件返却となるため system:group.list を要求する.
+	// 指定がある場合は対象 group に対する session:read を要求.
+	if filter.HostID == nil && filter.SessionID == nil {
+		if err := u.permUC.RequireSystemPermission(ctx, entity.PermKey_SystemGroupList); err != nil {
+			return nil, err
+		}
+
+		return u.repo.List(ctx, filter)
+	}
+
+	groupID, err := u.resolveTargetGroupID(ctx, filter.HostID, filter.SessionID)
+	if err != nil {
+		// 対象 host/session が DB に存在しないなら、その filter で hit する op も
+		// 存在しない. 0 件を返す方が 404 より UX が素直.
+		if errors.Is(err, domain.ErrNotFound) {
+			return &port.ScheduledSessionOperationListResult{}, nil
+		}
+
+		return nil, err
+	}
+
+	if err := u.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_SessionRead); err != nil {
+		return nil, err
+	}
+
 	return u.repo.List(ctx, filter)
 }
 
 var ErrScheduledOperationNotCancelable = errors.New("scheduled operation cannot be canceled in its current status")
 
 func (u *ScheduledSessionOperationUsecase) Cancel(ctx context.Context, id string) error {
+	// 対象 op を引いて group_id を導出し session:write を要求.
+	op, err := u.repo.Get(ctx, id)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	groupID, err := u.resolveTargetGroupID(ctx, op.HostID, op.SessionID)
+	if err != nil {
+		return err
+	}
+
+	if err := u.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_SessionWrite); err != nil {
+		return err
+	}
+
 	ok, err := u.repo.Cancel(ctx, id)
 	if err != nil {
 		return errors.Wrap(err, 0)

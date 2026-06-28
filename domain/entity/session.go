@@ -21,13 +21,14 @@ type Session struct {
 	Name              string
 	Status            SessionStatus
 	StartedAt         *time.Time
-	OwnerID           *string
+	CreatedBy         *string
 	EndedAt           *time.Time
 	HostID            string
 	StartupParameters *headlessv1.WorldStartupParameters
 	AutoUpgrade       bool
 	Memo              string
 	CurrentState      *headlessv1.Session
+	GroupID           string
 }
 
 type SessionList []*Session

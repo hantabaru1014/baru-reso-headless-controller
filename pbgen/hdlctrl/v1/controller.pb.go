@@ -1145,8 +1145,11 @@ type StartHeadlessHostRequest struct {
 	StartupConfig     *v1.StartupConfig             `protobuf:"bytes,4,opt,name=startup_config,json=startupConfig,proto3,oneof" json:"startup_config,omitempty"`
 	AutoUpdatePolicy  *HeadlessHostAutoUpdatePolicy `protobuf:"varint,5,opt,name=auto_update_policy,json=autoUpdatePolicy,proto3,enum=hdlctrl.v1.HeadlessHostAutoUpdatePolicy,oneof" json:"auto_update_policy,omitempty"`
 	Memo              *string                       `protobuf:"bytes,6,opt,name=memo,proto3,oneof" json:"memo,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// 起動するホストの所属グループ. 未指定の場合は呼び出しユーザーの personal グループ.
+	// 指定する場合は account の group_id と一致する必要がある (同一グループ制約).
+	GroupId       *string `protobuf:"bytes,7,opt,name=group_id,json=groupId,proto3,oneof" json:"group_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StartHeadlessHostRequest) Reset() {
@@ -1221,6 +1224,13 @@ func (x *StartHeadlessHostRequest) GetMemo() string {
 	return ""
 }
 
+func (x *StartHeadlessHostRequest) GetGroupId() string {
+	if x != nil && x.GroupId != nil {
+		return *x.GroupId
+	}
+	return ""
+}
+
 type StartHeadlessHostResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 非同期 job の ID. クライアントは notification.JobCompletedEvent でこの ID を
@@ -1268,9 +1278,11 @@ func (x *StartHeadlessHostResponse) GetJobId() string {
 }
 
 type CreateHeadlessAccountRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Credential    string                 `protobuf:"bytes,2,opt,name=credential,proto3" json:"credential,omitempty"` // email or userId
-	Password      string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Credential string                 `protobuf:"bytes,2,opt,name=credential,proto3" json:"credential,omitempty"` // email or userId
+	Password   string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	// 作成するアカウントの所属グループ. 未指定の場合は呼び出しユーザーの personal グループ.
+	GroupId       *string `protobuf:"bytes,4,opt,name=group_id,json=groupId,proto3,oneof" json:"group_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1319,6 +1331,13 @@ func (x *CreateHeadlessAccountRequest) GetPassword() string {
 	return ""
 }
 
+func (x *CreateHeadlessAccountRequest) GetGroupId() string {
+	if x != nil && x.GroupId != nil {
+		return *x.GroupId
+	}
+	return ""
+}
+
 type CreateHeadlessAccountResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -1356,8 +1375,12 @@ func (*CreateHeadlessAccountResponse) Descriptor() ([]byte, []int) {
 }
 
 type ListHeadlessAccountsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Page          *PageRequest           `protobuf:"bytes,1,opt,name=page,proto3" json:"page,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Page  *PageRequest           `protobuf:"bytes,1,opt,name=page,proto3" json:"page,omitempty"`
+	// 指定したグループに所属するアカウントのみを返す.
+	// 未指定の場合は呼び出しユーザーが account:read を持つグループ群に絞り込む.
+	// system:group.list 保持者は未指定時に全件返却.
+	GroupId       *string `protobuf:"bytes,2,opt,name=group_id,json=groupId,proto3,oneof" json:"group_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1397,6 +1420,13 @@ func (x *ListHeadlessAccountsRequest) GetPage() *PageRequest {
 		return x.Page
 	}
 	return nil
+}
+
+func (x *ListHeadlessAccountsRequest) GetGroupId() string {
+	if x != nil && x.GroupId != nil {
+		return *x.GroupId
+	}
+	return ""
 }
 
 type ListHeadlessAccountsResponse struct {
@@ -2910,8 +2940,12 @@ func (x *GetOwnWorldsResponse) GetHasMore() bool {
 }
 
 type ListHeadlessHostRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Page          *PageRequest           `protobuf:"bytes,1,opt,name=page,proto3" json:"page,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Page  *PageRequest           `protobuf:"bytes,1,opt,name=page,proto3" json:"page,omitempty"`
+	// 指定したグループに所属するホストのみを返す.
+	// 未指定の場合は呼び出しユーザーが host:read を持つグループ群に絞り込む.
+	// system:group.list 保持者は未指定時に全件返却.
+	GroupId       *string `protobuf:"bytes,2,opt,name=group_id,json=groupId,proto3,oneof" json:"group_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2951,6 +2985,13 @@ func (x *ListHeadlessHostRequest) GetPage() *PageRequest {
 		return x.Page
 	}
 	return nil
+}
+
+func (x *ListHeadlessHostRequest) GetGroupId() string {
+	if x != nil && x.GroupId != nil {
+		return *x.GroupId
+	}
+	return ""
 }
 
 type ListHeadlessHostResponse struct {
@@ -3392,10 +3433,13 @@ func (x *GetSessionDetailsResponse) GetSession() *Session {
 }
 
 type StartWorldRequest struct {
-	state         protoimpl.MessageState     `protogen:"open.v1"`
-	HostId        string                     `protobuf:"bytes,1,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
-	Parameters    *v1.WorldStartupParameters `protobuf:"bytes,2,opt,name=parameters,proto3" json:"parameters,omitempty"`
-	Memo          string                     `protobuf:"bytes,3,opt,name=memo,proto3" json:"memo,omitempty"`
+	state      protoimpl.MessageState     `protogen:"open.v1"`
+	HostId     string                     `protobuf:"bytes,1,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
+	Parameters *v1.WorldStartupParameters `protobuf:"bytes,2,opt,name=parameters,proto3" json:"parameters,omitempty"`
+	Memo       string                     `protobuf:"bytes,3,opt,name=memo,proto3" json:"memo,omitempty"`
+	// 起動するセッションの所属グループ. 未指定の場合は呼び出しユーザーの personal グループ.
+	// 指定する場合は host / account の group_id と一致する必要がある (同一グループ制約).
+	GroupId       *string `protobuf:"bytes,4,opt,name=group_id,json=groupId,proto3,oneof" json:"group_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3447,6 +3491,13 @@ func (x *StartWorldRequest) GetParameters() *v1.WorldStartupParameters {
 func (x *StartWorldRequest) GetMemo() string {
 	if x != nil {
 		return x.Memo
+	}
+	return ""
+}
+
+func (x *StartWorldRequest) GetGroupId() string {
+	if x != nil && x.GroupId != nil {
+		return *x.GroupId
 	}
 	return ""
 }
@@ -4611,8 +4662,13 @@ type HeadlessHost struct {
 	Memo             string                       `protobuf:"bytes,13,opt,name=memo,proto3" json:"memo,omitempty"`
 	HostSettings     *HeadlessHostSettings        `protobuf:"bytes,14,opt,name=host_settings,json=hostSettings,proto3" json:"host_settings,omitempty"`
 	InstanceId       int32                        `protobuf:"varint,15,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// 所属グループ ID. 権限判定の基準となる.
+	GroupId string `protobuf:"bytes,16,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	// 作成者 user_id. 権限とは独立した記録用途.
+	// ユーザー削除等で参照先が消えうるため nullable.
+	CreatedBy     *string `protobuf:"bytes,17,opt,name=created_by,json=createdBy,proto3,oneof" json:"created_by,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *HeadlessHost) Reset() {
@@ -4729,6 +4785,20 @@ func (x *HeadlessHost) GetInstanceId() int32 {
 	return 0
 }
 
+func (x *HeadlessHost) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
+func (x *HeadlessHost) GetCreatedBy() string {
+	if x != nil && x.CreatedBy != nil {
+		return *x.CreatedBy
+	}
+	return ""
+}
+
 type Session struct {
 	state             protoimpl.MessageState     `protogen:"open.v1"`
 	Id                string                     `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -4739,11 +4809,20 @@ type Session struct {
 	EndedAt           *timestamppb.Timestamp     `protobuf:"bytes,6,opt,name=ended_at,json=endedAt,proto3,oneof" json:"ended_at,omitempty"`
 	StartupParameters *v1.WorldStartupParameters `protobuf:"bytes,7,opt,name=startup_parameters,json=startupParameters,proto3" json:"startup_parameters,omitempty"`
 	CurrentState      *v1.Session                `protobuf:"bytes,8,opt,name=current_state,json=currentState,proto3,oneof" json:"current_state,omitempty"`
-	OwnerId           *string                    `protobuf:"bytes,9,opt,name=owner_id,json=ownerId,proto3,oneof" json:"owner_id,omitempty"`
-	AutoUpgrade       bool                       `protobuf:"varint,10,opt,name=auto_upgrade,json=autoUpgrade,proto3" json:"auto_upgrade,omitempty"`
-	Memo              string                     `protobuf:"bytes,11,opt,name=memo,proto3" json:"memo,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// 旧: 作成者 user_id. 権限システム導入に伴い created_by に統合.
+	// 移行期間中は created_by と同値を返す.
+	//
+	// Deprecated: Marked as deprecated in hdlctrl/v1/controller.proto.
+	OwnerId     *string `protobuf:"bytes,9,opt,name=owner_id,json=ownerId,proto3,oneof" json:"owner_id,omitempty"`
+	AutoUpgrade bool    `protobuf:"varint,10,opt,name=auto_upgrade,json=autoUpgrade,proto3" json:"auto_upgrade,omitempty"`
+	Memo        string  `protobuf:"bytes,11,opt,name=memo,proto3" json:"memo,omitempty"`
+	// 所属グループ ID. 権限判定の基準となる.
+	// host.group_id == account.group_id == session.group_id (同一グループ制約).
+	GroupId string `protobuf:"bytes,12,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	// 作成者 user_id. 権限とは独立した記録用途.
+	CreatedBy     *string `protobuf:"bytes,13,opt,name=created_by,json=createdBy,proto3,oneof" json:"created_by,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Session) Reset() {
@@ -4832,6 +4911,7 @@ func (x *Session) GetCurrentState() *v1.Session {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in hdlctrl/v1/controller.proto.
 func (x *Session) GetOwnerId() string {
 	if x != nil && x.OwnerId != nil {
 		return *x.OwnerId
@@ -4853,11 +4933,30 @@ func (x *Session) GetMemo() string {
 	return ""
 }
 
+func (x *Session) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
+func (x *Session) GetCreatedBy() string {
+	if x != nil && x.CreatedBy != nil {
+		return *x.CreatedBy
+	}
+	return ""
+}
+
 type HeadlessAccount struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	UserName      string                 `protobuf:"bytes,2,opt,name=user_name,json=userName,proto3" json:"user_name,omitempty"`
-	IconUrl       string                 `protobuf:"bytes,3,opt,name=icon_url,json=iconUrl,proto3" json:"icon_url,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	UserId   string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserName string                 `protobuf:"bytes,2,opt,name=user_name,json=userName,proto3" json:"user_name,omitempty"`
+	IconUrl  string                 `protobuf:"bytes,3,opt,name=icon_url,json=iconUrl,proto3" json:"icon_url,omitempty"`
+	// 所属グループ ID. 権限判定の基準となる.
+	GroupId string `protobuf:"bytes,4,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	// 作成者 user_id. 権限とは独立した記録用途.
+	// 既存データは nullable, 新規作成時は呼び出しユーザーが入る.
+	CreatedBy     *string `protobuf:"bytes,5,opt,name=created_by,json=createdBy,proto3,oneof" json:"created_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4909,6 +5008,20 @@ func (x *HeadlessAccount) GetUserName() string {
 func (x *HeadlessAccount) GetIconUrl() string {
 	if x != nil {
 		return x.IconUrl
+	}
+	return ""
+}
+
+func (x *HeadlessAccount) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
+func (x *HeadlessAccount) GetCreatedBy() string {
+	if x != nil && x.CreatedBy != nil {
+		return *x.CreatedBy
 	}
 	return ""
 }
@@ -6544,9 +6657,13 @@ func (x *SearchWorldsResponse_WorldRecord) GetIsFeatured() bool {
 }
 
 type SearchSessionsRequest_SearchParameters struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	HostId        *string                `protobuf:"bytes,1,opt,name=host_id,json=hostId,proto3,oneof" json:"host_id,omitempty"`
-	Status        *SessionStatus         `protobuf:"varint,2,opt,name=status,proto3,enum=hdlctrl.v1.SessionStatus,oneof" json:"status,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	HostId *string                `protobuf:"bytes,1,opt,name=host_id,json=hostId,proto3,oneof" json:"host_id,omitempty"`
+	Status *SessionStatus         `protobuf:"varint,2,opt,name=status,proto3,enum=hdlctrl.v1.SessionStatus,oneof" json:"status,omitempty"`
+	// 指定したグループに所属するセッションのみを返す.
+	// 未指定の場合は呼び出しユーザーが session:read を持つグループ群に絞り込む.
+	// system:group.list 保持者は未指定時に全件返却.
+	GroupId       *string `protobuf:"bytes,3,opt,name=group_id,json=groupId,proto3,oneof" json:"group_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6593,6 +6710,13 @@ func (x *SearchSessionsRequest_SearchParameters) GetStatus() SessionStatus {
 		return *x.Status
 	}
 	return SessionStatus_SESSION_STATUS_UNKNOWN
+}
+
+func (x *SearchSessionsRequest_SearchParameters) GetGroupId() string {
+	if x != nil && x.GroupId != nil {
+		return *x.GroupId
+	}
+	return ""
 }
 
 var File_hdlctrl_v1_controller_proto protoreflect.FileDescriptor
@@ -6653,29 +6777,35 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x15DenyHostAccessRequest\x12\x17\n" +
 	"\ahost_id\x18\x01 \x01(\tR\x06hostId\x12<\n" +
 	"\arequest\x18\x02 \x01(\v2\".headless.v1.DenyHostAccessRequestR\arequest\"\x18\n" +
-	"\x16DenyHostAccessResponse\"\xff\x02\n" +
+	"\x16DenyHostAccessResponse\"\xac\x03\n" +
 	"\x18StartHeadlessHostRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12.\n" +
 	"\x13headless_account_id\x18\x02 \x01(\tR\x11headlessAccountId\x12 \n" +
 	"\timage_tag\x18\x03 \x01(\tH\x00R\bimageTag\x88\x01\x01\x12F\n" +
 	"\x0estartup_config\x18\x04 \x01(\v2\x1a.headless.v1.StartupConfigH\x01R\rstartupConfig\x88\x01\x01\x12[\n" +
 	"\x12auto_update_policy\x18\x05 \x01(\x0e2(.hdlctrl.v1.HeadlessHostAutoUpdatePolicyH\x02R\x10autoUpdatePolicy\x88\x01\x01\x12\x17\n" +
-	"\x04memo\x18\x06 \x01(\tH\x03R\x04memo\x88\x01\x01B\f\n" +
+	"\x04memo\x18\x06 \x01(\tH\x03R\x04memo\x88\x01\x01\x12\x1e\n" +
+	"\bgroup_id\x18\a \x01(\tH\x04R\agroupId\x88\x01\x01B\f\n" +
 	"\n" +
 	"_image_tagB\x11\n" +
 	"\x0f_startup_configB\x15\n" +
 	"\x13_auto_update_policyB\a\n" +
-	"\x05_memo\"8\n" +
+	"\x05_memoB\v\n" +
+	"\t_group_id\"8\n" +
 	"\x19StartHeadlessHostResponse\x12\x15\n" +
-	"\x06job_id\x18\x02 \x01(\tR\x05jobIdJ\x04\b\x01\x10\x02\"`\n" +
+	"\x06job_id\x18\x02 \x01(\tR\x05jobIdJ\x04\b\x01\x10\x02\"\x8d\x01\n" +
 	"\x1cCreateHeadlessAccountRequest\x12\x1e\n" +
 	"\n" +
 	"credential\x18\x02 \x01(\tR\n" +
 	"credential\x12\x1a\n" +
-	"\bpassword\x18\x03 \x01(\tR\bpasswordJ\x04\b\x01\x10\x02\"\x1f\n" +
-	"\x1dCreateHeadlessAccountResponse\"J\n" +
+	"\bpassword\x18\x03 \x01(\tR\bpassword\x12\x1e\n" +
+	"\bgroup_id\x18\x04 \x01(\tH\x00R\agroupId\x88\x01\x01B\v\n" +
+	"\t_group_idJ\x04\b\x01\x10\x02\"\x1f\n" +
+	"\x1dCreateHeadlessAccountResponse\"w\n" +
 	"\x1bListHeadlessAccountsRequest\x12+\n" +
-	"\x04page\x18\x01 \x01(\v2\x17.hdlctrl.v1.PageRequestR\x04page\"\x85\x01\n" +
+	"\x04page\x18\x01 \x01(\v2\x17.hdlctrl.v1.PageRequestR\x04page\x12\x1e\n" +
+	"\bgroup_id\x18\x02 \x01(\tH\x00R\agroupId\x88\x01\x01B\v\n" +
+	"\t_group_id\"\x85\x01\n" +
 	"\x1cListHeadlessAccountsResponse\x127\n" +
 	"\baccounts\x18\x01 \x03(\v2\x1b.hdlctrl.v1.HeadlessAccountR\baccounts\x12,\n" +
 	"\x04page\x18\x02 \x01(\v2\x18.hdlctrl.v1.PageResponseR\x04page\"\"\n" +
@@ -6802,9 +6932,11 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"page_index\x18\x02 \x01(\x05R\tpageIndex\"y\n" +
 	"\x14GetOwnWorldsResponse\x12F\n" +
 	"\arecords\x18\x01 \x03(\v2,.hdlctrl.v1.SearchWorldsResponse.WorldRecordR\arecords\x12\x19\n" +
-	"\bhas_more\x18\x02 \x01(\bR\ahasMore\"F\n" +
+	"\bhas_more\x18\x02 \x01(\bR\ahasMore\"s\n" +
 	"\x17ListHeadlessHostRequest\x12+\n" +
-	"\x04page\x18\x01 \x01(\v2\x17.hdlctrl.v1.PageRequestR\x04page\"x\n" +
+	"\x04page\x18\x01 \x01(\v2\x17.hdlctrl.v1.PageRequestR\x04page\x12\x1e\n" +
+	"\bgroup_id\x18\x02 \x01(\tH\x00R\agroupId\x88\x01\x01B\v\n" +
+	"\t_group_id\"x\n" +
 	"\x18ListHeadlessHostResponse\x12.\n" +
 	"\x05hosts\x18\x01 \x03(\v2\x18.hdlctrl.v1.HeadlessHostR\x05hosts\x12,\n" +
 	"\x04page\x18\x02 \x01(\v2\x18.hdlctrl.v1.PageResponseR\x04page\"1\n" +
@@ -6816,18 +6948,20 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\aaddress\x18\x02 \x01(\tR\aaddress\"G\n" +
 	"\x17AddHeadlessHostResponse\x12,\n" +
-	"\x04host\x18\x01 \x01(\v2\x18.hdlctrl.v1.HeadlessHostR\x04host\"\x99\x02\n" +
+	"\x04host\x18\x01 \x01(\v2\x18.hdlctrl.v1.HeadlessHostR\x04host\"\xc7\x02\n" +
 	"\x15SearchSessionsRequest\x12R\n" +
 	"\n" +
 	"parameters\x18\x01 \x01(\v22.hdlctrl.v1.SearchSessionsRequest.SearchParametersR\n" +
 	"parameters\x12+\n" +
-	"\x04page\x18\x02 \x01(\v2\x17.hdlctrl.v1.PageRequestR\x04page\x1a\x7f\n" +
+	"\x04page\x18\x02 \x01(\v2\x17.hdlctrl.v1.PageRequestR\x04page\x1a\xac\x01\n" +
 	"\x10SearchParameters\x12\x1c\n" +
 	"\ahost_id\x18\x01 \x01(\tH\x00R\x06hostId\x88\x01\x01\x126\n" +
-	"\x06status\x18\x02 \x01(\x0e2\x19.hdlctrl.v1.SessionStatusH\x01R\x06status\x88\x01\x01B\n" +
+	"\x06status\x18\x02 \x01(\x0e2\x19.hdlctrl.v1.SessionStatusH\x01R\x06status\x88\x01\x01\x12\x1e\n" +
+	"\bgroup_id\x18\x03 \x01(\tH\x02R\agroupId\x88\x01\x01B\n" +
 	"\n" +
 	"\b_host_idB\t\n" +
-	"\a_status\"w\n" +
+	"\a_statusB\v\n" +
+	"\t_group_id\"w\n" +
 	"\x16SearchSessionsResponse\x12/\n" +
 	"\bsessions\x18\x01 \x03(\v2\x13.hdlctrl.v1.SessionR\bsessions\x12,\n" +
 	"\x04page\x18\x02 \x01(\v2\x18.hdlctrl.v1.PageResponseR\x04page\"V\n" +
@@ -6836,13 +6970,15 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x02 \x01(\tR\tsessionId\"J\n" +
 	"\x19GetSessionDetailsResponse\x12-\n" +
-	"\asession\x18\x01 \x01(\v2\x13.hdlctrl.v1.SessionR\asession\"\x85\x01\n" +
+	"\asession\x18\x01 \x01(\v2\x13.hdlctrl.v1.SessionR\asession\"\xb2\x01\n" +
 	"\x11StartWorldRequest\x12\x17\n" +
 	"\ahost_id\x18\x01 \x01(\tR\x06hostId\x12C\n" +
 	"\n" +
 	"parameters\x18\x02 \x01(\v2#.headless.v1.WorldStartupParametersR\n" +
 	"parameters\x12\x12\n" +
-	"\x04memo\x18\x03 \x01(\tR\x04memo\"1\n" +
+	"\x04memo\x18\x03 \x01(\tR\x04memo\x12\x1e\n" +
+	"\bgroup_id\x18\x04 \x01(\tH\x00R\agroupId\x88\x01\x01B\v\n" +
+	"\t_group_id\"1\n" +
 	"\x12StartWorldResponse\x12\x15\n" +
 	"\x06job_id\x18\x02 \x01(\tR\x05jobIdJ\x04\b\x01\x10\x02\"P\n" +
 	"\x12StopSessionRequest\x12\x1b\n" +
@@ -6929,7 +7065,7 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x11allowed_url_hosts\x18\x05 \x03(\v2\x1f.headless.v1.AllowedAccessEntryR\x0fallowedUrlHosts\x12(\n" +
 	"\x10auto_spawn_items\x18\x06 \x03(\tR\x0eautoSpawnItemsB\x0e\n" +
 	"\f_universe_idB\x14\n" +
-	"\x12_username_override\"\xea\x03\n" +
+	"\x12_username_override\"\xb8\x04\n" +
 	"\fHeadlessHost\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12)\n" +
@@ -6946,8 +7082,12 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x04memo\x18\r \x01(\tR\x04memo\x12E\n" +
 	"\rhost_settings\x18\x0e \x01(\v2 .hdlctrl.v1.HeadlessHostSettingsR\fhostSettings\x12\x1f\n" +
 	"\vinstance_id\x18\x0f \x01(\x05R\n" +
-	"instanceIdJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
-	"\"\x87\x04\n" +
+	"instanceId\x12\x19\n" +
+	"\bgroup_id\x18\x10 \x01(\tR\agroupId\x12\"\n" +
+	"\n" +
+	"created_by\x18\x11 \x01(\tH\x00R\tcreatedBy\x88\x01\x01B\r\n" +
+	"\v_created_byJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
+	"\"\xd9\x04\n" +
 	"\aSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -6957,18 +7097,26 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"started_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12:\n" +
 	"\bended_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\aendedAt\x88\x01\x01\x12R\n" +
 	"\x12startup_parameters\x18\a \x01(\v2#.headless.v1.WorldStartupParametersR\x11startupParameters\x12>\n" +
-	"\rcurrent_state\x18\b \x01(\v2\x14.headless.v1.SessionH\x01R\fcurrentState\x88\x01\x01\x12\x1e\n" +
-	"\bowner_id\x18\t \x01(\tH\x02R\aownerId\x88\x01\x01\x12!\n" +
+	"\rcurrent_state\x18\b \x01(\v2\x14.headless.v1.SessionH\x01R\fcurrentState\x88\x01\x01\x12\"\n" +
+	"\bowner_id\x18\t \x01(\tB\x02\x18\x01H\x02R\aownerId\x88\x01\x01\x12!\n" +
 	"\fauto_upgrade\x18\n" +
 	" \x01(\bR\vautoUpgrade\x12\x12\n" +
-	"\x04memo\x18\v \x01(\tR\x04memoB\v\n" +
+	"\x04memo\x18\v \x01(\tR\x04memo\x12\x19\n" +
+	"\bgroup_id\x18\f \x01(\tR\agroupId\x12\"\n" +
+	"\n" +
+	"created_by\x18\r \x01(\tH\x03R\tcreatedBy\x88\x01\x01B\v\n" +
 	"\t_ended_atB\x10\n" +
 	"\x0e_current_stateB\v\n" +
-	"\t_owner_id\"b\n" +
+	"\t_owner_idB\r\n" +
+	"\v_created_by\"\xb0\x01\n" +
 	"\x0fHeadlessAccount\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
 	"\tuser_name\x18\x02 \x01(\tR\buserName\x12\x19\n" +
-	"\bicon_url\x18\x03 \x01(\tR\aiconUrl\"I\n" +
+	"\bicon_url\x18\x03 \x01(\tR\aiconUrl\x12\x19\n" +
+	"\bgroup_id\x18\x04 \x01(\tR\agroupId\x12\"\n" +
+	"\n" +
+	"created_by\x18\x05 \x01(\tH\x00R\tcreatedBy\x88\x01\x01B\r\n" +
+	"\v_created_by\"I\n" +
 	"\bUserInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x19\n" +
@@ -7505,12 +7653,16 @@ func file_hdlctrl_v1_controller_proto_init() {
 		return
 	}
 	file_hdlctrl_v1_controller_proto_msgTypes[18].OneofWrappers = []any{}
+	file_hdlctrl_v1_controller_proto_msgTypes[20].OneofWrappers = []any{}
+	file_hdlctrl_v1_controller_proto_msgTypes[22].OneofWrappers = []any{}
 	file_hdlctrl_v1_controller_proto_msgTypes[30].OneofWrappers = []any{}
 	file_hdlctrl_v1_controller_proto_msgTypes[32].OneofWrappers = []any{}
 	file_hdlctrl_v1_controller_proto_msgTypes[38].OneofWrappers = []any{
 		(*GetHeadlessHostLogsRequest_BeforeId)(nil),
 		(*GetHeadlessHostLogsRequest_AfterId)(nil),
 	}
+	file_hdlctrl_v1_controller_proto_msgTypes[52].OneofWrappers = []any{}
+	file_hdlctrl_v1_controller_proto_msgTypes[62].OneofWrappers = []any{}
 	file_hdlctrl_v1_controller_proto_msgTypes[69].OneofWrappers = []any{}
 	file_hdlctrl_v1_controller_proto_msgTypes[72].OneofWrappers = []any{
 		(*InviteUserRequest_UserId)(nil),
@@ -7518,7 +7670,9 @@ func file_hdlctrl_v1_controller_proto_init() {
 	}
 	file_hdlctrl_v1_controller_proto_msgTypes[78].OneofWrappers = []any{}
 	file_hdlctrl_v1_controller_proto_msgTypes[84].OneofWrappers = []any{}
+	file_hdlctrl_v1_controller_proto_msgTypes[85].OneofWrappers = []any{}
 	file_hdlctrl_v1_controller_proto_msgTypes[86].OneofWrappers = []any{}
+	file_hdlctrl_v1_controller_proto_msgTypes[87].OneofWrappers = []any{}
 	file_hdlctrl_v1_controller_proto_msgTypes[91].OneofWrappers = []any{}
 	file_hdlctrl_v1_controller_proto_msgTypes[92].OneofWrappers = []any{}
 	file_hdlctrl_v1_controller_proto_msgTypes[93].OneofWrappers = []any{}

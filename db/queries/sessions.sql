@@ -1,23 +1,28 @@
 -- name: UpsertSession :one
+-- group_id は INSERT 時のみ設定し、ON CONFLICT 時には更新しない (グループ移動は別 RPC で扱う)。
+-- created_by は基本的に不変だが、event 由来の InsertSessionFromEvent が先に NULL で
+-- INSERT した後、ユーザー由来の Upsert が衝突したケースを救うために COALESCE で
+-- 「既存が NULL の場合のみ EXCLUDED.created_by で埋める」挙動にする。
 INSERT INTO sessions (
     id,
     name,
     status,
     started_at,
-    owner_id,
+    created_by,
     ended_at,
     host_id,
     startup_parameters,
     startup_parameters_schema_version,
     auto_upgrade,
-    memo
+    memo,
+    group_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 ) ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     status = EXCLUDED.status,
     started_at = EXCLUDED.started_at,
-    owner_id = EXCLUDED.owner_id,
+    created_by = COALESCE(sessions.created_by, EXCLUDED.created_by),
     ended_at = EXCLUDED.ended_at,
     host_id = EXCLUDED.host_id,
     startup_parameters = EXCLUDED.startup_parameters,
@@ -94,7 +99,7 @@ SELECT * FROM sessions WHERE host_id = $1 AND status = $2 ORDER BY started_at DE
 -- name: ApplySessionStarted :execrows
 -- host から届く SessionStarted を反映する部分更新。
 -- occurred_at が現在の started_at より新しい場合のみ更新する (idempotent / 巻き戻し防止)。
--- 他フィールド (memo, auto_upgrade, startup_parameters, owner_id 等) には触れない。
+-- 他フィールド (memo, auto_upgrade, startup_parameters, created_by 等) には触れない。
 UPDATE sessions
 SET
     name = $2,
@@ -118,11 +123,14 @@ WHERE id = $1
   AND host_id = $4
   AND (ended_at IS NULL OR ended_at < $3);
 
--- name: InsertSessionFromEvent :exec
+-- name: InsertSessionFromEvent :execrows
 -- host 由来の SessionStarted で「DB に存在しない session」を作る用の挿入。
 -- ON CONFLICT DO NOTHING にすることで、competing path (SessionUsecase.StartSession など)
--- が同 id で先に row を作っていた場合に memo / owner_id / startup_parameters 等を
+-- が同 id で先に row を作っていた場合に memo / created_by / startup_parameters 等を
 -- 上書きしないことを保証する (handler は続けて ApplySessionStarted で部分更新する)。
+--
+-- group_id は host から自動導出する (event には含まれない / host のグループに従う)。
+-- 対象 host が存在しない場合は INSERT も発生しない。
 INSERT INTO sessions (
     id,
     name,
@@ -131,21 +139,33 @@ INSERT INTO sessions (
     host_id,
     startup_parameters,
     startup_parameters_schema_version,
-    auto_upgrade
-) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, FALSE
+    auto_upgrade,
+    group_id
 )
+SELECT
+    @id::text,
+    @name::text,
+    @status::int,
+    @started_at::timestamptz,
+    @host_id::text,
+    @startup_parameters::jsonb,
+    @startup_parameters_schema_version::int,
+    FALSE,
+    h.group_id
+FROM hosts h WHERE h.id = @host_id::text
 ON CONFLICT (id) DO NOTHING;
 
 -- name: ListSessionsPaged :many
 -- ページング付きセッション一覧。
--- status / host_id は nullable パラメータ (sqlc.narg)。NULL なら未指定として扱う。
+-- status / host_id / group_ids は nullable パラメータ (sqlc.narg)。NULL なら未指定として扱う。
+-- group_ids は ANY 配列フィルタ。空配列を渡すと結果ゼロ件 (= 所属グループが無いユーザー)。
 -- total_count は全行同じ値が入る。
 SELECT sqlc.embed(sessions), COUNT(*) OVER() AS total_count
 FROM sessions
 WHERE (sqlc.narg('status')::int IS NULL OR status = sqlc.narg('status')::int)
   AND (sqlc.narg('host_id')::text IS NULL OR host_id = sqlc.narg('host_id')::text)
-ORDER BY started_at DESC
+  AND (sqlc.narg('group_ids')::text[] IS NULL OR group_id = ANY(sqlc.narg('group_ids')::text[]))
+ORDER BY started_at DESC NULLS LAST, id ASC
 LIMIT @page_size::int OFFSET @page_offset::int;
 
 -- name: DeleteSession :exec

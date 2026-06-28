@@ -1,4 +1,3 @@
-import { Button } from "./ui/button";
 import { useQuery } from "@connectrpc/connect-query";
 import {
   listHeadlessHost,
@@ -16,6 +15,11 @@ import { DataTable } from "./base";
 import { RichText } from "./base/RichText";
 import { keepPreviousData } from "@tanstack/react-query";
 import { usePaginationState } from "../hooks/usePaginationState";
+import { useAtomValue } from "jotai";
+import { currentGroupIdAtom } from "../atoms/currentGroupAtom";
+import { usePermissions } from "../hooks/usePermissions";
+import { PERMISSION_KEYS } from "../libs/permissionUtils";
+import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
 
 export default function SessionList() {
   const [filterState, setFilterState] = useState<{
@@ -28,7 +32,10 @@ export default function SessionList() {
     value: undefined,
   });
   const [filterHostId, setFilterHostId] = useState("ALL");
-  const { data: hosts } = useQuery(listHeadlessHost);
+  const currentGroupId = useAtomValue(currentGroupIdAtom);
+  const { data: hosts } = useQuery(listHeadlessHost, {
+    groupId: currentGroupId ?? undefined,
+  });
   const { pageIndex, pageSize, setPageIndex, setPageSize, syncFromServer } =
     usePaginationState({ defaultPageSize: 20 });
   const { data, isPending, refetch } = useQuery(
@@ -37,12 +44,16 @@ export default function SessionList() {
       parameters: {
         status: filterState.value,
         hostId: filterHostId === "ALL" ? undefined : filterHostId,
+        groupId: currentGroupId ?? undefined,
       },
       page: { pageIndex, pageSize },
     },
     { placeholderData: keepPreviousData },
   );
   const navigate = useNavigate();
+  const { groupsWithPermission } = usePermissions();
+  const canCreate =
+    groupsWithPermission(PERMISSION_KEYS.SESSION_WRITE).length > 0;
 
   useEffect(() => {
     if (data?.page) {
@@ -147,9 +158,13 @@ export default function SessionList() {
         </div>
         <div className="flex gap-2">
           <RefetchButton refetch={refetch} />
-          <Button onClick={() => navigate("/sessions/new")}>
+          <PermissionGuardedButton
+            allowed={canCreate}
+            disabledReason="セッションを開始できる権限を持つグループがありません"
+            onClick={() => navigate("/sessions/new")}
+          >
             新規セッション
-          </Button>
+          </PermissionGuardedButton>
         </div>
       </div>
       <DataTable

@@ -18,7 +18,9 @@ func NewHostCommand(hu *usecase.HeadlessHostUsecase) *cobra.Command {
 		Use:   "list",
 		Short: "List all headless hosts",
 		Run: func(cmd *cobra.Command, args []string) {
-			hosts, err := hu.HeadlessHostList(cmd.Context())
+			ctx := cmd.Context()
+
+			hosts, err := hu.HeadlessHostList(ctx)
 			if err != nil {
 				cmd.PrintErrln("Failed to list hosts:", err)
 
@@ -58,6 +60,8 @@ func NewHostCommand(hu *usecase.HeadlessHostUsecase) *cobra.Command {
 		Use:   "restart-all",
 		Short: "Restart all headless hosts",
 		Run: func(cmd *cobra.Command, args []string) {
+			ctx := cmd.Context()
+
 			timeout, err := cmd.Flags().GetInt("timeout")
 			if err != nil {
 				cmd.PrintErrln("Invalid timeout value:", err)
@@ -65,7 +69,7 @@ func NewHostCommand(hu *usecase.HeadlessHostUsecase) *cobra.Command {
 				return
 			}
 
-			hosts, err := hu.HeadlessHostList(cmd.Context())
+			hosts, err := hu.HeadlessHostList(ctx)
 			if err != nil {
 				cmd.PrintErrln("Failed to list hosts:", err)
 
@@ -79,7 +83,7 @@ func NewHostCommand(hu *usecase.HeadlessHostUsecase) *cobra.Command {
 				go func(h *entity.HeadlessHost) {
 					defer wg.Done()
 
-					err := hu.HeadlessHostRestart(cmd.Context(), h.ID, nil, true, timeout)
+					err := hu.HeadlessHostRestart(ctx, h.ID, nil, true, timeout)
 					if err != nil {
 						cmd.PrintErrf("Failed to restart host %s: %v\n", h.Name, err)
 
@@ -100,7 +104,9 @@ func NewHostCommand(hu *usecase.HeadlessHostUsecase) *cobra.Command {
 		Use:   "shutdown-all",
 		Short: "Shutdown all headless hosts",
 		Run: func(cmd *cobra.Command, args []string) {
-			hosts, err := hu.HeadlessHostList(cmd.Context())
+			ctx := cmd.Context()
+
+			hosts, err := hu.HeadlessHostList(ctx)
 			if err != nil {
 				cmd.PrintErrln("Failed to list hosts:", err)
 
@@ -114,7 +120,7 @@ func NewHostCommand(hu *usecase.HeadlessHostUsecase) *cobra.Command {
 				go func(h *entity.HeadlessHost) {
 					defer wg.Done()
 
-					err := hu.HeadlessHostShutdown(cmd.Context(), h.ID)
+					err := hu.HeadlessHostShutdown(ctx, h.ID)
 					if err != nil {
 						cmd.PrintErrf("Failed to shutdown host %s: %v\n", h.Name, err)
 

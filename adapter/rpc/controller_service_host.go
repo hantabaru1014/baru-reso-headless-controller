@@ -9,6 +9,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
+	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
@@ -16,6 +17,12 @@ import (
 )
 
 // ListHeadlessHostImageTags implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: 認証のみ (image tag 情報は機密でない).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceListHeadlessHostImageTagsProcedure,
+	requireAuthOnly,
+)
+
 func (c *ControllerService) ListHeadlessHostImageTags(ctx context.Context, req *connect.Request[hdlctrlv1.ListHeadlessHostImageTagsRequest]) (*connect.Response[hdlctrlv1.ListHeadlessHostImageTagsResponse], error) {
 	tags, err := c.hhrepo.ListContainerTags(ctx, nil)
 	if err != nil {
@@ -42,6 +49,12 @@ func (c *ControllerService) ListHeadlessHostImageTags(ctx context.Context, req *
 // StartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 // ホスト起動は docker pull / コンテナ起動 / RPC ハンドシェイクを伴うため
 // 非同期 job として enqueue し、完了は notification.JobCompletedEvent で push する.
+// 権限: account.group_id に対して host:write + account:use (同一グループ制約).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceStartHeadlessHostProcedure,
+	checkStartHeadlessHost,
+)
+
 func (c *ControllerService) StartHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.StartHeadlessHostRequest]) (*connect.Response[hdlctrlv1.StartHeadlessHostResponse], error) {
 	claims, err := auth.GetAuthClaimsFromContext(ctx)
 	if err != nil {
@@ -49,8 +62,17 @@ func (c *ControllerService) StartHeadlessHost(ctx context.Context, req *connect.
 	}
 
 	// account の存在確認は受付時に行う (存在しない account への job 化を防ぐ).
-	if _, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.GetHeadlessAccountId()); err != nil {
+	account, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.GetHeadlessAccountId())
+	if err != nil {
 		return nil, convertErr(err)
+	}
+
+	// group_id 解決: 未指定なら account のグループ (同一グループ制約).
+	// 指定された場合は account.group_id と一致することを permission interceptor が
+	// 検証済み.
+	if req.Msg.GroupId == nil || req.Msg.GetGroupId() == "" {
+		gid := account.GroupID
+		req.Msg.GroupId = &gid
 	}
 
 	jobID, err := c.ajuc.EnqueueStartHost(ctx, req.Msg, &claims.UserID)
@@ -63,6 +85,12 @@ func (c *ControllerService) StartHeadlessHost(ctx context.Context, req *connect.
 
 // RestartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 // 再起動も停止 + 起動の compound 操作で時間がかかるため非同期 job 化する.
+// 権限: host.group_id に対して host:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceRestartHeadlessHostProcedure,
+	checkHostPermission(entity.PermKey_HostWrite, hostIDFromRestart),
+)
+
 func (c *ControllerService) RestartHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.RestartHeadlessHostRequest]) (*connect.Response[hdlctrlv1.RestartHeadlessHostResponse], error) {
 	claims, err := auth.GetAuthClaimsFromContext(ctx)
 	if err != nil {
@@ -84,6 +112,12 @@ func (c *ControllerService) RestartHeadlessHost(ctx context.Context, req *connec
 }
 
 // UpdateHeadlessHostSettings implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して host:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceUpdateHeadlessHostSettingsProcedure,
+	checkHostPermission(entity.PermKey_HostWrite, hostIDFromUpdateSettings),
+)
+
 func (c *ControllerService) UpdateHeadlessHostSettings(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateHeadlessHostSettingsRequest]) (*connect.Response[hdlctrlv1.UpdateHeadlessHostSettingsResponse], error) {
 	host, err := c.hhuc.HeadlessHostGet(ctx, req.Msg.GetHostId())
 	if err != nil {
@@ -186,6 +220,12 @@ func (c *ControllerService) UpdateHeadlessHostSettings(ctx context.Context, req 
 }
 
 // GetHeadlessHostLogs implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して host:read.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceGetHeadlessHostLogsProcedure,
+	checkHostPermission(entity.PermKey_HostRead, hostIDFromGetLogs),
+)
+
 func (c *ControllerService) GetHeadlessHostLogs(ctx context.Context, req *connect.Request[hdlctrlv1.GetHeadlessHostLogsRequest]) (*connect.Response[hdlctrlv1.GetHeadlessHostLogsResponse], error) {
 	// カーソル解析 (ID-based)
 	var beforeID, afterID int64
@@ -228,6 +268,12 @@ func (c *ControllerService) GetHeadlessHostLogs(ctx context.Context, req *connec
 }
 
 // ListHeadlessHostInstances implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して host:read.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceListHeadlessHostInstancesProcedure,
+	checkHostPermission(entity.PermKey_HostRead, hostIDFromListInstances),
+)
+
 func (c *ControllerService) ListHeadlessHostInstances(ctx context.Context, req *connect.Request[hdlctrlv1.ListHeadlessHostInstancesRequest]) (*connect.Response[hdlctrlv1.ListHeadlessHostInstancesResponse], error) {
 	instances, err := c.hhuc.HeadlessHostGetInstances(ctx, req.Msg.GetHostId())
 	if err != nil {
@@ -262,6 +308,12 @@ func (c *ControllerService) ListHeadlessHostInstances(ctx context.Context, req *
 
 // ShutdownHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
 // graceful shutdown は container 終了待ちが入るため非同期 job 化する.
+// 権限: host.group_id に対して host:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceShutdownHeadlessHostProcedure,
+	checkHostPermission(entity.PermKey_HostWrite, hostIDFromShutdown),
+)
+
 func (c *ControllerService) ShutdownHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.ShutdownHeadlessHostRequest]) (*connect.Response[hdlctrlv1.ShutdownHeadlessHostResponse], error) {
 	claims, err := auth.GetAuthClaimsFromContext(ctx)
 	if err != nil {
@@ -281,6 +333,12 @@ func (c *ControllerService) ShutdownHeadlessHost(ctx context.Context, req *conne
 }
 
 // KillHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して host:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceKillHeadlessHostProcedure,
+	checkHostPermission(entity.PermKey_HostWrite, hostIDFromKill),
+)
+
 func (c *ControllerService) KillHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.KillHeadlessHostRequest]) (*connect.Response[hdlctrlv1.KillHeadlessHostResponse], error) {
 	err := c.hhuc.HeadlessHostKill(ctx, req.Msg.GetHostId())
 	if err != nil {
@@ -293,6 +351,12 @@ func (c *ControllerService) KillHeadlessHost(ctx context.Context, req *connect.R
 }
 
 // AllowHostAccess implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して host:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceAllowHostAccessProcedure,
+	checkHostPermission(entity.PermKey_HostWrite, hostIDFromAllowAccess),
+)
+
 func (c *ControllerService) AllowHostAccess(ctx context.Context, req *connect.Request[hdlctrlv1.AllowHostAccessRequest]) (*connect.Response[hdlctrlv1.AllowHostAccessResponse], error) {
 	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.GetHostId())
 	if err != nil {
@@ -310,6 +374,12 @@ func (c *ControllerService) AllowHostAccess(ctx context.Context, req *connect.Re
 }
 
 // DenyHostAccess implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して host:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceDenyHostAccessProcedure,
+	checkHostPermission(entity.PermKey_HostWrite, hostIDFromDenyAccess),
+)
+
 func (c *ControllerService) DenyHostAccess(ctx context.Context, req *connect.Request[hdlctrlv1.DenyHostAccessRequest]) (*connect.Response[hdlctrlv1.DenyHostAccessResponse], error) {
 	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.GetHostId())
 	if err != nil {
@@ -327,6 +397,12 @@ func (c *ControllerService) DenyHostAccess(ctx context.Context, req *connect.Req
 }
 
 // GetHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して host:read.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceGetHeadlessHostProcedure,
+	checkHostPermission(entity.PermKey_HostRead, hostIDFromGet),
+)
+
 func (c *ControllerService) GetHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.GetHeadlessHostRequest]) (*connect.Response[hdlctrlv1.GetHeadlessHostResponse], error) {
 	host, err := c.hhuc.HeadlessHostGet(ctx, req.Msg.GetHostId())
 	if err != nil {
@@ -341,13 +417,28 @@ func (c *ControllerService) GetHeadlessHost(ctx context.Context, req *connect.Re
 }
 
 // ListHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: handler 側で resolveListGroupFilter により認可する (interceptor は通過のみ).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceListHeadlessHostProcedure,
+	requireAuthOnly,
+)
+
 func (c *ControllerService) ListHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.ListHeadlessHostRequest]) (*connect.Response[hdlctrlv1.ListHeadlessHostResponse], error) {
 	pageIndex, pageSize, err := normalizePageRequest(req.Msg.GetPage())
 	if err != nil {
 		return nil, err
 	}
 
-	pageResult, err := c.hhuc.HeadlessHostListPaged(ctx, pageIndex, pageSize)
+	groupIDs, err := c.resolveListGroupFilter(ctx, req.Msg.GroupId, entity.PermKey_HostRead)
+	if err != nil {
+		return nil, err
+	}
+
+	pageResult, err := c.hhuc.HeadlessHostListPaged(ctx, usecase.HeadlessHostListPagedOptions{
+		PageIndex: pageIndex,
+		PageSize:  pageSize,
+		GroupIDs:  groupIDs,
+	})
 	if err != nil {
 		return nil, convertErr(err)
 	}
@@ -370,6 +461,12 @@ func (c *ControllerService) ListHeadlessHost(ctx context.Context, req *connect.R
 }
 
 // DeleteHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して host:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceDeleteHeadlessHostProcedure,
+	checkHostPermission(entity.PermKey_HostWrite, hostIDFromDelete),
+)
+
 func (c *ControllerService) DeleteHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.DeleteHeadlessHostRequest]) (*connect.Response[hdlctrlv1.DeleteHeadlessHostResponse], error) {
 	err := c.hhuc.HeadlessHostDelete(ctx, req.Msg.GetHostId())
 	if err != nil {

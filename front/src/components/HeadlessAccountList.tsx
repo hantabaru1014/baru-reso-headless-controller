@@ -43,6 +43,13 @@ import { MoreVertical } from "lucide-react";
 import { IconChangeDialog } from "./IconChangeDialog";
 import { ResoniteUserIcon } from "./ResoniteUserIcon";
 import { ChatDialog } from "./chat";
+import { GroupSelectField } from "./GroupSelectField";
+import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
+import { usePermissions } from "../hooks/usePermissions";
+import { useDefaultGroupId } from "../hooks/useDefaultGroupId";
+import { useAtomValue } from "jotai";
+import { currentGroupIdAtom } from "../atoms/currentGroupAtom";
+import { PERMISSION_KEYS } from "../libs/permissionUtils";
 
 function FriendRequestsDialog({
   onClose,
@@ -151,8 +158,17 @@ function NewAccountDialog({
   const { mutateAsync: mutateCreateAccount, isPending } = useMutation(
     createHeadlessAccount,
   );
+  const defaultGroupId = useDefaultGroupId(PERMISSION_KEYS.ACCOUNT_WRITE);
   const [credential, setCredential] = useState("");
   const [password, setPassword] = useState("");
+  const [groupId, setGroupId] = useState("");
+
+  // ダイアログを開く際にコンテキストグループを初期値として埋める.
+  useEffect(() => {
+    if (open && defaultGroupId && !groupId) {
+      setGroupId(defaultGroupId);
+    }
+  }, [open, defaultGroupId, groupId]);
 
   return (
     <Dialog
@@ -161,6 +177,7 @@ function NewAccountDialog({
         if (open) {
           setCredential("");
           setPassword("");
+          setGroupId(defaultGroupId);
         } else {
           onClose?.();
         }
@@ -182,6 +199,12 @@ function NewAccountDialog({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          <GroupSelectField
+            value={groupId}
+            onChange={setGroupId}
+            requiredPermission={PERMISSION_KEYS.ACCOUNT_WRITE}
+            helperText="アカウントを所属させるグループ"
+          />
         </div>
         <DialogFooter>
           <Button
@@ -190,6 +213,7 @@ function NewAccountDialog({
                 await mutateCreateAccount({
                   credential,
                   password,
+                  groupId: groupId || undefined,
                 });
                 toast.success("アカウントを追加しました");
               } catch (e) {
@@ -202,7 +226,7 @@ function NewAccountDialog({
               }
               onClose?.();
             }}
-            disabled={isPending}
+            disabled={isPending || !groupId}
           >
             追加
           </Button>
@@ -310,11 +334,18 @@ function StorageInfoTip({ accountId }: { accountId: string }) {
 export default function HeadlessAccountList() {
   const { pageIndex, pageSize, setPageIndex, setPageSize, syncFromServer } =
     usePaginationState({ defaultPageSize: 20 });
+  const currentGroupId = useAtomValue(currentGroupIdAtom);
   const { data, isPending, refetch } = useQuery(
     listHeadlessAccounts,
-    { page: { pageIndex, pageSize } },
+    {
+      page: { pageIndex, pageSize },
+      groupId: currentGroupId ?? undefined,
+    },
     { placeholderData: keepPreviousData },
   );
+  const { hasPermission, groupsWithPermission } = usePermissions();
+  const canCreate =
+    groupsWithPermission(PERMISSION_KEYS.ACCOUNT_WRITE).length > 0;
 
   useEffect(() => {
     if (data?.page) {
@@ -427,58 +458,69 @@ export default function HeadlessAccountList() {
       {
         id: "actions",
         header: "操作",
-        cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost">
-                <MoreVertical />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem
-                onClick={() =>
-                  setChatAccount({
-                    userId: row.original.userId,
-                    userName: row.original.userName,
-                  })
-                }
-              >
-                チャットを開く
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setUpdateDialogAccountId(row.original.userId)}
-              >
-                ログイン情報の更新
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() =>
-                  handleChangeIcon(
-                    row.original.userId,
-                    resolveUrl(row.original.iconUrl) ?? "",
-                  )
-                }
-              >
-                アイコンを変更
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleRefetchInfo(row.original.userId)}
-                disabled={
-                  isPendingRefetch && actionAccountId === row.original.userId
-                }
-              >
-                名前とアイコンの再取得
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleDeleteAccount(row.original.userId)}
-                disabled={
-                  isPendingDelete && actionAccountId === row.original.userId
-                }
-              >
-                削除
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ),
+        cell: ({ row }) => {
+          const canWrite = hasPermission(
+            row.original.groupId,
+            PERMISSION_KEYS.ACCOUNT_WRITE,
+          );
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost">
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  onClick={() =>
+                    setChatAccount({
+                      userId: row.original.userId,
+                      userName: row.original.userName,
+                    })
+                  }
+                >
+                  チャットを開く
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!canWrite}
+                  onClick={() => setUpdateDialogAccountId(row.original.userId)}
+                >
+                  ログイン情報の更新
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!canWrite}
+                  onClick={() =>
+                    handleChangeIcon(
+                      row.original.userId,
+                      resolveUrl(row.original.iconUrl) ?? "",
+                    )
+                  }
+                >
+                  アイコンを変更
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={
+                    !canWrite ||
+                    (isPendingRefetch &&
+                      actionAccountId === row.original.userId)
+                  }
+                  onClick={() => handleRefetchInfo(row.original.userId)}
+                >
+                  名前とアイコンの再取得
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={
+                    !canWrite ||
+                    (isPendingDelete && actionAccountId === row.original.userId)
+                  }
+                  onClick={() => handleDeleteAccount(row.original.userId)}
+                >
+                  削除
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
       },
     ],
     [
@@ -489,6 +531,7 @@ export default function HeadlessAccountList() {
       isPendingRefetch,
       isPendingDelete,
       actionAccountId,
+      hasPermission,
     ],
   );
 
@@ -496,7 +539,13 @@ export default function HeadlessAccountList() {
     <div className="space-y-4">
       <div className="flex justify-end gap-2">
         <RefetchButton refetch={refetch} />
-        <Button onClick={() => setIsOpenNewAccountDialog(true)}>追加</Button>
+        <PermissionGuardedButton
+          allowed={canCreate}
+          disabledReason="アカウントを作成できる権限を持つグループがありません"
+          onClick={() => setIsOpenNewAccountDialog(true)}
+        >
+          追加
+        </PermissionGuardedButton>
       </div>
       <DataTable
         columns={columns}

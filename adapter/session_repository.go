@@ -3,6 +3,7 @@ package adapter
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -52,11 +53,11 @@ func (r *SessionRepository) Upsert(ctx context.Context, session *entity.Session)
 		endedAt.Time = *session.EndedAt
 	}
 
-	ownerId := pgtype.Text{
-		Valid: session.OwnerID != nil,
+	createdBy := pgtype.Text{
+		Valid: session.CreatedBy != nil,
 	}
-	if session.OwnerID != nil {
-		ownerId.String = *session.OwnerID
+	if session.CreatedBy != nil {
+		createdBy.String = *session.CreatedBy
 	}
 
 	memo := pgtype.Text{
@@ -71,7 +72,8 @@ func (r *SessionRepository) Upsert(ctx context.Context, session *entity.Session)
 		Name:                           session.Name,
 		Status:                         int32(session.Status),
 		StartedAt:                      startedAt,
-		OwnerID:                        ownerId,
+		CreatedBy:                      createdBy,
+		GroupID:                        session.GroupID,
 		EndedAt:                        endedAt,
 		HostID:                         session.HostID,
 		StartupParameters:              startupParams,
@@ -228,7 +230,8 @@ func (r *SessionRepository) InsertFromEvent(ctx context.Context, session *entity
 		startedAt.Time = *session.StartedAt
 	}
 
-	if err := r.q.InsertSessionFromEvent(ctx, db.InsertSessionFromEventParams{
+	// group_id は SQL 内で host から自動導出するため、引数からは外している.
+	rows, err := r.q.InsertSessionFromEvent(ctx, db.InsertSessionFromEventParams{
 		ID:                             session.ID,
 		Name:                           session.Name,
 		Status:                         int32(session.Status),
@@ -236,8 +239,17 @@ func (r *SessionRepository) InsertFromEvent(ctx context.Context, session *entity
 		HostID:                         session.HostID,
 		StartupParameters:              startupParams,
 		StartupParametersSchemaVersion: 1,
-	}); err != nil {
+	})
+	if err != nil {
 		return errors.WrapPrefix(convertDBErr(err), "session", 0)
+	}
+
+	// rows=0 は (a) ON CONFLICT で既存 row を温存した = 正常 と (b) host_id に
+	// 一致する hosts row が無い = SessionStarted event が孤立 (host 削除との race
+	// 等) を区別できない. (b) はデータ損失なので警告として残す.
+	if rows == 0 {
+		slog.Warn("session_repository: InsertSessionFromEvent inserted 0 rows; either ON CONFLICT skipped or host is missing",
+			"session_id", session.ID, "host_id", session.HostID)
 	}
 
 	return nil
@@ -273,9 +285,12 @@ func (r *SessionRepository) ApplySessionEnded(ctx context.Context, id, hostID st
 }
 
 func (r *SessionRepository) ListPaged(ctx context.Context, opts port.SessionListPageOptions) (*port.SessionListPageResult, error) {
+	// GroupIDs == nil → sqlc.narg('group_ids') を NULL にして全件対象.
+	// GroupIDs == [] or [...] → ANY 絞り込み. 空配列の場合は結果ゼロ件.
 	params := db.ListSessionsPagedParams{
 		PageOffset: opts.PageIndex * opts.PageSize,
 		PageSize:   opts.PageSize,
+		GroupIds:   opts.GroupIDs,
 	}
 	if opts.Status != nil {
 		params.Status = pgtype.Int4{Int32: int32(*opts.Status), Valid: true}
@@ -327,9 +342,9 @@ func sessionToEntity(s db.Session) (*entity.Session, error) {
 		return nil, errors.Wrap(err, 0)
 	}
 
-	var ownerId *string
-	if s.OwnerID.Valid {
-		ownerId = &s.OwnerID.String
+	var createdBy *string
+	if s.CreatedBy.Valid {
+		createdBy = &s.CreatedBy.String
 	}
 
 	memo := ""
@@ -344,12 +359,13 @@ func sessionToEntity(s db.Session) (*entity.Session, error) {
 		Name:              s.Name,
 		Status:            entity.SessionStatus(s.Status),
 		StartedAt:         startedAt,
-		OwnerID:           ownerId,
+		CreatedBy:         createdBy,
 		EndedAt:           endedAt,
 		HostID:            s.HostID,
 		StartupParameters: &startupParams,
 		AutoUpgrade:       s.AutoUpgrade,
 		Memo:              memo,
+		GroupID:           s.GroupID,
 	}, nil
 }
 

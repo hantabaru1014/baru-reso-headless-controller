@@ -8,6 +8,8 @@ import (
 
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/sessionstate"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/stretchr/testify/assert"
@@ -20,27 +22,59 @@ type stubHostDrainer struct {
 
 func (s stubHostDrainer) IsHostDraining(hostID string) bool { return s.drainingIDs[hostID] }
 
-// stubHostRepo only implements the GetRpcClient method that
+// stubHostRepo only implements the GetRpcClient / GetGroupID methods that
 // SessionUsecase.StartSession reaches after the drain guard. Every
 // other method panics so accidental use shows up loudly.
 type stubHostRepo struct {
 	port.HeadlessHostRepository
 
 	rpcClientErr error
+	groupID      string
 }
 
 func (s *stubHostRepo) GetRpcClient(_ context.Context, _ string) (headlessv1.HeadlessControlServiceClient, error) {
 	return nil, s.rpcClientErr
 }
 
+func (s *stubHostRepo) GetGroupID(_ context.Context, _ string) (string, error) {
+	if s.groupID == "" {
+		return "test-group", nil
+	}
+
+	return s.groupID, nil
+}
+
+// allowAllGroupMemberRepo は permission チェックを実質バイパスするための stub.
+// ListUserSystemPermissions に system:group.manage を含めることで
+// PermissionUsecase.HasPermission は normal-scope を全て true で返す.
+type allowAllGroupMemberRepo struct {
+	port.GroupMemberRepository
+}
+
+func (allowAllGroupMemberRepo) ListUserSystemPermissions(_ context.Context, _ string) ([]string, error) {
+	return []string{entity.PermKey_SystemGroupManage}, nil
+}
+
+func (allowAllGroupMemberRepo) GetUserPermissionsForGroup(_ context.Context, _, _ string) ([]string, error) {
+	return nil, nil
+}
+
 func newUsecaseUnderTest(drainer stubHostDrainer, hostRepo port.HeadlessHostRepository) *SessionUsecase {
+	permUC := NewPermissionUsecase(nil, allowAllGroupMemberRepo{}, nil)
+
 	return NewSessionUsecase(
 		nil, hostRepo,
 		drainer,
 		sessionstate.NewMemoryCache(),
 		&config.ServerConfig{},
 		&config.ResoniteLinkConfig{TokenTTL: time.Minute},
+		permUC,
 	)
+}
+
+// actAsTestUser は permission チェックの caller を埋め込んだ ctx を返す.
+func actAsTestUser(ctx context.Context) context.Context {
+	return auth.WithActAsUser(ctx, "test-user")
 }
 
 // TestStartSession_RejectsDrainingHost guards the contract the upgrade
@@ -69,7 +103,7 @@ func TestStartSession_RejectsDrainingHost(t *testing.T) {
 
 			suc := newUsecaseUnderTest(stubHostDrainer{drainingIDs: draining}, &stubHostRepo{})
 
-			_, err := suc.StartSession(t.Context(), tc.hostID, nil,
+			_, err := suc.StartSession(actAsTestUser(t.Context()), tc.hostID, "test-group", nil,
 				&headlessv1.WorldStartupParameters{}, nil)
 			require.Error(t, err)
 			assert.ErrorIs(t, err, ErrHostDraining)
@@ -92,7 +126,7 @@ func TestStartSession_BypassesDrainCheckForUnrelatedHost(t *testing.T) {
 		&stubHostRepo{rpcClientErr: sentinel},
 	)
 
-	_, err := suc.StartSession(t.Context(), "host-b", nil,
+	_, err := suc.StartSession(actAsTestUser(t.Context()), "host-b", "test-group", nil,
 		&headlessv1.WorldStartupParameters{}, nil)
 	require.Error(t, err)
 	require.NotErrorIs(t, err, ErrHostDraining,

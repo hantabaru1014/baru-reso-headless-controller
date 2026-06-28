@@ -48,6 +48,15 @@ const (
 	// UserServiceChangePasswordProcedure is the fully-qualified name of the UserService's
 	// ChangePassword RPC.
 	UserServiceChangePasswordProcedure = "/hdlctrl.v1.UserService/ChangePassword"
+	// UserServiceListUsersProcedure is the fully-qualified name of the UserService's ListUsers RPC.
+	UserServiceListUsersProcedure = "/hdlctrl.v1.UserService/ListUsers"
+	// UserServiceGetUserProcedure is the fully-qualified name of the UserService's GetUser RPC.
+	UserServiceGetUserProcedure = "/hdlctrl.v1.UserService/GetUser"
+	// UserServiceCreateRegistrationTokenProcedure is the fully-qualified name of the UserService's
+	// CreateRegistrationToken RPC.
+	UserServiceCreateRegistrationTokenProcedure = "/hdlctrl.v1.UserService/CreateRegistrationToken"
+	// UserServiceDeleteUserProcedure is the fully-qualified name of the UserService's DeleteUser RPC.
+	UserServiceDeleteUserProcedure = "/hdlctrl.v1.UserService/DeleteUser"
 )
 
 // UserServiceClient is a client for the hdlctrl.v1.UserService service.
@@ -59,6 +68,17 @@ type UserServiceClient interface {
 	// 認証付きRPC
 	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.TokenSetResponse], error)
 	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
+	// 管理用RPC (system:user.* 権限が必要)
+	// システム上の全ユーザーを返す.
+	ListUsers(context.Context, *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error)
+	// 指定 user_id のユーザーを返す. 認証済みユーザーなら誰でも呼べる
+	// (グループメンバー名解決などに利用).
+	GetUser(context.Context, *connect.Request[v1.GetUserRequest]) (*connect.Response[v1.GetUserResponse], error)
+	// Resonite ID を指定して登録トークンを発行する.
+	// フロントエンドが招待リンクを生成するために、Resonite ユーザー情報も併せて返す.
+	CreateRegistrationToken(context.Context, *connect.Request[v1.CreateRegistrationTokenRequest]) (*connect.Response[v1.CreateRegistrationTokenResponse], error)
+	// 指定 user_id のユーザーを削除する. 自分自身は削除できない.
+	DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error)
 }
 
 // NewUserServiceClient constructs a client for the hdlctrl.v1.UserService service. By default, it
@@ -102,6 +122,30 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(userServiceMethods.ByName("ChangePassword")),
 			connect.WithClientOptions(opts...),
 		),
+		listUsers: connect.NewClient[v1.ListUsersRequest, v1.ListUsersResponse](
+			httpClient,
+			baseURL+UserServiceListUsersProcedure,
+			connect.WithSchema(userServiceMethods.ByName("ListUsers")),
+			connect.WithClientOptions(opts...),
+		),
+		getUser: connect.NewClient[v1.GetUserRequest, v1.GetUserResponse](
+			httpClient,
+			baseURL+UserServiceGetUserProcedure,
+			connect.WithSchema(userServiceMethods.ByName("GetUser")),
+			connect.WithClientOptions(opts...),
+		),
+		createRegistrationToken: connect.NewClient[v1.CreateRegistrationTokenRequest, v1.CreateRegistrationTokenResponse](
+			httpClient,
+			baseURL+UserServiceCreateRegistrationTokenProcedure,
+			connect.WithSchema(userServiceMethods.ByName("CreateRegistrationToken")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteUser: connect.NewClient[v1.DeleteUserRequest, v1.DeleteUserResponse](
+			httpClient,
+			baseURL+UserServiceDeleteUserProcedure,
+			connect.WithSchema(userServiceMethods.ByName("DeleteUser")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -112,6 +156,10 @@ type userServiceClient struct {
 	registerWithToken         *connect.Client[v1.RegisterWithTokenRequest, v1.TokenSetResponse]
 	refreshToken              *connect.Client[v1.RefreshTokenRequest, v1.TokenSetResponse]
 	changePassword            *connect.Client[v1.ChangePasswordRequest, v1.ChangePasswordResponse]
+	listUsers                 *connect.Client[v1.ListUsersRequest, v1.ListUsersResponse]
+	getUser                   *connect.Client[v1.GetUserRequest, v1.GetUserResponse]
+	createRegistrationToken   *connect.Client[v1.CreateRegistrationTokenRequest, v1.CreateRegistrationTokenResponse]
+	deleteUser                *connect.Client[v1.DeleteUserRequest, v1.DeleteUserResponse]
 }
 
 // GetTokenByPassword calls hdlctrl.v1.UserService.GetTokenByPassword.
@@ -139,6 +187,26 @@ func (c *userServiceClient) ChangePassword(ctx context.Context, req *connect.Req
 	return c.changePassword.CallUnary(ctx, req)
 }
 
+// ListUsers calls hdlctrl.v1.UserService.ListUsers.
+func (c *userServiceClient) ListUsers(ctx context.Context, req *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error) {
+	return c.listUsers.CallUnary(ctx, req)
+}
+
+// GetUser calls hdlctrl.v1.UserService.GetUser.
+func (c *userServiceClient) GetUser(ctx context.Context, req *connect.Request[v1.GetUserRequest]) (*connect.Response[v1.GetUserResponse], error) {
+	return c.getUser.CallUnary(ctx, req)
+}
+
+// CreateRegistrationToken calls hdlctrl.v1.UserService.CreateRegistrationToken.
+func (c *userServiceClient) CreateRegistrationToken(ctx context.Context, req *connect.Request[v1.CreateRegistrationTokenRequest]) (*connect.Response[v1.CreateRegistrationTokenResponse], error) {
+	return c.createRegistrationToken.CallUnary(ctx, req)
+}
+
+// DeleteUser calls hdlctrl.v1.UserService.DeleteUser.
+func (c *userServiceClient) DeleteUser(ctx context.Context, req *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error) {
+	return c.deleteUser.CallUnary(ctx, req)
+}
+
 // UserServiceHandler is an implementation of the hdlctrl.v1.UserService service.
 type UserServiceHandler interface {
 	// 認証なしRPC
@@ -148,6 +216,17 @@ type UserServiceHandler interface {
 	// 認証付きRPC
 	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.TokenSetResponse], error)
 	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
+	// 管理用RPC (system:user.* 権限が必要)
+	// システム上の全ユーザーを返す.
+	ListUsers(context.Context, *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error)
+	// 指定 user_id のユーザーを返す. 認証済みユーザーなら誰でも呼べる
+	// (グループメンバー名解決などに利用).
+	GetUser(context.Context, *connect.Request[v1.GetUserRequest]) (*connect.Response[v1.GetUserResponse], error)
+	// Resonite ID を指定して登録トークンを発行する.
+	// フロントエンドが招待リンクを生成するために、Resonite ユーザー情報も併せて返す.
+	CreateRegistrationToken(context.Context, *connect.Request[v1.CreateRegistrationTokenRequest]) (*connect.Response[v1.CreateRegistrationTokenResponse], error)
+	// 指定 user_id のユーザーを削除する. 自分自身は削除できない.
+	DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error)
 }
 
 // NewUserServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -187,6 +266,30 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(userServiceMethods.ByName("ChangePassword")),
 		connect.WithHandlerOptions(opts...),
 	)
+	userServiceListUsersHandler := connect.NewUnaryHandler(
+		UserServiceListUsersProcedure,
+		svc.ListUsers,
+		connect.WithSchema(userServiceMethods.ByName("ListUsers")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userServiceGetUserHandler := connect.NewUnaryHandler(
+		UserServiceGetUserProcedure,
+		svc.GetUser,
+		connect.WithSchema(userServiceMethods.ByName("GetUser")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userServiceCreateRegistrationTokenHandler := connect.NewUnaryHandler(
+		UserServiceCreateRegistrationTokenProcedure,
+		svc.CreateRegistrationToken,
+		connect.WithSchema(userServiceMethods.ByName("CreateRegistrationToken")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userServiceDeleteUserHandler := connect.NewUnaryHandler(
+		UserServiceDeleteUserProcedure,
+		svc.DeleteUser,
+		connect.WithSchema(userServiceMethods.ByName("DeleteUser")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/hdlctrl.v1.UserService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UserServiceGetTokenByPasswordProcedure:
@@ -199,6 +302,14 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 			userServiceRefreshTokenHandler.ServeHTTP(w, r)
 		case UserServiceChangePasswordProcedure:
 			userServiceChangePasswordHandler.ServeHTTP(w, r)
+		case UserServiceListUsersProcedure:
+			userServiceListUsersHandler.ServeHTTP(w, r)
+		case UserServiceGetUserProcedure:
+			userServiceGetUserHandler.ServeHTTP(w, r)
+		case UserServiceCreateRegistrationTokenProcedure:
+			userServiceCreateRegistrationTokenHandler.ServeHTTP(w, r)
+		case UserServiceDeleteUserProcedure:
+			userServiceDeleteUserHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -226,4 +337,20 @@ func (UnimplementedUserServiceHandler) RefreshToken(context.Context, *connect.Re
 
 func (UnimplementedUserServiceHandler) ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.UserService.ChangePassword is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) ListUsers(context.Context, *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.UserService.ListUsers is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) GetUser(context.Context, *connect.Request[v1.GetUserRequest]) (*connect.Response[v1.GetUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.UserService.GetUser is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) CreateRegistrationToken(context.Context, *connect.Request[v1.CreateRegistrationTokenRequest]) (*connect.Response[v1.CreateRegistrationTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.UserService.CreateRegistrationToken is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.UserService.DeleteUser is not implemented"))
 }

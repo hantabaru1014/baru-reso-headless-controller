@@ -9,6 +9,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
+	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/scheduled_op"
@@ -16,6 +17,23 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/scheduled_op/triggers"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+// 予約操作系 RPC は handler 側 (usecase) で対象 host/session の group_id に対して
+// 必要 permission をチェックする (interceptor は通過のみ).
+var (
+	_ = registerRPCPermission(
+		hdlctrlv1connect.ControllerServiceCreateScheduledSessionOperationProcedure,
+		requireAuthOnly,
+	)
+	_ = registerRPCPermission(
+		hdlctrlv1connect.ControllerServiceListScheduledSessionOperationsProcedure,
+		requireAuthOnly,
+	)
+	_ = registerRPCPermission(
+		hdlctrlv1connect.ControllerServiceCancelScheduledSessionOperationProcedure,
+		requireAuthOnly,
+	)
 )
 
 var headlessUpdateParamsZero = headlessv1.UpdateSessionParametersRequest{}
@@ -183,7 +201,7 @@ func buildActionFromProto(op *hdlctrlv1.ScheduledOperation) (scheduled_op.Action
 		}
 
 		hostID := start.GetHostId()
-		act := actions.NewStartSessionAction(hostID, nil, memo, paramsJSON)
+		act := actions.NewStartSessionAction(hostID, start.GetGroupId(), nil, memo, paramsJSON)
 
 		return act, &hostID, nil, nil
 	case *hdlctrlv1.ScheduledOperation_StopSession:
