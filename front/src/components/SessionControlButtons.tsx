@@ -1,6 +1,6 @@
-import { Button } from "./ui/button";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
+  createScheduledSessionOperation,
   prepareSessionWorldDownload,
   saveSessionWorld,
   stopSession,
@@ -8,9 +8,17 @@ import {
 import { useMutation } from "@connectrpc/connect-query";
 import { toast } from "sonner";
 import { DropdownMenuItem, DropdownMenuSeparator } from "./ui/dropdown-menu";
-import { SaveSessionWorldRequest_SaveMode } from "../../pbgen/hdlctrl/v1/controller_pb";
+import {
+  SaveSessionWorldRequest_SaveMode,
+  ScheduledOperationSchema,
+  ScheduledTriggerSchema,
+  SessionUserCountTriggerSchema,
+  SessionUserCountTrigger_Comparator,
+  StopSessionRequestSchema,
+} from "../../pbgen/hdlctrl/v1/controller_pb";
 import { WorldBinaryFormat } from "../../pbgen/headless/v1/headless_pb";
 import { SplitButton } from "./base/SplitButton";
+import { create } from "@bufbuild/protobuf";
 
 export default function SessionControlButtons({
   sessionId,
@@ -30,6 +38,10 @@ export default function SessionControlButtons({
     useMutation(stopSession);
   const { mutateAsync: mutatePrepareDownload, isPending: isPendingDownload } =
     useMutation(prepareSessionWorldDownload);
+  const {
+    mutateAsync: mutateScheduleStopWhenEmpty,
+    isPending: isPendingScheduleStop,
+  } = useMutation(createScheduledSessionOperation);
 
   const handleSave = async (saveMode: SaveSessionWorldRequest_SaveMode) => {
     try {
@@ -53,6 +65,31 @@ export default function SessionControlButtons({
       navigate("/sessions");
     } catch (e) {
       toast.error(`セッションの停止に失敗しました: ${e}`);
+    }
+  };
+
+  const handleScheduleStopWhenEmpty = async () => {
+    try {
+      const operation = create(ScheduledOperationSchema, {
+        operation: {
+          case: "stopSession",
+          value: create(StopSessionRequestSchema, { sessionId }),
+        },
+      });
+      const trigger = create(ScheduledTriggerSchema, {
+        trigger: {
+          case: "sessionUserCount",
+          value: create(SessionUserCountTriggerSchema, {
+            sessionId,
+            comparator: SessionUserCountTrigger_Comparator.LESS_OR_EQUAL,
+            threshold: 0,
+          }),
+        },
+      });
+      await mutateScheduleStopWhenEmpty({ operation, trigger });
+      toast.success("ユーザーが0人になったら停止する予約を作成しました");
+    } catch (e) {
+      toast.error(`予約の作成に失敗しました: ${e}`);
     }
   };
 
@@ -125,13 +162,28 @@ export default function SessionControlButtons({
       >
         ワールド保存
       </SplitButton>
-      <Button
+      <SplitButton
         variant="destructive"
         disabled={isPendingStop}
         onClick={handleStop}
+        dropdownContent={
+          <>
+            <DropdownMenuItem
+              onClick={handleScheduleStopWhenEmpty}
+              disabled={isPendingScheduleStop}
+            >
+              ユーザー0人でセッションを停止
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={`/sessions/scheduled/new?sessionId=${sessionId}`}>
+                その他の予約を作成...
+              </Link>
+            </DropdownMenuItem>
+          </>
+        }
       >
         停止
-      </Button>
+      </SplitButton>
       {additionalButtons}
     </div>
   );

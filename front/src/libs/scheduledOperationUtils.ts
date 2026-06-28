@@ -21,6 +21,28 @@ export const operationKindLabel = (k: OperationKind): string => {
   }
 };
 
+export type TriggerKind = "TIME" | "SESSION_USER_COUNT";
+
+export const triggerKindLabel = (t: TriggerKind): string => {
+  switch (t) {
+    case "TIME":
+      return "指定日時";
+    case "SESSION_USER_COUNT":
+      return "セッションのユーザー数";
+  }
+};
+
+export type UserCountComparator = "LESS_OR_EQUAL" | "GREATER_OR_EQUAL";
+
+export const userCountComparatorLabel = (c: UserCountComparator): string => {
+  switch (c) {
+    case "LESS_OR_EQUAL":
+      return "以下になった時";
+    case "GREATER_OR_EQUAL":
+      return "以上になった時";
+  }
+};
+
 export const scheduledOperationStatusToLabel = (
   s: ScheduledOperationStatus,
 ): string => {

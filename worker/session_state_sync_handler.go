@@ -24,6 +24,9 @@ import (
 //   - WorldSaved → patch the cached snapshot's WorldUrl (via proto.Clone because
 //     cache aliasing contract forbids mutation) + DB UpdateAfterWorldSaved so a
 //     restart loads the freshly saved record.
+//   - UserJoinedSession / UserLeftSession → bump the cached snapshot's UsersCount
+//     so condition triggers (e.g. "stop when 0 users") observe the live count
+//     instead of the stale snapshot from the last SessionParametersChanged.
 //   - SessionEnded → cache.Delete. DB row demotion is SessionLifecycleHandler's job.
 //   - HandleHostEventStreamReset → ListSessions on the host to authoritatively
 //     rebuild cache for the host (PruneHost evicts entries the host no longer
@@ -51,6 +54,10 @@ func (h *SessionStateSyncHandler) HandleHostEvent(ctx context.Context, hostID st
 		h.applySessionParametersChanged(ctx, hostID, p.SessionParametersChanged)
 	case *headlessv1.HostEvent_WorldSaved:
 		h.applyWorldSaved(ctx, hostID, p.WorldSaved)
+	case *headlessv1.HostEvent_UserJoinedSession:
+		h.bumpUsersCount(hostID, p.UserJoinedSession.GetSessionId(), 1)
+	case *headlessv1.HostEvent_UserLeftSession:
+		h.bumpUsersCount(hostID, p.UserLeftSession.GetSessionId(), -1)
 	case *headlessv1.HostEvent_SessionEnded:
 		h.applySessionEnded(p.SessionEnded)
 	}
@@ -167,4 +174,25 @@ func (h *SessionStateSyncHandler) applySessionEnded(payload *headlessv1.SessionE
 	// DB 側 status / ended_at の更新は SessionLifecycleHandler が担当。
 	// ここは cache の cleanup のみ。
 	h.cache.Delete(sessionID)
+}
+
+// bumpUsersCount は cached snapshot の UsersCount を delta だけ動かす.
+// cache aliasing contract のため Get → proto.Clone → mutate → Set し直す.
+// session が cache に存在しない (起動前 / event 未到達) 場合は skip:
+// 次の SessionParametersChanged か StreamReset で ListSessions から再 seed される.
+// 0 未満には clamp する (UserJoined を観測する前に UserLeft だけ到達した場合).
+func (h *SessionStateSyncHandler) bumpUsersCount(hostID, sessionID string, delta int32) {
+	existing, ok := h.cache.Get(sessionID)
+	if !ok {
+		return
+	}
+
+	cloned, ok := proto.Clone(existing).(*headlessv1.Session)
+	if !ok {
+		slog.Warn("session-state-sync: failed to clone cached session for users_count bump", "sessionID", sessionID)
+		return
+	}
+
+	cloned.UsersCount = max(cloned.GetUsersCount()+delta, 0)
+	h.cache.Set(hostID, sessionID, cloned)
 }
