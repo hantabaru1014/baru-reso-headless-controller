@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
@@ -40,6 +41,8 @@ func newScheduledListCmd(sou *usecase.ScheduledSessionOperationUsecase) *cobra.C
 		Use:   "list",
 		Short: "List scheduled session operations",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			ctx := cmd.Context()
+
 			filter := port.ScheduledSessionOperationListFilter{}
 			if sessionID != "" {
 				filter.SessionID = &sessionID
@@ -58,7 +61,7 @@ func newScheduledListCmd(sou *usecase.ScheduledSessionOperationUsecase) *cobra.C
 				filter.Status = &s
 			}
 
-			result, err := sou.List(cmd.Context(), filter)
+			result, err := sou.List(ctx, filter)
 			if err != nil {
 				return err
 			}
@@ -88,7 +91,9 @@ func newScheduledCancelCmd(sou *usecase.ScheduledSessionOperationUsecase) *cobra
 		Short: "Cancel a pending scheduled session operation",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := sou.Cancel(cmd.Context(), args[0]); err != nil {
+			ctx := cmd.Context()
+
+			if err := sou.Cancel(ctx, args[0]); err != nil {
 				if errors.Is(err, usecase.ErrScheduledOperationNotCancelable) {
 					return fmt.Errorf("not cancelable in its current status: %w", err)
 				}
@@ -116,6 +121,8 @@ func newScheduledCreateStopCmd(sou *usecase.ScheduledSessionOperationUsecase) *c
 		Use:   "create-stop",
 		Short: "Schedule a STOP_SESSION at a specified time",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			ctx := cmd.Context()
+
 			if sessionID == "" {
 				return errors.New("--session is required")
 			}
@@ -131,11 +138,13 @@ func newScheduledCreateStopCmd(sou *usecase.ScheduledSessionOperationUsecase) *c
 
 			act := actions.NewStopSessionAction(sessionID)
 			trig := triggers.NewTimeTrigger(t)
+			systemUserID := domain.SystemUserID
 
-			created, err := sou.Create(cmd.Context(), usecase.CreateScheduledSessionOperationParams{
+			created, err := sou.Create(ctx, usecase.CreateScheduledSessionOperationParams{
 				Action:    act,
 				Trigger:   trig,
 				SessionID: &sessionID,
+				CreatedBy: &systemUserID,
 			})
 			if err != nil {
 				return err

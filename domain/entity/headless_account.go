@@ -6,4 +6,6 @@ type HeadlessAccount struct {
 	Password        string
 	LastDisplayName *string
 	LastIconUrl     *string
+	GroupID         string
+	CreatedBy       *string
 }

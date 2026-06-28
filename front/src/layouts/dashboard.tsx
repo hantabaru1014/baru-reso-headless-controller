@@ -1,9 +1,19 @@
 import { Outlet, Navigate, useLocation, Link, useMatches } from "react-router";
-import { Home, Users, Server, Earth, Clock } from "lucide-react";
+import {
+  Home,
+  Users,
+  Server,
+  Earth,
+  Clock,
+  UsersRound,
+  ShieldCheck,
+} from "lucide-react";
 import { useMemo } from "react";
 import { useAtom } from "jotai";
 import { sessionAtom, Session } from "../atoms/sessionAtom";
 import { useAuth } from "../hooks/useAuth";
+import { usePermissions } from "../hooks/usePermissions";
+import { PERMISSION_KEYS } from "../libs/permissionUtils";
 import {
   SidebarProvider,
   Sidebar,
@@ -20,8 +30,17 @@ import { cn } from "@/libs/cssUtils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { SidebarVersionFooter } from "@/components/SidebarVersionFooter";
 import { UserMenuDropdown } from "@/components/UserMenuDropdown";
+import { GroupSwitcher } from "@/components/base/GroupSwitcher";
 
-const navigation = [
+type NavItem = {
+  title: string;
+  href: string;
+  icon: typeof Home;
+  /** undefined のとき常時表示. 関数のとき true を返したものだけ表示する. */
+  visible?: (perms: ReturnType<typeof usePermissions>) => boolean;
+};
+
+const navigation: NavItem[] = [
   {
     title: "Dashboard",
     href: "/",
@@ -31,33 +50,66 @@ const navigation = [
     title: "Headless Accounts",
     href: "/headlessAccounts",
     icon: Users,
+    visible: (p) =>
+      p.groupsWithPermission(PERMISSION_KEYS.ACCOUNT_READ).length > 0 ||
+      p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_GROUP_MANAGE),
   },
   {
     title: "Hosts",
     href: "/hosts",
     icon: Server,
+    visible: (p) =>
+      p.groupsWithPermission(PERMISSION_KEYS.HOST_READ).length > 0 ||
+      p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_GROUP_MANAGE),
   },
   {
     title: "Sessions",
     href: "/sessions",
     icon: Earth,
+    visible: (p) =>
+      p.groupsWithPermission(PERMISSION_KEYS.SESSION_READ).length > 0 ||
+      p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_GROUP_MANAGE),
   },
   {
     title: "Scheduled Ops",
     href: "/sessions/scheduled",
     icon: Clock,
+    visible: (p) =>
+      p.groupsWithPermission(PERMISSION_KEYS.SESSION_WRITE).length > 0 ||
+      p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_GROUP_MANAGE),
+  },
+  {
+    title: "Groups",
+    href: "/groups",
+    icon: UsersRound,
+  },
+  {
+    title: "Admin",
+    href: "/admin",
+    icon: ShieldCheck,
+    visible: (p) =>
+      p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_GROUP_LIST) ||
+      p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_ROLE_MANAGE) ||
+      p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_USER_LIST) ||
+      p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_USER_CREATE) ||
+      p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_USER_DELETE),
   },
 ];
 
 function AppSidebar() {
   const location = useLocation();
+  const perms = usePermissions();
+  const visibleNavigation = useMemo(
+    () => navigation.filter((n) => (n.visible ? n.visible(perms) : true)),
+    [perms],
+  );
 
   // 最も長く一致した href のみを active にする。
   // 例: pathname=/sessions/scheduled では /sessions ではなく /sessions/scheduled が選ばれる。
   const activeHref = useMemo(() => {
     const path = location.pathname;
     let best: string | undefined;
-    for (const item of navigation) {
+    for (const item of visibleNavigation) {
       const matched =
         item.href === "/"
           ? path === "/"
@@ -67,7 +119,7 @@ function AppSidebar() {
       }
     }
     return best;
-  }, [location.pathname]);
+  }, [location.pathname, visibleNavigation]);
 
   return (
     <Sidebar variant="inset" collapsible="icon">
@@ -75,7 +127,7 @@ function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigation.map((item) => (
+              {visibleNavigation.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild
@@ -117,6 +169,7 @@ function Header({
       {/* Spacer */}
       <div className="flex-1" />
 
+      <GroupSwitcher />
       <ThemeToggle />
       <UserMenuDropdown user={session?.user} signOut={signOut} />
     </header>

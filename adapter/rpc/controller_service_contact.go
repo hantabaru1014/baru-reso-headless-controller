@@ -5,11 +5,19 @@ import (
 	"errors"
 
 	"connectrpc.com/connect"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
+	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 )
 
 // ListContacts implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: account.group_id に対して account:read.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceListContactsProcedure,
+	checkAccountPermission(entity.PermKey_AccountRead, accountIDFromListContacts),
+)
+
 func (c *ControllerService) ListContacts(ctx context.Context, req *connect.Request[hdlctrlv1.ListContactsRequest]) (*connect.Response[hdlctrlv1.ListContactsResponse], error) {
 	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.GetHeadlessAccountId())
 	if err != nil {
@@ -49,6 +57,12 @@ func (c *ControllerService) ListContacts(ctx context.Context, req *connect.Reque
 }
 
 // GetContactMessages implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: account.group_id に対して account:read.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceGetContactMessagesProcedure,
+	checkAccountPermission(entity.PermKey_AccountRead, accountIDFromGetMessages),
+)
+
 func (c *ControllerService) GetContactMessages(ctx context.Context, req *connect.Request[hdlctrlv1.GetContactMessagesRequest]) (*connect.Response[hdlctrlv1.GetContactMessagesResponse], error) {
 	account, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.GetHeadlessAccountId())
 	if err != nil {
@@ -99,6 +113,12 @@ func (c *ControllerService) GetContactMessages(ctx context.Context, req *connect
 }
 
 // SendContactMessage implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: account.group_id に対して account:use.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceSendContactMessageProcedure,
+	checkAccountPermission(entity.PermKey_AccountUse, accountIDFromSendMessage),
+)
+
 func (c *ControllerService) SendContactMessage(ctx context.Context, req *connect.Request[hdlctrlv1.SendContactMessageRequest]) (*connect.Response[hdlctrlv1.SendContactMessageResponse], error) {
 	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.GetHeadlessAccountId())
 	if err != nil {

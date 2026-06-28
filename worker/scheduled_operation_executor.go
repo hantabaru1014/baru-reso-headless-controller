@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/scheduled_op"
 )
@@ -22,6 +23,7 @@ type ScheduledOperationExecutor struct {
 	sessionOp   scheduled_op.SessionOperator
 	sessionRepo port.SessionRepository
 	stateCache  port.SessionStateCache
+	userChecker UserExistenceChecker
 
 	instanceID     string
 	tickInterval   time.Duration
@@ -55,6 +57,7 @@ func NewScheduledOperationExecutor(
 	sessionOp scheduled_op.SessionOperator,
 	sessionRepo port.SessionRepository,
 	stateCache port.SessionStateCache,
+	userChecker UserExistenceChecker,
 	opts ScheduledOperationExecutorOptions,
 ) *ScheduledOperationExecutor {
 	if opts.InstanceID == "" {
@@ -91,6 +94,7 @@ func NewScheduledOperationExecutor(
 		sessionOp:      sessionOp,
 		sessionRepo:    sessionRepo,
 		stateCache:     stateCache,
+		userChecker:    userChecker,
 		instanceID:     opts.InstanceID,
 		tickInterval:   opts.TickInterval,
 		staleAfter:     opts.StaleAfter,
@@ -170,6 +174,39 @@ func (e *ScheduledOperationExecutor) dispatchOnce(ctx context.Context, wg *sync.
 func (e *ScheduledOperationExecutor) executeOne(ctx context.Context, op *entity.ScheduledSessionOperation) {
 	logger := slog.With("op_id", op.ID, "type", op.OperationType, "trigger", op.TriggerType)
 
+	// created_by が無い / DB 上のユーザーが消えている場合は実行主体を立てられないので
+	// 即 FAILED にする. systemPrivilege fallback はしない (作成権限の追跡を維持するため).
+	if op.CreatedBy == nil || *op.CreatedBy == "" {
+		logger.Error("scheduled-operation-executor: operation has no created_by; marking failed")
+		e.markFailed(ctx, op.ID, errors.New("scheduled operation has no created_by"))
+
+		return
+	}
+
+	if e.userChecker != nil {
+		exists, err := e.userChecker.UserExistsByID(ctx, *op.CreatedBy)
+		if err != nil {
+			// ctx キャンセル (worker shutdown 等) は transient. 永続的に FAILED 化
+			// せず claim を残し、stale sweep でリトライ可能にする.
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				logger.Warn("scheduled-operation-executor: check created_by user canceled; will retry", "error", err)
+				return
+			}
+
+			logger.Error("scheduled-operation-executor: check created_by user failed", "error", err)
+			e.markFailed(ctx, op.ID, errors.WrapPrefix(err, "check created_by user", 0))
+
+			return
+		}
+
+		if !exists {
+			logger.Error("scheduled-operation-executor: created_by user does not exist; marking failed", "user_id", *op.CreatedBy)
+			e.markFailed(ctx, op.ID, errors.Errorf("created_by user %q does not exist", *op.CreatedBy))
+
+			return
+		}
+	}
+
 	trig, err := scheduled_op.DecodeTrigger(op.TriggerType, op.TriggerConfig)
 	if err != nil {
 		logger.Error("scheduled-operation-executor: decode trigger failed", "error", err)
@@ -214,6 +251,11 @@ func (e *ScheduledOperationExecutor) executeOne(ctx context.Context, op *entity.
 	actCtx, cancel := context.WithTimeout(ctx, defaultExecutorActionTimeout)
 	defer cancel()
 
+	// 以降の usecase 呼び出しは created_by を実行主体とする ctx で行う.
+	// 権限剥奪後の op 実行は usecase 層の Require* で PermissionDenied になり
+	// 自然に FAILED に倒れる.
+	actCtx = auth.WithActAsUser(actCtx, *op.CreatedBy)
+
 	if err := act.Execute(actCtx, scheduled_op.ActionExecDeps{Session: e.sessionOp}); err != nil {
 		logger.Error("scheduled-operation-executor: execute failed", "error", err)
 		e.markFailed(ctx, op.ID, err)
@@ -221,7 +263,13 @@ func (e *ScheduledOperationExecutor) executeOne(ctx context.Context, op *entity.
 		return
 	}
 
-	if err := e.repo.MarkSucceeded(ctx, op.ID); err != nil {
+	// 永続化は worker shutdown の ctx cancel と独立に行う. 親 ctx が cancel された場合に
+	// MarkSucceeded が早期失敗すると op は RUNNING のまま残り、stale sweep で再実行されると
+	// StopSession 等が冪等でも UpdateParameters 等は副作用が重複する.
+	persistCtx, persistCancel := context.WithTimeout(context.WithoutCancel(ctx), persistTimeout)
+	defer persistCancel()
+
+	if err := e.repo.MarkSucceeded(persistCtx, op.ID); err != nil {
 		logger.Error("scheduled-operation-executor: mark succeeded failed", "error", err)
 		return
 	}
@@ -231,7 +279,11 @@ func (e *ScheduledOperationExecutor) executeOne(ctx context.Context, op *entity.
 
 func (e *ScheduledOperationExecutor) markFailed(ctx context.Context, id string, runErr error) {
 	msg := runErr.Error()
-	if err := e.repo.MarkFailed(ctx, id, msg); err != nil {
+
+	persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), persistTimeout)
+	defer cancel()
+
+	if err := e.repo.MarkFailed(persistCtx, id, msg); err != nil {
 		slog.Error("scheduled-operation-executor: mark failed errored", "op_id", id, "error", err)
 	}
 }

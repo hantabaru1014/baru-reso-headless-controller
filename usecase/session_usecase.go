@@ -30,6 +30,7 @@ type SessionUsecase struct {
 	hostRepo        port.HeadlessHostRepository
 	hostDrainer     port.HostDrainer
 	stateCache      port.SessionStateCache
+	permUC          *PermissionUsecase
 	forcePortMin    int
 	forcePortMax    int
 	resoniteLinkTTL time.Duration
@@ -43,12 +44,14 @@ func NewSessionUsecase(
 	stateCache port.SessionStateCache,
 	serverCfg *config.ServerConfig,
 	linkCfg *config.ResoniteLinkConfig,
+	permUC *PermissionUsecase,
 ) *SessionUsecase {
 	return &SessionUsecase{
 		sessionRepo:     sessionRepo,
 		hostRepo:        hostRepo,
 		hostDrainer:     hostDrainer,
 		stateCache:      stateCache,
+		permUC:          permUC,
 		forcePortMin:    serverCfg.SessionPortMin,
 		forcePortMax:    serverCfg.SessionPortMax,
 		resoniteLinkTTL: linkCfg.TokenTTL,
@@ -75,9 +78,33 @@ func (u *SessionUsecase) IssueResoniteLinkToken(ctx context.Context, sessionID, 
 	return auth.GenerateResoniteLinkToken(userID, sessionID, u.resoniteLinkTTL)
 }
 
-func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId *string, params *headlessv1.WorldStartupParameters, memo *string) (*entity.Session, error) {
+func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, groupID string, userId *string, params *headlessv1.WorldStartupParameters, memo *string) (*entity.Session, error) {
 	if u.hostDrainer.IsHostDraining(hostId) {
 		return nil, ErrHostDraining
+	}
+
+	// host:use + account:use + session:write を host の group に対して要求する.
+	// 同一グループ制約: session.group_id == host.group_id (account.group_id は
+	// StartHeadlessHost 時点で host.group_id に揃えてあるので透過的に満たされる).
+	hostGroupID, err := u.hostRepo.GetGroupID(ctx, hostId)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	// 引数 groupID が空ならホストの group に揃える (FK 違反防止).
+	// 非空かつ不一致なら明示的に拒否する.
+	if groupID == "" {
+		groupID = hostGroupID
+	} else if groupID != hostGroupID {
+		return nil, errors.New("session group must equal host group")
+	}
+
+	if err := u.permUC.RequireAllPermissionsForGroup(ctx, hostGroupID, []string{
+		entity.PermKey_HostUse,
+		entity.PermKey_AccountUse,
+		entity.PermKey_SessionWrite,
+	}); err != nil {
+		return nil, err
 	}
 
 	client, err := u.hostRepo.GetRpcClient(ctx, hostId)
@@ -123,9 +150,10 @@ func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, userId
 		Status:            entity.SessionStatus_RUNNING,
 		HostID:            hostId,
 		StartedAt:         &startedAt,
-		OwnerID:           userId,
+		CreatedBy:         userId,
 		StartupParameters: params,
 		CurrentState:      openedSession,
+		GroupID:           groupID,
 	}
 	if memo != nil {
 		session.Memo = *memo
@@ -146,6 +174,10 @@ func (u *SessionUsecase) StopSession(ctx context.Context, id string) error {
 	s, err := u.sessionRepo.Get(ctx, id)
 	if err != nil {
 		return errors.Wrap(err, 0)
+	}
+
+	if err := u.permUC.RequirePermissionForGroup(ctx, s.GroupID, entity.PermKey_SessionWrite); err != nil {
+		return err
 	}
 
 	client, err := u.hostRepo.GetRpcClient(ctx, s.HostID)
@@ -251,6 +283,10 @@ type SearchSessionsFilter struct {
 	// 0 を渡して全件取得する。
 	PageIndex int32
 	PageSize  int32
+	// GroupIDs はグループフィルタ. semantics は port.SessionListPageOptions.GroupIDs と同一.
+	// nil = 全件, 空 slice = 0 件, 非空 = ANY 絞り込み.
+	// ページング無効 (PageSize == 0) 経路でも post-filter として作用する.
+	GroupIDs []string
 }
 
 type SearchSessionsResult struct {
@@ -267,6 +303,7 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 			Status:    filter.Status,
 			PageIndex: filter.PageIndex,
 			PageSize:  filter.PageSize,
+			GroupIDs:  filter.GroupIDs,
 		})
 		if err != nil {
 			return nil, errors.Wrap(err, 0)
@@ -300,6 +337,27 @@ func (u *SessionUsecase) SearchSessions(ctx context.Context, filter SearchSessio
 
 		for _, s := range dbSessions {
 			if s.HostID == *filter.HostID {
+				filtered = append(filtered, s)
+			}
+		}
+
+		dbSessions = filtered
+	}
+
+	// GroupIDs フィルタは ListAll/ListByStatus 経路では SQL に組み込まれていないため、
+	// メモリ上で post-filter する. ページング経路と同一の semantics.
+	//   nil → no-op (全件)
+	//   非 nil → set 包含チェック (空 set も含む)
+	if filter.GroupIDs != nil {
+		allow := make(map[string]struct{}, len(filter.GroupIDs))
+		for _, gid := range filter.GroupIDs {
+			allow[gid] = struct{}{}
+		}
+
+		filtered := make(entity.SessionList, 0, len(dbSessions))
+
+		for _, s := range dbSessions {
+			if _, ok := allow[s.GroupID]; ok {
 				filtered = append(filtered, s)
 			}
 		}
@@ -370,6 +428,10 @@ func (u *SessionUsecase) UpdateSessionParameters(ctx context.Context, id string,
 		return errors.Wrap(err, 0)
 	}
 
+	if err := u.permUC.RequirePermissionForGroup(ctx, s.GroupID, entity.PermKey_SessionWrite); err != nil {
+		return err
+	}
+
 	client, err := u.hostRepo.GetRpcClient(ctx, s.HostID)
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -403,6 +465,15 @@ func (u *SessionUsecase) UpdateSessionParameters(ctx context.Context, id string,
 }
 
 func (u *SessionUsecase) DeleteSession(ctx context.Context, id string) error {
+	s, err := u.sessionRepo.Get(ctx, id)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	if err := u.permUC.RequirePermissionForGroup(ctx, s.GroupID, entity.PermKey_SessionWrite); err != nil {
+		return err
+	}
+
 	if err := u.sessionRepo.Delete(ctx, id); err != nil {
 		return err
 	}
@@ -416,6 +487,10 @@ func (u *SessionUsecase) SaveSessionWorld(ctx context.Context, id string, saveMo
 	s, err := u.GetSession(ctx, id)
 	if err != nil {
 		return "", errors.Wrap(err, 0)
+	}
+
+	if err := u.permUC.RequirePermissionForGroup(ctx, s.GroupID, entity.PermKey_SessionWrite); err != nil {
+		return "", err
 	}
 
 	client, err := u.hostRepo.GetRpcClient(ctx, s.HostID)
@@ -476,6 +551,10 @@ func (u *SessionUsecase) UpdateSessionExtraSettings(ctx context.Context, session
 	s, err := u.GetSession(ctx, sessionID)
 	if err != nil {
 		return errors.Wrap(err, 0)
+	}
+
+	if err := u.permUC.RequirePermissionForGroup(ctx, s.GroupID, entity.PermKey_SessionWrite); err != nil {
+		return err
 	}
 
 	if autoUpgrade != nil {

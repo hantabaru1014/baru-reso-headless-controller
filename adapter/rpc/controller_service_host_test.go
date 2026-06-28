@@ -110,7 +110,90 @@ func TestControllerService_StartHeadlessHost(t *testing.T) {
 		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_START_HOST))
 	})
 
-	t.Run("失敗: 存在しないアカウント", func(t *testing.T) {
+	t.Run("成功: 最小権限 caller (host:write + account:use) で起動", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const callerID = "U-mp-starthost"
+
+		const groupID = "g-mp-starthost"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-acc", "mp@example.test", "password", groupID)
+
+		imageTag := "latest"
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.StartHeadlessHostRequest{
+			HeadlessAccountId: "U-mp-acc",
+			Name:              "TestHost",
+			ImageTag:          &imageTag,
+		}, callerID, groupID, []string{
+			entity.PermKey_HostWrite,
+			entity.PermKey_AccountUse,
+		})
+
+		res, err := client.StartHeadlessHost(t.Context(), req)
+		require.NoError(t, err)
+		require.NotNil(t, res.Msg)
+		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_START_HOST))
+	})
+
+	t.Run("失敗: host:write のみ (account:use 不足) で PermissionDenied", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const callerID = "U-mp-starthost-noaccuse"
+
+		const groupID = "g-mp-starthost-noaccuse"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-acc", "mp@example.test", "password", groupID)
+
+		imageTag := "latest"
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.StartHeadlessHostRequest{
+			HeadlessAccountId: "U-mp-acc",
+			Name:              "TestHost",
+			ImageTag:          &imageTag,
+		}, callerID, groupID, []string{entity.PermKey_HostWrite})
+
+		_, err := client.StartHeadlessHost(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+		assert.Contains(t, connectErr.Message(), entity.PermKey_AccountUse)
+	})
+
+	t.Run("失敗: account:use のみ (host:write 不足) で PermissionDenied", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const callerID = "U-mp-starthost-nohostwrite"
+
+		const groupID = "g-mp-starthost-nohostwrite"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-acc", "mp@example.test", "password", groupID)
+
+		imageTag := "latest"
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.StartHeadlessHostRequest{
+			HeadlessAccountId: "U-mp-acc",
+			Name:              "TestHost",
+			ImageTag:          &imageTag,
+		}, callerID, groupID, []string{entity.PermKey_AccountUse})
+
+		_, err := client.StartHeadlessHost(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+		assert.Contains(t, connectErr.Message(), entity.PermKey_HostWrite)
+	})
+
+	// 権限システム導入後は account の所属グループに対する permission を確認するため、
+	// 存在しないアカウントは NotFound を返す.
+	t.Run("失敗: 存在しないアカウントは NotFound", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
@@ -129,7 +212,7 @@ func TestControllerService_StartHeadlessHost(t *testing.T) {
 		connectErr := &connect.Error{}
 		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
-		assert.Equal(t, connect.CodeInternal, connectErr.Code())
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 }
 
@@ -164,6 +247,26 @@ func TestControllerService_RestartHeadlessHost(t *testing.T) {
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.RestartHeadlessHostRequest{
 			HostId: host.ID,
 		})
+
+		res, err := client.RestartHeadlessHost(t.Context(), req)
+		require.NoError(t, err)
+		require.NotNil(t, res.Msg)
+		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_RESTART_HOST))
+	})
+
+	t.Run("成功: 最小権限 caller (host:write) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-restart"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-restart-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-restart-acc", "TestHost", entity.HeadlessHostStatus_EXITED, groupID)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.RestartHeadlessHostRequest{
+			HostId: host.ID,
+		}, "U-mp-restart", groupID, []string{entity.PermKey_HostWrite})
 
 		res, err := client.RestartHeadlessHost(t.Context(), req)
 		require.NoError(t, err)
@@ -223,6 +326,27 @@ func TestControllerService_UpdateHeadlessHostSettings(t *testing.T) {
 		assert.Equal(t, newName, updatedHost.Name)
 		assert.Equal(t, int32(entity.HostAutoUpdatePolicy_USERS_EMPTY), updatedHost.AutoUpdatePolicy,
 			"AutoUpdatePolicy passed in request should be persisted")
+	})
+
+	t.Run("成功: 最小権限 caller (host:write) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-updsettings"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-upd-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-upd-acc", "TestHost", entity.HeadlessHostStatus_EXITED, groupID)
+
+		newName := "UpdatedHostByMinPerm"
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.UpdateHeadlessHostSettingsRequest{
+			HostId: host.ID,
+			Name:   &newName,
+		}, "U-mp-updsettings", groupID, []string{entity.PermKey_HostWrite})
+
+		res, err := client.UpdateHeadlessHostSettings(t.Context(), req)
+		require.NoError(t, err)
+		assert.NotNil(t, res.Msg)
 	})
 
 	t.Run("成功: 実行中のホストの設定を更新", func(t *testing.T) {
@@ -330,6 +454,29 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 		assert.False(t, res.Msg.GetLogs()[0].GetIsError())
 		assert.Equal(t, "Error line", res.Msg.GetLogs()[1].GetBody())
 		assert.True(t, res.Msg.GetLogs()[1].GetIsError())
+	})
+
+	t.Run("成功: 最小権限 caller (host:read) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-getlogs"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-getlogs-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-getlogs-acc", "TestHost", entity.HeadlessHostStatus_EXITED, groupID)
+
+		baseTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime, "stdout", "Log A")
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.GetHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+		}, "U-mp-getlogs", groupID, []string{entity.PermKey_HostRead})
+
+		res, err := client.GetHeadlessHostLogs(t.Context(), req)
+		require.NoError(t, err)
+		assert.Len(t, res.Msg.GetLogs(), 1)
 	})
 
 	t.Run("成功: ログが存在しない場合は空のリストを返す", func(t *testing.T) {
@@ -583,6 +730,25 @@ func TestControllerService_ShutdownHeadlessHost(t *testing.T) {
 		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_SHUTDOWN_HOST))
 	})
 
+	t.Run("成功: 最小権限 caller (host:write) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-shutdown"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-shut-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-shut-acc", "TestHost", entity.HeadlessHostStatus_EXITED, groupID)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.ShutdownHeadlessHostRequest{
+			HostId: host.ID,
+		}, "U-mp-shutdown", groupID, []string{entity.PermKey_HostWrite})
+
+		res, err := client.ShutdownHeadlessHost(t.Context(), req)
+		require.NoError(t, err)
+		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_SHUTDOWN_HOST))
+	})
+
 	t.Run("失敗: 存在しないホスト", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
@@ -628,6 +794,26 @@ func TestControllerService_KillHeadlessHost(t *testing.T) {
 		assert.NotNil(t, res.Msg)
 	})
 
+	t.Run("成功: 最小権限 caller (host:write) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-kill"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-kill-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-kill-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+
+		setup.mockHostConnector.EXPECT().Kill(gomock.Any(), gomock.Any()).Return(nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.KillHeadlessHostRequest{
+			HostId: host.ID,
+		}, "U-mp-kill", groupID, []string{entity.PermKey_HostWrite})
+
+		_, err := client.KillHeadlessHost(t.Context(), req)
+		require.NoError(t, err)
+	})
+
 	t.Run("失敗: 存在しないホスト", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
@@ -671,6 +857,25 @@ func TestControllerService_GetHeadlessHost(t *testing.T) {
 		assert.Equal(t, "TestHost", res.Msg.GetHost().GetName())
 	})
 
+	t.Run("成功: 最小権限 caller (host:read) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-gethost"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-gethost-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-gethost-acc", "TestHost", entity.HeadlessHostStatus_EXITED, groupID)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.GetHeadlessHostRequest{
+			HostId: host.ID,
+		}, "U-mp-gethost", groupID, []string{entity.PermKey_HostRead})
+
+		res, err := client.GetHeadlessHost(t.Context(), req)
+		require.NoError(t, err)
+		assert.Equal(t, host.ID, res.Msg.GetHost().GetId())
+	})
+
 	t.Run("失敗: 存在しないホスト", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
@@ -692,7 +897,7 @@ func TestControllerService_GetHeadlessHost(t *testing.T) {
 }
 
 func TestControllerService_ListHeadlessHost(t *testing.T) {
-	t.Run("成功: ホスト一覧を取得 (ページング検証)", func(t *testing.T) {
+	t.Run("成功: ホスト一覧を取得 (ページング検証 / system:group.list 保持者は全件)", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
@@ -708,6 +913,8 @@ func TestControllerService_ListHeadlessHost(t *testing.T) {
 		}
 
 		// page 未指定 -> デフォルト 20 件 (5件しかないので全件返る)
+		// 既定ユーザーは system-admin (system:group.list 保持) なので
+		// group_id 未指定でも全グループのホストを返す.
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessHostRequest{})
 		res, err := client.ListHeadlessHost(t.Context(), req)
 		require.NoError(t, err)
@@ -746,6 +953,81 @@ func TestControllerService_ListHeadlessHost(t *testing.T) {
 		ok := errors.As(err, &connectErr)
 		require.True(t, ok)
 		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
+	})
+
+	t.Run("グループフィルタ: 指定 / 未指定 / 権限なしの分岐", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		// non-admin ユーザーを personal グループ単独所属で用意し、別 normal グループを
+		// 作って admin として追加. 既存の "migrated-pre-permission" には所属させない.
+		const otherUserID = "U-other"
+
+		personalGID := testutil.SetupNormalUserWithPersonalGroup(t, setup.queries, otherUserID)
+
+		sharedGID := "group-shared"
+		testutil.CreateTestGroup(t, setup.queries, sharedGID, otherUserID)
+
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
+		// hosts: migrated グループに 2 件, personal に 1 件, shared に 1 件.
+		testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "MigratedHost1", entity.HeadlessHostStatus_EXITED)
+		testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "MigratedHost2", entity.HeadlessHostStatus_EXITED)
+		testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-test", "PersonalHost", entity.HeadlessHostStatus_EXITED, personalGID)
+		testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-test", "SharedHost", entity.HeadlessHostStatus_EXITED, sharedGID)
+
+		// case 1: non-admin ユーザー / group_id 未指定 -> 自分が所属する personal + shared のみ.
+		reqAuto := testutil.CreateAuthenticatedRequest(
+			t, &hdlctrlv1.ListHeadlessHostRequest{},
+			otherUserID, "U-other-resonite", "https://example.test/icon.png",
+		)
+		resAuto, err := client.ListHeadlessHost(t.Context(), reqAuto)
+		require.NoError(t, err)
+		assert.Equal(t, int32(2), resAuto.Msg.GetPage().GetTotalCount(),
+			"non-admin should only see hosts in groups they belong to")
+
+		gotNames := make(map[string]bool, len(resAuto.Msg.GetHosts()))
+		for _, h := range resAuto.Msg.GetHosts() {
+			gotNames[h.GetName()] = true
+		}
+
+		assert.True(t, gotNames["PersonalHost"], "expected PersonalHost in result")
+		assert.True(t, gotNames["SharedHost"], "expected SharedHost in result")
+		assert.False(t, gotNames["MigratedHost1"], "MigratedHost1 should be filtered out")
+
+		// case 2: non-admin ユーザー / 自分が所属する group_id を指定 -> その group のみ.
+		reqExplicit := testutil.CreateAuthenticatedRequest(
+			t, &hdlctrlv1.ListHeadlessHostRequest{GroupId: &sharedGID},
+			otherUserID, "U-other-resonite", "https://example.test/icon.png",
+		)
+		resExplicit, err := client.ListHeadlessHost(t.Context(), reqExplicit)
+		require.NoError(t, err)
+		assert.Equal(t, int32(1), resExplicit.Msg.GetPage().GetTotalCount())
+		require.Len(t, resExplicit.Msg.GetHosts(), 1)
+		assert.Equal(t, "SharedHost", resExplicit.Msg.GetHosts()[0].GetName())
+
+		// case 3: non-admin ユーザー / 権限の無い group_id を指定 -> PermissionDenied.
+		forbiddenGID := entity.MigratedPrePermissionGroupID
+
+		reqForbidden := testutil.CreateAuthenticatedRequest(
+			t, &hdlctrlv1.ListHeadlessHostRequest{GroupId: &forbiddenGID},
+			otherUserID, "U-other-resonite", "https://example.test/icon.png",
+		)
+		_, err = client.ListHeadlessHost(t.Context(), reqForbidden)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+
+		// case 4: 既定ユーザー (system-admin) が同じ group_id を指定 -> system:group.list 経由で許可.
+		reqAdmin := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessHostRequest{
+			GroupId: &sharedGID,
+		})
+		resAdmin, err := client.ListHeadlessHost(t.Context(), reqAdmin)
+		require.NoError(t, err)
+		assert.Equal(t, int32(1), resAdmin.Msg.GetPage().GetTotalCount())
 	})
 }
 
@@ -807,7 +1089,29 @@ func TestControllerService_DeleteHeadlessHost(t *testing.T) {
 		assert.Empty(t, logsAfter2, "logs for instance 2 should be deleted")
 	})
 
-	t.Run("成功: 存在しないホストを削除（何も起こらない）", func(t *testing.T) {
+	t.Run("成功: 最小権限 caller (host:write) で削除", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-delhost"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-delhost-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-delhost-acc", "TestHost", entity.HeadlessHostStatus_EXITED, groupID)
+
+		setup.mockHostConnector.EXPECT().Remove(gomock.Any(), gomock.Any()).Return(nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.DeleteHeadlessHostRequest{
+			HostId: host.ID,
+		}, "U-mp-delhost", groupID, []string{entity.PermKey_HostWrite})
+
+		_, err := client.DeleteHeadlessHost(t.Context(), req)
+		require.NoError(t, err)
+	})
+
+	// 権限システム導入後は permission interceptor が host 存在を先に確認するため、
+	// 存在しないホストは NotFound を返す.
+	t.Run("失敗: 存在しないホストは NotFound", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
@@ -817,9 +1121,13 @@ func TestControllerService_DeleteHeadlessHost(t *testing.T) {
 			HostId: "nonexist",
 		})
 
-		res, err := client.DeleteHeadlessHost(t.Context(), req)
-		require.NoError(t, err)
-		assert.NotNil(t, res.Msg)
+		_, err := client.DeleteHeadlessHost(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
+		require.True(t, ok, "expected connect.Error")
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 }
 
@@ -849,6 +1157,28 @@ func TestControllerService_AllowHostAccess(t *testing.T) {
 		res, err := client.AllowHostAccess(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
+	})
+
+	t.Run("成功: 最小権限 caller (host:write) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-allow"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-allow-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-allow-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+
+		setup.mockHostConnector.EXPECT().GetRpcClient(gomock.Any(), gomock.Any()).Return(setup.mockRpcClient, nil)
+		setup.mockRpcClient.EXPECT().AllowHostAccess(gomock.Any(), gomock.Any()).Return(&headlessv1.AllowHostAccessResponse{}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.AllowHostAccessRequest{
+			HostId:  host.ID,
+			Request: &headlessv1.AllowHostAccessRequest{},
+		}, "U-mp-allow", groupID, []string{entity.PermKey_HostWrite})
+
+		_, err := client.AllowHostAccess(t.Context(), req)
+		require.NoError(t, err)
 	})
 
 	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
@@ -937,6 +1267,28 @@ func TestControllerService_DenyHostAccess(t *testing.T) {
 		res, err := client.DenyHostAccess(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
+	})
+
+	t.Run("成功: 最小権限 caller (host:write) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-deny"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-deny-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-deny-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+
+		setup.mockHostConnector.EXPECT().GetRpcClient(gomock.Any(), gomock.Any()).Return(setup.mockRpcClient, nil)
+		setup.mockRpcClient.EXPECT().DenyHostAccess(gomock.Any(), gomock.Any()).Return(&headlessv1.DenyHostAccessResponse{}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.DenyHostAccessRequest{
+			HostId:  host.ID,
+			Request: &headlessv1.DenyHostAccessRequest{},
+		}, "U-mp-deny", groupID, []string{entity.PermKey_HostWrite})
+
+		_, err := client.DenyHostAccess(t.Context(), req)
+		require.NoError(t, err)
 	})
 
 	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {

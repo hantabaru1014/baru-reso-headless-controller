@@ -52,6 +52,28 @@ func TestControllerService_ListContacts(t *testing.T) {
 		assert.Equal(t, "Friend1", res.Msg.GetContacts()[0].GetName())
 	})
 
+	t.Run("成功: 最小権限 caller (account:read) で取得", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-lcontacts"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-lc-acc", "x@example.test", "p", groupID)
+		testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-lc-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+
+		setup.mockHostConnector.EXPECT().GetRpcClient(gomock.Any(), gomock.Any()).Return(setup.mockRpcClient, nil)
+		setup.mockRpcClient.EXPECT().ListContacts(gomock.Any(), gomock.Any()).Return(&headlessv1.ListContactsResponse{}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.ListContactsRequest{
+			HeadlessAccountId: "U-mp-lc-acc",
+			Limit:             10,
+		}, "U-mp-lcontacts", groupID, []string{entity.PermKey_AccountRead})
+
+		_, err := client.ListContacts(t.Context(), req)
+		require.NoError(t, err)
+	})
+
 	t.Run("失敗: 起動中のホストがない", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
@@ -120,6 +142,29 @@ func TestControllerService_GetContactMessages(t *testing.T) {
 		assert.False(t, res.Msg.GetHasMoreAfter())
 	})
 
+	t.Run("成功: 最小権限 caller (account:read) で取得", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-gmsgs"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-gm-acc", "x@example.test", "p", groupID)
+		testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-gm-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+
+		setup.mockHostConnector.EXPECT().GetRpcClient(gomock.Any(), gomock.Any()).Return(setup.mockRpcClient, nil)
+		setup.mockRpcClient.EXPECT().GetContactMessages(gomock.Any(), gomock.Any()).Return(&headlessv1.GetContactMessagesResponse{}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.GetContactMessagesRequest{
+			HeadlessAccountId: "U-mp-gm-acc",
+			ContactUserId:     "U-friend",
+			Limit:             10,
+		}, "U-mp-gmsgs", groupID, []string{entity.PermKey_AccountRead})
+
+		_, err := client.GetContactMessages(t.Context(), req)
+		require.NoError(t, err)
+	})
+
 	t.Run("失敗: 起動中のホストがない", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
@@ -175,6 +220,29 @@ func TestControllerService_SendContactMessage(t *testing.T) {
 		res, err := client.SendContactMessage(t.Context(), req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
+	})
+
+	t.Run("成功: 最小権限 caller (account:use) で送信", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-send"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-send-acc", "x@example.test", "p", groupID)
+		testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-send-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+
+		setup.mockHostConnector.EXPECT().GetRpcClient(gomock.Any(), gomock.Any()).Return(setup.mockRpcClient, nil)
+		setup.mockRpcClient.EXPECT().SendContactMessage(gomock.Any(), gomock.Any()).Return(&headlessv1.SendContactMessageResponse{}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.SendContactMessageRequest{
+			HeadlessAccountId: "U-mp-send-acc",
+			ContactUserId:     "U-friend",
+			Message:           "hi",
+		}, "U-mp-send", groupID, []string{entity.PermKey_AccountUse})
+
+		_, err := client.SendContactMessage(t.Context(), req)
+		require.NoError(t, err)
 	})
 
 	t.Run("失敗: 起動中のホストがない", func(t *testing.T) {

@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -22,6 +23,8 @@ func NewImportLegacyHostsCommand(q *db.Queries, skyfrostClient skyfrost.Client) 
 		Use:   "import-legacy-hosts",
 		Short: "Import hosts from current docker containers",
 		Run: func(cmd *cobra.Command, args []string) {
+			ctx := cmd.Context()
+
 			cmd.Println("Importing legacy hosts...")
 
 			cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -31,7 +34,7 @@ func NewImportLegacyHostsCommand(q *db.Queries, skyfrostClient skyfrost.Client) 
 				return
 			}
 
-			containers, err := cli.ContainerList(cmd.Context(), container.ListOptions{
+			containers, err := cli.ContainerList(ctx, container.ListOptions{
 				All:     true,
 				Filters: filters.NewArgs(filters.Arg("label", portLabelKey)),
 			})
@@ -50,13 +53,13 @@ func NewImportLegacyHostsCommand(q *db.Queries, skyfrostClient skyfrost.Client) 
 
 					id := c.ID
 
-					_, err := q.GetHost(cmd.Context(), id)
+					_, err := q.GetHost(ctx, id)
 					if err == nil {
 						// 既にインポート済みのホストはスキップ
 						continue
 					}
 
-					inspectResult, err := cli.ContainerInspect(cmd.Context(), id)
+					inspectResult, err := cli.ContainerInspect(ctx, id)
 					if err != nil {
 						cmd.PrintErrln("Error inspecting container:", err)
 
@@ -91,7 +94,7 @@ func NewImportLegacyHostsCommand(q *db.Queries, skyfrostClient skyfrost.Client) 
 						continue
 					}
 
-					userSession, err := skyfrostClient.UserLogin(cmd.Context(), credential, password)
+					userSession, err := skyfrostClient.UserLogin(ctx, credential, password)
 					if err != nil {
 						cmd.PrintErrln("Error logging in headless account:", err)
 
@@ -108,6 +111,8 @@ func NewImportLegacyHostsCommand(q *db.Queries, skyfrostClient skyfrost.Client) 
 						startedAt = pgtype.Timestamptz{Time: parsedTime, Valid: true}
 					}
 
+					systemUserID := domain.SystemUserID
+
 					createParams := db.CreateHostParams{
 						ID:                             id,
 						Name:                           name,
@@ -119,6 +124,8 @@ func NewImportLegacyHostsCommand(q *db.Queries, skyfrostClient skyfrost.Client) 
 						StartedAt:                      startedAt,
 						AutoUpdatePolicy:               int32(entity.HostAutoUpdatePolicy_NEVER),
 						Memo:                           pgtype.Text{String: "", Valid: true},
+						GroupID:                        entity.MigratedPrePermissionGroupID,
+						CreatedBy:                      pgtype.Text{String: systemUserID, Valid: true},
 					}
 					if startupConfig != "" {
 						createParams.LastStartupConfig = []byte(startupConfig)
@@ -126,7 +133,7 @@ func NewImportLegacyHostsCommand(q *db.Queries, skyfrostClient skyfrost.Client) 
 						createParams.LastStartupConfig = []byte("{}")
 					}
 
-					_, err = q.CreateHost(cmd.Context(), createParams)
+					_, err = q.CreateHost(ctx, createParams)
 					if err != nil {
 						cmd.PrintErrln("Error creating host:", err)
 					}

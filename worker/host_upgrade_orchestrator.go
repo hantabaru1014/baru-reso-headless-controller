@@ -9,7 +9,9 @@ import (
 	"github.com/go-errors/errors"
 
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
@@ -153,6 +155,10 @@ func (o *HostUpgradeOrchestrator) IsHostDraining(hostID string) bool {
 // without the UserLeftSession event reaching us (cold start, stream
 // reset).
 func (o *HostUpgradeOrchestrator) Run(ctx context.Context) error {
+	// orchestrator は system user として動作する. JWT を経由しないため
+	// usecase の Require* チェックを通すために claims を ctx に詰める.
+	ctx = auth.WithActAsUser(ctx, domain.SystemUserID)
+
 	o.lifecycleMu.Lock()
 	o.lifecycleCtx = ctx
 	o.lifecycleMu.Unlock()
@@ -374,6 +380,10 @@ func (o *HostUpgradeOrchestrator) seedSessionUserCache(ctx context.Context, host
 // reconcileHost stops empty sessions on a draining host and, once no
 // RUNNING sessions remain, restarts the host on its target tag.
 func (o *HostUpgradeOrchestrator) reconcileHost(ctx context.Context, hostID string) {
+	// orchestrator は system user として動作する. HandleHostEvent 経由など
+	// 呼び出し元 ctx に claims が無い経路にも備えてここでも被せる (idempotent).
+	ctx = auth.WithActAsUser(ctx, domain.SystemUserID)
+
 	// Per-host serialisation so the periodic tick and event-driven
 	// triggers cannot double-restart the same host, but reconciles for
 	// different hosts can still proceed in parallel.

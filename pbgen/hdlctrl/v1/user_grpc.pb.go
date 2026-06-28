@@ -24,6 +24,10 @@ const (
 	UserService_RegisterWithToken_FullMethodName         = "/hdlctrl.v1.UserService/RegisterWithToken"
 	UserService_RefreshToken_FullMethodName              = "/hdlctrl.v1.UserService/RefreshToken"
 	UserService_ChangePassword_FullMethodName            = "/hdlctrl.v1.UserService/ChangePassword"
+	UserService_ListUsers_FullMethodName                 = "/hdlctrl.v1.UserService/ListUsers"
+	UserService_GetUser_FullMethodName                   = "/hdlctrl.v1.UserService/GetUser"
+	UserService_CreateRegistrationToken_FullMethodName   = "/hdlctrl.v1.UserService/CreateRegistrationToken"
+	UserService_DeleteUser_FullMethodName                = "/hdlctrl.v1.UserService/DeleteUser"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -37,6 +41,17 @@ type UserServiceClient interface {
 	// 認証付きRPC
 	RefreshToken(ctx context.Context, in *RefreshTokenRequest, opts ...grpc.CallOption) (*TokenSetResponse, error)
 	ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*ChangePasswordResponse, error)
+	// 管理用RPC (system:user.* 権限が必要)
+	// システム上の全ユーザーを返す.
+	ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (*ListUsersResponse, error)
+	// 指定 user_id のユーザーを返す. 認証済みユーザーなら誰でも呼べる
+	// (グループメンバー名解決などに利用).
+	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*GetUserResponse, error)
+	// Resonite ID を指定して登録トークンを発行する.
+	// フロントエンドが招待リンクを生成するために、Resonite ユーザー情報も併せて返す.
+	CreateRegistrationToken(ctx context.Context, in *CreateRegistrationTokenRequest, opts ...grpc.CallOption) (*CreateRegistrationTokenResponse, error)
+	// 指定 user_id のユーザーを削除する. 自分自身は削除できない.
+	DeleteUser(ctx context.Context, in *DeleteUserRequest, opts ...grpc.CallOption) (*DeleteUserResponse, error)
 }
 
 type userServiceClient struct {
@@ -97,6 +112,46 @@ func (c *userServiceClient) ChangePassword(ctx context.Context, in *ChangePasswo
 	return out, nil
 }
 
+func (c *userServiceClient) ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (*ListUsersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListUsersResponse)
+	err := c.cc.Invoke(ctx, UserService_ListUsers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*GetUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserResponse)
+	err := c.cc.Invoke(ctx, UserService_GetUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CreateRegistrationToken(ctx context.Context, in *CreateRegistrationTokenRequest, opts ...grpc.CallOption) (*CreateRegistrationTokenResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateRegistrationTokenResponse)
+	err := c.cc.Invoke(ctx, UserService_CreateRegistrationToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) DeleteUser(ctx context.Context, in *DeleteUserRequest, opts ...grpc.CallOption) (*DeleteUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteUserResponse)
+	err := c.cc.Invoke(ctx, UserService_DeleteUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -108,6 +163,17 @@ type UserServiceServer interface {
 	// 認証付きRPC
 	RefreshToken(context.Context, *RefreshTokenRequest) (*TokenSetResponse, error)
 	ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordResponse, error)
+	// 管理用RPC (system:user.* 権限が必要)
+	// システム上の全ユーザーを返す.
+	ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error)
+	// 指定 user_id のユーザーを返す. 認証済みユーザーなら誰でも呼べる
+	// (グループメンバー名解決などに利用).
+	GetUser(context.Context, *GetUserRequest) (*GetUserResponse, error)
+	// Resonite ID を指定して登録トークンを発行する.
+	// フロントエンドが招待リンクを生成するために、Resonite ユーザー情報も併せて返す.
+	CreateRegistrationToken(context.Context, *CreateRegistrationTokenRequest) (*CreateRegistrationTokenResponse, error)
+	// 指定 user_id のユーザーを削除する. 自分自身は削除できない.
+	DeleteUser(context.Context, *DeleteUserRequest) (*DeleteUserResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -132,6 +198,18 @@ func (UnimplementedUserServiceServer) RefreshToken(context.Context, *RefreshToke
 }
 func (UnimplementedUserServiceServer) ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ChangePassword not implemented")
+}
+func (UnimplementedUserServiceServer) ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListUsers not implemented")
+}
+func (UnimplementedUserServiceServer) GetUser(context.Context, *GetUserRequest) (*GetUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUser not implemented")
+}
+func (UnimplementedUserServiceServer) CreateRegistrationToken(context.Context, *CreateRegistrationTokenRequest) (*CreateRegistrationTokenResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateRegistrationToken not implemented")
+}
+func (UnimplementedUserServiceServer) DeleteUser(context.Context, *DeleteUserRequest) (*DeleteUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteUser not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -244,6 +322,78 @@ func _UserService_ChangePassword_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ListUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListUsersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListUsers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListUsers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListUsers(ctx, req.(*ListUsersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetUser(ctx, req.(*GetUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CreateRegistrationToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateRegistrationTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CreateRegistrationToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CreateRegistrationToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CreateRegistrationToken(ctx, req.(*CreateRegistrationTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_DeleteUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).DeleteUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_DeleteUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).DeleteUser(ctx, req.(*DeleteUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -270,6 +420,22 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ChangePassword",
 			Handler:    _UserService_ChangePassword_Handler,
+		},
+		{
+			MethodName: "ListUsers",
+			Handler:    _UserService_ListUsers_Handler,
+		},
+		{
+			MethodName: "GetUser",
+			Handler:    _UserService_GetUser_Handler,
+		},
+		{
+			MethodName: "CreateRegistrationToken",
+			Handler:    _UserService_CreateRegistrationToken_Handler,
+		},
+		{
+			MethodName: "DeleteUser",
+			Handler:    _UserService_DeleteUser_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package hdlctrl.v1;
 
+import "google/protobuf/timestamp.proto";
+
 service UserService {
   // 認証なしRPC
   rpc GetTokenByPassword(GetTokenByPasswordRequest) returns (TokenSetResponse) {}
@@ -11,6 +13,18 @@ service UserService {
   // 認証付きRPC
   rpc RefreshToken(RefreshTokenRequest) returns (TokenSetResponse) {}
   rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {}
+
+  // 管理用RPC (system:user.* 権限が必要)
+  // システム上の全ユーザーを返す.
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {}
+  // 指定 user_id のユーザーを返す. 認証済みユーザーなら誰でも呼べる
+  // (グループメンバー名解決などに利用).
+  rpc GetUser(GetUserRequest) returns (GetUserResponse) {}
+  // Resonite ID を指定して登録トークンを発行する.
+  // フロントエンドが招待リンクを生成するために、Resonite ユーザー情報も併せて返す.
+  rpc CreateRegistrationToken(CreateRegistrationTokenRequest) returns (CreateRegistrationTokenResponse) {}
+  // 指定 user_id のユーザーを削除する. 自分自身は削除できない.
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {}
 }
 
 message TokenSetResponse {
@@ -41,6 +55,8 @@ message RegisterWithTokenRequest {
   string token = 1;
   string user_id = 2;
   string password = 3;
+  reserved 4; // 旧 personal_role_id. token 発行時に保存する方式に変更.
+  reserved "personal_role_id";
 }
 
 message ChangePasswordRequest {
@@ -49,3 +65,46 @@ message ChangePasswordRequest {
 }
 
 message ChangePasswordResponse {}
+
+// システム上のユーザーアカウント.
+message User {
+  string id = 1;
+  string resonite_id = 2;
+  string icon_url = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+message ListUsersRequest {}
+
+message ListUsersResponse {
+  repeated User users = 1;
+}
+
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message GetUserResponse {
+  User user = 1;
+}
+
+message CreateRegistrationTokenRequest {
+  string resonite_id = 1;
+  // 個人グループに付与するロールID. 未指定なら seed-admin が付与される.
+  // トークンと一緒に DB に保存され、RegisterWithToken 時に lookup される.
+  optional string personal_role_id = 2;
+}
+
+message CreateRegistrationTokenResponse {
+  string token = 1;
+  google.protobuf.Timestamp expires_at = 2;
+  string resonite_user_name = 3;
+  string icon_url = 4;
+}
+
+message DeleteUserRequest {
+  string user_id = 1;
+}
+
+message DeleteUserResponse {}

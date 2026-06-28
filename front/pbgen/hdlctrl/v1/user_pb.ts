@@ -4,13 +4,15 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file hdlctrl/v1/user.proto.
  */
 export const file_hdlctrl_v1_user: GenFile = /*@__PURE__*/
-  fileDesc("ChVoZGxjdHJsL3YxL3VzZXIucHJvdG8SCmhkbGN0cmwudjEiOAoQVG9rZW5TZXRSZXNwb25zZRINCgV0b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJIjkKGUdldFRva2VuQnlQYXNzd29yZFJlcXVlc3QSCgoCaWQYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiFQoTUmVmcmVzaFRva2VuUmVxdWVzdCIxCiBWYWxpZGF0ZVJlZ2lzdHJhdGlvblRva2VuUmVxdWVzdBINCgV0b2tlbhgBIAEoCSJ1CiFWYWxpZGF0ZVJlZ2lzdHJhdGlvblRva2VuUmVzcG9uc2USDQoFdmFsaWQYASABKAgSEwoLcmVzb25pdGVfaWQYAiABKAkSGgoScmVzb25pdGVfdXNlcl9uYW1lGAMgASgJEhAKCGljb25fdXJsGAQgASgJIkwKGFJlZ2lzdGVyV2l0aFRva2VuUmVxdWVzdBINCgV0b2tlbhgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEhAKCHBhc3N3b3JkGAMgASgJIkcKFUNoYW5nZVBhc3N3b3JkUmVxdWVzdBIYChBjdXJyZW50X3Bhc3N3b3JkGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSIYChZDaGFuZ2VQYXNzd29yZFJlc3BvbnNlMu0DCgtVc2VyU2VydmljZRJbChJHZXRUb2tlbkJ5UGFzc3dvcmQSJS5oZGxjdHJsLnYxLkdldFRva2VuQnlQYXNzd29yZFJlcXVlc3QaHC5oZGxjdHJsLnYxLlRva2VuU2V0UmVzcG9uc2UiABJ6ChlWYWxpZGF0ZVJlZ2lzdHJhdGlvblRva2VuEiwuaGRsY3RybC52MS5WYWxpZGF0ZVJlZ2lzdHJhdGlvblRva2VuUmVxdWVzdBotLmhkbGN0cmwudjEuVmFsaWRhdGVSZWdpc3RyYXRpb25Ub2tlblJlc3BvbnNlIgASWQoRUmVnaXN0ZXJXaXRoVG9rZW4SJC5oZGxjdHJsLnYxLlJlZ2lzdGVyV2l0aFRva2VuUmVxdWVzdBocLmhkbGN0cmwudjEuVG9rZW5TZXRSZXNwb25zZSIAEk8KDFJlZnJlc2hUb2tlbhIfLmhkbGN0cmwudjEuUmVmcmVzaFRva2VuUmVxdWVzdBocLmhkbGN0cmwudjEuVG9rZW5TZXRSZXNwb25zZSIAElkKDkNoYW5nZVBhc3N3b3JkEiEuaGRsY3RybC52MS5DaGFuZ2VQYXNzd29yZFJlcXVlc3QaIi5oZGxjdHJsLnYxLkNoYW5nZVBhc3N3b3JkUmVzcG9uc2UiAEK3AQoOY29tLmhkbGN0cmwudjFCCVVzZXJQcm90b1ABWlFnaXRodWIuY29tL2hhbnRhYmFydTEwMTQvYmFydS1yZXNvLWhlYWRsZXNzLWNvbnRyb2xsZXIvcGJnZW4vaGRsY3RybC92MTtoZGxjdHJsdjGiAgNIWFiqAgpIZGxjdHJsLlYxygIKSGRsY3RybFxWMeICFkhkbGN0cmxcVjFcR1BCTWV0YWRhdGHqAgtIZGxjdHJsOjpWMWIGcHJvdG8z");
+  fileDesc("ChVoZGxjdHJsL3YxL3VzZXIucHJvdG8SCmhkbGN0cmwudjEiOAoQVG9rZW5TZXRSZXNwb25zZRINCgV0b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJIjkKGUdldFRva2VuQnlQYXNzd29yZFJlcXVlc3QSCgoCaWQYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiFQoTUmVmcmVzaFRva2VuUmVxdWVzdCIxCiBWYWxpZGF0ZVJlZ2lzdHJhdGlvblRva2VuUmVxdWVzdBINCgV0b2tlbhgBIAEoCSJ1CiFWYWxpZGF0ZVJlZ2lzdHJhdGlvblRva2VuUmVzcG9uc2USDQoFdmFsaWQYASABKAgSEwoLcmVzb25pdGVfaWQYAiABKAkSGgoScmVzb25pdGVfdXNlcl9uYW1lGAMgASgJEhAKCGljb25fdXJsGAQgASgJImQKGFJlZ2lzdGVyV2l0aFRva2VuUmVxdWVzdBINCgV0b2tlbhgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEhAKCHBhc3N3b3JkGAMgASgJSgQIBBAFUhBwZXJzb25hbF9yb2xlX2lkIkcKFUNoYW5nZVBhc3N3b3JkUmVxdWVzdBIYChBjdXJyZW50X3Bhc3N3b3JkGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSIYChZDaGFuZ2VQYXNzd29yZFJlc3BvbnNlIpkBCgRVc2VyEgoKAmlkGAEgASgJEhMKC3Jlc29uaXRlX2lkGAIgASgJEhAKCGljb25fdXJsGAMgASgJEi4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIhIKEExpc3RVc2Vyc1JlcXVlc3QiNAoRTGlzdFVzZXJzUmVzcG9uc2USHwoFdXNlcnMYASADKAsyEC5oZGxjdHJsLnYxLlVzZXIiIQoOR2V0VXNlclJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSIxCg9HZXRVc2VyUmVzcG9uc2USHgoEdXNlchgBIAEoCzIQLmhkbGN0cmwudjEuVXNlciJpCh5DcmVhdGVSZWdpc3RyYXRpb25Ub2tlblJlcXVlc3QSEwoLcmVzb25pdGVfaWQYASABKAkSHQoQcGVyc29uYWxfcm9sZV9pZBgCIAEoCUgAiAEBQhMKEV9wZXJzb25hbF9yb2xlX2lkIo4BCh9DcmVhdGVSZWdpc3RyYXRpb25Ub2tlblJlc3BvbnNlEg0KBXRva2VuGAEgASgJEi4KCmV4cGlyZXNfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEnJlc29uaXRlX3VzZXJfbmFtZRgDIAEoCRIQCghpY29uX3VybBgEIAEoCSIkChFEZWxldGVVc2VyUmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJIhQKEkRlbGV0ZVVzZXJSZXNwb25zZTLEBgoLVXNlclNlcnZpY2USWwoSR2V0VG9rZW5CeVBhc3N3b3JkEiUuaGRsY3RybC52MS5HZXRUb2tlbkJ5UGFzc3dvcmRSZXF1ZXN0GhwuaGRsY3RybC52MS5Ub2tlblNldFJlc3BvbnNlIgASegoZVmFsaWRhdGVSZWdpc3RyYXRpb25Ub2tlbhIsLmhkbGN0cmwudjEuVmFsaWRhdGVSZWdpc3RyYXRpb25Ub2tlblJlcXVlc3QaLS5oZGxjdHJsLnYxLlZhbGlkYXRlUmVnaXN0cmF0aW9uVG9rZW5SZXNwb25zZSIAElkKEVJlZ2lzdGVyV2l0aFRva2VuEiQuaGRsY3RybC52MS5SZWdpc3RlcldpdGhUb2tlblJlcXVlc3QaHC5oZGxjdHJsLnYxLlRva2VuU2V0UmVzcG9uc2UiABJPCgxSZWZyZXNoVG9rZW4SHy5oZGxjdHJsLnYxLlJlZnJlc2hUb2tlblJlcXVlc3QaHC5oZGxjdHJsLnYxLlRva2VuU2V0UmVzcG9uc2UiABJZCg5DaGFuZ2VQYXNzd29yZBIhLmhkbGN0cmwudjEuQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0GiIuaGRsY3RybC52MS5DaGFuZ2VQYXNzd29yZFJlc3BvbnNlIgASSgoJTGlzdFVzZXJzEhwuaGRsY3RybC52MS5MaXN0VXNlcnNSZXF1ZXN0Gh0uaGRsY3RybC52MS5MaXN0VXNlcnNSZXNwb25zZSIAEkQKB0dldFVzZXISGi5oZGxjdHJsLnYxLkdldFVzZXJSZXF1ZXN0GhsuaGRsY3RybC52MS5HZXRVc2VyUmVzcG9uc2UiABJ0ChdDcmVhdGVSZWdpc3RyYXRpb25Ub2tlbhIqLmhkbGN0cmwudjEuQ3JlYXRlUmVnaXN0cmF0aW9uVG9rZW5SZXF1ZXN0GisuaGRsY3RybC52MS5DcmVhdGVSZWdpc3RyYXRpb25Ub2tlblJlc3BvbnNlIgASTQoKRGVsZXRlVXNlchIdLmhkbGN0cmwudjEuRGVsZXRlVXNlclJlcXVlc3QaHi5oZGxjdHJsLnYxLkRlbGV0ZVVzZXJSZXNwb25zZSIAQrcBCg5jb20uaGRsY3RybC52MUIJVXNlclByb3RvUAFaUWdpdGh1Yi5jb20vaGFudGFiYXJ1MTAxNC9iYXJ1LXJlc28taGVhZGxlc3MtY29udHJvbGxlci9wYmdlbi9oZGxjdHJsL3YxO2hkbGN0cmx2MaICA0hYWKoCCkhkbGN0cmwuVjHKAgpIZGxjdHJsXFYx4gIWSGRsY3RybFxWMVxHUEJNZXRhZGF0YeoCC0hkbGN0cmw6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message hdlctrl.v1.TokenSetResponse
@@ -183,6 +185,196 @@ export const ChangePasswordResponseSchema: GenMessage<ChangePasswordResponse> = 
   messageDesc(file_hdlctrl_v1_user, 7);
 
 /**
+ * システム上のユーザーアカウント.
+ *
+ * @generated from message hdlctrl.v1.User
+ */
+export type User = Message<"hdlctrl.v1.User"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string resonite_id = 2;
+   */
+  resoniteId: string;
+
+  /**
+   * @generated from field: string icon_url = 3;
+   */
+  iconUrl: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 4;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 5;
+   */
+  updatedAt?: Timestamp;
+};
+
+/**
+ * Describes the message hdlctrl.v1.User.
+ * Use `create(UserSchema)` to create a new message.
+ */
+export const UserSchema: GenMessage<User> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 8);
+
+/**
+ * @generated from message hdlctrl.v1.ListUsersRequest
+ */
+export type ListUsersRequest = Message<"hdlctrl.v1.ListUsersRequest"> & {
+};
+
+/**
+ * Describes the message hdlctrl.v1.ListUsersRequest.
+ * Use `create(ListUsersRequestSchema)` to create a new message.
+ */
+export const ListUsersRequestSchema: GenMessage<ListUsersRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 9);
+
+/**
+ * @generated from message hdlctrl.v1.ListUsersResponse
+ */
+export type ListUsersResponse = Message<"hdlctrl.v1.ListUsersResponse"> & {
+  /**
+   * @generated from field: repeated hdlctrl.v1.User users = 1;
+   */
+  users: User[];
+};
+
+/**
+ * Describes the message hdlctrl.v1.ListUsersResponse.
+ * Use `create(ListUsersResponseSchema)` to create a new message.
+ */
+export const ListUsersResponseSchema: GenMessage<ListUsersResponse> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 10);
+
+/**
+ * @generated from message hdlctrl.v1.GetUserRequest
+ */
+export type GetUserRequest = Message<"hdlctrl.v1.GetUserRequest"> & {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.GetUserRequest.
+ * Use `create(GetUserRequestSchema)` to create a new message.
+ */
+export const GetUserRequestSchema: GenMessage<GetUserRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 11);
+
+/**
+ * @generated from message hdlctrl.v1.GetUserResponse
+ */
+export type GetUserResponse = Message<"hdlctrl.v1.GetUserResponse"> & {
+  /**
+   * @generated from field: hdlctrl.v1.User user = 1;
+   */
+  user?: User;
+};
+
+/**
+ * Describes the message hdlctrl.v1.GetUserResponse.
+ * Use `create(GetUserResponseSchema)` to create a new message.
+ */
+export const GetUserResponseSchema: GenMessage<GetUserResponse> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 12);
+
+/**
+ * @generated from message hdlctrl.v1.CreateRegistrationTokenRequest
+ */
+export type CreateRegistrationTokenRequest = Message<"hdlctrl.v1.CreateRegistrationTokenRequest"> & {
+  /**
+   * @generated from field: string resonite_id = 1;
+   */
+  resoniteId: string;
+
+  /**
+   * 個人グループに付与するロールID. 未指定なら seed-admin が付与される.
+   * トークンと一緒に DB に保存され、RegisterWithToken 時に lookup される.
+   *
+   * @generated from field: optional string personal_role_id = 2;
+   */
+  personalRoleId?: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.CreateRegistrationTokenRequest.
+ * Use `create(CreateRegistrationTokenRequestSchema)` to create a new message.
+ */
+export const CreateRegistrationTokenRequestSchema: GenMessage<CreateRegistrationTokenRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 13);
+
+/**
+ * @generated from message hdlctrl.v1.CreateRegistrationTokenResponse
+ */
+export type CreateRegistrationTokenResponse = Message<"hdlctrl.v1.CreateRegistrationTokenResponse"> & {
+  /**
+   * @generated from field: string token = 1;
+   */
+  token: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp expires_at = 2;
+   */
+  expiresAt?: Timestamp;
+
+  /**
+   * @generated from field: string resonite_user_name = 3;
+   */
+  resoniteUserName: string;
+
+  /**
+   * @generated from field: string icon_url = 4;
+   */
+  iconUrl: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.CreateRegistrationTokenResponse.
+ * Use `create(CreateRegistrationTokenResponseSchema)` to create a new message.
+ */
+export const CreateRegistrationTokenResponseSchema: GenMessage<CreateRegistrationTokenResponse> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 14);
+
+/**
+ * @generated from message hdlctrl.v1.DeleteUserRequest
+ */
+export type DeleteUserRequest = Message<"hdlctrl.v1.DeleteUserRequest"> & {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.DeleteUserRequest.
+ * Use `create(DeleteUserRequestSchema)` to create a new message.
+ */
+export const DeleteUserRequestSchema: GenMessage<DeleteUserRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 15);
+
+/**
+ * @generated from message hdlctrl.v1.DeleteUserResponse
+ */
+export type DeleteUserResponse = Message<"hdlctrl.v1.DeleteUserResponse"> & {
+};
+
+/**
+ * Describes the message hdlctrl.v1.DeleteUserResponse.
+ * Use `create(DeleteUserResponseSchema)` to create a new message.
+ */
+export const DeleteUserResponseSchema: GenMessage<DeleteUserResponse> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 16);
+
+/**
  * @generated from service hdlctrl.v1.UserService
  */
 export const UserService: GenService<{
@@ -229,6 +421,49 @@ export const UserService: GenService<{
     methodKind: "unary";
     input: typeof ChangePasswordRequestSchema;
     output: typeof ChangePasswordResponseSchema;
+  },
+  /**
+   * 管理用RPC (system:user.* 権限が必要)
+   * システム上の全ユーザーを返す.
+   *
+   * @generated from rpc hdlctrl.v1.UserService.ListUsers
+   */
+  listUsers: {
+    methodKind: "unary";
+    input: typeof ListUsersRequestSchema;
+    output: typeof ListUsersResponseSchema;
+  },
+  /**
+   * 指定 user_id のユーザーを返す. 認証済みユーザーなら誰でも呼べる
+   * (グループメンバー名解決などに利用).
+   *
+   * @generated from rpc hdlctrl.v1.UserService.GetUser
+   */
+  getUser: {
+    methodKind: "unary";
+    input: typeof GetUserRequestSchema;
+    output: typeof GetUserResponseSchema;
+  },
+  /**
+   * Resonite ID を指定して登録トークンを発行する.
+   * フロントエンドが招待リンクを生成するために、Resonite ユーザー情報も併せて返す.
+   *
+   * @generated from rpc hdlctrl.v1.UserService.CreateRegistrationToken
+   */
+  createRegistrationToken: {
+    methodKind: "unary";
+    input: typeof CreateRegistrationTokenRequestSchema;
+    output: typeof CreateRegistrationTokenResponseSchema;
+  },
+  /**
+   * 指定 user_id のユーザーを削除する. 自分自身は削除できない.
+   *
+   * @generated from rpc hdlctrl.v1.UserService.DeleteUser
+   */
+  deleteUser: {
+    methodKind: "unary";
+    input: typeof DeleteUserRequestSchema;
+    output: typeof DeleteUserResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_hdlctrl_v1_user, 0);

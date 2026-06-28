@@ -28,24 +28,30 @@ import (
 
 func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	databaseConfig := ProvideDatabaseConfig(cfg)
-	queries := db.NewQueries(databaseConfig)
+	pool := db.NewConnPool(databaseConfig)
+	queries := db.NewQueriesFromPool(pool)
 	defaultClient := skyfrost.NewDefaultClient()
-	userUsecase := usecase.NewUserUsecase(queries, defaultClient)
-	userService := rpc.NewUserService(userUsecase)
+	groupRepository := adapter.NewGroupRepository(queries)
+	groupMemberRepository := adapter.NewGroupMemberRepository(queries)
+	roleRepository := adapter.NewRoleRepository(queries)
+	permissionUsecase := usecase.NewPermissionUsecase(groupRepository, groupMemberRepository, roleRepository)
+	groupUsecase := usecase.NewGroupUsecase(groupRepository, groupMemberRepository, roleRepository, permissionUsecase)
+	userUsecase := usecase.NewUserUsecase(queries, pool, defaultClient, groupUsecase, permissionUsecase)
+	userService := rpc.NewUserService(userUsecase, permissionUsecase)
 	dockerConfig := ProvideDockerConfig(cfg)
 	grpcConfig := ProvideGRPCConfig(cfg)
 	dockerHostConnector := hostconnector.NewDockerHostConnector(dockerConfig, grpcConfig)
 	headlessHostRepository := adapter.NewHeadlessHostRepository(queries, dockerHostConnector, grpcConfig)
 	sessionRepository := adapter.NewSessionRepository(queries)
-	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
+	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient, permissionUsecase)
 	headlessAccountFetcher := ProvideHeadlessAccountFetcher(headlessAccountUsecase)
 	workerConfig := ProvideWorkerConfig(cfg)
 	hostUpgradeOrchestrator := worker.NewHostUpgradeOrchestrator(headlessHostRepository, sessionRepository, headlessAccountFetcher, workerConfig)
 	memoryCache := sessionstate.NewMemoryCache()
 	serverConfig := ProvideServerConfig(cfg)
 	resoniteLinkConfig := ProvideResoniteLinkConfig(cfg)
-	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, hostUpgradeOrchestrator, memoryCache, serverConfig, resoniteLinkConfig)
-	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
+	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, hostUpgradeOrchestrator, memoryCache, serverConfig, resoniteLinkConfig, permissionUsecase)
+	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase, permissionUsecase)
 	rustFSConfig := ProvideRustFSConfig(cfg)
 	minioClient, err := blobstore.NewMinioClient(rustFSConfig)
 	if err != nil {
@@ -53,12 +59,15 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	}
 	blobUsecase := usecase.NewBlobUsecase(sessionRepository, headlessHostRepository, minioClient)
 	scheduledSessionOperationRepository := adapter.NewScheduledSessionOperationRepository(queries)
-	scheduledSessionOperationUsecase := usecase.NewScheduledSessionOperationUsecase(scheduledSessionOperationRepository)
+	scheduledSessionOperationUsecase := usecase.NewScheduledSessionOperationUsecase(scheduledSessionOperationRepository, headlessHostRepository, sessionRepository, permissionUsecase)
 	asyncJobRepository := adapter.NewAsyncJobRepository(queries)
 	async_jobUsecase := async_job.NewUsecase(asyncJobRepository)
 	memoryBus := notification.NewBus()
-	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, blobUsecase, scheduledSessionOperationUsecase, async_jobUsecase, defaultClient, memoryBus)
+	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, blobUsecase, scheduledSessionOperationUsecase, async_jobUsecase, permissionUsecase, groupRepository, roleRepository, defaultClient, memoryBus)
 	notificationService := rpc.NewNotificationService(memoryBus)
+	groupService := rpc.NewGroupService(groupUsecase, permissionUsecase, groupRepository, roleRepository, headlessHostRepository, sessionRepository, headlessAccountUsecase)
+	roleUsecase := usecase.NewRoleUsecase(roleRepository, groupRepository, permissionUsecase)
+	roleService := rpc.NewRoleService(roleUsecase, permissionUsecase, groupRepository, roleRepository, headlessHostRepository, sessionRepository, headlessAccountUsecase)
 	imageChecker := worker.NewImageChecker(dockerHostConnector, workerConfig)
 	dockerEventWatcher := worker.NewDockerEventWatcher(dockerHostConnector, queries, memoryBus, workerConfig)
 	sqlHostEventStore := worker.NewSQLHostEventStore(queries)
@@ -68,20 +77,27 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	loggingHostEventHandler := worker.NewLoggingHostEventHandler()
 	v := ProvideHostEventHandlers(sessionStateSyncHandler, sessionLifecycleHandler, hostUpgradeOrchestrator, notificationDispatcher, loggingHostEventHandler)
 	hostEventWatcher := worker.NewHostEventWatcher(headlessHostRepository, sqlHostEventStore, workerConfig, v)
-	scheduledOperationExecutor := ProvideScheduledOperationExecutor(scheduledSessionOperationRepository, sessionUsecase, sessionRepository, memoryCache)
+	userExistenceChecker := adapter.NewUserExistenceChecker(queries)
+	scheduledOperationExecutor := ProvideScheduledOperationExecutor(scheduledSessionOperationRepository, sessionUsecase, sessionRepository, memoryCache, userExistenceChecker)
 	dispatcher := ProvideAsyncJobDispatcher(headlessHostUsecase, sessionUsecase, headlessAccountUsecase)
-	asyncJobExecutor := ProvideAsyncJobExecutor(asyncJobRepository, dispatcher, memoryBus)
+	asyncJobExecutor := ProvideAsyncJobExecutor(asyncJobRepository, dispatcher, memoryBus, userExistenceChecker)
 	manager := ProvideWorkerManager(imageChecker, dockerEventWatcher, hostEventWatcher, hostUpgradeOrchestrator, scheduledOperationExecutor, asyncJobExecutor, sessionUsecase)
 	bridge := resonitelink.NewBridge(headlessHostRepository, sessionRepository, resoniteLinkConfig)
-	server := NewServer(userService, controllerService, notificationService, manager, minioClient, bridge)
+	server := NewServer(userService, controllerService, notificationService, groupService, roleService, manager, minioClient, bridge)
 	return server, nil
 }
 
 func InitializeCli(cfg *config.EnvConfig) *Cli {
 	databaseConfig := ProvideDatabaseConfig(cfg)
-	queries := db.NewQueries(databaseConfig)
+	pool := db.NewConnPool(databaseConfig)
+	queries := db.NewQueriesFromPool(pool)
 	defaultClient := skyfrost.NewDefaultClient()
-	userUsecase := usecase.NewUserUsecase(queries, defaultClient)
+	groupRepository := adapter.NewGroupRepository(queries)
+	groupMemberRepository := adapter.NewGroupMemberRepository(queries)
+	roleRepository := adapter.NewRoleRepository(queries)
+	permissionUsecase := usecase.NewPermissionUsecase(groupRepository, groupMemberRepository, roleRepository)
+	groupUsecase := usecase.NewGroupUsecase(groupRepository, groupMemberRepository, roleRepository, permissionUsecase)
+	userUsecase := usecase.NewUserUsecase(queries, pool, defaultClient, groupUsecase, permissionUsecase)
 	dockerConfig := ProvideDockerConfig(cfg)
 	grpcConfig := ProvideGRPCConfig(cfg)
 	dockerHostConnector := hostconnector.NewDockerHostConnector(dockerConfig, grpcConfig)
@@ -91,12 +107,12 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 	memoryCache := sessionstate.NewMemoryCache()
 	serverConfig := ProvideServerConfig(cfg)
 	resoniteLinkConfig := ProvideResoniteLinkConfig(cfg)
-	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, noopHostDrainer, memoryCache, serverConfig, resoniteLinkConfig)
-	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient)
-	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase)
+	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, noopHostDrainer, memoryCache, serverConfig, resoniteLinkConfig, permissionUsecase)
+	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient, permissionUsecase)
+	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase, permissionUsecase)
 	scheduledSessionOperationRepository := adapter.NewScheduledSessionOperationRepository(queries)
-	scheduledSessionOperationUsecase := usecase.NewScheduledSessionOperationUsecase(scheduledSessionOperationRepository)
-	cli := NewCli(queries, userUsecase, headlessHostUsecase, scheduledSessionOperationUsecase, defaultClient)
+	scheduledSessionOperationUsecase := usecase.NewScheduledSessionOperationUsecase(scheduledSessionOperationRepository, headlessHostRepository, sessionRepository, permissionUsecase)
+	cli := NewCli(queries, userUsecase, headlessHostUsecase, scheduledSessionOperationUsecase, groupUsecase, defaultClient)
 	return cli
 }
 
@@ -169,8 +185,9 @@ func ProvideScheduledOperationExecutor(
 	suc *usecase.SessionUsecase,
 	srepo port.SessionRepository,
 	stateCache port.SessionStateCache,
+	userChecker worker.UserExistenceChecker,
 ) *worker.ScheduledOperationExecutor {
-	return worker.NewScheduledOperationExecutor(repo, suc, srepo, stateCache, worker.ScheduledOperationExecutorOptions{})
+	return worker.NewScheduledOperationExecutor(repo, suc, srepo, stateCache, userChecker, worker.ScheduledOperationExecutorOptions{})
 }
 
 // ProvideAsyncJobDispatcher はホスト/セッションの非同期 job を実行する dispatcher を
@@ -189,8 +206,9 @@ func ProvideAsyncJobExecutor(
 	repo port.AsyncJobRepository,
 	dispatcher *async_job.Dispatcher,
 	bus notification.Bus,
+	userChecker worker.UserExistenceChecker,
 ) *worker.AsyncJobExecutor {
-	return worker.NewAsyncJobExecutor(repo, dispatcher, bus, worker.AsyncJobExecutorOptions{})
+	return worker.NewAsyncJobExecutor(repo, dispatcher, bus, userChecker, worker.AsyncJobExecutorOptions{})
 }
 
 // ProvideHostEventHandlers gathers consumers for the per-host event

@@ -17,7 +17,7 @@ INSERT INTO hosts (
     name,
     status,
     account_id,
-    owner_id,
+    created_by,
     last_startup_config,
     last_startup_config_schema_version,
     connector_type,
@@ -25,10 +25,11 @@ INSERT INTO hosts (
     started_at,
     auto_update_policy,
     memo,
-    instance_count
+    instance_count,
+    group_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
-) RETURNING id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+) RETURNING id, name, status, account_id, created_by, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count, group_id
 `
 
 type CreateHostParams struct {
@@ -36,7 +37,7 @@ type CreateHostParams struct {
 	Name                           string
 	Status                         int32
 	AccountID                      string
-	OwnerID                        pgtype.Text
+	CreatedBy                      pgtype.Text
 	LastStartupConfig              []byte
 	LastStartupConfigSchemaVersion int32
 	ConnectorType                  string
@@ -45,6 +46,7 @@ type CreateHostParams struct {
 	AutoUpdatePolicy               int32
 	Memo                           pgtype.Text
 	InstanceCount                  int32
+	GroupID                        string
 }
 
 func (q *Queries) CreateHost(ctx context.Context, arg CreateHostParams) (Host, error) {
@@ -53,7 +55,7 @@ func (q *Queries) CreateHost(ctx context.Context, arg CreateHostParams) (Host, e
 		arg.Name,
 		arg.Status,
 		arg.AccountID,
-		arg.OwnerID,
+		arg.CreatedBy,
 		arg.LastStartupConfig,
 		arg.LastStartupConfigSchemaVersion,
 		arg.ConnectorType,
@@ -62,6 +64,7 @@ func (q *Queries) CreateHost(ctx context.Context, arg CreateHostParams) (Host, e
 		arg.AutoUpdatePolicy,
 		arg.Memo,
 		arg.InstanceCount,
+		arg.GroupID,
 	)
 	var i Host
 	err := row.Scan(
@@ -69,7 +72,7 @@ func (q *Queries) CreateHost(ctx context.Context, arg CreateHostParams) (Host, e
 		&i.Name,
 		&i.Status,
 		&i.AccountID,
-		&i.OwnerID,
+		&i.CreatedBy,
 		&i.LastStartupConfig,
 		&i.LastStartupConfigSchemaVersion,
 		&i.ConnectorType,
@@ -80,6 +83,7 @@ func (q *Queries) CreateHost(ctx context.Context, arg CreateHostParams) (Host, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.InstanceCount,
+		&i.GroupID,
 	)
 	return i, err
 }
@@ -94,7 +98,7 @@ func (q *Queries) DeleteHost(ctx context.Context, id string) error {
 }
 
 const getHost = `-- name: GetHost :one
-SELECT id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count FROM hosts WHERE id = $1 LIMIT 1
+SELECT id, name, status, account_id, created_by, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count, group_id FROM hosts WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetHost(ctx context.Context, id string) (Host, error) {
@@ -105,7 +109,7 @@ func (q *Queries) GetHost(ctx context.Context, id string) (Host, error) {
 		&i.Name,
 		&i.Status,
 		&i.AccountID,
-		&i.OwnerID,
+		&i.CreatedBy,
 		&i.LastStartupConfig,
 		&i.LastStartupConfigSchemaVersion,
 		&i.ConnectorType,
@@ -116,12 +120,13 @@ func (q *Queries) GetHost(ctx context.Context, id string) (Host, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.InstanceCount,
+		&i.GroupID,
 	)
 	return i, err
 }
 
 const getHostByContainerID = `-- name: GetHostByContainerID :one
-SELECT id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count FROM hosts WHERE connect_string LIKE $1 || ':%' LIMIT 1
+SELECT id, name, status, account_id, created_by, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count, group_id FROM hosts WHERE connect_string LIKE $1 || ':%' LIMIT 1
 `
 
 func (q *Queries) GetHostByContainerID(ctx context.Context, dollar_1 pgtype.Text) (Host, error) {
@@ -132,7 +137,7 @@ func (q *Queries) GetHostByContainerID(ctx context.Context, dollar_1 pgtype.Text
 		&i.Name,
 		&i.Status,
 		&i.AccountID,
-		&i.OwnerID,
+		&i.CreatedBy,
 		&i.LastStartupConfig,
 		&i.LastStartupConfigSchemaVersion,
 		&i.ConnectorType,
@@ -143,6 +148,7 @@ func (q *Queries) GetHostByContainerID(ctx context.Context, dollar_1 pgtype.Text
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.InstanceCount,
+		&i.GroupID,
 	)
 	return i, err
 }
@@ -159,7 +165,7 @@ func (q *Queries) IncrementHostInstanceCount(ctx context.Context, id string) (in
 }
 
 const listHosts = `-- name: ListHosts :many
-SELECT id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count FROM hosts ORDER BY started_at DESC
+SELECT id, name, status, account_id, created_by, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count, group_id FROM hosts ORDER BY started_at DESC
 `
 
 func (q *Queries) ListHosts(ctx context.Context) ([]Host, error) {
@@ -176,7 +182,7 @@ func (q *Queries) ListHosts(ctx context.Context) ([]Host, error) {
 			&i.Name,
 			&i.Status,
 			&i.AccountID,
-			&i.OwnerID,
+			&i.CreatedBy,
 			&i.LastStartupConfig,
 			&i.LastStartupConfigSchemaVersion,
 			&i.ConnectorType,
@@ -187,6 +193,7 @@ func (q *Queries) ListHosts(ctx context.Context) ([]Host, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.InstanceCount,
+			&i.GroupID,
 		); err != nil {
 			return nil, err
 		}
@@ -199,7 +206,7 @@ func (q *Queries) ListHosts(ctx context.Context) ([]Host, error) {
 }
 
 const listHostsByStatus = `-- name: ListHostsByStatus :many
-SELECT id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count FROM hosts WHERE status = $1 ORDER BY started_at DESC
+SELECT id, name, status, account_id, created_by, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count, group_id FROM hosts WHERE status = $1 ORDER BY started_at DESC
 `
 
 func (q *Queries) ListHostsByStatus(ctx context.Context, status int32) ([]Host, error) {
@@ -216,7 +223,7 @@ func (q *Queries) ListHostsByStatus(ctx context.Context, status int32) ([]Host, 
 			&i.Name,
 			&i.Status,
 			&i.AccountID,
-			&i.OwnerID,
+			&i.CreatedBy,
 			&i.LastStartupConfig,
 			&i.LastStartupConfigSchemaVersion,
 			&i.ConnectorType,
@@ -227,6 +234,7 @@ func (q *Queries) ListHostsByStatus(ctx context.Context, status int32) ([]Host, 
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.InstanceCount,
+			&i.GroupID,
 		); err != nil {
 			return nil, err
 		}
@@ -239,13 +247,15 @@ func (q *Queries) ListHostsByStatus(ctx context.Context, status int32) ([]Host, 
 }
 
 const listHostsPaged = `-- name: ListHostsPaged :many
-SELECT hosts.id, hosts.name, hosts.status, hosts.account_id, hosts.owner_id, hosts.last_startup_config, hosts.last_startup_config_schema_version, hosts.connector_type, hosts.connect_string, hosts.started_at, hosts.memo, hosts.auto_update_policy, hosts.created_at, hosts.updated_at, hosts.instance_count, COUNT(*) OVER() AS total_count
+SELECT hosts.id, hosts.name, hosts.status, hosts.account_id, hosts.created_by, hosts.last_startup_config, hosts.last_startup_config_schema_version, hosts.connector_type, hosts.connect_string, hosts.started_at, hosts.memo, hosts.auto_update_policy, hosts.created_at, hosts.updated_at, hosts.instance_count, hosts.group_id, COUNT(*) OVER() AS total_count
 FROM hosts
-ORDER BY started_at DESC
-LIMIT $2::int OFFSET $1::int
+WHERE ($1::text[] IS NULL OR group_id = ANY($1::text[]))
+ORDER BY started_at DESC NULLS LAST, id ASC
+LIMIT $3::int OFFSET $2::int
 `
 
 type ListHostsPagedParams struct {
+	GroupIds   []string
 	PageOffset int32
 	PageSize   int32
 }
@@ -256,8 +266,10 @@ type ListHostsPagedRow struct {
 }
 
 // ページング付きホスト一覧。total_count は全行同じ値が入る。
+// group_ids は nullable パラメータ (sqlc.narg)。NULL の場合は全グループ対象。
+// 空配列を渡すと結果ゼロ件 (= 所属グループが無いユーザーに対する自動絞り込み)。
 func (q *Queries) ListHostsPaged(ctx context.Context, arg ListHostsPagedParams) ([]ListHostsPagedRow, error) {
-	rows, err := q.db.Query(ctx, listHostsPaged, arg.PageOffset, arg.PageSize)
+	rows, err := q.db.Query(ctx, listHostsPaged, arg.GroupIds, arg.PageOffset, arg.PageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +282,7 @@ func (q *Queries) ListHostsPaged(ctx context.Context, arg ListHostsPagedParams) 
 			&i.Host.Name,
 			&i.Host.Status,
 			&i.Host.AccountID,
-			&i.Host.OwnerID,
+			&i.Host.CreatedBy,
 			&i.Host.LastStartupConfig,
 			&i.Host.LastStartupConfigSchemaVersion,
 			&i.Host.ConnectorType,
@@ -281,6 +293,7 @@ func (q *Queries) ListHostsPaged(ctx context.Context, arg ListHostsPagedParams) 
 			&i.Host.CreatedAt,
 			&i.Host.UpdatedAt,
 			&i.Host.InstanceCount,
+			&i.Host.GroupID,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err
@@ -294,7 +307,7 @@ func (q *Queries) ListHostsPaged(ctx context.Context, arg ListHostsPagedParams) 
 }
 
 const listRunningHostsByAccount = `-- name: ListRunningHostsByAccount :many
-SELECT id, name, status, account_id, owner_id, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count FROM hosts WHERE account_id = $1 AND status = 2 ORDER BY started_at DESC
+SELECT id, name, status, account_id, created_by, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count, group_id FROM hosts WHERE account_id = $1 AND status = 2 ORDER BY started_at DESC
 `
 
 func (q *Queries) ListRunningHostsByAccount(ctx context.Context, accountID string) ([]Host, error) {
@@ -311,7 +324,7 @@ func (q *Queries) ListRunningHostsByAccount(ctx context.Context, accountID strin
 			&i.Name,
 			&i.Status,
 			&i.AccountID,
-			&i.OwnerID,
+			&i.CreatedBy,
 			&i.LastStartupConfig,
 			&i.LastStartupConfigSchemaVersion,
 			&i.ConnectorType,
@@ -322,6 +335,7 @@ func (q *Queries) ListRunningHostsByAccount(ctx context.Context, accountID strin
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.InstanceCount,
+			&i.GroupID,
 		); err != nil {
 			return nil, err
 		}

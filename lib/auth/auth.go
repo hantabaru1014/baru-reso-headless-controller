@@ -227,6 +227,22 @@ func GetAuthClaimsFromContext(ctx context.Context) (*AuthClaims, error) {
 	return claims, nil
 }
 
+// WithActAsUser は ctx に指定 userID の AuthClaims をセットして返す.
+// CLI / worker など、JWT を経由せず特定ユーザーの権限で usecase を呼び出すときに使う.
+// 既に claims がセットされている ctx に対しても上書きする.
+// userID が空文字の場合は ctx をそのまま返す (誤って「未指定 = 全権」と
+// 解釈される事故を防ぐため. 呼び出し側が空の可能性をハンドルすべき場面では
+// 事前に弾くこと).
+func WithActAsUser(ctx context.Context, userID string) context.Context {
+	if userID == "" {
+		return ctx
+	}
+
+	return context.WithValue(ctx, AuthClaimsKey, &AuthClaims{
+		UserID: userID,
+	})
+}
+
 // ResoniteLinkClaims は ResoniteLink WebSocket 接続用の短期トークン用クレーム.
 type ResoniteLinkClaims struct {
 	UserID    string `json:"user_id"`

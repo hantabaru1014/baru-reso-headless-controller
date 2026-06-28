@@ -23,7 +23,7 @@ type (
 	}
 
 	SessionOperator interface {
-		StartSession(ctx context.Context, hostID string, userID *string, params *headlessv1.WorldStartupParameters, memo *string) (*entity.Session, error)
+		StartSession(ctx context.Context, hostID string, groupID string, userID *string, params *headlessv1.WorldStartupParameters, memo *string) (*entity.Session, error)
 		StopSession(ctx context.Context, sessionID string) error
 	}
 
@@ -83,11 +83,18 @@ func (d *Dispatcher) startHost(ctx context.Context, job *entity.AsyncJob) (JobRe
 		return JobResult{}, "", errors.WrapPrefix(err, "get headless account", 0)
 	}
 
+	groupID := req.GetGroupId()
+	if groupID == "" {
+		// 通常 RPC handler 側で resolve 済みだが、保険として account の group_id にフォールバック
+		groupID = account.GroupID
+	}
+
 	params := port.HeadlessHostStartParams{
 		Name:              req.GetName(),
 		HeadlessAccount:   *account,
 		ContainerImageTag: req.GetImageTag(),
 		StartupConfig:     req.GetStartupConfig(),
+		GroupID:           groupID,
 	}
 	if req.AutoUpdatePolicy != nil && req.GetAutoUpdatePolicy() != hdlctrlv1.HeadlessHostAutoUpdatePolicy_HEADLESS_HOST_AUTO_UPDATE_POLICY_UNKNOWN {
 		params.AutoUpdatePolicy = entity.HostAutoUpdatePolicy(req.GetAutoUpdatePolicy())
@@ -160,7 +167,7 @@ func (d *Dispatcher) startSession(ctx context.Context, job *entity.AsyncJob) (Jo
 		memo = &m
 	}
 
-	s, err := d.session.StartSession(ctx, req.GetHostId(), job.CreatedBy, req.GetParameters(), memo)
+	s, err := d.session.StartSession(ctx, req.GetHostId(), req.GetGroupId(), job.CreatedBy, req.GetParameters(), memo)
 	if err != nil {
 		return JobResult{}, "", err
 	}

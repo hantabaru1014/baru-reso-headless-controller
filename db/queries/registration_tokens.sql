@@ -1,5 +1,6 @@
 -- name: CreateRegistrationToken :exec
-INSERT INTO registration_tokens (token, resonite_id, expires_at) VALUES ($1, $2, $3);
+INSERT INTO registration_tokens (token, resonite_id, expires_at, personal_role_id)
+VALUES ($1, $2, $3, $4);
 
 -- name: GetRegistrationToken :one
 SELECT * FROM registration_tokens WHERE token = $1;

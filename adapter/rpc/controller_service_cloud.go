@@ -6,11 +6,19 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
+	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 )
 
 // AcceptFriendRequests implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: account.group_id に対して account:use.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceAcceptFriendRequestsProcedure,
+	checkAccountPermission(entity.PermKey_AccountUse, accountIDFromAcceptFriends),
+)
+
 func (c *ControllerService) AcceptFriendRequests(ctx context.Context, req *connect.Request[hdlctrlv1.AcceptFriendRequestsRequest]) (*connect.Response[hdlctrlv1.AcceptFriendRequestsResponse], error) {
 	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.GetHeadlessAccountId())
 	if err != nil {
@@ -43,6 +51,12 @@ func (c *ControllerService) AcceptFriendRequests(ctx context.Context, req *conne
 }
 
 // GetFriendRequests implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: account.group_id に対して account:use.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceGetFriendRequestsProcedure,
+	checkAccountPermission(entity.PermKey_AccountUse, accountIDFromGetFriendRequests),
+)
+
 func (c *ControllerService) GetFriendRequests(ctx context.Context, req *connect.Request[hdlctrlv1.GetFriendRequestsRequest]) (*connect.Response[hdlctrlv1.GetFriendRequestsResponse], error) {
 	account, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.GetHeadlessAccountId())
 	if err != nil {
@@ -72,6 +86,12 @@ func (c *ControllerService) GetFriendRequests(ctx context.Context, req *connect.
 }
 
 // SearchUserInfo implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して host:use (host RPC への委譲読み取り).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceSearchUserInfoProcedure,
+	checkHostPermission(entity.PermKey_HostUse, hostIDFromSearchUserInfo),
+)
+
 func (c *ControllerService) SearchUserInfo(ctx context.Context, req *connect.Request[hdlctrlv1.SearchUserInfoRequest]) (*connect.Response[headlessv1.SearchUserInfoResponse], error) {
 	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.GetHostId())
 	if err != nil {
@@ -89,6 +109,12 @@ func (c *ControllerService) SearchUserInfo(ctx context.Context, req *connect.Req
 }
 
 // FetchWorldInfo implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して host:use (host RPC への委譲読み取り).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceFetchWorldInfoProcedure,
+	checkHostPermission(entity.PermKey_HostUse, hostIDFromFetchWorldInfo),
+)
+
 func (c *ControllerService) FetchWorldInfo(ctx context.Context, req *connect.Request[hdlctrlv1.FetchWorldInfoRequest]) (*connect.Response[headlessv1.FetchWorldInfoResponse], error) {
 	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.GetHostId())
 	if err != nil {
@@ -108,6 +134,12 @@ func (c *ControllerService) FetchWorldInfo(ctx context.Context, req *connect.Req
 }
 
 // GetResoniteUser implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: 認証のみ (Resonite 公開プロフィール参照).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceGetResoniteUserProcedure,
+	requireAuthOnly,
+)
+
 func (c *ControllerService) GetResoniteUser(ctx context.Context, req *connect.Request[hdlctrlv1.GetResoniteUserRequest]) (*connect.Response[hdlctrlv1.GetResoniteUserResponse], error) {
 	userInfo, err := c.skyfrostClient.FetchUserInfo(ctx, req.Msg.GetResoniteId())
 	if err != nil {
@@ -124,6 +156,12 @@ func (c *ControllerService) GetResoniteUser(ctx context.Context, req *connect.Re
 }
 
 // GetOwnWorlds implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して host:use (host のアカウントで Cloud にアクセス).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceGetOwnWorldsProcedure,
+	checkHostPermission(entity.PermKey_HostUse, hostIDFromGetOwnWorlds),
+)
+
 func (c *ControllerService) GetOwnWorlds(ctx context.Context, req *connect.Request[hdlctrlv1.GetOwnWorldsRequest]) (*connect.Response[hdlctrlv1.GetOwnWorldsResponse], error) {
 	host, err := c.hhuc.HeadlessHostGet(ctx, req.Msg.GetHostId())
 	if err != nil {
@@ -162,6 +200,12 @@ func (c *ControllerService) GetOwnWorlds(ctx context.Context, req *connect.Reque
 }
 
 // SearchWorlds implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: 認証のみ (公開ワールド検索).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceSearchWorldsProcedure,
+	requireAuthOnly,
+)
+
 func (c *ControllerService) SearchWorlds(ctx context.Context, req *connect.Request[hdlctrlv1.SearchWorldsRequest]) (*connect.Response[hdlctrlv1.SearchWorldsResponse], error) {
 	result, err := c.skyfrostClient.SearchWorlds(ctx, req.Msg.GetQuery(), req.Msg.GetFeaturedOnly(), int(req.Msg.GetPageIndex()))
 	if err != nil {

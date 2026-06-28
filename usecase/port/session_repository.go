@@ -13,6 +13,11 @@ type SessionListPageOptions struct {
 	Status    *entity.SessionStatus
 	PageIndex int32
 	PageSize  int32
+	// GroupIDs はグループフィルタ.
+	//   - nil: 全グループ対象 (system:group.list 保持者 / 認可レイヤで判断済み)
+	//   - 空 slice: マッチゼロ件 (= 所属グループが無いユーザーの自動絞り込み結果)
+	//   - 非空 slice: 指定 group_id 群でのみ絞り込み
+	GroupIDs []string
 }
 
 type SessionListPageResult struct {

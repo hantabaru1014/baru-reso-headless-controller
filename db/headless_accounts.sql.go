@@ -12,7 +12,7 @@ import (
 )
 
 const createHeadlessAccount = `-- name: CreateHeadlessAccount :exec
-INSERT INTO headless_accounts (resonite_id, credential, password, last_display_name, last_icon_url) VALUES ($1, $2, $3, $4, $5)
+INSERT INTO headless_accounts (resonite_id, credential, password, last_display_name, last_icon_url, group_id, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type CreateHeadlessAccountParams struct {
@@ -21,6 +21,8 @@ type CreateHeadlessAccountParams struct {
 	Password        string
 	LastDisplayName pgtype.Text
 	LastIconUrl     pgtype.Text
+	GroupID         string
+	CreatedBy       pgtype.Text
 }
 
 func (q *Queries) CreateHeadlessAccount(ctx context.Context, arg CreateHeadlessAccountParams) error {
@@ -30,6 +32,8 @@ func (q *Queries) CreateHeadlessAccount(ctx context.Context, arg CreateHeadlessA
 		arg.Password,
 		arg.LastDisplayName,
 		arg.LastIconUrl,
+		arg.GroupID,
+		arg.CreatedBy,
 	)
 	return err
 }
@@ -44,7 +48,7 @@ func (q *Queries) DeleteHeadlessAccount(ctx context.Context, resoniteID string) 
 }
 
 const getHeadlessAccount = `-- name: GetHeadlessAccount :one
-SELECT resonite_id, credential, password, last_display_name, last_icon_url, created_at, updated_at FROM headless_accounts WHERE resonite_id = $1
+SELECT resonite_id, credential, password, last_display_name, last_icon_url, created_at, updated_at, group_id, created_by FROM headless_accounts WHERE resonite_id = $1
 `
 
 func (q *Queries) GetHeadlessAccount(ctx context.Context, resoniteID string) (HeadlessAccount, error) {
@@ -58,12 +62,14 @@ func (q *Queries) GetHeadlessAccount(ctx context.Context, resoniteID string) (He
 		&i.LastIconUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.GroupID,
+		&i.CreatedBy,
 	)
 	return i, err
 }
 
 const listHeadlessAccounts = `-- name: ListHeadlessAccounts :many
-SELECT resonite_id, credential, password, last_display_name, last_icon_url, created_at, updated_at FROM headless_accounts ORDER BY resonite_id
+SELECT resonite_id, credential, password, last_display_name, last_icon_url, created_at, updated_at, group_id, created_by FROM headless_accounts ORDER BY resonite_id
 `
 
 func (q *Queries) ListHeadlessAccounts(ctx context.Context) ([]HeadlessAccount, error) {
@@ -83,6 +89,8 @@ func (q *Queries) ListHeadlessAccounts(ctx context.Context) ([]HeadlessAccount, 
 			&i.LastIconUrl,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.GroupID,
+			&i.CreatedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -95,13 +103,15 @@ func (q *Queries) ListHeadlessAccounts(ctx context.Context) ([]HeadlessAccount, 
 }
 
 const listHeadlessAccountsPaged = `-- name: ListHeadlessAccountsPaged :many
-SELECT headless_accounts.resonite_id, headless_accounts.credential, headless_accounts.password, headless_accounts.last_display_name, headless_accounts.last_icon_url, headless_accounts.created_at, headless_accounts.updated_at, COUNT(*) OVER() AS total_count
+SELECT headless_accounts.resonite_id, headless_accounts.credential, headless_accounts.password, headless_accounts.last_display_name, headless_accounts.last_icon_url, headless_accounts.created_at, headless_accounts.updated_at, headless_accounts.group_id, headless_accounts.created_by, COUNT(*) OVER() AS total_count
 FROM headless_accounts
+WHERE ($1::text[] IS NULL OR group_id = ANY($1::text[]))
 ORDER BY resonite_id
-LIMIT $2::int OFFSET $1::int
+LIMIT $3::int OFFSET $2::int
 `
 
 type ListHeadlessAccountsPagedParams struct {
+	GroupIds   []string
 	PageOffset int32
 	PageSize   int32
 }
@@ -112,8 +122,10 @@ type ListHeadlessAccountsPagedRow struct {
 }
 
 // ページング付きアカウント一覧。total_count は全行同じ値が入る。
+// group_ids は nullable パラメータ (sqlc.narg)。NULL の場合は全グループ対象。
+// 空配列を渡すと結果ゼロ件 (= 所属グループが無いユーザーに対する自動絞り込み)。
 func (q *Queries) ListHeadlessAccountsPaged(ctx context.Context, arg ListHeadlessAccountsPagedParams) ([]ListHeadlessAccountsPagedRow, error) {
-	rows, err := q.db.Query(ctx, listHeadlessAccountsPaged, arg.PageOffset, arg.PageSize)
+	rows, err := q.db.Query(ctx, listHeadlessAccountsPaged, arg.GroupIds, arg.PageOffset, arg.PageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -129,6 +141,8 @@ func (q *Queries) ListHeadlessAccountsPaged(ctx context.Context, arg ListHeadles
 			&i.HeadlessAccount.LastIconUrl,
 			&i.HeadlessAccount.CreatedAt,
 			&i.HeadlessAccount.UpdatedAt,
+			&i.HeadlessAccount.GroupID,
+			&i.HeadlessAccount.CreatedBy,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err

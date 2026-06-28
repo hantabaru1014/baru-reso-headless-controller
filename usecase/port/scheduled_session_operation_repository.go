@@ -25,6 +25,9 @@ type ScheduledSessionOperationListFilter struct {
 	Status    *entity.ScheduledOperationStatus
 	PageIndex int32
 	PageSize  int32
+	// GroupID は in-app post-filter として usecase 層で処理される.
+	// repo 層では使われない (scheduled_session_operations に group_id 列が無いため).
+	GroupID *string
 }
 
 type ScheduledSessionOperationListResult struct {

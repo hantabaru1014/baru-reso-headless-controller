@@ -1,4 +1,7 @@
 import { useMutation, useQuery } from "@connectrpc/connect-query";
+import { useAtomValue } from "jotai";
+import { currentGroupIdAtom } from "../atoms/currentGroupAtom";
+import { listGroups } from "../../pbgen/hdlctrl/v1/permission-GroupService_connectquery";
 import {
   createScheduledSessionOperation,
   listHeadlessHost,
@@ -27,8 +30,10 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { SelectField, TextField } from "./base";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import SessionStartupFields from "./SessionStartupFields";
+import { usePermissions } from "../hooks/usePermissions";
+import { PERMISSION_KEYS } from "../libs/permissionUtils";
 import {
   ScheduledOperationSchema,
   ScheduledTriggerSchema,
@@ -50,7 +55,17 @@ export default function NewSessionForm() {
     useMutation(startWorld);
   const { mutateAsync: mutateSchedule, isPending: isPendingSchedule } =
     useMutation(createScheduledSessionOperation);
-  const { data: hostList } = useQuery(listHeadlessHost);
+  const currentGroupId = useAtomValue(currentGroupIdAtom);
+  const { data: hostList } = useQuery(listHeadlessHost, {
+    groupId: currentGroupId ?? undefined,
+  });
+  const { data: groupsList } = useQuery(listGroups, {});
+  const groupNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const g of groupsList?.groups ?? []) m.set(g.id, g.name);
+    return m;
+  }, [groupsList?.groups]);
+  const { hasPermission } = usePermissions();
 
   const {
     control,
@@ -134,14 +149,32 @@ export default function NewSessionForm() {
     }
   };
 
-  const runningHosts =
-    hostList?.hosts
-      .filter((host) => host.status === HeadlessHostStatus.RUNNING)
-      .map((host) => ({
-        id: host.id,
-        label: `${host.name} (${host.id.slice(0, 6)}) - ${host.accountName} - ${host.resoniteVersion}`,
-        value: host,
-      })) ?? [];
+  // セッション開始には host:use + session:write が host.group_id に対して必要.
+  // 権限を持たないグループのホストは選択肢に出さない.
+  // 加えて、ヘッダーで選択中のグループでも絞り込み (backend 側も group_id でフィルタするが
+  // listHeadlessHost の cache を別キーで使う他の画面と混ざらないように client 側でも明示する).
+  const runningHosts = useMemo(
+    () =>
+      hostList?.hosts
+        .filter((host) => host.status === HeadlessHostStatus.RUNNING)
+        .filter((host) => !currentGroupId || host.groupId === currentGroupId)
+        .filter(
+          (host) =>
+            hasPermission(host.groupId, PERMISSION_KEYS.HOST_USE) &&
+            hasPermission(host.groupId, PERMISSION_KEYS.SESSION_WRITE),
+        )
+        .map((host) => {
+          const groupName = host.groupId
+            ? (groupNameById.get(host.groupId) ?? host.groupId)
+            : "(no group)";
+          return {
+            id: host.id,
+            label: `${host.name} (${host.id.slice(0, 6)}) - ${host.accountName} - ${host.resoniteVersion} - [${groupName}]`,
+            value: host,
+          };
+        }) ?? [],
+    [hostList?.hosts, hasPermission, currentGroupId, groupNameById],
+  );
 
   return (
     <>

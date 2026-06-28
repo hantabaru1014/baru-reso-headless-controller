@@ -14,7 +14,7 @@ import (
 // usecase.SessionUsecase のメソッドそのままを取る形にして、ラッパ層を挟まない.
 // 各 Action は payload (protojson 等) を自前で decode してこの interface を呼ぶ.
 type SessionOperator interface {
-	StartSession(ctx context.Context, hostID string, userID *string, params *headlessv1.WorldStartupParameters, memo *string) (*entity.Session, error)
+	StartSession(ctx context.Context, hostID string, groupID string, userID *string, params *headlessv1.WorldStartupParameters, memo *string) (*entity.Session, error)
 	StopSession(ctx context.Context, sessionID string) error
 	UpdateSessionParameters(ctx context.Context, sessionID string, params *headlessv1.UpdateSessionParametersRequest) error
 	UpdateSessionExtraSettings(ctx context.Context, sessionID string, autoUpgrade *bool, memo *string) error

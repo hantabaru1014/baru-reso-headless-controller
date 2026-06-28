@@ -21,6 +21,8 @@ func HeadlessHostEntityToProto(e *entity.HeadlessHost) *hdlctrlv1.HeadlessHost {
 		HostSettings:     HeadlessHostSettingsToProto(&e.HostSettings),
 		Memo:             e.Memo,
 		InstanceId:       e.InstanceId,
+		GroupId:          e.GroupID,
+		CreatedBy:        e.CreatedBy,
 	}
 }
 
@@ -120,9 +122,14 @@ func SessionEntityToProto(e *entity.Session) *hdlctrlv1.Session {
 		Status:            hdlctrlv1.SessionStatus(e.Status),
 		StartupParameters: e.StartupParameters,
 		CurrentState:      e.CurrentState,
-		OwnerId:           e.OwnerID,
-		AutoUpgrade:       e.AutoUpgrade,
-		Memo:              e.Memo,
+		// owner_id は deprecated だが migration 期間中の互換のため CreatedBy と
+		// 同値を返す.
+		OwnerId:   e.CreatedBy,
+		CreatedBy: e.CreatedBy,
+		GroupId:   e.GroupID,
+
+		AutoUpgrade: e.AutoUpgrade,
+		Memo:        e.Memo,
 	}
 	if e.StartedAt != nil {
 		d.StartedAt = timestamppb.New(*e.StartedAt)

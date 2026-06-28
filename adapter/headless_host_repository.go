@@ -25,6 +25,13 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+const (
+	// createHostCleanupTimeout は CreateHost 失敗時にコンテナを補償停止するのに与える上限時間.
+	createHostCleanupTimeout = 30 * time.Second
+	// createHostCleanupStopGrace は補償停止時に container Stop に与える grace period (秒).
+	createHostCleanupStopGrace = 10
+)
+
 var _ port.HeadlessHostRepository = (*HeadlessHostRepository)(nil)
 
 type HeadlessHostRepository struct {
@@ -60,6 +67,17 @@ func (h *HeadlessHostRepository) UpdateAutoUpdatePolicy(ctx context.Context, id 
 		ID:               id,
 		AutoUpdatePolicy: int32(policy),
 	})
+}
+
+// GetGroupID implements port.HeadlessHostRepository.
+// DB のみで完結する軽量メソッド (RUNNING host への container RPC を起こさない).
+func (h *HeadlessHostRepository) GetGroupID(ctx context.Context, id string) (string, error) {
+	host, err := h.q.GetHost(ctx, id)
+	if err != nil {
+		return "", errors.WrapPrefix(convertDBErr(err), "headless host", 0)
+	}
+
+	return host.GroupID, nil
 }
 
 // Find implements port.HeadlessHostRepository.
@@ -168,9 +186,12 @@ func (h *HeadlessHostRepository) ListAll(ctx context.Context, fetchOptions port.
 
 // ListPaged implements port.HeadlessHostRepository.
 func (h *HeadlessHostRepository) ListPaged(ctx context.Context, opts port.HostListPageOptions) (*port.HostListPageResult, error) {
+	// GroupIDs == nil → sqlc.narg('group_ids') を NULL にして全件対象.
+	// GroupIDs == [] or [...] → ANY 絞り込み. 空配列の場合は結果ゼロ件.
 	rows, err := h.q.ListHostsPaged(ctx, db.ListHostsPagedParams{
 		PageOffset: opts.PageIndex * opts.PageSize,
 		PageSize:   opts.PageSize,
+		GroupIds:   opts.GroupIDs,
 	})
 	if err != nil {
 		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
@@ -206,6 +227,8 @@ func (h *HeadlessHostRepository) ListRunningByAccount(ctx context.Context, accou
 			AccountId:        host.AccountID,
 			Status:           entity.HeadlessHostStatus(host.Status),
 			AutoUpdatePolicy: entity.HostAutoUpdatePolicy(host.AutoUpdatePolicy),
+			GroupID:          host.GroupID,
+			CreatedBy:        ptrFromText(host.CreatedBy),
 		})
 	}
 
@@ -345,11 +368,11 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, connector port.HostC
 
 	id := uniuri.New()
 
-	ownerId := pgtype.Text{
-		Valid: userId != nil,
-	}
-	if userId != nil {
-		ownerId.String = *userId
+	// 空文字 userId は NULL 扱いにする (empty string と NULL を混在させない).
+	createdBy := pgtype.Text{}
+	if userId != nil && *userId != "" {
+		createdBy.String = *userId
+		createdBy.Valid = true
 	}
 
 	startParams := hostconnector.HostStartParams{
@@ -370,7 +393,8 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, connector port.HostC
 		Name:                           params.Name,
 		Status:                         int32(entity.HeadlessHostStatus_RUNNING),
 		AccountID:                      params.HeadlessAccount.ResoniteID,
-		OwnerID:                        ownerId,
+		CreatedBy:                      createdBy,
+		GroupID:                        params.GroupID,
 		LastStartupConfig:              json,
 		LastStartupConfigSchemaVersion: 1,
 		ConnectorType:                  string(connector),
@@ -387,6 +411,25 @@ func (h *HeadlessHostRepository) Start(ctx context.Context, connector port.HostC
 		InstanceCount: 1,
 	})
 	if err != nil {
+		// DB INSERT が失敗するとコンテナだけ起動した孤児状態が残る. docker-event-watcher
+		// は GetHostByContainerID で見つからない event を素通りするため自動回復できず、
+		// 運用者が brhcli import-legacy-hosts を手動で叩くしか復旧手段が無い.
+		// Start() 直後はまだ skyfrost 認証も world 起動も完了しておらずユーザーセッションは
+		// 存在しないので、Stop + Remove で巻き戻すのが安全. 補償自体の失敗は warning に留め
+		// 元の DB エラーを優先して返す. ctx が canceled でも補償は走らせたいので detach する.
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.WithoutCancel(ctx), createHostCleanupTimeout)
+		defer cleanupCancel()
+
+		if stopErr := connectorImpl.Stop(cleanupCtx, newConnectStr, createHostCleanupStopGrace); stopErr != nil {
+			slog.Warn("headless_host_repository: failed to stop container after CreateHost error",
+				"connect_string", string(newConnectStr), "stop_error", stopErr)
+		}
+
+		if rmErr := connectorImpl.Remove(cleanupCtx, newConnectStr); rmErr != nil {
+			slog.Warn("headless_host_repository: failed to remove container after CreateHost error",
+				"connect_string", string(newConnectStr), "remove_error", rmErr)
+		}
+
 		return "", errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
 
@@ -553,6 +596,8 @@ func (h *HeadlessHostRepository) dbHostsToEntities(ctx context.Context, hosts []
 				Status:           entity.HeadlessHostStatus_UNKNOWN,
 				AutoUpdatePolicy: entity.HostAutoUpdatePolicy(hosts[r.index].AutoUpdatePolicy),
 				InstanceId:       hosts[r.index].InstanceCount,
+				GroupID:          hosts[r.index].GroupID,
+				CreatedBy:        ptrFromText(hosts[r.index].CreatedBy),
 			}
 			if hosts[r.index].Memo.Valid {
 				result[r.index].Memo = hosts[r.index].Memo.String
@@ -665,6 +710,8 @@ func (h *HeadlessHostRepository) dbToEntity(ctx context.Context, dbHost *db.Host
 		Status:           status,
 		AutoUpdatePolicy: entity.HostAutoUpdatePolicy(dbHost.AutoUpdatePolicy),
 		InstanceId:       dbHost.InstanceCount,
+		GroupID:          dbHost.GroupID,
+		CreatedBy:        ptrFromText(dbHost.CreatedBy),
 	}
 	if dbHost.Memo.Valid {
 		host.Memo = dbHost.Memo.String

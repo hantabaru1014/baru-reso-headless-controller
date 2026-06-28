@@ -11,13 +11,19 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
+	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
-	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // BanUser implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して session:write (host RPC への委譲書き込み).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceBanUserProcedure,
+	checkHostPermission(entity.PermKey_SessionWrite, hostIDFromBan),
+)
+
 func (c *ControllerService) BanUser(ctx context.Context, req *connect.Request[hdlctrlv1.BanUserRequest]) (*connect.Response[hdlctrlv1.BanUserResponse], error) {
 	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.GetHostId())
 	if err != nil {
@@ -35,6 +41,12 @@ func (c *ControllerService) BanUser(ctx context.Context, req *connect.Request[hd
 }
 
 // KickUser implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して session:write (host RPC への委譲書き込み).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceKickUserProcedure,
+	checkHostPermission(entity.PermKey_SessionWrite, hostIDFromKick),
+)
+
 func (c *ControllerService) KickUser(ctx context.Context, req *connect.Request[hdlctrlv1.KickUserRequest]) (*connect.Response[hdlctrlv1.KickUserResponse], error) {
 	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.GetHostId())
 	if err != nil {
@@ -52,6 +64,12 @@ func (c *ControllerService) KickUser(ctx context.Context, req *connect.Request[h
 }
 
 // GetSessionDetails implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: session.group_id に対して session:read.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceGetSessionDetailsProcedure,
+	checkSessionPermission(entity.PermKey_SessionRead, sessionIDFromGetDetails),
+)
+
 func (c *ControllerService) GetSessionDetails(ctx context.Context, req *connect.Request[hdlctrlv1.GetSessionDetailsRequest]) (*connect.Response[hdlctrlv1.GetSessionDetailsResponse], error) {
 	s, err := c.suc.GetSession(ctx, req.Msg.GetSessionId())
 	if err != nil {
@@ -66,6 +84,12 @@ func (c *ControllerService) GetSessionDetails(ctx context.Context, req *connect.
 }
 
 // ListUsersInSession implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して session:read.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceListUsersInSessionProcedure,
+	checkHostPermission(entity.PermKey_SessionRead, hostIDFromListUsersInSession),
+)
+
 func (c *ControllerService) ListUsersInSession(ctx context.Context, req *connect.Request[hdlctrlv1.ListUsersInSessionRequest]) (*connect.Response[hdlctrlv1.ListUsersInSessionResponse], error) {
 	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.GetHostId())
 	if err != nil {
@@ -85,6 +109,12 @@ func (c *ControllerService) ListUsersInSession(ctx context.Context, req *connect
 }
 
 // SaveSessionWorld implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: session.group_id に対して session:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceSaveSessionWorldProcedure,
+	checkSessionPermission(entity.PermKey_SessionWrite, sessionIDFromSave),
+)
+
 func (c *ControllerService) SaveSessionWorld(ctx context.Context, req *connect.Request[hdlctrlv1.SaveSessionWorldRequest]) (*connect.Response[hdlctrlv1.SaveSessionWorldResponse], error) {
 	var saveMode usecase.SaveMode
 
@@ -112,6 +142,12 @@ func (c *ControllerService) SaveSessionWorld(ctx context.Context, req *connect.R
 }
 
 // PrepareSessionWorldDownload implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: session.group_id に対して session:read.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServicePrepareSessionWorldDownloadProcedure,
+	checkSessionPermission(entity.PermKey_SessionRead, sessionIDFromPrepareDownload),
+)
+
 func (c *ControllerService) PrepareSessionWorldDownload(ctx context.Context, req *connect.Request[hdlctrlv1.PrepareSessionWorldDownloadRequest]) (*connect.Response[hdlctrlv1.PrepareSessionWorldDownloadResponse], error) {
 	if req.Msg.GetFormat() == headlessv1.WorldBinaryFormat_WORLD_BINARY_FORMAT_UNSPECIFIED {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("format is required"))
@@ -129,6 +165,12 @@ func (c *ControllerService) PrepareSessionWorldDownload(ctx context.Context, req
 }
 
 // UpdateSessionParameters implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: session.group_id (parameters.session_id から DB lookup) に対して session:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceUpdateSessionParametersProcedure,
+	checkUpdateSessionParameters,
+)
+
 func (c *ControllerService) UpdateSessionParameters(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateSessionParametersRequest]) (*connect.Response[hdlctrlv1.UpdateSessionParametersResponse], error) {
 	err := c.suc.UpdateSessionParameters(ctx, req.Msg.GetParameters().GetSessionId(), req.Msg.GetParameters())
 	if err != nil {
@@ -141,6 +183,12 @@ func (c *ControllerService) UpdateSessionParameters(ctx context.Context, req *co
 }
 
 // UpdateUserRole implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して session:write (host RPC への委譲書き込み).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceUpdateUserRoleProcedure,
+	checkHostPermission(entity.PermKey_SessionWrite, hostIDFromUpdateUserRole),
+)
+
 func (c *ControllerService) UpdateUserRole(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateUserRoleRequest]) (*connect.Response[hdlctrlv1.UpdateUserRoleResponse], error) {
 	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.GetHostId())
 	if err != nil {
@@ -161,15 +209,28 @@ func (c *ControllerService) UpdateUserRole(ctx context.Context, req *connect.Req
 
 // StartWorld implements hdlctrlv1connect.ControllerServiceHandler.
 // container への StartWorld RPC は時間がかかるため非同期 job 化する.
+// 権限: host.group_id に対して host:use + account:use + session:write (同一グループ制約).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceStartWorldProcedure,
+	checkStartWorld,
+)
+
 func (c *ControllerService) StartWorld(ctx context.Context, req *connect.Request[hdlctrlv1.StartWorldRequest]) (*connect.Response[hdlctrlv1.StartWorldResponse], error) {
 	claims, err := auth.GetAuthClaimsFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	// hhrepo.Find は DB のみで完結し、RUNNING ホストへの container RPC を起こさない.
-	if _, err := c.hhrepo.Find(ctx, req.Msg.GetHostId(), port.HeadlessHostFetchOptions{}); err != nil {
+	// host の group_id を読むためだけに DB lookup. Find は RUNNING host に対して
+	// container RPC を起こすため、軽量な GetGroupID を使う.
+	hostGroupID, err := c.hhrepo.GetGroupID(ctx, req.Msg.GetHostId())
+	if err != nil {
 		return nil, convertErr(err)
+	}
+
+	// group_id を resolve: 未指定なら host のグループに合わせる (同一グループ制約).
+	if req.Msg.GroupId == nil || req.Msg.GetGroupId() == "" {
+		req.Msg.GroupId = &hostGroupID
 	}
 
 	jobID, err := c.ajuc.EnqueueStartSession(ctx, req.Msg, &claims.UserID)
@@ -181,6 +242,12 @@ func (c *ControllerService) StartWorld(ctx context.Context, req *connect.Request
 }
 
 // InviteUser implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して session:write (host RPC への委譲書き込み).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceInviteUserProcedure,
+	checkHostPermission(entity.PermKey_SessionWrite, hostIDFromInviteUser),
+)
+
 func (c *ControllerService) InviteUser(ctx context.Context, req *connect.Request[hdlctrlv1.InviteUserRequest]) (*connect.Response[hdlctrlv1.InviteUserResponse], error) {
 	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.GetHostId())
 	if err != nil {
@@ -209,6 +276,12 @@ func (c *ControllerService) InviteUser(ctx context.Context, req *connect.Request
 // IssueResoniteLinkConnection implements hdlctrlv1connect.ControllerServiceHandler.
 // 認証済みユーザに対し ResoniteLink WebSocket 接続用の path?query を返す。
 // 返される ws_path は host を含まない相対パスで、クライアントが現在の origin を補完して使う。
+// 権限: session.group_id に対して session:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceIssueResoniteLinkConnectionProcedure,
+	checkSessionPermission(entity.PermKey_SessionWrite, sessionIDFromIssueLink),
+)
+
 func (c *ControllerService) IssueResoniteLinkConnection(ctx context.Context, req *connect.Request[hdlctrlv1.IssueResoniteLinkConnectionRequest]) (*connect.Response[hdlctrlv1.IssueResoniteLinkConnectionResponse], error) {
 	claims, err := auth.GetAuthClaimsFromContext(ctx)
 	if err != nil {
@@ -234,6 +307,12 @@ func (c *ControllerService) IssueResoniteLinkConnection(ctx context.Context, req
 
 // StopSession implements hdlctrlv1connect.ControllerServiceHandler.
 // container への StopSession RPC は時間がかかるため非同期 job 化する.
+// 権限: session.group_id に対して session:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceStopSessionProcedure,
+	checkSessionPermission(entity.PermKey_SessionWrite, sessionIDFromStop),
+)
+
 func (c *ControllerService) StopSession(ctx context.Context, req *connect.Request[hdlctrlv1.StopSessionRequest]) (*connect.Response[hdlctrlv1.StopSessionResponse], error) {
 	claims, err := auth.GetAuthClaimsFromContext(ctx)
 	if err != nil {
@@ -255,21 +334,36 @@ func (c *ControllerService) StopSession(ctx context.Context, req *connect.Reques
 }
 
 // SearchSessions implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: handler 側で resolveListGroupFilter により認可する (interceptor は通過のみ).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceSearchSessionsProcedure,
+	requireAuthOnly,
+)
+
 func (c *ControllerService) SearchSessions(ctx context.Context, req *connect.Request[hdlctrlv1.SearchSessionsRequest]) (*connect.Response[hdlctrlv1.SearchSessionsResponse], error) {
 	pageIndex, pageSize, err := normalizePageRequest(req.Msg.GetPage())
 	if err != nil {
 		return nil, err
 	}
 
-	filter := usecase.SearchSessionsFilter{
-		HostID:    req.Msg.GetParameters().HostId,
-		PageIndex: pageIndex,
-		PageSize:  pageSize,
+	groupIDs, err := c.resolveListGroupFilter(ctx, req.Msg.GetParameters().GetGroupId(), entity.PermKey_SessionRead)
+	if err != nil {
+		return nil, err
 	}
 
-	if req.Msg.GetParameters() != nil && req.Msg.GetParameters().Status != nil {
-		s := entity.SessionStatus(int32(req.Msg.GetParameters().GetStatus().Number()))
-		filter.Status = &s
+	filter := usecase.SearchSessionsFilter{
+		PageIndex: pageIndex,
+		PageSize:  pageSize,
+		GroupIDs:  groupIDs,
+	}
+
+	if p := req.Msg.GetParameters(); p != nil {
+		filter.HostID = p.HostId
+
+		if p.Status != nil {
+			s := entity.SessionStatus(int32(p.GetStatus().Number()))
+			filter.Status = &s
+		}
 	}
 
 	result, err := c.suc.SearchSessions(ctx, filter)
@@ -295,6 +389,12 @@ func (c *ControllerService) SearchSessions(ctx context.Context, req *connect.Req
 }
 
 // DeleteEndedSession implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: session.group_id に対して session:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceDeleteEndedSessionProcedure,
+	checkSessionPermission(entity.PermKey_SessionWrite, sessionIDFromDelete),
+)
+
 func (c *ControllerService) DeleteEndedSession(ctx context.Context, req *connect.Request[hdlctrlv1.DeleteEndedSessionRequest]) (*connect.Response[hdlctrlv1.DeleteEndedSessionResponse], error) {
 	err := c.suc.DeleteSession(ctx, req.Msg.GetSessionId())
 	if err != nil {
@@ -307,6 +407,12 @@ func (c *ControllerService) DeleteEndedSession(ctx context.Context, req *connect
 }
 
 // UpdateSessionExtraSettings implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: session.group_id に対して session:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceUpdateSessionExtraSettingsProcedure,
+	checkSessionPermission(entity.PermKey_SessionWrite, sessionIDFromUpdateExtra),
+)
+
 func (c *ControllerService) UpdateSessionExtraSettings(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateSessionExtraSettingsRequest]) (*connect.Response[hdlctrlv1.UpdateSessionExtraSettingsResponse], error) {
 	if err := c.suc.UpdateSessionExtraSettings(ctx, req.Msg.GetSessionId(), req.Msg.AutoUpgrade, req.Msg.Memo); err != nil { //nolint:protogetter // optional 3 値を保つため pointer field を直接渡す
 		return nil, convertErr(err)

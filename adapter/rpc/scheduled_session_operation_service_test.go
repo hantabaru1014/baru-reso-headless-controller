@@ -5,12 +5,39 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/hantabaru1014/baru-reso-headless-controller/db"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/testutil"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+// setupScheduledOpTarget は scheduled-op テストのために、権限解決対象として
+// 必要な host + session を作る. session.id は明示的に指定する (CreateTestSession は
+// ID をランダム生成するため使わない).
+func setupScheduledOpTarget(t *testing.T, queries *db.Queries, sessionID string) {
+	t.Helper()
+	testutil.CreateTestHeadlessAccount(t, queries, "U-sched-acc", "sched@example.test", "p")
+	h := testutil.CreateTestHeadlessHost(t, queries, "U-sched-acc", "sched-host", entity.HeadlessHostStatus_RUNNING)
+	_, err := queries.UpsertSession(t.Context(), db.UpsertSessionParams{
+		ID:                             sessionID,
+		Name:                           sessionID,
+		Status:                         int32(entity.SessionStatus_RUNNING),
+		StartedAt:                      pgtype.Timestamptz{Valid: true, Time: time.Now()},
+		CreatedBy:                      pgtype.Text{Valid: false},
+		GroupID:                        entity.MigratedPrePermissionGroupID,
+		EndedAt:                        pgtype.Timestamptz{Valid: false},
+		HostID:                         h.ID,
+		StartupParameters:              []byte(`{"maxUsers": 8}`),
+		StartupParametersSchemaVersion: 1,
+		AutoUpgrade:                    false,
+		Memo:                           pgtype.Text{Valid: false},
+	})
+	require.NoError(t, err)
+}
 
 func TestControllerService_ScheduledSessionOperations(t *testing.T) {
 	t.Run("成功: STOP_SESSION を Time trigger で予約 → 一覧 → キャンセル", func(t *testing.T) {
@@ -18,6 +45,9 @@ func TestControllerService_ScheduledSessionOperations(t *testing.T) {
 		defer setup.Cleanup()
 
 		client := setupAuthenticatedClient(t, setup.service)
+
+		// scheduled-op の権限解決のために対象 session を実体として作成しておく.
+		setupScheduledOpTarget(t, setup.queries, "S-target")
 
 		// Create
 		scheduledAt := time.Now().Add(time.Hour).UTC()
@@ -86,6 +116,8 @@ func TestControllerService_ScheduledSessionOperations(t *testing.T) {
 		defer setup.Cleanup()
 
 		client := setupAuthenticatedClient(t, setup.service)
+
+		setupScheduledOpTarget(t, setup.queries, "S-cond")
 
 		createReq := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateScheduledSessionOperationRequest{
 			Operation: &hdlctrlv1.ScheduledOperation{
