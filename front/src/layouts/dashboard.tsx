@@ -142,7 +142,7 @@ export default function Layout() {
   const title = usePageTitle();
 
   if (!session) {
-    const redirectTo = `/sign-in?callbackUrl=${encodeURIComponent(location.pathname)}`;
+    const redirectTo = `/sign-in?callbackUrl=${encodeURIComponent(location.pathname + location.search)}`;
     return <Navigate to={redirectTo} replace />;
   }
 

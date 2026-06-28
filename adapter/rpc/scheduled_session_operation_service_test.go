@@ -81,6 +81,72 @@ func TestControllerService_ScheduledSessionOperations(t *testing.T) {
 		assert.Equal(t, connect.CodeFailedPrecondition, connectErr.Code())
 	})
 
+	t.Run("成功: STOP_SESSION を SessionUserCount trigger で予約", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		createReq := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateScheduledSessionOperationRequest{
+			Operation: &hdlctrlv1.ScheduledOperation{
+				Operation: &hdlctrlv1.ScheduledOperation_StopSession{
+					StopSession: &hdlctrlv1.StopSessionRequest{SessionId: "S-cond"},
+				},
+			},
+			Trigger: &hdlctrlv1.ScheduledTrigger{
+				Trigger: &hdlctrlv1.ScheduledTrigger_SessionUserCount{
+					SessionUserCount: &hdlctrlv1.SessionUserCountTrigger{
+						SessionId:  "S-cond",
+						Comparator: hdlctrlv1.SessionUserCountTrigger_COMPARATOR_LESS_OR_EQUAL,
+						Threshold:  0,
+					},
+				},
+			},
+		})
+		createRes, err := client.CreateScheduledSessionOperation(t.Context(), createReq)
+		require.NoError(t, err)
+		require.NotNil(t, createRes.Msg.GetScheduledOperation())
+
+		got := createRes.Msg.GetScheduledOperation()
+		assert.Equal(t, "S-cond", got.GetSessionId())
+		assert.Equal(t, hdlctrlv1.ScheduledOperationStatus_SCHEDULED_OPERATION_STATUS_PENDING, got.GetStatus())
+
+		condTrig := got.GetTrigger().GetSessionUserCount()
+		require.NotNil(t, condTrig)
+		assert.Equal(t, "S-cond", condTrig.GetSessionId())
+		assert.Equal(t, hdlctrlv1.SessionUserCountTrigger_COMPARATOR_LESS_OR_EQUAL, condTrig.GetComparator())
+		assert.Equal(t, int32(0), condTrig.GetThreshold())
+	})
+
+	t.Run("失敗: SessionUserCount trigger の comparator 未指定で InvalidArgument", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateScheduledSessionOperationRequest{
+			Operation: &hdlctrlv1.ScheduledOperation{
+				Operation: &hdlctrlv1.ScheduledOperation_StopSession{
+					StopSession: &hdlctrlv1.StopSessionRequest{SessionId: "S-x"},
+				},
+			},
+			Trigger: &hdlctrlv1.ScheduledTrigger{
+				Trigger: &hdlctrlv1.ScheduledTrigger_SessionUserCount{
+					SessionUserCount: &hdlctrlv1.SessionUserCountTrigger{
+						SessionId: "S-x",
+						Threshold: 0,
+					},
+				},
+			},
+		})
+		_, err := client.CreateScheduledSessionOperation(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
+	})
+
 	t.Run("失敗: operation 未指定で InvalidArgument", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()

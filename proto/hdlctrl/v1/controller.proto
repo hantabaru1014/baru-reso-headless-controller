@@ -664,15 +664,30 @@ message ScheduledOperation {
   }
 }
 
-// 発火条件.後続 PR で条件系 trigger を oneof に追加する想定.
+// 発火条件.
 message ScheduledTrigger {
   oneof trigger {
     TimeTrigger time = 1;
+    SessionUserCountTrigger session_user_count = 2;
   }
 }
 
 message TimeTrigger {
   google.protobuf.Timestamp scheduled_at = 1;
+}
+
+// セッションのユーザー数が閾値を満たした際に発火するトリガー.
+// SessionStateCache が保持する current_state.users_count を監視する.
+// session が cache に存在しない (=未起動 / 既終了) 場合は発火しない.
+message SessionUserCountTrigger {
+  enum Comparator {
+    COMPARATOR_UNSPECIFIED = 0;
+    COMPARATOR_LESS_OR_EQUAL = 1; // users_count <= threshold で発火
+    COMPARATOR_GREATER_OR_EQUAL = 2; // users_count >= threshold で発火
+  }
+  string session_id = 1;
+  Comparator comparator = 2;
+  int32 threshold = 3;
 }
 
 message ScheduledSessionOperation {

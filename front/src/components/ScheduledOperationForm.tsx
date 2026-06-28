@@ -7,8 +7,11 @@ import {
 import {
   HeadlessHostStatus,
   ScheduledOperationSchema,
+  ScheduledTrigger,
   ScheduledTriggerSchema,
   SessionStatus,
+  SessionUserCountTriggerSchema,
+  SessionUserCountTrigger_Comparator,
   StartWorldRequestSchema,
   StopSessionRequestSchema,
   TimeTriggerSchema,
@@ -34,6 +37,10 @@ import {
   localDateTimeStringToDate,
   operationKindLabel,
   OperationKind,
+  TriggerKind,
+  triggerKindLabel,
+  UserCountComparator,
+  userCountComparatorLabel,
 } from "../libs/scheduledOperationUtils";
 import { AccessLevels } from "../constants";
 import {
@@ -45,8 +52,14 @@ import {
 import SessionStartupFields from "./SessionStartupFields";
 
 type Props = {
-  /** プリセレクト用: セッション詳細から開いたとき */
+  /** プリセレクト用: セッション詳細から開いたとき (トリガー監視/操作対象の両方の初期値になる) */
   defaultSessionId?: string;
+  /** トリガー / アクション種別の初期値. セッション詳細の「ユーザー0人で停止」から開かれた場合等. */
+  defaultTrigger?: TriggerKind;
+  defaultOperation?: OperationKind;
+  /** SESSION_USER_COUNT trigger の初期値. */
+  defaultUserCountComparator?: UserCountComparator;
+  defaultUserCountThreshold?: number;
 };
 
 const TRI_BOOL_OPTIONS = [
@@ -55,48 +68,231 @@ const TRI_BOOL_OPTIONS = [
   { id: "false", label: "いいえ" },
 ];
 
-const KIND_OPTIONS: { label: string; value: OperationKind }[] = [
-  "START_SESSION",
-  "STOP_SESSION",
-  "UPDATE_PARAMETERS",
-  "UPDATE_EXTRA_SETTINGS",
-].map((k) => ({
-  label: operationKindLabel(k as OperationKind),
-  value: k as OperationKind,
-}));
+const TRIGGER_OPTIONS: { label: string; value: TriggerKind }[] = [
+  { label: triggerKindLabel("TIME"), value: "TIME" },
+  {
+    label: triggerKindLabel("SESSION_USER_COUNT"),
+    value: "SESSION_USER_COUNT",
+  },
+];
 
-export default function ScheduledOperationForm({ defaultSessionId }: Props) {
+const COMPARATOR_OPTIONS: { id: UserCountComparator; label: string }[] = [
+  {
+    id: "LESS_OR_EQUAL",
+    label: userCountComparatorLabel("LESS_OR_EQUAL"),
+  },
+  {
+    id: "GREATER_OR_EQUAL",
+    label: userCountComparatorLabel("GREATER_OR_EQUAL"),
+  },
+];
+
+const ACTION_OPTIONS: { label: string; value: OperationKind }[] = (
+  [
+    "START_SESSION",
+    "STOP_SESSION",
+    "UPDATE_PARAMETERS",
+    "UPDATE_EXTRA_SETTINGS",
+  ] as OperationKind[]
+).map((k) => ({ label: operationKindLabel(k), value: k }));
+
+type SessionOption = { id: string; label: string };
+
+/** session list を取得して dropdown 用に整形する hook. trigger / action 両方で共有して 1 回だけ fetch. */
+function useSessionOptions(defaultSessionId: string | undefined): {
+  options: SessionOption[];
+  hasRunningSessions: boolean;
+} {
+  const { data: sessionsData } = useQuery(searchSessions, {
+    parameters: { status: SessionStatus.RUNNING },
+    page: { pageIndex: 0, pageSize: 100 },
+  });
+
+  return useMemo(() => {
+    const list = sessionsData?.sessions ?? [];
+    const merged = list.slice();
+    if (defaultSessionId && !list.find((s) => s.id === defaultSessionId)) {
+      merged.unshift({
+        id: defaultSessionId,
+        name: defaultSessionId,
+      } as (typeof list)[number]);
+    }
+    const options: SessionOption[] = [{ id: "_", label: "選択..." }].concat(
+      merged.map((s) => ({
+        id: s.id,
+        label: `${s.name || "(no name)"} (${s.id.slice(0, 8)}…)`,
+      })),
+    );
+    return { options, hasRunningSessions: merged.length > 0 };
+  }, [sessionsData, defaultSessionId]);
+}
+
+export default function ScheduledOperationForm({
+  defaultSessionId,
+  defaultTrigger,
+  defaultOperation,
+  defaultUserCountComparator,
+  defaultUserCountThreshold,
+}: Props) {
+  const [trigger, setTrigger] = useState<TriggerKind>(defaultTrigger ?? "TIME");
   const [kind, setKind] = useState<OperationKind>(
-    defaultSessionId ? "STOP_SESSION" : "START_SESSION",
+    defaultOperation ?? (defaultSessionId ? "STOP_SESSION" : "START_SESSION"),
   );
 
-  return (
-    <div className="space-y-4">
-      <RadioGroupField
-        label="操作種別"
-        options={KIND_OPTIONS.map((o) => ({ label: o.label, value: o.value }))}
-        value={kind}
-        onValueChange={(v) => setKind(v as OperationKind)}
-        className="flex flex-row flex-wrap gap-4"
-      />
+  // ▼ Section ① のトリガー設定 (全 action から参照されるので parent owned)
+  const [scheduledAt, setScheduledAt] = useState(
+    defaultScheduledAtInputValue(),
+  );
+  const [monitorSessionId, setMonitorSessionId] = useState(
+    defaultSessionId ?? "",
+  );
+  const [comparator, setComparator] = useState<UserCountComparator>(
+    defaultUserCountComparator ?? "LESS_OR_EQUAL",
+  );
+  const [threshold, setThreshold] = useState(
+    defaultUserCountThreshold !== undefined
+      ? String(defaultUserCountThreshold)
+      : "0",
+  );
 
-      {kind === "START_SESSION" ? (
-        <StartSessionScheduleForm />
-      ) : (
-        <OtherKindScheduleForm
-          kind={kind}
-          defaultSessionId={defaultSessionId}
+  const { options: sessionOptions, hasRunningSessions } =
+    useSessionOptions(defaultSessionId);
+
+  /**
+   * 現在のトリガー設定を ScheduledTrigger proto に変換する.
+   * 失敗時は toast を出して null を返す (action の submit handler から呼ばれる前提).
+   */
+  const buildTrigger = (): ScheduledTrigger | null => {
+    if (trigger === "TIME") {
+      if (!scheduledAt) {
+        toast.error("実行日時を指定してください");
+        return null;
+      }
+      const at = localDateTimeStringToDate(scheduledAt);
+      if (Number.isNaN(at.getTime())) {
+        toast.error("実行日時が不正です");
+        return null;
+      }
+      return create(ScheduledTriggerSchema, {
+        trigger: {
+          case: "time",
+          value: create(TimeTriggerSchema, {
+            scheduledAt: dateToTimestamp(at),
+          }),
+        },
+      });
+    }
+    if (!monitorSessionId) {
+      toast.error("監視対象セッションを選択してください");
+      return null;
+    }
+    const parsed = parseIntOrUndef(threshold);
+    if (parsed === undefined || parsed < 0) {
+      toast.error("ユーザー数のしきい値は 0 以上の整数で指定してください");
+      return null;
+    }
+    return create(ScheduledTriggerSchema, {
+      trigger: {
+        case: "sessionUserCount",
+        value: create(SessionUserCountTriggerSchema, {
+          sessionId: monitorSessionId,
+          comparator:
+            comparator === "GREATER_OR_EQUAL"
+              ? SessionUserCountTrigger_Comparator.GREATER_OR_EQUAL
+              : SessionUserCountTrigger_Comparator.LESS_OR_EQUAL,
+          threshold: parsed,
+        }),
+      },
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <section className="space-y-3 rounded-md border p-4">
+        <h3 className="text-sm font-semibold">1. トリガー条件</h3>
+        <RadioGroupField
+          label="どんな時に予約を発火させるか"
+          options={TRIGGER_OPTIONS}
+          value={trigger}
+          onValueChange={(v) => setTrigger(v as TriggerKind)}
+          className="flex flex-row flex-wrap gap-4"
         />
-      )}
+
+        {trigger === "TIME" ? (
+          <TextField
+            label="実行日時"
+            type="datetime-local"
+            value={scheduledAt}
+            onChange={(e) => setScheduledAt(e.target.value)}
+          />
+        ) : (
+          <div className="space-y-3">
+            <SelectField
+              label="監視対象セッション"
+              options={sessionOptions}
+              selectedId={monitorSessionId || "_"}
+              onChange={(o) => setMonitorSessionId(o.id === "_" ? "" : o.id)}
+              helperText={
+                hasRunningSessions
+                  ? undefined
+                  : "実行中のセッションがありません. セッションIDが分かっている場合は URL の ?sessionId= から事前指定できます."
+              }
+            />
+            <div className="flex gap-2">
+              <TextField
+                label="ユーザー数"
+                type="number"
+                className="w-32"
+                value={threshold}
+                onChange={(e) => setThreshold(e.target.value)}
+              />
+              <SelectField
+                label="条件"
+                options={COMPARATOR_OPTIONS}
+                selectedId={comparator}
+                onChange={(o) => setComparator(o.id as UserCountComparator)}
+              />
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-3 rounded-md border p-4">
+        <h3 className="text-sm font-semibold">2. その時に何が起こるか</h3>
+        <RadioGroupField
+          label="操作種別"
+          options={ACTION_OPTIONS}
+          value={kind}
+          onValueChange={(v) => setKind(v as OperationKind)}
+          className="flex flex-row flex-wrap gap-4"
+        />
+
+        {kind === "START_SESSION" ? (
+          <StartSessionActionForm buildTrigger={buildTrigger} />
+        ) : (
+          <OtherKindActionForm
+            kind={kind}
+            sessionOptions={sessionOptions}
+            hasRunningSessions={hasRunningSessions}
+            defaultSessionId={defaultSessionId}
+            buildTrigger={buildTrigger}
+          />
+        )}
+      </section>
     </div>
   );
 }
 
 /* ============================================================
- * START_SESSION 予約: NewSessionForm と同等のフィールド + 実行日時
+ * START_SESSION action: 既存 NewSessionForm 相当のフィールド
+ * (host + startup parameters). トリガーは時刻 / 条件いずれにも対応.
  * ============================================================ */
 
-function StartSessionScheduleForm() {
+function StartSessionActionForm({
+  buildTrigger,
+}: {
+  buildTrigger: () => ScheduledTrigger | null;
+}) {
   const navigate = useNavigate();
   const { mutateAsync, isPending } = useMutation(
     createScheduledSessionOperation,
@@ -115,13 +311,6 @@ function StartSessionScheduleForm() {
     [hostList],
   );
 
-  const [scheduledAt, setScheduledAt] = useState(
-    defaultScheduledAtInputValue(),
-  );
-  const [scheduledAtError, setScheduledAtError] = useState<string | undefined>(
-    undefined,
-  );
-
   const {
     control,
     handleSubmit,
@@ -135,16 +324,8 @@ function StartSessionScheduleForm() {
   });
 
   const onSubmit = handleSubmit(async (data) => {
-    if (!scheduledAt) {
-      setScheduledAtError("実行日時を指定してください");
-      return;
-    }
-    const at = localDateTimeStringToDate(scheduledAt);
-    if (Number.isNaN(at.getTime())) {
-      setScheduledAtError("実行日時が不正です");
-      return;
-    }
-    setScheduledAtError(undefined);
+    const triggerMsg = buildTrigger();
+    if (!triggerMsg) return;
 
     try {
       const operation = create(ScheduledOperationSchema, {
@@ -156,15 +337,7 @@ function StartSessionScheduleForm() {
           }),
         },
       });
-      const trigger = create(ScheduledTriggerSchema, {
-        trigger: {
-          case: "time",
-          value: create(TimeTriggerSchema, {
-            scheduledAt: dateToTimestamp(at),
-          }),
-        },
-      });
-      await mutateAsync({ operation, trigger });
+      await mutateAsync({ operation, trigger: triggerMsg });
       toast.success("予約を作成しました");
       navigate("/sessions/scheduled");
     } catch (err) {
@@ -197,40 +370,21 @@ function StartSessionScheduleForm() {
         setValue={setValue}
       />
 
-      <TextField
-        label="実行日時"
-        type="datetime-local"
-        value={scheduledAt}
-        onChange={(e) => setScheduledAt(e.target.value)}
-        error={scheduledAtError}
+      <FormFooter
+        navigate={navigate}
+        disabled={isPending || isSubmitting || Object.keys(errors).length > 0}
+        cancelDisabled={isPending || isSubmitting}
       />
-
-      <div className="sticky bottom-0 border-t p-4 mt-8 bg-background flex gap-2">
-        <Button
-          type="submit"
-          disabled={isPending || isSubmitting || Object.keys(errors).length > 0}
-        >
-          予約を作成
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => navigate(-1)}
-          disabled={isPending || isSubmitting}
-        >
-          キャンセル
-        </Button>
-      </div>
     </form>
   );
 }
 
 /* ============================================================
- * STOP / UPDATE_* 予約: シンプルな別フォーム
+ * STOP / UPDATE_* action: target session + 任意の update params
  * ============================================================ */
 
 const otherFormSchema = z.object({
-  scheduledAt: z.string().min(1, "実行日時を指定してください"),
+  // action target
   sessionId: z.string().min(1, "対象セッションを選択してください"),
 
   // UPDATE_PARAMETERS
@@ -271,37 +425,23 @@ const parseBoolOrUndef = (s?: string) => {
   return undefined;
 };
 
-function OtherKindScheduleForm({
+function OtherKindActionForm({
   kind,
+  sessionOptions,
+  hasRunningSessions,
   defaultSessionId,
+  buildTrigger,
 }: {
   kind: Exclude<OperationKind, "START_SESSION">;
+  sessionOptions: SessionOption[];
+  hasRunningSessions: boolean;
   defaultSessionId?: string;
+  buildTrigger: () => ScheduledTrigger | null;
 }) {
   const navigate = useNavigate();
   const { mutateAsync, isPending } = useMutation(
     createScheduledSessionOperation,
   );
-
-  const { data: sessionsData } = useQuery(searchSessions, {
-    parameters: { status: SessionStatus.RUNNING },
-    page: { pageIndex: 0, pageSize: 100 },
-  });
-
-  const sessionOptions = useMemo(() => {
-    const list = sessionsData?.sessions ?? [];
-    const merged = list.slice();
-    if (defaultSessionId && !list.find((s) => s.id === defaultSessionId)) {
-      merged.unshift({
-        id: defaultSessionId,
-        name: defaultSessionId,
-      } as (typeof list)[number]);
-    }
-    return merged.map((s) => ({
-      id: s.id,
-      label: `${s.name || "(no name)"} (${s.id.slice(0, 8)}…)`,
-    }));
-  }, [sessionsData, defaultSessionId]);
 
   const {
     control,
@@ -311,19 +451,15 @@ function OtherKindScheduleForm({
     resolver: zodResolver(otherFormSchema),
     mode: "onBlur",
     defaultValues: {
-      scheduledAt: defaultScheduledAtInputValue(),
       sessionId: defaultSessionId ?? "",
     },
   });
 
   const onSubmit = handleSubmit(async (values) => {
-    try {
-      const at = localDateTimeStringToDate(values.scheduledAt);
-      if (Number.isNaN(at.getTime())) {
-        toast.error("実行日時が不正です");
-        return;
-      }
+    const triggerMsg = buildTrigger();
+    if (!triggerMsg) return;
 
+    try {
       let operation;
       switch (kind) {
         case "STOP_SESSION":
@@ -409,16 +545,7 @@ function OtherKindScheduleForm({
         }
       }
 
-      const trigger = create(ScheduledTriggerSchema, {
-        trigger: {
-          case: "time",
-          value: create(TimeTriggerSchema, {
-            scheduledAt: dateToTimestamp(at),
-          }),
-        },
-      });
-
-      await mutateAsync({ operation, trigger });
+      await mutateAsync({ operation, trigger: triggerMsg });
       toast.success("予約を作成しました");
       navigate("/sessions/scheduled");
     } catch (err) {
@@ -433,24 +560,16 @@ function OtherKindScheduleForm({
         control={control}
         render={({ field }) => (
           <SelectField
-            label="対象セッション"
-            options={[{ id: "_", label: "選択..." }].concat(sessionOptions)}
+            label="操作対象セッション"
+            options={sessionOptions}
             selectedId={field.value || "_"}
             onChange={(o) => field.onChange(o.id === "_" ? "" : o.id)}
             error={errors.sessionId?.message}
-          />
-        )}
-      />
-
-      <Controller
-        name="scheduledAt"
-        control={control}
-        render={({ field }) => (
-          <TextField
-            label="実行日時"
-            type="datetime-local"
-            error={errors.scheduledAt?.message}
-            {...field}
+            helperText={
+              hasRunningSessions
+                ? undefined
+                : "実行中のセッションがありません. セッションIDが分かっている場合は URL の ?sessionId= から事前指定できます."
+            }
           />
         )}
       />
@@ -617,22 +736,37 @@ function OtherKindScheduleForm({
         </div>
       )}
 
-      <div className="sticky bottom-0 border-t p-4 mt-8 bg-background flex gap-2">
-        <Button
-          type="submit"
-          disabled={isPending || isSubmitting || Object.keys(errors).length > 0}
-        >
-          予約を作成
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => navigate(-1)}
-          disabled={isPending || isSubmitting}
-        >
-          キャンセル
-        </Button>
-      </div>
+      <FormFooter
+        navigate={navigate}
+        disabled={isPending || isSubmitting || Object.keys(errors).length > 0}
+        cancelDisabled={isPending || isSubmitting}
+      />
     </form>
+  );
+}
+
+function FormFooter({
+  navigate,
+  disabled,
+  cancelDisabled,
+}: {
+  navigate: ReturnType<typeof useNavigate>;
+  disabled: boolean;
+  cancelDisabled: boolean;
+}) {
+  return (
+    <div className="sticky bottom-0 border-t p-4 mt-8 bg-background flex gap-2">
+      <Button type="submit" disabled={disabled}>
+        予約を作成
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => navigate(-1)}
+        disabled={cancelDisabled}
+      >
+        キャンセル
+      </Button>
+    </div>
   );
 }
