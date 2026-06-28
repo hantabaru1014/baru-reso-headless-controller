@@ -12,17 +12,24 @@ import (
 )
 
 const createRegistrationToken = `-- name: CreateRegistrationToken :exec
-INSERT INTO registration_tokens (token, resonite_id, expires_at) VALUES ($1, $2, $3)
+INSERT INTO registration_tokens (token, resonite_id, expires_at, personal_role_id)
+VALUES ($1, $2, $3, $4)
 `
 
 type CreateRegistrationTokenParams struct {
-	Token      string
-	ResoniteID string
-	ExpiresAt  pgtype.Timestamptz
+	Token          string
+	ResoniteID     string
+	ExpiresAt      pgtype.Timestamptz
+	PersonalRoleID pgtype.Text
 }
 
 func (q *Queries) CreateRegistrationToken(ctx context.Context, arg CreateRegistrationTokenParams) error {
-	_, err := q.db.Exec(ctx, createRegistrationToken, arg.Token, arg.ResoniteID, arg.ExpiresAt)
+	_, err := q.db.Exec(ctx, createRegistrationToken,
+		arg.Token,
+		arg.ResoniteID,
+		arg.ExpiresAt,
+		arg.PersonalRoleID,
+	)
 	return err
 }
 
@@ -36,7 +43,7 @@ func (q *Queries) DeleteExpiredRegistrationTokens(ctx context.Context) error {
 }
 
 const getRegistrationToken = `-- name: GetRegistrationToken :one
-SELECT token, resonite_id, expires_at, used_at, created_at FROM registration_tokens WHERE token = $1
+SELECT token, resonite_id, expires_at, used_at, created_at, personal_role_id FROM registration_tokens WHERE token = $1
 `
 
 func (q *Queries) GetRegistrationToken(ctx context.Context, token string) (RegistrationToken, error) {
@@ -48,12 +55,13 @@ func (q *Queries) GetRegistrationToken(ctx context.Context, token string) (Regis
 		&i.ExpiresAt,
 		&i.UsedAt,
 		&i.CreatedAt,
+		&i.PersonalRoleID,
 	)
 	return i, err
 }
 
 const getValidRegistrationToken = `-- name: GetValidRegistrationToken :one
-SELECT token, resonite_id, expires_at, used_at, created_at FROM registration_tokens
+SELECT token, resonite_id, expires_at, used_at, created_at, personal_role_id FROM registration_tokens
 WHERE token = $1
   AND expires_at > NOW()
   AND used_at IS NULL
@@ -68,6 +76,7 @@ func (q *Queries) GetValidRegistrationToken(ctx context.Context, token string) (
 		&i.ExpiresAt,
 		&i.UsedAt,
 		&i.CreatedAt,
+		&i.PersonalRoleID,
 	)
 	return i, err
 }

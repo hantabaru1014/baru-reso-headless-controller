@@ -8,10 +8,11 @@ import {
 } from "../../pbgen/hdlctrl/v1/permission-GroupService_connectquery";
 import { GroupType } from "../../pbgen/hdlctrl/v1/permission_pb";
 import { EditableTextField, ReadOnlyField } from "./base";
-import { Button, Skeleton } from "./ui";
+import { Skeleton } from "./ui";
 import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
 import { usePermissions } from "../hooks/usePermissions";
 import { PERMISSION_KEYS, groupTypeToLabel } from "../libs/permissionUtils";
+import { formatTimestamp } from "../libs/datetimeUtils";
 
 export default function GroupDetailPanel({ groupId }: { groupId: string }) {
   const navigate = useNavigate();
@@ -36,60 +37,62 @@ export default function GroupDetailPanel({ groupId }: { groupId: string }) {
 
   return (
     <div className="space-y-4">
-      <EditableTextField
-        label="グループ名"
-        value={group.name}
-        readonly={!canEdit}
-        onSave={async (v) => {
-          try {
-            await mutateUpdate({ groupId: group.id, name: v });
-            toast.success("グループ名を更新しました");
-            refetch();
-            return { ok: true };
-          } catch (e) {
-            return {
-              ok: false,
-              error: e instanceof Error ? e.message : "更新に失敗しました",
-            };
-          }
-        }}
-      />
-      <ReadOnlyField label="種別" value={groupTypeToLabel(group.type)} />
-      <ReadOnlyField label="ID" value={group.id} />
-      <ReadOnlyField
-        label="作成日時"
-        value={group.createdAt?.seconds.toString() ?? ""}
-      />
-      {canDelete && (
-        <div className="flex justify-end">
-          <PermissionGuardedButton
-            allowed
-            variant="destructive"
-            disabled={isDeleting}
-            onClick={async () => {
-              if (
-                !confirm(
-                  `グループ "${group.name}" を削除します。よろしいですか?`,
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <EditableTextField
+          label="グループ名"
+          value={group.name}
+          readonly={!canEdit}
+          onSave={async (v) => {
+            try {
+              await mutateUpdate({ groupId: group.id, name: v });
+              toast.success("グループ名を更新しました");
+              refetch();
+              return { ok: true };
+            } catch (e) {
+              return {
+                ok: false,
+                error: e instanceof Error ? e.message : "更新に失敗しました",
+              };
+            }
+          }}
+        />
+        <div className="flex items-start justify-end">
+          {canDelete && (
+            <PermissionGuardedButton
+              allowed
+              variant="destructive"
+              disabled={isDeleting}
+              onClick={async () => {
+                if (
+                  !confirm(
+                    `グループ "${group.name}" を削除します。よろしいですか?`,
+                  )
                 )
-              )
-                return;
-              try {
-                await mutateDelete({ groupId: group.id });
-                toast.success("グループを削除しました");
-                navigate("/groups");
-              } catch (e) {
-                toast.error(
-                  e instanceof Error
-                    ? e.message
-                    : "グループの削除に失敗しました",
-                );
-              }
-            }}
-          >
-            グループを削除
-          </PermissionGuardedButton>
+                  return;
+                try {
+                  await mutateDelete({ groupId: group.id });
+                  toast.success("グループを削除しました");
+                  navigate("/groups");
+                } catch (e) {
+                  toast.error(
+                    e instanceof Error
+                      ? e.message
+                      : "グループの削除に失敗しました",
+                  );
+                }
+              }}
+            >
+              グループを削除
+            </PermissionGuardedButton>
+          )}
         </div>
-      )}
+        <ReadOnlyField label="種別" value={groupTypeToLabel(group.type)} />
+        <ReadOnlyField label="ID" value={group.id} />
+        <ReadOnlyField
+          label="作成日時"
+          value={formatTimestamp(group.createdAt)}
+        />
+      </div>
       {!canDelete &&
         group.type === GroupType.NORMAL &&
         hasPermission(group.id, PERMISSION_KEYS.GROUP_EDIT) === false && (
@@ -102,9 +105,6 @@ export default function GroupDetailPanel({ groupId }: { groupId: string }) {
           personal グループは削除・編集できません
         </p>
       )}
-      <Button variant="outline" onClick={() => navigate("/groups")}>
-        一覧に戻る
-      </Button>
     </div>
   );
 }

@@ -756,6 +756,10 @@ message ListScheduledSessionOperationsRequest {
   optional string host_id = 2;
   optional ScheduledOperationStatus status = 3;
   PageRequest page = 4;
+  // group_id 指定で対象 host/session がそのグループに所属する op のみに絞る.
+  // 未指定 + (session_id, host_id) も未指定なら、caller が session:read を持つ
+  // 全グループの op を返す.
+  optional string group_id = 5;
 }
 
 message ListScheduledSessionOperationsResponse {

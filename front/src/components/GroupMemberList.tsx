@@ -9,7 +9,9 @@ import {
   updateGroupMemberRole,
 } from "../../pbgen/hdlctrl/v1/permission-GroupService_connectquery";
 import { listRoles } from "../../pbgen/hdlctrl/v1/permission-RoleService_connectquery";
+import { listUsers } from "../../pbgen/hdlctrl/v1/user-UserService_connectquery";
 import { GroupMember } from "../../pbgen/hdlctrl/v1/permission_pb";
+import { User } from "../../pbgen/hdlctrl/v1/user_pb";
 import {
   Button,
   Dialog,
@@ -22,26 +24,37 @@ import {
 import {
   DataTable,
   RefetchButton,
+  ScrollBase,
   SelectField,
   TextField,
   UserCell,
 } from "./base";
+import { ResoniteUserIcon } from "./ResoniteUserIcon";
 import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
 import { usePermissions } from "../hooks/usePermissions";
 import { PERMISSION_KEYS } from "../libs/permissionUtils";
 
 function AddMemberDialog({
   groupId,
+  excludeUserIds,
   open,
   onClose,
 }: {
   groupId: string;
+  /** 既存メンバー (検索結果から除外する) */
+  excludeUserIds: Set<string>;
   open: boolean;
   onClose?: () => void;
 }) {
-  const [userId, setUserId] = useState("");
+  const [query, setQuery] = useState("");
+  const [selectedUser, setSelectedUser] = useState<User | undefined>(undefined);
   const [roleId, setRoleId] = useState("");
   const { data: rolesData } = useQuery(listRoles, { groupId });
+  const { data: usersData, isPending: isUsersPending } = useQuery(
+    listUsers,
+    {},
+    { enabled: open },
+  );
   const { mutateAsync, isPending } = useMutation(addGroupMember);
 
   const roleOptions = useMemo(
@@ -53,27 +66,112 @@ function AddMemberDialog({
     [rolesData?.roles],
   );
 
+  const reset = () => {
+    setQuery("");
+    setSelectedUser(undefined);
+    setRoleId("");
+  };
+
+  const filteredUsers = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const all = usersData?.users ?? [];
+    const remaining = all.filter((u) => !excludeUserIds.has(u.id));
+    if (!q) return remaining.slice(0, 50);
+    return remaining
+      .filter(
+        (u) =>
+          u.id.toLowerCase().includes(q) ||
+          u.resoniteId.toLowerCase().includes(q),
+      )
+      .slice(0, 50);
+  }, [usersData?.users, excludeUserIds, query]);
+
   return (
     <Dialog
       open={open}
       onOpenChange={(o) => {
         if (!o) {
-          setUserId("");
-          setRoleId("");
+          reset();
           onClose?.();
         }
       }}
     >
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>メンバーを追加</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <TextField
-            label="ユーザー ID"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-          />
+          {selectedUser ? (
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <ResoniteUserIcon
+                  iconUrl={selectedUser.iconUrl}
+                  alt={selectedUser.id}
+                  className="size-10"
+                />
+                <div className="flex flex-col min-w-0">
+                  <span className="font-mono text-sm truncate">
+                    {selectedUser.id}
+                  </span>
+                  <span className="font-mono text-xs text-muted-foreground truncate">
+                    {selectedUser.resoniteId}
+                  </span>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedUser(undefined)}
+              >
+                変更
+              </Button>
+            </div>
+          ) : (
+            <>
+              <TextField
+                label="ユーザー検索"
+                placeholder="ユーザー ID または Resonite ID で検索"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <ScrollBase height="240px">
+                <div className="space-y-1">
+                  {isUsersPending && (
+                    <p className="p-2 text-sm text-muted-foreground">
+                      読み込み中...
+                    </p>
+                  )}
+                  {!isUsersPending && filteredUsers.length === 0 && (
+                    <p className="p-2 text-sm text-muted-foreground">
+                      該当するユーザーが見つかりません
+                    </p>
+                  )}
+                  {filteredUsers.map((u) => (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => setSelectedUser(u)}
+                      className="flex w-full items-center gap-3 rounded-md p-2 hover:bg-accent text-left"
+                    >
+                      <ResoniteUserIcon
+                        iconUrl={u.iconUrl}
+                        alt={u.id}
+                        className="size-8"
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-mono text-sm truncate">
+                          {u.id}
+                        </span>
+                        <span className="font-mono text-xs text-muted-foreground truncate">
+                          {u.resoniteId}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </ScrollBase>
+            </>
+          )}
           <SelectField
             label="ロール"
             options={roleOptions}
@@ -83,11 +181,17 @@ function AddMemberDialog({
         </div>
         <DialogFooter>
           <Button
-            disabled={!userId || !roleId || isPending}
+            disabled={!selectedUser || !roleId || isPending}
             onClick={async () => {
+              if (!selectedUser) return;
               try {
-                await mutateAsync({ groupId, userId, roleId });
+                await mutateAsync({
+                  groupId,
+                  userId: selectedUser.id,
+                  roleId,
+                });
                 toast.success("メンバーを追加しました");
+                reset();
                 onClose?.();
               } catch (e) {
                 toast.error(
@@ -239,6 +343,7 @@ export default function GroupMemberList({ groupId }: { groupId: string }) {
       />
       <AddMemberDialog
         groupId={groupId}
+        excludeUserIds={new Set((data?.members ?? []).map((m) => m.userId))}
         open={isAddOpen}
         onClose={() => {
           setIsAddOpen(false);

@@ -669,10 +669,13 @@ func (x *GetUserResponse) GetUser() *User {
 }
 
 type CreateRegistrationTokenRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ResoniteId    string                 `protobuf:"bytes,1,opt,name=resonite_id,json=resoniteId,proto3" json:"resonite_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	ResoniteId string                 `protobuf:"bytes,1,opt,name=resonite_id,json=resoniteId,proto3" json:"resonite_id,omitempty"`
+	// 個人グループに付与するロールID. 未指定なら seed-admin が付与される.
+	// トークンと一緒に DB に保存され、RegisterWithToken 時に lookup される.
+	PersonalRoleId *string `protobuf:"bytes,2,opt,name=personal_role_id,json=personalRoleId,proto3,oneof" json:"personal_role_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CreateRegistrationTokenRequest) Reset() {
@@ -708,6 +711,13 @@ func (*CreateRegistrationTokenRequest) Descriptor() ([]byte, []int) {
 func (x *CreateRegistrationTokenRequest) GetResoniteId() string {
 	if x != nil {
 		return x.ResoniteId
+	}
+	return ""
+}
+
+func (x *CreateRegistrationTokenRequest) GetPersonalRoleId() string {
+	if x != nil && x.PersonalRoleId != nil {
+		return *x.PersonalRoleId
 	}
 	return ""
 }
@@ -880,11 +890,11 @@ const file_hdlctrl_v1_user_proto_rawDesc = "" +
 	"\vresonite_id\x18\x02 \x01(\tR\n" +
 	"resoniteId\x12,\n" +
 	"\x12resonite_user_name\x18\x03 \x01(\tR\x10resoniteUserName\x12\x19\n" +
-	"\bicon_url\x18\x04 \x01(\tR\aiconUrl\"e\n" +
+	"\bicon_url\x18\x04 \x01(\tR\aiconUrl\"}\n" +
 	"\x18RegisterWithTokenRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x1a\n" +
-	"\bpassword\x18\x03 \x01(\tR\bpassword\"e\n" +
+	"\bpassword\x18\x03 \x01(\tR\bpasswordJ\x04\b\x04\x10\x05R\x10personal_role_id\"e\n" +
 	"\x15ChangePasswordRequest\x12)\n" +
 	"\x10current_password\x18\x01 \x01(\tR\x0fcurrentPassword\x12!\n" +
 	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\"\x18\n" +
@@ -904,10 +914,12 @@ const file_hdlctrl_v1_user_proto_rawDesc = "" +
 	"\x0eGetUserRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"7\n" +
 	"\x0fGetUserResponse\x12$\n" +
-	"\x04user\x18\x01 \x01(\v2\x10.hdlctrl.v1.UserR\x04user\"A\n" +
+	"\x04user\x18\x01 \x01(\v2\x10.hdlctrl.v1.UserR\x04user\"\x85\x01\n" +
 	"\x1eCreateRegistrationTokenRequest\x12\x1f\n" +
 	"\vresonite_id\x18\x01 \x01(\tR\n" +
-	"resoniteId\"\xbb\x01\n" +
+	"resoniteId\x12-\n" +
+	"\x10personal_role_id\x18\x02 \x01(\tH\x00R\x0epersonalRoleId\x88\x01\x01B\x13\n" +
+	"\x11_personal_role_id\"\xbb\x01\n" +
 	"\x1fCreateRegistrationTokenResponse\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x129\n" +
 	"\n" +
@@ -1001,6 +1013,7 @@ func file_hdlctrl_v1_user_proto_init() {
 	if File_hdlctrl_v1_user_proto != nil {
 		return
 	}
+	file_hdlctrl_v1_user_proto_msgTypes[13].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

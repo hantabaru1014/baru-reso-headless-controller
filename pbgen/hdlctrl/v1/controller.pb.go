@@ -6153,11 +6153,15 @@ func (x *CreateScheduledSessionOperationResponse) GetScheduledOperation() *Sched
 }
 
 type ListScheduledSessionOperationsRequest struct {
-	state         protoimpl.MessageState    `protogen:"open.v1"`
-	SessionId     *string                   `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3,oneof" json:"session_id,omitempty"`
-	HostId        *string                   `protobuf:"bytes,2,opt,name=host_id,json=hostId,proto3,oneof" json:"host_id,omitempty"`
-	Status        *ScheduledOperationStatus `protobuf:"varint,3,opt,name=status,proto3,enum=hdlctrl.v1.ScheduledOperationStatus,oneof" json:"status,omitempty"`
-	Page          *PageRequest              `protobuf:"bytes,4,opt,name=page,proto3" json:"page,omitempty"`
+	state     protoimpl.MessageState    `protogen:"open.v1"`
+	SessionId *string                   `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3,oneof" json:"session_id,omitempty"`
+	HostId    *string                   `protobuf:"bytes,2,opt,name=host_id,json=hostId,proto3,oneof" json:"host_id,omitempty"`
+	Status    *ScheduledOperationStatus `protobuf:"varint,3,opt,name=status,proto3,enum=hdlctrl.v1.ScheduledOperationStatus,oneof" json:"status,omitempty"`
+	Page      *PageRequest              `protobuf:"bytes,4,opt,name=page,proto3" json:"page,omitempty"`
+	// group_id 指定で対象 host/session がそのグループに所属する op のみに絞る.
+	// 未指定 + (session_id, host_id) も未指定なら、caller が session:read を持つ
+	// 全グループの op を返す.
+	GroupId       *string `protobuf:"bytes,5,opt,name=group_id,json=groupId,proto3,oneof" json:"group_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6218,6 +6222,13 @@ func (x *ListScheduledSessionOperationsRequest) GetPage() *PageRequest {
 		return x.Page
 	}
 	return nil
+}
+
+func (x *ListScheduledSessionOperationsRequest) GetGroupId() string {
+	if x != nil && x.GroupId != nil {
+		return *x.GroupId
+	}
+	return ""
 }
 
 type ListScheduledSessionOperationsResponse struct {
@@ -7220,17 +7231,19 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\toperation\x18\x01 \x01(\v2\x1e.hdlctrl.v1.ScheduledOperationR\toperation\x126\n" +
 	"\atrigger\x18\x02 \x01(\v2\x1c.hdlctrl.v1.ScheduledTriggerR\atrigger\"\x81\x01\n" +
 	"'CreateScheduledSessionOperationResponse\x12V\n" +
-	"\x13scheduled_operation\x18\x01 \x01(\v2%.hdlctrl.v1.ScheduledSessionOperationR\x12scheduledOperation\"\xff\x01\n" +
+	"\x13scheduled_operation\x18\x01 \x01(\v2%.hdlctrl.v1.ScheduledSessionOperationR\x12scheduledOperation\"\xac\x02\n" +
 	"%ListScheduledSessionOperationsRequest\x12\"\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tH\x00R\tsessionId\x88\x01\x01\x12\x1c\n" +
 	"\ahost_id\x18\x02 \x01(\tH\x01R\x06hostId\x88\x01\x01\x12A\n" +
 	"\x06status\x18\x03 \x01(\x0e2$.hdlctrl.v1.ScheduledOperationStatusH\x02R\x06status\x88\x01\x01\x12+\n" +
-	"\x04page\x18\x04 \x01(\v2\x17.hdlctrl.v1.PageRequestR\x04pageB\r\n" +
+	"\x04page\x18\x04 \x01(\v2\x17.hdlctrl.v1.PageRequestR\x04page\x12\x1e\n" +
+	"\bgroup_id\x18\x05 \x01(\tH\x03R\agroupId\x88\x01\x01B\r\n" +
 	"\v_session_idB\n" +
 	"\n" +
 	"\b_host_idB\t\n" +
-	"\a_status\"\xb0\x01\n" +
+	"\a_statusB\v\n" +
+	"\t_group_id\"\xb0\x01\n" +
 	"&ListScheduledSessionOperationsResponse\x12X\n" +
 	"\x14scheduled_operations\x18\x01 \x03(\v2%.hdlctrl.v1.ScheduledSessionOperationR\x13scheduledOperations\x12,\n" +
 	"\x04page\x18\x02 \x01(\v2\x18.hdlctrl.v1.PageResponseR\x04page\"8\n" +

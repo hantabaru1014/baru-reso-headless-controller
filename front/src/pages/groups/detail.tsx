@@ -24,6 +24,7 @@ export default function GroupDetail() {
   }
 
   const group = data?.group;
+  const isPersonal = group?.type === GroupType.PERSONAL;
   const canManageRoles =
     !!group &&
     group.type !== GroupType.SYSTEM &&
@@ -33,18 +34,21 @@ export default function GroupDetail() {
 
   return (
     <div className="container mx-auto p-4 space-y-6">
-      <section>
-        <h2 className="text-lg font-semibold mb-2">グループ情報</h2>
-        <GroupDetailPanel groupId={id} />
-      </section>
-      <section className="border-t pt-4">
-        <h2 className="text-lg font-semibold mb-2">メンバー</h2>
-        <GroupMemberList groupId={id} />
-      </section>
-      <section className="border-t pt-4">
-        <h2 className="text-lg font-semibold mb-2">グループ内カスタムロール</h2>
-        <RoleList groupId={id} canManage={canManageRoles} scope={scope} />
-      </section>
+      <GroupDetailPanel groupId={id} />
+      {!isPersonal && (
+        <>
+          <section className="border-t pt-4">
+            <h2 className="text-lg font-semibold mb-2">メンバー</h2>
+            <GroupMemberList groupId={id} />
+          </section>
+          <section className="border-t pt-4">
+            <h2 className="text-lg font-semibold mb-2">
+              グループ内カスタムロール
+            </h2>
+            <RoleList groupId={id} canManage={canManageRoles} scope={scope} />
+          </section>
+        </>
+      )}
     </div>
   );
 }

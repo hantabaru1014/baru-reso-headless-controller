@@ -323,7 +323,7 @@ func TestUserService_ListUsers(t *testing.T) {
 		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 
-	t.Run("失敗: system:user.list 権限なし → PermissionDenied", func(t *testing.T) {
+	t.Run("成功: system 権限を持たないユーザーでも一覧取得可能 (auth-only)", func(t *testing.T) {
 		setup := setupUserServiceTest(t)
 		defer setup.Cleanup()
 
@@ -338,13 +338,9 @@ func TestUserService_ListUsers(t *testing.T) {
 			"alice@example.test", "U-alice", "",
 		)
 
-		_, err := client.ListUsers(t.Context(), req)
-		require.Error(t, err)
-
-		connectErr := &connect.Error{}
-		require.ErrorAs(t, err, &connectErr)
-		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
-		assert.Contains(t, connectErr.Message(), entity.PermKey_SystemUserList)
+		res, err := client.ListUsers(t.Context(), req)
+		require.NoError(t, err)
+		assert.NotEmpty(t, res.Msg.GetUsers())
 	})
 }
 

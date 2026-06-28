@@ -29,7 +29,8 @@ func NewUserCommand(uu *usecase.UserUsecase, skyfrostClient skyfrost.Client) *co
 				return
 			}
 
-			token, err := uu.CreateRegistrationToken(ctx, resoniteId)
+			// CLI から個人グループ用ロールを指定する手段は現状無いため空文字で発行 (= seed-admin).
+			token, err := uu.CreateRegistrationToken(ctx, resoniteId, "")
 			if err != nil {
 				cmd.PrintErrln("Failed to create registration token:", err)
 

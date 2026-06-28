@@ -55,6 +55,8 @@ message RegisterWithTokenRequest {
   string token = 1;
   string user_id = 2;
   string password = 3;
+  reserved 4; // 旧 personal_role_id. token 発行時に保存する方式に変更.
+  reserved "personal_role_id";
 }
 
 message ChangePasswordRequest {
@@ -89,6 +91,9 @@ message GetUserResponse {
 
 message CreateRegistrationTokenRequest {
   string resonite_id = 1;
+  // 個人グループに付与するロールID. 未指定なら seed-admin が付与される.
+  // トークンと一緒に DB に保存され、RegisterWithToken 時に lookup される.
+  optional string personal_role_id = 2;
 }
 
 message CreateRegistrationTokenResponse {

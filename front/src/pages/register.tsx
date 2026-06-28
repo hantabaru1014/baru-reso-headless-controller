@@ -35,6 +35,7 @@ interface JwtPayload {
 
 export default function Register() {
   const { token } = useParams<{ token: string }>();
+  // personal_role_id は token と紐付けて DB に永続化されているので URL 経由では受け取らない.
   const [session, setSession] = useAtom(sessionAtom);
   const [, setRefreshToken] = useAtom(sessionRefreshTokenAtom);
   const navigate = useNavigate();

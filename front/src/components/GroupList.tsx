@@ -6,10 +6,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { ColumnDef } from "@tanstack/react-table";
+import { createConnectQueryKey } from "@connectrpc/connect-query";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   createGroup,
   listGroups,
 } from "../../pbgen/hdlctrl/v1/permission-GroupService_connectquery";
+import { getMyPermissions } from "../../pbgen/hdlctrl/v1/permission-RoleService_connectquery";
 import { Group, GroupType } from "../../pbgen/hdlctrl/v1/permission_pb";
 import {
   Button,
@@ -21,7 +24,9 @@ import {
   DialogTitle,
 } from "./ui";
 import { DataTable, RefetchButton, TextField } from "./base";
-import { groupTypeToLabel } from "../libs/permissionUtils";
+import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
+import { usePermissions } from "../hooks/usePermissions";
+import { PERMISSION_KEYS, groupTypeToLabel } from "../libs/permissionUtils";
 
 const newGroupFormSchema = z.object({
   name: z.string().min(1, "グループ名は必須です"),
@@ -31,9 +36,12 @@ type NewGroupFormData = z.infer<typeof newGroupFormSchema>;
 function NewGroupDialog({
   open,
   onClose,
+  onCreated,
 }: {
   open: boolean;
   onClose?: () => void;
+  /** 作成成功時. 引数の groupId は新規グループ ID. */
+  onCreated?: (groupId: string) => void;
 }) {
   const { mutateAsync, isPending } = useMutation(createGroup);
 
@@ -49,9 +57,10 @@ function NewGroupDialog({
 
   const onSubmit = async (data: NewGroupFormData) => {
     try {
-      await mutateAsync({ name: data.name });
+      const res = await mutateAsync({ name: data.name });
       toast.success("グループを作成しました");
       reset();
+      if (res.group?.id) onCreated?.(res.group.id);
       onClose?.();
     } catch (e) {
       toast.error(
@@ -125,14 +134,34 @@ const columns: ColumnDef<Group>[] = [
 
 export default function GroupList() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data, isPending, refetch } = useQuery(listGroups, {});
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
+  const { hasSystemPermission } = usePermissions();
+  const canCreate = hasSystemPermission(PERMISSION_KEYS.SYSTEM_GROUP_MANAGE);
+
+  const handleCreated = async (newGroupId: string) => {
+    // 新規グループへの権限を即時反映するため getMyPermissions を invalidate.
+    await queryClient.invalidateQueries({
+      queryKey: createConnectQueryKey({
+        schema: getMyPermissions,
+        cardinality: undefined,
+      }),
+    });
+    navigate(`/groups/${newGroupId}`);
+  };
 
   return (
     <div className="space-y-4">
       <div className="flex justify-end gap-2">
         <RefetchButton refetch={refetch} />
-        <Button onClick={() => setIsNewDialogOpen(true)}>新規グループ</Button>
+        <PermissionGuardedButton
+          allowed={canCreate}
+          disabledReason="グループ作成権限がありません"
+          onClick={() => setIsNewDialogOpen(true)}
+        >
+          新規グループ
+        </PermissionGuardedButton>
       </div>
       <DataTable
         columns={columns}
@@ -146,6 +175,7 @@ export default function GroupList() {
           setIsNewDialogOpen(false);
           refetch();
         }}
+        onCreated={handleCreated}
       />
     </div>
   );

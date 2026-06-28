@@ -208,6 +208,14 @@ export default function RoleList({
     listRoles,
     groupId ? { groupId } : {},
   );
+  // グループ詳細では「そのグループ専用カスタムロール」だけを表示する.
+  // ListRoles(group_id) は割り当て可能な scope-match なグローバルロールも返すので、
+  // group_id 指定時は groupId 一致のものに絞る.
+  const filteredRoles = useMemo(() => {
+    const all = data?.roles ?? [];
+    if (!groupId) return all;
+    return all.filter((r) => r.groupId === groupId);
+  }, [data?.roles, groupId]);
   const { mutateAsync: mutateDelete } = useMutation(deleteRole);
   const [editingRole, setEditingRole] = useState<Role | undefined>(undefined);
   const [isCreating, setIsCreating] = useState(false);
@@ -302,11 +310,7 @@ export default function RoleList({
           ロール作成
         </PermissionGuardedButton>
       </div>
-      <DataTable
-        columns={columns}
-        data={data?.roles ?? []}
-        isLoading={isPending}
-      />
+      <DataTable columns={columns} data={filteredRoles} isLoading={isPending} />
       {isCreating && (
         <RoleEditorDialog
           groupId={groupId}

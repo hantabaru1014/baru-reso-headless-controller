@@ -134,6 +134,11 @@ func (c *ControllerService) ListScheduledSessionOperations(ctx context.Context, 
 		filter.Status = &s
 	}
 
+	if req.Msg.GroupId != nil {
+		v := req.Msg.GetGroupId()
+		filter.GroupID = &v
+	}
+
 	result, err := c.souc.List(ctx, filter)
 	if err != nil {
 		return nil, convertErr(err)

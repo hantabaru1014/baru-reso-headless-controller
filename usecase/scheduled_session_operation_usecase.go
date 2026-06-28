@@ -137,32 +137,103 @@ type ListScheduledSessionOperationsFilter = port.ScheduledSessionOperationListFi
 type ListScheduledSessionOperationsResult = port.ScheduledSessionOperationListResult
 
 func (u *ScheduledSessionOperationUsecase) List(ctx context.Context, filter ListScheduledSessionOperationsFilter) (*ListScheduledSessionOperationsResult, error) {
-	// host_id / session_id 指定が無い場合は全件返却となるため system:group.list を要求する.
-	// 指定がある場合は対象 group に対する session:read を要求.
-	if filter.HostID == nil && filter.SessionID == nil {
-		if err := u.permUC.RequireSystemPermission(ctx, entity.PermKey_SystemGroupList); err != nil {
+	// group_id 指定: そのグループに session:read があるかチェック → 対象 op を group で post-filter.
+	if filter.GroupID != nil && *filter.GroupID != "" {
+		if err := u.permUC.RequirePermissionForGroup(ctx, *filter.GroupID, entity.PermKey_SessionRead); err != nil {
+			return nil, err
+		}
+
+		return u.listFilteredByGroups(ctx, filter, map[string]bool{*filter.GroupID: true})
+	}
+
+	// host_id / session_id 指定: 対象 host/session の group_id で認可.
+	if filter.HostID != nil || filter.SessionID != nil {
+		groupID, err := u.resolveTargetGroupID(ctx, filter.HostID, filter.SessionID)
+		if err != nil {
+			// 対象 host/session が DB に存在しないなら、その filter で hit する op も
+			// 存在しない. 0 件を返す方が 404 より UX が素直.
+			if errors.Is(err, domain.ErrNotFound) {
+				return &port.ScheduledSessionOperationListResult{}, nil
+			}
+
+			return nil, err
+		}
+
+		if err := u.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_SessionRead); err != nil {
 			return nil, err
 		}
 
 		return u.repo.List(ctx, filter)
 	}
 
-	groupID, err := u.resolveTargetGroupID(ctx, filter.HostID, filter.SessionID)
+	// フィルタ未指定: caller が session:read を持つ全グループの op を返す.
+	userID, err := CurrentUserID(ctx)
 	if err != nil {
-		// 対象 host/session が DB に存在しないなら、その filter で hit する op も
-		// 存在しない. 0 件を返す方が 404 より UX が素直.
-		if errors.Is(err, domain.ErrNotFound) {
-			return &port.ScheduledSessionOperationListResult{}, nil
+		return nil, err
+	}
+
+	groupIDs, listAll, err := u.permUC.ResolveListGroupFilter(ctx, userID, entity.PermKey_SessionRead)
+	if err != nil {
+		return nil, err
+	}
+
+	if listAll {
+		return u.repo.List(ctx, filter)
+	}
+
+	accessible := make(map[string]bool, len(groupIDs))
+	for _, g := range groupIDs {
+		accessible[g] = true
+	}
+
+	return u.listFilteredByGroups(ctx, filter, accessible)
+}
+
+// listFilteredByGroups は repo.List の結果を accessible グループの op のみに in-app で絞る.
+// scheduled_session_operations は group_id 列を持たないため、各 op の target host/session から
+// 都度 group_id を引いて判定する. データ量は通常少ない (worker tick 単位の予約) ので問題ない想定.
+func (u *ScheduledSessionOperationUsecase) listFilteredByGroups(ctx context.Context, filter ListScheduledSessionOperationsFilter, accessible map[string]bool) (*ListScheduledSessionOperationsResult, error) {
+	// page を取り払って全件取得 → 絞り込み → in-app paging.
+	rawFilter := filter
+	rawFilter.PageIndex = 0
+	rawFilter.PageSize = 0 // repo 側で 0 は「上限なし」扱いになる前提.
+
+	result, err := u.repo.List(ctx, rawFilter)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make(entity.ScheduledSessionOperationList, 0, len(result.Items))
+
+	for _, op := range result.Items {
+		gid, err := u.resolveTargetGroupID(ctx, op.HostID, op.SessionID)
+		if err != nil {
+			// 対象 host/session が消えている op はスキップ.
+			continue
 		}
 
-		return nil, err
+		if accessible[gid] {
+			filtered = append(filtered, op)
+		}
 	}
 
-	if err := u.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_SessionRead); err != nil {
-		return nil, err
+	total := int32(len(filtered))
+
+	// in-app paging.
+	start := filter.PageIndex * filter.PageSize
+	if start < 0 || start >= total {
+		return &port.ScheduledSessionOperationListResult{Items: nil, TotalCount: total}, nil
 	}
 
-	return u.repo.List(ctx, filter)
+	end := start + filter.PageSize
+	if filter.PageSize == 0 || end > total {
+		end = total
+	}
+
+	return &port.ScheduledSessionOperationListResult{
+		Items:      filtered[start:end],
+		TotalCount: total,
+	}, nil
 }
 
 var ErrScheduledOperationNotCancelable = errors.New("scheduled operation cannot be canceled in its current status")

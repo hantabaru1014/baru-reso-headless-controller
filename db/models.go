@@ -86,11 +86,12 @@ type HostEventCheckpoint struct {
 }
 
 type RegistrationToken struct {
-	Token      string
-	ResoniteID string
-	ExpiresAt  pgtype.Timestamptz
-	UsedAt     pgtype.Timestamptz
-	CreatedAt  pgtype.Timestamptz
+	Token          string
+	ResoniteID     string
+	ExpiresAt      pgtype.Timestamptz
+	UsedAt         pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+	PersonalRoleID pgtype.Text
 }
 
 type Role struct {

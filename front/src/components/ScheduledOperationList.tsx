@@ -16,6 +16,8 @@ import { DataTable } from "./base";
 import { RefetchButton } from "./base/RefetchButton";
 import { toast } from "sonner";
 import { keepPreviousData } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
+import { currentGroupIdAtom } from "../atoms/currentGroupAtom";
 import {
   formatScheduled,
   operationKindLabel,
@@ -60,10 +62,15 @@ export default function ScheduledOperationList({ sessionId }: Props) {
       paramPrefix: sessionId ? "scheduledOps" : "",
     });
 
+  const currentGroupId = useAtomValue(currentGroupIdAtom);
+
   const { data, isPending, refetch } = useQuery(
     listScheduledSessionOperations,
     {
       sessionId,
+      // ヘッダーで全グループ (null) のときは group_id 未指定で送り、user の
+      // アクセス可能な全グループの op を backend から取得する.
+      groupId: currentGroupId ?? undefined,
       page: { pageIndex, pageSize },
     },
     { placeholderData: keepPreviousData },

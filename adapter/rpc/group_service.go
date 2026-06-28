@@ -69,10 +69,10 @@ func (s *GroupService) NewHandler() (string, http.Handler) {
 }
 
 // CreateGroup creates a new normal group with the caller as admin.
-// 権限: 認証のみ (caller が自分のグループを作るだけなので追加チェック不要).
+// 権限: system:group.manage. 任意ユーザーがグループを乱造できないようにする.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.GroupServiceCreateGroupProcedure,
-	requireAuthOnly,
+	requireSystemPerm(entity.PermKey_SystemGroupManage),
 )
 
 func (s *GroupService) CreateGroup(ctx context.Context, req *connect.Request[hdlctrlv1.CreateGroupRequest]) (*connect.Response[hdlctrlv1.CreateGroupResponse], error) {

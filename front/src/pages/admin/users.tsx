@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import { useAtomValue } from "jotai";
 import { toast } from "sonner";
 import { ColumnDef } from "@tanstack/react-table";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Copy, Loader2 } from "lucide-react";
@@ -16,6 +16,8 @@ import {
   CreateRegistrationTokenResponse,
   User,
 } from "../../../pbgen/hdlctrl/v1/user_pb";
+import { listRoles } from "../../../pbgen/hdlctrl/v1/permission-RoleService_connectquery";
+import { RoleScope } from "../../../pbgen/hdlctrl/v1/permission_pb";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,7 +35,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui";
-import { DataTable, RefetchButton, TextField } from "../../components/base";
+import {
+  DataTable,
+  RefetchButton,
+  SelectField,
+  TextField,
+} from "../../components/base";
 import { PermissionGuardedButton } from "../../components/base/PermissionGuardedButton";
 import { ResoniteUserIcon } from "../../components/ResoniteUserIcon";
 import { usePermissions } from "../../hooks/usePermissions";
@@ -46,6 +53,7 @@ const inviteFormSchema = z.object({
     .string()
     .min(1, "Resonite ID は必須です")
     .regex(/^U-/, "Resonite ID は U- から始まる必要があります"),
+  personalRoleId: z.string().min(1, "ロールを選択してください"),
 });
 type InviteFormData = z.infer<typeof inviteFormSchema>;
 
@@ -58,17 +66,31 @@ function InviteUserDialog({
 }) {
   const { mutateAsync, isPending } = useMutation(createRegistrationToken);
   const [issued, setIssued] = useState<
-    CreateRegistrationTokenResponse | undefined
+    (CreateRegistrationTokenResponse & { personalRoleId: string }) | undefined
   >(undefined);
+  // 個人グループに付与するロール候補. group_id 未指定で ListRoles するとグローバル
+  // (seed + グローバルカスタム) が返るので、NORMAL scope のものだけ採用する.
+  const { data: rolesData } = useQuery(listRoles, {}, { enabled: open });
+  const personalRoleOptions = useMemo(
+    () =>
+      (rolesData?.roles ?? [])
+        .filter((r) => r.scope === RoleScope.NORMAL)
+        .map((r) => ({
+          id: r.id,
+          label: `${r.name}${r.isBuiltin ? " (組込)" : ""}`,
+        })),
+    [rolesData?.roles],
+  );
 
   const {
+    control,
     register,
     handleSubmit,
     reset,
     formState: { errors },
   } = useForm<InviteFormData>({
     resolver: zodResolver(inviteFormSchema),
-    defaultValues: { resoniteId: "" },
+    defaultValues: { resoniteId: "", personalRoleId: "seed-admin" },
   });
 
   const handleClose = () => {
@@ -79,8 +101,12 @@ function InviteUserDialog({
 
   const onSubmit = async (data: InviteFormData) => {
     try {
-      const res = await mutateAsync({ resoniteId: data.resoniteId });
-      setIssued(res);
+      // personal_role_id はトークンと一緒に DB に保存される (改竄不能).
+      const res = await mutateAsync({
+        resoniteId: data.resoniteId,
+        personalRoleId: data.personalRoleId || undefined,
+      });
+      setIssued({ ...res, personalRoleId: data.personalRoleId });
     } catch (e) {
       toast.error(
         e instanceof Error ? e.message : "招待トークンの発行に失敗しました",
@@ -88,6 +114,7 @@ function InviteUserDialog({
     }
   };
 
+  // 招待 URL: personal_role_id は token と紐付けて永続化済なので URL には載せない.
   const inviteUrl = issued
     ? `${window.location.origin}/register/${issued.token}`
     : "";
@@ -166,6 +193,20 @@ function InviteUserDialog({
               placeholder="U-username"
               {...register("resoniteId")}
               error={errors.resoniteId?.message}
+            />
+            <Controller
+              name="personalRoleId"
+              control={control}
+              render={({ field }) => (
+                <SelectField
+                  label="個人グループに付与するロール"
+                  helperText="このユーザーの個人グループメンバーシップに割り当てるロール"
+                  options={personalRoleOptions}
+                  selectedId={field.value}
+                  onChange={(o) => field.onChange(o.id)}
+                  error={errors.personalRoleId?.message}
+                />
+              )}
             />
             <p className="text-muted-foreground text-xs">
               指定された Resonite ユーザー宛の登録リンクを発行します。
@@ -307,14 +348,17 @@ export default function AdminUsersPage() {
       header: "操作",
       cell: ({ row }) => {
         const isSelf = row.original.id === currentUserId;
+        const isSystem = row.original.id === "system";
         const disabledReason = isSelf
           ? "自分自身は削除できません"
-          : !canDelete
-            ? "削除権限がありません"
-            : undefined;
+          : isSystem
+            ? "system ユーザーは削除できません"
+            : !canDelete
+              ? "削除権限がありません"
+              : undefined;
         return (
           <PermissionGuardedButton
-            allowed={canDelete && !isSelf}
+            allowed={canDelete && !isSelf && !isSystem}
             disabledReason={disabledReason}
             variant="ghost"
             size="sm"

@@ -149,10 +149,11 @@ func (u *UserService) ChangePassword(ctx context.Context, req *connect.Request[h
 }
 
 // ListUsers implements hdlctrlv1connect.UserServiceHandler.
-// 権限: system:user.list (permission interceptor が事前チェック).
+// 権限: 認証済みなら誰でも (GroupMember 追加モーダルでの検索など、グループ管理者にも
+// ユーザー一覧が必要なため). ID / Resonite ID 程度の情報なので機密性は低い.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.UserServiceListUsersProcedure,
-	requireSystemPerm(entity.PermKey_SystemUserList),
+	requireAuthenticated,
 )
 
 func (u *UserService) ListUsers(ctx context.Context, _ *connect.Request[hdlctrlv1.ListUsersRequest]) (*connect.Response[hdlctrlv1.ListUsersResponse], error) {
@@ -201,7 +202,7 @@ func (u *UserService) CreateRegistrationToken(ctx context.Context, req *connect.
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("resonite_id is required"))
 	}
 
-	info, err := u.uu.CreateRegistrationTokenWithInfo(ctx, req.Msg.GetResoniteId())
+	info, err := u.uu.CreateRegistrationTokenWithInfo(ctx, req.Msg.GetResoniteId(), req.Msg.GetPersonalRoleId())
 	if err != nil {
 		// Resonite ID 不正は InvalidArgument として扱う.
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)

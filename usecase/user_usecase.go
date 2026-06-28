@@ -132,13 +132,14 @@ func (u *UserUsecase) DeleteUser(ctx context.Context, id string) error {
 
 // CreateRegistrationToken creates a registration token for the given resonite ID.
 // The token is valid for 24 hours.
+// personalRoleID が空文字なら seed-admin が付与される (RegisterWithToken 実行時).
 // 権限要件: system:user.create (CLI / 管理 RPC).
-func (u *UserUsecase) CreateRegistrationToken(ctx context.Context, resoniteId string) (string, error) {
+func (u *UserUsecase) CreateRegistrationToken(ctx context.Context, resoniteId, personalRoleID string) (string, error) {
 	if err := u.permUC.RequireSystemPermission(ctx, entity.PermKey_SystemUserCreate); err != nil {
 		return "", err
 	}
 
-	token, _, err := u.createRegistrationToken(ctx, resoniteId)
+	token, _, err := u.createRegistrationToken(ctx, resoniteId, personalRoleID)
 
 	return token, err
 }
@@ -155,8 +156,9 @@ type RegistrationTokenWithInfo struct {
 // CreateRegistrationTokenWithInfo は Resonite ID の有効性を skyfrost で検証してから
 // 登録トークンを発行し、Resonite ユーザー情報と合わせて返す.
 // Resonite ID が不正な場合はトークンを発行せずエラーを返す.
+// personalRoleID が空文字なら seed-admin が付与される (RegisterWithToken 実行時).
 // 権限要件: system:user.create.
-func (u *UserUsecase) CreateRegistrationTokenWithInfo(ctx context.Context, resoniteId string) (*RegistrationTokenWithInfo, error) {
+func (u *UserUsecase) CreateRegistrationTokenWithInfo(ctx context.Context, resoniteId, personalRoleID string) (*RegistrationTokenWithInfo, error) {
 	if err := u.permUC.RequireSystemPermission(ctx, entity.PermKey_SystemUserCreate); err != nil {
 		return nil, err
 	}
@@ -166,7 +168,7 @@ func (u *UserUsecase) CreateRegistrationTokenWithInfo(ctx context.Context, reson
 		return nil, errors.WrapPrefix(err, "invalid resonite id", 0)
 	}
 
-	token, expiresAt, err := u.createRegistrationToken(ctx, resoniteId)
+	token, expiresAt, err := u.createRegistrationToken(ctx, resoniteId, personalRoleID)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +181,7 @@ func (u *UserUsecase) CreateRegistrationTokenWithInfo(ctx context.Context, reson
 	}, nil
 }
 
-func (u *UserUsecase) createRegistrationToken(ctx context.Context, resoniteId string) (string, time.Time, error) {
+func (u *UserUsecase) createRegistrationToken(ctx context.Context, resoniteId, personalRoleID string) (string, time.Time, error) {
 	token, err := generateSecureToken(registrationTokenLength)
 	if err != nil {
 		return "", time.Time{}, errors.Wrap(err, 0)
@@ -187,10 +189,16 @@ func (u *UserUsecase) createRegistrationToken(ctx context.Context, resoniteId st
 
 	expiresAt := time.Now().Add(registrationTokenTTL)
 
+	personalRole := pgtype.Text{Valid: false}
+	if personalRoleID != "" {
+		personalRole = pgtype.Text{String: personalRoleID, Valid: true}
+	}
+
 	err = u.queries.CreateRegistrationToken(ctx, db.CreateRegistrationTokenParams{
-		Token:      token,
-		ResoniteID: resoniteId,
-		ExpiresAt:  pgtype.Timestamptz{Time: expiresAt, Valid: true},
+		Token:          token,
+		ResoniteID:     resoniteId,
+		ExpiresAt:      pgtype.Timestamptz{Time: expiresAt, Valid: true},
+		PersonalRoleID: personalRole,
 	})
 	if err != nil {
 		return "", time.Time{}, errors.Wrap(err, 0)
@@ -199,7 +207,7 @@ func (u *UserUsecase) createRegistrationToken(ctx context.Context, resoniteId st
 	return token, expiresAt, nil
 }
 
-// ListUsers は全ユーザーを id 昇順で返す. (system:user.list 権限保持者向け)
+// ListUsers は全ユーザーを id 昇順で返す. (認証済みなら誰でも呼べる)
 func (u *UserUsecase) ListUsers(ctx context.Context) ([]db.User, error) {
 	users, err := u.queries.ListUsers(ctx)
 	if err != nil {
@@ -246,6 +254,8 @@ func (u *UserUsecase) ValidateRegistrationToken(ctx context.Context, token strin
 // CreateUser + personal group 作成 + MarkRegistrationTokenUsed は単一トランザクション
 // で実行する. 途中で失敗すれば全てロールバックされ、orphan user / 未使用 token /
 // 個人グループ無しユーザー といった不整合状態を残さない.
+// personal グループに付与するロールは registration_tokens.personal_role_id から取得する
+// (改竄不能、admin が発行時に指定). NULL なら seed-admin.
 func (u *UserUsecase) RegisterWithToken(ctx context.Context, token, userId, password string) (*db.User, error) {
 	// tx 外: token 検証 (read-only). validation 失敗時は副作用ゼロで早期 return.
 	regToken, err := u.queries.GetValidRegistrationToken(ctx, token)
@@ -289,10 +299,15 @@ func (u *UserUsecase) RegisterWithToken(ctx context.Context, token, userId, pass
 			return errors.WrapPrefix(err, "create personal group", 0)
 		}
 
+		roleID := entity.SeedRoleID_Admin
+		if regToken.PersonalRoleID.Valid && regToken.PersonalRoleID.String != "" {
+			roleID = regToken.PersonalRoleID.String
+		}
+
 		if _, err := qtx.AddGroupMember(ctx, db.AddGroupMemberParams{
 			GroupID: personalGroupID,
 			UserID:  userId,
-			RoleID:  entity.SeedRoleID_Admin,
+			RoleID:  roleID,
 			AddedBy: pgtype.Text{Valid: false},
 		}); err != nil {
 			return errors.WrapPrefix(err, "register personal member", 0)
