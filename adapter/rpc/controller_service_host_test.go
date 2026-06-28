@@ -1,14 +1,12 @@
 package rpc
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
@@ -90,7 +88,7 @@ func TestControllerService_ListHeadlessHostImageTags(t *testing.T) {
 }
 
 func TestControllerService_StartHeadlessHost(t *testing.T) {
-	t.Run("成功: ホストを起動", func(t *testing.T) {
+	t.Run("成功: 非同期 job が登録される", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
@@ -98,14 +96,6 @@ func TestControllerService_StartHeadlessHost(t *testing.T) {
 
 		// Create test account
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
-
-		setup.mockHostConnector.EXPECT().
-			Start(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, params hostconnector.HostStartParams) (hostconnector.HostConnectString, error) {
-				assert.Equal(t, int32(1), params.InstanceId, "Initial start should have InstanceId=1")
-
-				return hostconnector.HostConnectString("test-container"), nil
-			})
 
 		imageTag := "latest"
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.StartHeadlessHostRequest{
@@ -116,58 +106,8 @@ func TestControllerService_StartHeadlessHost(t *testing.T) {
 
 		res, err := client.StartHeadlessHost(t.Context(), req)
 		require.NoError(t, err)
-		assert.NotNil(t, res.Msg)
-		assert.NotEmpty(t, res.Msg.GetHostId())
-
-		// Verify host was created in database
-		host, err := setup.queries.GetHost(t.Context(), res.Msg.GetHostId())
-		require.NoError(t, err)
-		assert.Equal(t, "TestHost", host.Name)
-		assert.Equal(t, "U-test", host.AccountID)
-		assert.Equal(t, int32(1), host.InstanceCount, "Instance count should be 1 after first start")
-
-		setup.mockHostConnector.EXPECT().
-			GetRpcClient(gomock.Any(), gomock.Any()).
-			Return(setup.mockRpcClient, nil).
-			AnyTimes()
-
-		setup.mockRpcClient.EXPECT().
-			GetAbout(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.GetAboutResponse{
-				ResoniteVersion: "1.0.0",
-				AppVersion:      "1.0.0",
-			}, nil).
-			AnyTimes()
-
-		setup.mockRpcClient.EXPECT().
-			GetAccountInfo(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.GetAccountInfoResponse{
-				UserId:      "U-test",
-				DisplayName: "Test Account",
-			}, nil).
-			AnyTimes()
-
-		setup.mockRpcClient.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.GetStatusResponse{
-				Fps: 60.0,
-			}, nil).
-			AnyTimes()
-
-		setup.mockRpcClient.EXPECT().
-			GetStartupConfigToRestore(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.GetStartupConfigToRestoreResponse{
-				StartupConfig: &headlessv1.StartupConfig{},
-			}, nil).
-			AnyTimes()
-
-		getReq := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostRequest{
-			HostId: res.Msg.GetHostId(),
-		})
-
-		getRes, err := client.GetHeadlessHost(t.Context(), getReq)
-		require.NoError(t, err)
-		assert.Equal(t, int32(1), getRes.Msg.GetHost().GetInstanceId(), "RPC response should include instance_id=1")
+		require.NotNil(t, res.Msg)
+		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_START_HOST))
 	})
 
 	t.Run("失敗: 存在しないアカウント", func(t *testing.T) {
@@ -193,93 +133,33 @@ func TestControllerService_StartHeadlessHost(t *testing.T) {
 	})
 }
 
+// assertJobEnqueued は jobId に対応する async_jobs 行が PENDING で
+// 期待した job_type を持つことを確認する.
+func assertJobEnqueued(t *testing.T, setup *controllerServiceTestSetup, jobID string, expectedType int32) {
+	t.Helper()
+
+	require.NotEmpty(t, jobID, "job_id should be returned")
+
+	var uid pgtype.UUID
+	require.NoError(t, uid.Scan(jobID))
+
+	row, err := setup.queries.GetAsyncJob(t.Context(), uid)
+	require.NoError(t, err, "enqueued job should exist in async_jobs table")
+	assert.Equal(t, expectedType, row.JobType)
+	assert.Equal(t, int32(entity.AsyncJobStatus_PENDING), row.Status)
+}
+
 func TestControllerService_RestartHeadlessHost(t *testing.T) {
-	t.Run("成功: ホストを再起動", func(t *testing.T) {
+	t.Run("成功: 非同期 job が登録される", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
 		client := setupAuthenticatedClient(t, setup.service)
 
-		// Create test account and host
+		// 受付時 host 存在確認は EXITED で十分 (RUNNING にすると dbToEntity が
+		// GetRpcClient を引いてしまい、RPC 副作用の伴わない unit test にできない).
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
-		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
-
-		// Mock HostConnector - ListContainerTags (called by resolveTagToUse)
-		setup.mockHostConnector.EXPECT().
-			ListContainerTags(gomock.Any(), gomock.Any()).
-			Return(port.ContainerImageList{
-				{Tag: "latest", IsPreRelease: false},
-			}, nil).
-			Times(1)
-
-		// Mock HostConnector - GetRpcClient (may be called multiple times)
-		setup.mockHostConnector.EXPECT().
-			GetRpcClient(gomock.Any(), gomock.Any()).
-			Return(setup.mockRpcClient, nil).
-			AnyTimes()
-
-		// Mock RPC client to return about info
-		setup.mockRpcClient.EXPECT().
-			GetAbout(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.GetAboutResponse{
-				ResoniteVersion: "1.0.0",
-				AppVersion:      "1.0.0",
-			}, nil).
-			AnyTimes()
-
-		// Mock RPC client to return account info
-		setup.mockRpcClient.EXPECT().
-			GetAccountInfo(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.GetAccountInfoResponse{
-				UserId:      "U-test",
-				DisplayName: "Test Account",
-			}, nil).
-			AnyTimes()
-
-		// Mock RPC client to return status
-		setup.mockRpcClient.EXPECT().
-			GetStatus(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.GetStatusResponse{
-				Fps: 60.0,
-			}, nil).
-			AnyTimes()
-
-		// Mock RPC client to return startup config
-		setup.mockRpcClient.EXPECT().
-			GetStartupConfigToRestore(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.GetStartupConfigToRestoreResponse{
-				StartupConfig: &headlessv1.StartupConfig{},
-			}, nil).
-			AnyTimes()
-
-		// Mock RPC client to return sessions (for SearchSessions)
-		setup.mockRpcClient.EXPECT().
-			ListSessions(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.ListSessionsResponse{
-				Sessions: []*headlessv1.Session{},
-			}, nil).
-			AnyTimes()
-
-		// Mock HostConnector - Stop
-		setup.mockHostConnector.EXPECT().
-			Stop(gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(nil).
-			Times(1)
-
-		// 旧コンテナの削除 (issue #21 対応)
-		setup.mockHostConnector.EXPECT().
-			Remove(gomock.Any(), gomock.Any()).
-			Return(nil).
-			Times(1)
-
-		setup.mockHostConnector.EXPECT().
-			Start(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, params hostconnector.HostStartParams) (hostconnector.HostConnectString, error) {
-				assert.Equal(t, int32(2), params.InstanceId, "Restart should have InstanceId=2")
-
-				return hostconnector.HostConnectString("test-container-restarted"), nil
-			}).
-			Times(1)
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_EXITED)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.RestartHeadlessHostRequest{
 			HostId: host.ID,
@@ -287,11 +167,8 @@ func TestControllerService_RestartHeadlessHost(t *testing.T) {
 
 		res, err := client.RestartHeadlessHost(t.Context(), req)
 		require.NoError(t, err)
-		assert.NotNil(t, res.Msg)
-
-		updatedHost, err := setup.queries.GetHost(t.Context(), host.ID)
-		require.NoError(t, err)
-		assert.Equal(t, int32(2), updatedHost.InstanceCount, "Instance count should be 2 after restart")
+		require.NotNil(t, res.Msg)
+		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_RESTART_HOST))
 	})
 
 	t.Run("失敗: 存在しないホスト", func(t *testing.T) {
@@ -687,30 +564,14 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 }
 
 func TestControllerService_ShutdownHeadlessHost(t *testing.T) {
-	t.Run("成功: ホストをシャットダウン", func(t *testing.T) {
+	t.Run("成功: 非同期 job が登録される", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
 		client := setupAuthenticatedClient(t, setup.service)
 
-		// Create test account and host
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
-		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
-
-		// Mock HostConnector - Stop calls GetRpcClient to fetch startup config
-		setup.mockHostConnector.EXPECT().
-			GetRpcClient(gomock.Any(), gomock.Any()).
-			Return(setup.mockRpcClient, nil)
-
-		setup.mockRpcClient.EXPECT().
-			GetStartupConfigToRestore(gomock.Any(), gomock.Any()).
-			Return(&headlessv1.GetStartupConfigToRestoreResponse{
-				StartupConfig: &headlessv1.StartupConfig{},
-			}, nil)
-
-		setup.mockHostConnector.EXPECT().
-			Stop(gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(nil)
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_EXITED)
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ShutdownHeadlessHostRequest{
 			HostId: host.ID,
@@ -718,7 +579,8 @@ func TestControllerService_ShutdownHeadlessHost(t *testing.T) {
 
 		res, err := client.ShutdownHeadlessHost(t.Context(), req)
 		require.NoError(t, err)
-		assert.NotNil(t, res.Msg)
+		require.NotNil(t, res.Msg)
+		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_SHUTDOWN_HOST))
 	})
 
 	t.Run("失敗: 存在しないホスト", func(t *testing.T) {

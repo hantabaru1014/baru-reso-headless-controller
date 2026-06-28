@@ -6,12 +6,14 @@ import type {
 } from "@bufbuild/protobuf";
 import type { QueryClient } from "@tanstack/react-query";
 import type { NotificationEvent } from "../../pbgen/hdlctrl/v1/notification_pb";
+import { JobCompletedEvent_Level } from "../../pbgen/hdlctrl/v1/notification_pb";
 import {
   getHeadlessHost,
   getSessionDetails,
   listHeadlessHost,
   listUsersInSession,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
+import { toast } from "sonner";
 
 // connect-query が生成する queryKey は
 //   ["connect-query", { serviceName, methodName, cardinality?, input? }]
@@ -76,11 +78,27 @@ export function dispatchNotification(
       break;
     }
 
+    case "jobCompleted": {
+      // クエリ invalidate は対応する hostListChanged / sessionLifecycle / hostUpdated
+      // 経由で別途行われる (docker event watcher や container HostEvent stream 由来).
+      // ここでは toast 表示のみ.
+      const { message, level } = payload.value;
+
+      if (level === JobCompletedEvent_Level.ERROR) {
+        toast.error(message);
+      } else if (level === JobCompletedEvent_Level.SUCCESS) {
+        toast.success(message);
+      } else {
+        toast(message);
+      }
+
+      break;
+    }
+
     case "keepAlive":
-    case "jobCompleted":
     case undefined:
     default:
-      // jobCompleted の toast 表示は将来対応. keepAlive は no-op.
+      // keepAlive は no-op.
       break;
   }
 }

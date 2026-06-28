@@ -151,7 +151,11 @@ message StartHeadlessHostRequest {
 }
 
 message StartHeadlessHostResponse {
-  string host_id = 1;
+  reserved 1; // 旧: string host_id. 非同期 job 化に伴い job_id を返す.
+
+  // 非同期 job の ID. クライアントは notification.JobCompletedEvent でこの ID を
+  // 照合し、完了/失敗を toast 表示する.
+  string job_id = 2;
 }
 
 message CreateHeadlessAccountRequest {
@@ -209,7 +213,9 @@ message RestartHeadlessHostRequest {
 }
 
 message RestartHeadlessHostResponse {
-  optional string new_host_id = 1;
+  reserved 1; // 旧: optional string new_host_id. 非同期 job 化に伴い job_id を返す.
+
+  string job_id = 2;
 }
 
 message UpdateHeadlessHostSettingsRequest {
@@ -230,7 +236,9 @@ message ShutdownHeadlessHostRequest {
   string host_id = 1;
 }
 
-message ShutdownHeadlessHostResponse {}
+message ShutdownHeadlessHostResponse {
+  string job_id = 1;
+}
 
 message KillHeadlessHostRequest {
   string host_id = 1;
@@ -397,7 +405,9 @@ message StartWorldRequest {
 }
 
 message StartWorldResponse {
-  Session opened_session = 1;
+  reserved 1; // 旧: Session opened_session. 非同期 job 化に伴い job_id を返す.
+
+  string job_id = 2;
 }
 
 message StopSessionRequest {
@@ -405,7 +415,9 @@ message StopSessionRequest {
   string session_id = 2;
 }
 
-message StopSessionResponse {}
+message StopSessionResponse {
+  string job_id = 1;
+}
 
 message DeleteEndedSessionRequest {
   string session_id = 1;

@@ -14,6 +14,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/blobstore"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/async_job"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/notification"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/hantabaru1014/baru-reso-headless-controller/worker"
@@ -62,6 +63,7 @@ func ProvideWorkerManager(
 	hostEventWatcher *worker.HostEventWatcher,
 	upgradeOrchestrator *worker.HostUpgradeOrchestrator,
 	scheduledOpExecutor *worker.ScheduledOperationExecutor,
+	asyncJobExecutor *worker.AsyncJobExecutor,
 	sessionStopper port.SessionStopper,
 ) *worker.Manager {
 	upgradeOrchestrator.SetSessionStopper(sessionStopper)
@@ -73,6 +75,7 @@ func ProvideWorkerManager(
 		hostEventWatcher,
 		upgradeOrchestrator,
 		scheduledOpExecutor,
+		asyncJobExecutor,
 	})
 }
 
@@ -86,6 +89,26 @@ func ProvideScheduledOperationExecutor(
 	stateCache port.SessionStateCache,
 ) *worker.ScheduledOperationExecutor {
 	return worker.NewScheduledOperationExecutor(repo, suc, srepo, stateCache, worker.ScheduledOperationExecutorOptions{})
+}
+
+// ProvideAsyncJobDispatcher はホスト/セッションの非同期 job を実行する dispatcher を
+// 構築する. HeadlessHostUsecase / SessionUsecase / HeadlessAccountUsecase をそれぞれ
+// narrow operator として渡し、worker パッケージから usecase パッケージへの直接依存を切る.
+func ProvideAsyncJobDispatcher(
+	hhuc *usecase.HeadlessHostUsecase,
+	suc *usecase.SessionUsecase,
+	hauc *usecase.HeadlessAccountUsecase,
+) *async_job.Dispatcher {
+	return async_job.NewDispatcher(hhuc, suc, hauc)
+}
+
+// ProvideAsyncJobExecutor は AsyncJobExecutor worker を構築する.
+func ProvideAsyncJobExecutor(
+	repo port.AsyncJobRepository,
+	dispatcher *async_job.Dispatcher,
+	bus notification.Bus,
+) *worker.AsyncJobExecutor {
+	return worker.NewAsyncJobExecutor(repo, dispatcher, bus, worker.AsyncJobExecutorOptions{})
 }
 
 // ProvideHostEventHandlers gathers consumers for the per-host event
@@ -150,6 +173,8 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		adapter.NewSessionRepository,
 		wire.Bind(new(port.ScheduledSessionOperationRepository), new(*adapter.ScheduledSessionOperationRepository)),
 		adapter.NewScheduledSessionOperationRepository,
+		wire.Bind(new(port.AsyncJobRepository), new(*adapter.AsyncJobRepository)),
+		adapter.NewAsyncJobRepository,
 
 		// in-memory session-state cache (volatile snapshot owned by container)
 		sessionstate.NewMemoryCache,
@@ -172,6 +197,8 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		worker.NewNotificationDispatcher,
 		wire.Bind(new(port.HostDrainer), new(*worker.HostUpgradeOrchestrator)),
 		ProvideScheduledOperationExecutor,
+		ProvideAsyncJobDispatcher,
+		ProvideAsyncJobExecutor,
 		ProvideHeadlessAccountFetcher,
 		ProvideHostEventHandlers,
 		ProvideWorkerManager,
@@ -183,6 +210,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		usecase.NewSessionUsecase,
 		usecase.NewBlobUsecase,
 		usecase.NewScheduledSessionOperationUsecase,
+		async_job.NewUsecase,
 		wire.Bind(new(port.SessionStopper), new(*usecase.SessionUsecase)),
 
 		// controller

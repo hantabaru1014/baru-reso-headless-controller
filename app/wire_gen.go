@@ -18,6 +18,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/blobstore"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/async_job"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/notification"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/hantabaru1014/baru-reso-headless-controller/worker"
@@ -53,8 +54,10 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	blobUsecase := usecase.NewBlobUsecase(sessionRepository, headlessHostRepository, minioClient)
 	scheduledSessionOperationRepository := adapter.NewScheduledSessionOperationRepository(queries)
 	scheduledSessionOperationUsecase := usecase.NewScheduledSessionOperationUsecase(scheduledSessionOperationRepository)
+	asyncJobRepository := adapter.NewAsyncJobRepository(queries)
+	async_jobUsecase := async_job.NewUsecase(asyncJobRepository)
 	memoryBus := notification.NewBus()
-	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, blobUsecase, scheduledSessionOperationUsecase, defaultClient, memoryBus)
+	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, blobUsecase, scheduledSessionOperationUsecase, async_jobUsecase, defaultClient, memoryBus)
 	notificationService := rpc.NewNotificationService(memoryBus)
 	imageChecker := worker.NewImageChecker(dockerHostConnector, workerConfig)
 	dockerEventWatcher := worker.NewDockerEventWatcher(dockerHostConnector, queries, memoryBus, workerConfig)
@@ -66,7 +69,9 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	v := ProvideHostEventHandlers(sessionStateSyncHandler, sessionLifecycleHandler, hostUpgradeOrchestrator, notificationDispatcher, loggingHostEventHandler)
 	hostEventWatcher := worker.NewHostEventWatcher(headlessHostRepository, sqlHostEventStore, workerConfig, v)
 	scheduledOperationExecutor := ProvideScheduledOperationExecutor(scheduledSessionOperationRepository, sessionUsecase, sessionRepository, memoryCache)
-	manager := ProvideWorkerManager(imageChecker, dockerEventWatcher, hostEventWatcher, hostUpgradeOrchestrator, scheduledOperationExecutor, sessionUsecase)
+	dispatcher := ProvideAsyncJobDispatcher(headlessHostUsecase, sessionUsecase, headlessAccountUsecase)
+	asyncJobExecutor := ProvideAsyncJobExecutor(asyncJobRepository, dispatcher, memoryBus)
+	manager := ProvideWorkerManager(imageChecker, dockerEventWatcher, hostEventWatcher, hostUpgradeOrchestrator, scheduledOperationExecutor, asyncJobExecutor, sessionUsecase)
 	bridge := resonitelink.NewBridge(headlessHostRepository, sessionRepository, resoniteLinkConfig)
 	server := NewServer(userService, controllerService, notificationService, manager, minioClient, bridge)
 	return server, nil
@@ -140,6 +145,7 @@ func ProvideWorkerManager(
 	hostEventWatcher *worker.HostEventWatcher,
 	upgradeOrchestrator *worker.HostUpgradeOrchestrator,
 	scheduledOpExecutor *worker.ScheduledOperationExecutor,
+	asyncJobExecutor *worker.AsyncJobExecutor,
 	sessionStopper port.SessionStopper,
 ) *worker.Manager {
 	upgradeOrchestrator.SetSessionStopper(sessionStopper)
@@ -151,6 +157,7 @@ func ProvideWorkerManager(
 		hostEventWatcher,
 		upgradeOrchestrator,
 		scheduledOpExecutor,
+		asyncJobExecutor,
 	})
 }
 
@@ -164,6 +171,26 @@ func ProvideScheduledOperationExecutor(
 	stateCache port.SessionStateCache,
 ) *worker.ScheduledOperationExecutor {
 	return worker.NewScheduledOperationExecutor(repo, suc, srepo, stateCache, worker.ScheduledOperationExecutorOptions{})
+}
+
+// ProvideAsyncJobDispatcher はホスト/セッションの非同期 job を実行する dispatcher を
+// 構築する. HeadlessHostUsecase / SessionUsecase / HeadlessAccountUsecase をそれぞれ
+// narrow operator として渡し、worker パッケージから usecase パッケージへの直接依存を切る.
+func ProvideAsyncJobDispatcher(
+	hhuc *usecase.HeadlessHostUsecase,
+	suc *usecase.SessionUsecase,
+	hauc *usecase.HeadlessAccountUsecase,
+) *async_job.Dispatcher {
+	return async_job.NewDispatcher(hhuc, suc, hauc)
+}
+
+// ProvideAsyncJobExecutor は AsyncJobExecutor worker を構築する.
+func ProvideAsyncJobExecutor(
+	repo port.AsyncJobRepository,
+	dispatcher *async_job.Dispatcher,
+	bus notification.Bus,
+) *worker.AsyncJobExecutor {
+	return worker.NewAsyncJobExecutor(repo, dispatcher, bus, worker.AsyncJobExecutorOptions{})
 }
 
 // ProvideHostEventHandlers gathers consumers for the per-host event

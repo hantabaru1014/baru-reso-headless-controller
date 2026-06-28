@@ -8,6 +8,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AsyncJob struct {
+	ID            pgtype.UUID
+	JobType       int32
+	Payload       []byte
+	Status        int32
+	ResultPayload []byte
+	LastError     pgtype.Text
+	ClaimedBy     pgtype.Text
+	ClaimedAt     pgtype.Timestamptz
+	ExecutedAt    pgtype.Timestamptz
+	HostID        pgtype.Text
+	SessionID     pgtype.Text
+	CreatedBy     pgtype.Text
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
 type ContainerLog struct {
 	Tag  pgtype.Text
 	Ts   pgtype.Timestamp

@@ -40,71 +40,47 @@ func (c *ControllerService) ListHeadlessHostImageTags(ctx context.Context, req *
 }
 
 // StartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
+// ホスト起動は docker pull / コンテナ起動 / RPC ハンドシェイクを伴うため
+// 非同期 job として enqueue し、完了は notification.JobCompletedEvent で push する.
 func (c *ControllerService) StartHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.StartHeadlessHostRequest]) (*connect.Response[hdlctrlv1.StartHeadlessHostResponse], error) {
 	claims, err := auth.GetAuthClaimsFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	account, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.GetHeadlessAccountId())
+	// account の存在確認は受付時に行う (存在しない account への job 化を防ぐ).
+	if _, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.GetHeadlessAccountId()); err != nil {
+		return nil, convertErr(err)
+	}
+
+	jobID, err := c.ajuc.EnqueueStartHost(ctx, req.Msg, &claims.UserID)
 	if err != nil {
 		return nil, convertErr(err)
 	}
 
-	params := port.HeadlessHostStartParams{
-		Name:              req.Msg.GetName(),
-		HeadlessAccount:   *account,
-		ContainerImageTag: req.Msg.GetImageTag(),
-		StartupConfig:     req.Msg.GetStartupConfig(),
-	}
-	if req.Msg.AutoUpdatePolicy != nil && req.Msg.GetAutoUpdatePolicy() != hdlctrlv1.HeadlessHostAutoUpdatePolicy_HEADLESS_HOST_AUTO_UPDATE_POLICY_UNKNOWN {
-		params.AutoUpdatePolicy = entity.HostAutoUpdatePolicy(req.Msg.GetAutoUpdatePolicy())
-	}
-
-	if req.Msg.Memo != nil {
-		params.Memo = req.Msg.GetMemo()
-	}
-
-	hostId, err := c.hhuc.HeadlessHostStart(ctx, params, &claims.UserID)
-	if err != nil {
-		return nil, convertErr(err)
-	}
-
-	c.publishHostListChanged()
-
-	res := connect.NewResponse(&hdlctrlv1.StartHeadlessHostResponse{
-		HostId: hostId,
-	})
-
-	return res, nil
+	return connect.NewResponse(&hdlctrlv1.StartHeadlessHostResponse{JobId: jobID}), nil
 }
 
 // RestartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
+// 再起動も停止 + 起動の compound 操作で時間がかかるため非同期 job 化する.
 func (c *ControllerService) RestartHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.RestartHeadlessHostRequest]) (*connect.Response[hdlctrlv1.RestartHeadlessHostResponse], error) {
-	var newTag *string
-
-	if req.Msg.GetWithUpdate() {
-		str := "latestRelease"
-		newTag = &str
-	} else if req.Msg.GetWithImageTag() != "" {
-		newTag = req.Msg.WithImageTag
+	claims, err := auth.GetAuthClaimsFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	timeout := defaultRestartTimeoutSeconds
-	if req.Msg.TimeoutSeconds != nil {
-		timeout = int(req.Msg.GetTimeoutSeconds())
+	// 受付時の存在確認: 即座に NotFound を返したいので enqueue 前に check する.
+	// hhrepo.Find は DB のみで完結し、RUNNING ホストへの container RPC roundtrip を起こさない.
+	if _, err := c.hhrepo.Find(ctx, req.Msg.GetHostId(), port.HeadlessHostFetchOptions{}); err != nil {
+		return nil, convertErr(err)
 	}
 
-	err := c.hhuc.HeadlessHostRestart(ctx, req.Msg.GetHostId(), newTag, req.Msg.GetWithWorldRestart(), timeout)
+	jobID, err := c.ajuc.EnqueueRestartHost(ctx, req.Msg, &claims.UserID)
 	if err != nil {
 		return nil, convertErr(err)
 	}
 
-	res := connect.NewResponse(&hdlctrlv1.RestartHeadlessHostResponse{
-		NewHostId: &req.Msg.HostId,
-	})
-
-	return res, nil
+	return connect.NewResponse(&hdlctrlv1.RestartHeadlessHostResponse{JobId: jobID}), nil
 }
 
 // UpdateHeadlessHostSettings implements hdlctrlv1connect.ControllerServiceHandler.
@@ -285,15 +261,23 @@ func (c *ControllerService) ListHeadlessHostInstances(ctx context.Context, req *
 }
 
 // ShutdownHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.
+// graceful shutdown は container 終了待ちが入るため非同期 job 化する.
 func (c *ControllerService) ShutdownHeadlessHost(ctx context.Context, req *connect.Request[hdlctrlv1.ShutdownHeadlessHostRequest]) (*connect.Response[hdlctrlv1.ShutdownHeadlessHostResponse], error) {
-	err := c.hhuc.HeadlessHostShutdown(ctx, req.Msg.GetHostId())
+	claims, err := auth.GetAuthClaimsFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	if _, err := c.hhrepo.Find(ctx, req.Msg.GetHostId(), port.HeadlessHostFetchOptions{}); err != nil {
+		return nil, convertErr(err)
+	}
+
+	jobID, err := c.ajuc.EnqueueShutdownHost(ctx, req.Msg, &claims.UserID)
 	if err != nil {
 		return nil, convertErr(err)
 	}
 
-	res := connect.NewResponse(&hdlctrlv1.ShutdownHeadlessHostResponse{})
-
-	return res, nil
+	return connect.NewResponse(&hdlctrlv1.ShutdownHeadlessHostResponse{JobId: jobID}), nil
 }
 
 // KillHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.

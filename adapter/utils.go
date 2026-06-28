@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"encoding/hex"
+	"time"
 
 	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
@@ -25,6 +26,28 @@ func textFromPtr(p *string) pgtype.Text {
 	}
 
 	return pgtype.Text{String: *p, Valid: true}
+}
+
+// ptrFromText は pgtype.Text を *string に変換する (Valid=false なら nil).
+func ptrFromText(t pgtype.Text) *string {
+	if !t.Valid {
+		return nil
+	}
+
+	s := t.String
+
+	return &s
+}
+
+// ptrFromTimestamptz は pgtype.Timestamptz を *time.Time に変換する (Valid=false なら nil).
+func ptrFromTimestamptz(t pgtype.Timestamptz) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+
+	v := t.Time
+
+	return &v
 }
 
 // parseUUID は canonical UUID 文字列 ("xxxxxxxx-xxxx-...") を pgtype.UUID に変換する.

@@ -12,13 +12,12 @@ import (
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/async_job"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/notification"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
 
 var _ hdlctrlv1connect.ControllerServiceHandler = (*ControllerService)(nil)
-
-const defaultRestartTimeoutSeconds = 10 * 60
 
 const (
 	defaultPageSize = 20
@@ -58,11 +57,12 @@ type ControllerService struct {
 	suc            *usecase.SessionUsecase
 	buc            *usecase.BlobUsecase
 	souc           *usecase.ScheduledSessionOperationUsecase
+	ajuc           *async_job.Usecase
 	skyfrostClient skyfrost.Client
 	bus            notification.Bus
 }
 
-func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase, suc *usecase.SessionUsecase, buc *usecase.BlobUsecase, souc *usecase.ScheduledSessionOperationUsecase, skyfrostClient skyfrost.Client, bus notification.Bus) *ControllerService {
+func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, hhuc *usecase.HeadlessHostUsecase, hauc *usecase.HeadlessAccountUsecase, suc *usecase.SessionUsecase, buc *usecase.BlobUsecase, souc *usecase.ScheduledSessionOperationUsecase, ajuc *async_job.Usecase, skyfrostClient skyfrost.Client, bus notification.Bus) *ControllerService {
 	return &ControllerService{
 		hhrepo:         hhrepo,
 		srepo:          srepo,
@@ -71,6 +71,7 @@ func NewControllerService(hhrepo port.HeadlessHostRepository, srepo port.Session
 		suc:            suc,
 		buc:            buc,
 		souc:           souc,
+		ajuc:           ajuc,
 		skyfrostClient: skyfrostClient,
 		bus:            bus,
 	}
