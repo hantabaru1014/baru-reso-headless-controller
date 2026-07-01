@@ -5,9 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
@@ -27,16 +26,16 @@ func NewImportLegacyHostsCommand(q *db.Queries, skyfrostClient skyfrost.Client) 
 
 			cmd.Println("Importing legacy hosts...")
 
-			cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+			cli, err := client.New(client.FromEnv)
 			if err != nil {
 				cmd.PrintErrln("Error creating Docker client:", err)
 
 				return
 			}
 
-			containers, err := cli.ContainerList(ctx, container.ListOptions{
+			containers, err := cli.ContainerList(ctx, client.ContainerListOptions{
 				All:     true,
-				Filters: filters.NewArgs(filters.Arg("label", portLabelKey)),
+				Filters: make(client.Filters).Add("label", portLabelKey),
 			})
 			if err != nil {
 				cmd.PrintErrln("Error listing Docker containers:", err)
@@ -44,7 +43,7 @@ func NewImportLegacyHostsCommand(q *db.Queries, skyfrostClient skyfrost.Client) 
 				return
 			}
 
-			for _, c := range containers {
+			for _, c := range containers.Items {
 				if portValue, ok := c.Labels[portLabelKey]; ok && len(c.Names) > 0 {
 					name := c.Names[0]
 					if len(name) > 1 && name[0] == '/' {
@@ -59,7 +58,7 @@ func NewImportLegacyHostsCommand(q *db.Queries, skyfrostClient skyfrost.Client) 
 						continue
 					}
 
-					inspectResult, err := cli.ContainerInspect(ctx, id)
+					inspectResult, err := cli.ContainerInspect(ctx, id, client.ContainerInspectOptions{})
 					if err != nil {
 						cmd.PrintErrln("Error inspecting container:", err)
 
@@ -68,7 +67,7 @@ func NewImportLegacyHostsCommand(q *db.Queries, skyfrostClient skyfrost.Client) 
 
 					var credential, password, startupConfig string
 
-					for _, env := range inspectResult.Config.Env {
+					for _, env := range inspectResult.Container.Config.Env {
 						if after, ok0 := strings.CutPrefix(env, "HeadlessUserCredential="); ok0 {
 							credential = after
 
@@ -107,7 +106,7 @@ func NewImportLegacyHostsCommand(q *db.Queries, skyfrostClient skyfrost.Client) 
 					}
 
 					startedAt := pgtype.Timestamptz{}
-					if parsedTime, err := time.Parse(time.RFC3339Nano, inspectResult.State.StartedAt); err == nil {
+					if parsedTime, err := time.Parse(time.RFC3339Nano, inspectResult.Container.State.StartedAt); err == nil {
 						startedAt = pgtype.Timestamptz{Time: parsedTime, Valid: true}
 					}
 
