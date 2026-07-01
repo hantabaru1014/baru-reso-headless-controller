@@ -193,6 +193,7 @@ func (d *DockerHostConnector) PullContainerImage(ctx context.Context, tag string
 	if err != nil {
 		return "", errors.New(err)
 	}
+
 	defer func() { _ = reader.Close() }()
 
 	buf := new(bytes.Buffer)
@@ -445,6 +446,8 @@ func containerStatusToEntityStatus(state container.ContainerState, status string
 		}
 	case container.StateDead:
 		return entity.HeadlessHostStatus_CRASHED
+	case container.StateCreated, container.StatePaused, container.StateRestarting, container.StateRemoving:
+		return entity.HeadlessHostStatus_UNKNOWN
 	default:
 		return entity.HeadlessHostStatus_UNKNOWN
 	}
@@ -491,7 +494,7 @@ func (d *DockerHostConnector) SubscribeEvents(ctx context.Context) (<-chan Conta
 	outErrChan := make(chan error, 1)
 
 	go func() {
-		defer cli.Close()
+		defer func() { _ = cli.Close() }()
 		defer close(outChan)
 		defer close(outErrChan)
 
