@@ -8,7 +8,7 @@ import { AccessLevels } from "../constants";
 import { RefetchButton } from "./base/RefetchButton";
 import { sessionStatusToLabel } from "../libs/sessionUtils";
 import { SelectField } from "./base/SelectField";
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import { Session, SessionStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "./base";
@@ -36,8 +36,9 @@ export default function SessionList() {
   const { data: hosts } = useQuery(listHeadlessHost, {
     groupId: currentGroupId ?? undefined,
   });
-  const { pageIndex, pageSize, setPageIndex, setPageSize, syncFromServer } =
-    usePaginationState({ defaultPageSize: 20 });
+  const { pageIndex, pageSize, setPageIndex, setPageSize } = usePaginationState(
+    { defaultPageSize: 20 },
+  );
   const { data, isPending, refetch } = useQuery(
     searchSessions,
     {
@@ -54,12 +55,6 @@ export default function SessionList() {
   const { groupsWithPermission } = usePermissions();
   const canCreate =
     groupsWithPermission(PERMISSION_KEYS.SESSION_WRITE).length > 0;
-
-  useEffect(() => {
-    if (data?.page) {
-      syncFromServer(data.page.pageIndex, data.page.pageSize);
-    }
-  }, [data?.page, syncFromServer]);
 
   const columns: ColumnDef<Session>[] = useMemo(() => {
     const hostNameMap =

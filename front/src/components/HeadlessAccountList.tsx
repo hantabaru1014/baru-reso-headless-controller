@@ -332,8 +332,9 @@ function StorageInfoTip({ accountId }: { accountId: string }) {
 }
 
 export default function HeadlessAccountList() {
-  const { pageIndex, pageSize, setPageIndex, setPageSize, syncFromServer } =
-    usePaginationState({ defaultPageSize: 20 });
+  const { pageIndex, pageSize, setPageIndex, setPageSize } = usePaginationState(
+    { defaultPageSize: 20 },
+  );
   const currentGroupId = useAtomValue(currentGroupIdAtom);
   const { data, isPending, refetch } = useQuery(
     listHeadlessAccounts,
@@ -346,12 +347,6 @@ export default function HeadlessAccountList() {
   const { hasPermission, groupsWithPermission } = usePermissions();
   const canCreate =
     groupsWithPermission(PERMISSION_KEYS.ACCOUNT_WRITE).length > 0;
-
-  useEffect(() => {
-    if (data?.page) {
-      syncFromServer(data.page.pageIndex, data.page.pageSize);
-    }
-  }, [data?.page, syncFromServer]);
 
   const { mutateAsync: mutateDeleteAccount, isPending: isPendingDelete } =
     useMutation(deleteHeadlessAccount);

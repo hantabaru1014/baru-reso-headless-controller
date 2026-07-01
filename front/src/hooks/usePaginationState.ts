@@ -22,12 +22,6 @@ export type UsePaginationStateReturn = {
   setPageIndex: (n: number) => void;
   /** Setting page size always resets pageIndex to 0. */
   setPageSize: (n: number) => void;
-  /**
-   * Sync URL with the server's effective values.
-   * Useful when the server clamps/adjusts the requested values.
-   * No-op when the URL already matches.
-   */
-  syncFromServer: (serverPageIndex: number, serverPageSize: number) => void;
 };
 
 export const DEFAULT_PAGE_SIZE = 20;
@@ -125,55 +119,11 @@ export function usePaginationState(
     ],
   );
 
-  const syncFromServer = useCallback(
-    (serverPageIndex: number, serverPageSize: number) => {
-      const serverSafePageIndex = Math.max(0, Math.floor(serverPageIndex));
-      const serverSafePageSize = pageSizeOptions.includes(serverPageSize)
-        ? serverPageSize
-        : defaultPageSize;
-
-      if (
-        serverSafePageIndex === pageIndex &&
-        serverSafePageSize === pageSize
-      ) {
-        return;
-      }
-
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          if (serverSafePageIndex === 0) {
-            next.delete(pageParam);
-          } else {
-            next.set(pageParam, String(serverSafePageIndex + 1));
-          }
-          if (serverSafePageSize === defaultPageSize) {
-            next.delete(pageSizeParam);
-          } else {
-            next.set(pageSizeParam, String(serverSafePageSize));
-          }
-          return next;
-        },
-        { replace: true },
-      );
-    },
-    [
-      setSearchParams,
-      pageParam,
-      pageSizeParam,
-      pageIndex,
-      pageSize,
-      pageSizeOptions,
-      defaultPageSize,
-    ],
-  );
-
   return {
     pageIndex,
     pageSize,
     pageSizeOptions,
     setPageIndex,
     setPageSize,
-    syncFromServer,
   };
 }

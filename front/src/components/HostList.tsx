@@ -10,7 +10,6 @@ import { usePaginationState } from "../hooks/usePaginationState";
 import { useDefaultGroupId } from "../hooks/useDefaultGroupId";
 import { useAtomValue } from "jotai";
 import { currentGroupIdAtom } from "../atoms/currentGroupAtom";
-import { useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -29,7 +28,7 @@ import { ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router";
 import { hostStatusToLabel } from "../libs/hostUtils";
 import { RefetchButton } from "./base/RefetchButton";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -312,8 +311,9 @@ const columns: ColumnDef<HeadlessHost>[] = [
 ];
 
 export default function HostList() {
-  const { pageIndex, pageSize, setPageIndex, setPageSize, syncFromServer } =
-    usePaginationState({ defaultPageSize: 20 });
+  const { pageIndex, pageSize, setPageIndex, setPageSize } = usePaginationState(
+    { defaultPageSize: 20 },
+  );
   const currentGroupId = useAtomValue(currentGroupIdAtom);
   const { data, isPending, refetch } = useQuery(
     listHeadlessHost,
@@ -328,12 +328,6 @@ export default function HostList() {
   const { groupsWithPermission } = usePermissions();
   const canStartHost =
     groupsWithPermission(PERMISSION_KEYS.HOST_WRITE).length > 0;
-
-  useEffect(() => {
-    if (data?.page) {
-      syncFromServer(data.page.pageIndex, data.page.pageSize);
-    }
-  }, [data?.page, syncFromServer]);
 
   return (
     <div className="space-y-4">
