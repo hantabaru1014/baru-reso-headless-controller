@@ -13,11 +13,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/events"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
@@ -189,13 +186,14 @@ func (d *DockerHostConnector) PullContainerImage(ctx context.Context, tag string
 	registryAuth := base64.StdEncoding.EncodeToString([]byte(d.dockerCfg.HeadlessRegistryAuth))
 	refStr := fmt.Sprintf("%s:%s", d.dockerCfg.HeadlessImageName, tag)
 
-	reader, err := cli.ImagePull(ctx, refStr, image.PullOptions{
+	reader, err := cli.ImagePull(ctx, refStr, client.ImagePullOptions{
 		All:          false,
 		RegistryAuth: registryAuth,
 	})
 	if err != nil {
 		return "", errors.New(err)
 	}
+	defer func() { _ = reader.Close() }()
 
 	buf := new(bytes.Buffer)
 	if _, err := io.Copy(buf, reader); err != nil {
@@ -267,12 +265,15 @@ func (d *DockerHostConnector) Start(ctx context.Context, params HostStartParams)
 		},
 	}
 
-	createResp, err := cli.ContainerCreate(ctx, &config, &hostConfig, nil, nil, "")
+	createResp, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config:     &config,
+		HostConfig: &hostConfig,
+	})
 	if err != nil {
 		return "", errors.Errorf("failed to create container: %w", err)
 	}
 
-	err = cli.ContainerStart(ctx, createResp.ID, container.StartOptions{})
+	_, err = cli.ContainerStart(ctx, createResp.ID, client.ContainerStartOptions{})
 	if err != nil {
 		return "", errors.Errorf("failed to start container: %w", err)
 	}
@@ -292,7 +293,7 @@ func (d *DockerHostConnector) Stop(ctx context.Context, connect_string HostConne
 		return errors.Errorf("failed to create docker client: %w", err)
 	}
 
-	err = cli.ContainerStop(ctx, id, container.StopOptions{
+	_, err = cli.ContainerStop(ctx, id, client.ContainerStopOptions{
 		Timeout: &timeoutSeconds,
 	})
 	if err != nil {
@@ -314,7 +315,7 @@ func (d *DockerHostConnector) Kill(ctx context.Context, connect_string HostConne
 		return errors.Errorf("failed to create docker client: %w", err)
 	}
 
-	err = cli.ContainerKill(ctx, id, "SIGKILL")
+	_, err = cli.ContainerKill(ctx, id, client.ContainerKillOptions{Signal: "SIGKILL"})
 	if err != nil {
 		return errors.Errorf("failed to kill container: %w", err)
 	}
@@ -343,7 +344,7 @@ func (d *DockerHostConnector) Remove(ctx context.Context, connect_string HostCon
 		return errors.Errorf("failed to create docker client: %w", err)
 	}
 
-	err = cli.ContainerRemove(ctx, id, container.RemoveOptions{
+	_, err = cli.ContainerRemove(ctx, id, client.ContainerRemoveOptions{
 		Force: true,
 	})
 	if err != nil {
@@ -432,7 +433,7 @@ func getFreePort() (int, error) {
 	return tcpAddr.Port, nil
 }
 
-func containerStatusToEntityStatus(state, status string) entity.HeadlessHostStatus {
+func containerStatusToEntityStatus(state container.ContainerState, status string) entity.HeadlessHostStatus {
 	switch state {
 	case container.StateRunning:
 		return entity.HeadlessHostStatus_RUNNING
@@ -478,18 +479,13 @@ func (d *DockerHostConnector) SubscribeEvents(ctx context.Context) (<-chan Conta
 		return nil, nil, errors.Errorf("failed to create docker client: %w", err)
 	}
 
-	eventsChan, errChan := cli.Events(ctx, events.ListOptions{
-		Filters: filters.NewArgs(
-			filters.Arg("type", "container"),
-			filters.Arg("event", "start"),
-			filters.Arg("event", "stop"),
-			filters.Arg("event", "die"),
-			filters.Arg("event", "kill"),
-			filters.Arg("event", "oom"),
-			filters.Arg("event", "restart"),
-			filters.Arg("event", "destroy"),
-		),
+	eventsResult := cli.Events(ctx, client.EventsListOptions{
+		Filters: make(client.Filters).
+			Add("type", "container").
+			Add("event", "start", "stop", "die", "kill", "oom", "restart", "destroy"),
 	})
+	eventsChan := eventsResult.Messages
+	errChan := eventsResult.Err
 
 	outChan := make(chan ContainerEvent, 100) //nolint:mnd // buffer size for event channel
 	outErrChan := make(chan error, 1)
@@ -541,7 +537,7 @@ func (d *DockerHostConnector) ListAllContainerStatuses(ctx context.Context) (map
 		return nil, errors.Errorf("HEADLESS_IMAGE_NAME environment variable is not set")
 	}
 
-	containers, err := cli.ContainerList(ctx, container.ListOptions{
+	containers, err := cli.ContainerList(ctx, client.ContainerListOptions{
 		All: true,
 	})
 	if err != nil {
@@ -550,7 +546,7 @@ func (d *DockerHostConnector) ListAllContainerStatuses(ctx context.Context) (map
 
 	result := make(map[string]entity.HeadlessHostStatus)
 
-	for _, c := range containers {
+	for _, c := range containers.Items {
 		// Filter by image name prefix (imageName:tag format)
 		if !strings.HasPrefix(c.Image, d.dockerCfg.HeadlessImageName+":") && c.Image != d.dockerCfg.HeadlessImageName {
 			continue
@@ -570,15 +566,15 @@ func (d *DockerHostConnector) isAvailableTag(ctx context.Context, tag string) bo
 		return false
 	}
 
-	images, err := cli.ImageList(ctx, image.ListOptions{
+	images, err := cli.ImageList(ctx, client.ImageListOptions{
 		All:     true,
-		Filters: filters.NewArgs(filters.Arg("reference", d.dockerCfg.HeadlessImageName)),
+		Filters: make(client.Filters).Add("reference", d.dockerCfg.HeadlessImageName),
 	})
 	if err != nil {
 		return false
 	}
 
-	for _, img := range slices.Backward(images) {
+	for _, img := range slices.Backward(images.Items) {
 		for _, repoTag := range img.RepoTags {
 			if strings.HasPrefix(repoTag, d.dockerCfg.HeadlessImageName) {
 				splitted := strings.Split(repoTag, ":")
@@ -597,7 +593,7 @@ func (d *DockerHostConnector) isAvailableTag(ctx context.Context, tag string) bo
 }
 
 func (d *DockerHostConnector) newDockerClient() (*client.Client, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := client.New(client.FromEnv)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
@@ -611,21 +607,21 @@ func (d *DockerHostConnector) getContainer(ctx context.Context, container_id str
 		return nil, errors.New(err)
 	}
 
-	containers, err := cli.ContainerList(ctx, container.ListOptions{
+	containers, err := cli.ContainerList(ctx, client.ContainerListOptions{
 		All:     true,
-		Filters: filters.NewArgs(filters.Arg("id", container_id)),
+		Filters: make(client.Filters).Add("id", container_id),
 	})
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
-	if len(containers) == 0 {
+	if len(containers.Items) == 0 {
 		return nil, ErrContainerNotFound
 	}
 
-	if len(containers) > 1 {
+	if len(containers.Items) > 1 {
 		return nil, errors.Errorf("found several containers")
 	}
 
-	return &containers[0], nil
+	return &containers.Items[0], nil
 }
