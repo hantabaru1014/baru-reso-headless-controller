@@ -9,7 +9,7 @@ import {
   ScheduledOperationStatus,
 } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { Button } from "./ui/button";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "./base";
@@ -56,11 +56,12 @@ const operationCaseToKind = (
 };
 
 export default function ScheduledOperationList({ sessionId }: Props) {
-  const { pageIndex, pageSize, setPageIndex, setPageSize, syncFromServer } =
-    usePaginationState({
+  const { pageIndex, pageSize, setPageIndex, setPageSize } = usePaginationState(
+    {
       defaultPageSize: 20,
       paramPrefix: sessionId ? "scheduledOps" : "",
-    });
+    },
+  );
 
   const currentGroupId = useAtomValue(currentGroupIdAtom);
 
@@ -75,12 +76,6 @@ export default function ScheduledOperationList({ sessionId }: Props) {
     },
     { placeholderData: keepPreviousData },
   );
-
-  useEffect(() => {
-    if (data?.page) {
-      syncFromServer(data.page.pageIndex, data.page.pageSize);
-    }
-  }, [data?.page, syncFromServer]);
 
   const { mutateAsync: cancelMutate, isPending: isCancelPending } = useMutation(
     cancelScheduledSessionOperation,
