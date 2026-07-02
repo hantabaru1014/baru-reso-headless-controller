@@ -89,6 +89,10 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostListPaged(ctx context.Context, opts
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostGet(ctx context.Context, id string) (*entity.HeadlessHost, error) {
+	if err := hhuc.requireHostRead(ctx, id); err != nil {
+		return nil, err
+	}
+
 	host, err := hhuc.hhrepo.Find(ctx, id, port.HeadlessHostFetchOptions{})
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
@@ -174,6 +178,10 @@ type HeadlessHostGetLogsResult struct {
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostGetLogs(ctx context.Context, params HeadlessHostGetLogsParams) (*HeadlessHostGetLogsResult, error) {
+	if err := hhuc.requireHostRead(ctx, params.HostID); err != nil {
+		return nil, err
+	}
+
 	// limit+1 件取得して has_more を判定
 	fetchLimit := params.Limit
 	if fetchLimit <= 0 {
@@ -229,6 +237,10 @@ type HeadlessHostInstance struct {
 }
 
 func (hhuc *HeadlessHostUsecase) HeadlessHostGetInstances(ctx context.Context, hostID string) ([]*HeadlessHostInstance, error) {
+	if err := hhuc.requireHostRead(ctx, hostID); err != nil {
+		return nil, err
+	}
+
 	// ホストを取得して現在のinstance_idを確認
 	host, err := hhuc.hhrepo.Find(ctx, hostID, port.HeadlessHostFetchOptions{})
 	if err != nil {
@@ -322,6 +334,23 @@ func (hhuc *HeadlessHostUsecase) requireHostWrite(ctx context.Context, hostID st
 	}
 
 	return hhuc.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_HostWrite)
+}
+
+// requireHostRead は hostID の group に対する host:read (または host:write) を要求する.
+// 読み取り系 usecase の最終ガード. host:write 保持者は更新 UI 経由で詳細を読む
+// 必要があるため read 相当として扱う.
+//
+// OR 判定は RequireAnyPermissionForGroup に委譲する. 個別に read→write と
+// 呼び分けると read チェックの内部エラーを握り潰して write の denial にすり替えて
+// しまうため.
+func (hhuc *HeadlessHostUsecase) requireHostRead(ctx context.Context, hostID string) error {
+	groupID, err := hhuc.hhrepo.GetGroupID(ctx, hostID)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	return hhuc.permUC.RequireAnyPermissionForGroup(ctx, groupID,
+		[]string{entity.PermKey_HostRead, entity.PermKey_HostWrite})
 }
 
 func (hhuc *HeadlessHostUsecase) resolveTagToUse(ctx context.Context, tagInput *string) (string, error) {

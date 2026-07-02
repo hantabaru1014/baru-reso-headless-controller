@@ -160,6 +160,13 @@ func (u *HeadlessAccountUsecase) ListHeadlessAccountsPaged(ctx context.Context, 
 	return result, nil
 }
 
+// GetHeadlessAccount は resoniteID のアカウントを引く.
+//
+// NOTE: このメソッドは意図的に権限チェックを行わない. RPC permission interceptor
+// 自身が group_id 解決のために呼ぶほか、ホスト起動 / async job など「account:use
+// のみ」の文脈からも呼ばれるため、ここで account:read を要求すると権限セマンティクス
+// が壊れる. 戻り値には平文の認証情報が含まれるので、新規の呼び出し元は必ず呼び出し側
+// で認可を済ませること (RPC handler なら interceptor 登録、usecase なら Require*).
 func (u *HeadlessAccountUsecase) GetHeadlessAccount(ctx context.Context, resoniteID string) (*entity.HeadlessAccount, error) {
 	v, err := u.queries.GetHeadlessAccount(ctx, resoniteID)
 	if err != nil {

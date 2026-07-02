@@ -10,6 +10,7 @@ import (
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
 
 // AcceptFriendRequests implements hdlctrlv1connect.ControllerServiceHandler.
@@ -163,7 +164,10 @@ var _ = registerRPCPermission(
 )
 
 func (c *ControllerService) GetOwnWorlds(ctx context.Context, req *connect.Request[hdlctrlv1.GetOwnWorldsRequest]) (*connect.Response[hdlctrlv1.GetOwnWorldsResponse], error) {
-	host, err := c.hhuc.HeadlessHostGet(ctx, req.Msg.GetHostId())
+	// この RPC の権限は host:use のみ (interceptor でチェック済み).
+	// HeadlessHostGet は host:read を要求するため使わず、アカウント解決の
+	// ために repo から直接引く.
+	host, err := c.hhrepo.Find(ctx, req.Msg.GetHostId(), port.HeadlessHostFetchOptions{})
 	if err != nil {
 		return nil, convertErr(err)
 	}

@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestUserService_GetTokenByPassword(t *testing.T) {
@@ -461,6 +462,66 @@ func TestUserService_CreateRegistrationToken(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, validateRes.Msg.GetValid())
 		assert.Equal(t, resoniteID, validateRes.Msg.GetResoniteId())
+
+		// トークンで登録できる (DB にはハッシュのみ保存されるが平文トークンで照合が通る).
+		setup.mockSkyfrost.EXPECT().
+			FetchUserInfo(gomock.Any(), resoniteID).
+			Return(&skyfrost.UserInfo{ID: resoniteID, UserName: "newuser_display"}, nil)
+
+		_, err = client.RegisterWithToken(t.Context(), connect.NewRequest(&hdlctrlv1.RegisterWithTokenRequest{
+			Token:    res.Msg.GetToken(),
+			UserId:   "newuser1",
+			Password: "password123",
+		}))
+		require.NoError(t, err)
+
+		// single-use: 同じトークンで 2 人目は登録できない.
+		_, err = client.RegisterWithToken(t.Context(), connect.NewRequest(&hdlctrlv1.RegisterWithTokenRequest{
+			Token:    res.Msg.GetToken(),
+			UserId:   "newuser2",
+			Password: "password123",
+		}))
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
+	})
+
+	t.Run("失敗: 不正な personal_role_id → InvalidArgument", func(t *testing.T) {
+		setup := setupUserServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupUserServiceClient(t, setup.service)
+
+		setup.mockSkyfrost.EXPECT().
+			FetchUserInfo(gomock.Any(), "U-badrole").
+			Return(&skyfrost.UserInfo{ID: "U-badrole", UserName: "badrole"}, nil).
+			AnyTimes()
+
+		// 存在しないロール.
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateRegistrationTokenRequest{
+			ResoniteId:     "U-badrole",
+			PersonalRoleId: proto.String("role-does-not-exist"),
+		})
+
+		_, err := client.CreateRegistrationToken(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
+
+		// system-scope ロールは personal グループに割り当て不可.
+		req = testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateRegistrationTokenRequest{
+			ResoniteId:     "U-badrole",
+			PersonalRoleId: proto.String(entity.SeedRoleID_SystemAdmin),
+		})
+
+		_, err = client.CreateRegistrationToken(t.Context(), req)
+		require.Error(t, err)
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
 	})
 
 	t.Run("失敗: 認証なし → Unauthenticated", func(t *testing.T) {

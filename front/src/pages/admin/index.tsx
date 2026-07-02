@@ -10,25 +10,33 @@ import { Button } from "../../components/ui";
 export default function AdminIndex() {
   const { hasSystemPermission } = usePermissions();
 
-  const sections: { label: string; to: string; permission: string }[] = [
+  // permissions のいずれかを持てばリンクを表示する.
+  const sections: { label: string; to: string; permissions: string[] }[] = [
     {
       label: "ユーザー管理",
       to: "/admin/users",
-      permission: PERMISSION_KEYS.SYSTEM_USER_LIST,
+      // ユーザー管理画面は list/create/delete のいずれかで開ける.
+      permissions: [
+        PERMISSION_KEYS.SYSTEM_USER_LIST,
+        PERMISSION_KEYS.SYSTEM_USER_CREATE,
+        PERMISSION_KEYS.SYSTEM_USER_DELETE,
+      ],
     },
     {
       label: "全グループ閲覧",
       to: "/admin/groups",
-      permission: PERMISSION_KEYS.SYSTEM_GROUP_LIST,
+      permissions: [PERMISSION_KEYS.SYSTEM_GROUP_LIST],
     },
     {
       label: "グローバルロール管理",
       to: "/admin/roles",
-      permission: PERMISSION_KEYS.SYSTEM_ROLE_MANAGE,
+      permissions: [PERMISSION_KEYS.SYSTEM_ROLE_MANAGE],
     },
   ];
 
-  const available = sections.filter((s) => hasSystemPermission(s.permission));
+  const available = sections.filter((s) =>
+    s.permissions.some((p) => hasSystemPermission(p)),
+  );
 
   return (
     <div className="container mx-auto p-4 space-y-4">

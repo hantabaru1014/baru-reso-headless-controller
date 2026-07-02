@@ -33,6 +33,7 @@ import { ResoniteUserIcon } from "./ResoniteUserIcon";
 import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
 import { usePermissions } from "../hooks/usePermissions";
 import { PERMISSION_KEYS } from "../libs/permissionUtils";
+import { useInvalidateMyPermissions } from "../hooks/useInvalidateMyPermissions";
 
 function AddMemberDialog({
   groupId,
@@ -220,6 +221,9 @@ export default function GroupMemberList({ groupId }: { groupId: string }) {
     useMutation(removeGroupMember);
   const [isAddOpen, setIsAddOpen] = useState(false);
 
+  // メンバーのロール変更/削除は自分自身の権限に影響しうるため getMyPermissions を invalidate.
+  const invalidateMyPermissions = useInvalidateMyPermissions();
+
   const canManage = hasPermission(
     groupId,
     PERMISSION_KEYS.GROUP_MEMBERS_MANAGE,
@@ -261,6 +265,7 @@ export default function GroupMemberList({ groupId }: { groupId: string }) {
                   });
                   toast.success("ロールを更新しました");
                   refetch();
+                  invalidateMyPermissions();
                 } catch (e) {
                   toast.error(
                     e instanceof Error ? e.message : "ロール変更に失敗しました",
@@ -301,6 +306,7 @@ export default function GroupMemberList({ groupId }: { groupId: string }) {
                 await mutateRemove({ groupId, userId: row.original.userId });
                 toast.success("メンバーを削除しました");
                 refetch();
+                invalidateMyPermissions();
               } catch (e) {
                 toast.error(
                   e instanceof Error ? e.message : "削除に失敗しました",
@@ -322,6 +328,7 @@ export default function GroupMemberList({ groupId }: { groupId: string }) {
       isRemoving,
       groupId,
       refetch,
+      invalidateMyPermissions,
     ],
   );
 

@@ -81,11 +81,14 @@ func (q *Queries) GetValidRegistrationToken(ctx context.Context, token string) (
 	return i, err
 }
 
-const markRegistrationTokenUsed = `-- name: MarkRegistrationTokenUsed :exec
-UPDATE registration_tokens SET used_at = NOW() WHERE token = $1
+const markRegistrationTokenUsed = `-- name: MarkRegistrationTokenUsed :execrows
+UPDATE registration_tokens SET used_at = NOW() WHERE token = $1 AND used_at IS NULL
 `
 
-func (q *Queries) MarkRegistrationTokenUsed(ctx context.Context, token string) error {
-	_, err := q.db.Exec(ctx, markRegistrationTokenUsed, token)
-	return err
+func (q *Queries) MarkRegistrationTokenUsed(ctx context.Context, token string) (int64, error) {
+	result, err := q.db.Exec(ctx, markRegistrationTokenUsed, token)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

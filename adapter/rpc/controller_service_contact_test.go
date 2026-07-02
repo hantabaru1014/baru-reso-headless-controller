@@ -142,7 +142,7 @@ func TestControllerService_GetContactMessages(t *testing.T) {
 		assert.False(t, res.Msg.GetHasMoreAfter())
 	})
 
-	t.Run("成功: 最小権限 caller (account:read) で取得", func(t *testing.T) {
+	t.Run("成功: 最小権限 caller (account:use) で取得", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
@@ -159,10 +159,35 @@ func TestControllerService_GetContactMessages(t *testing.T) {
 			HeadlessAccountId: "U-mp-gm-acc",
 			ContactUserId:     "U-friend",
 			Limit:             10,
-		}, "U-mp-gmsgs", groupID, []string{entity.PermKey_AccountRead})
+		}, "U-mp-gmsgs", groupID, []string{entity.PermKey_AccountUse})
 
 		_, err := client.GetContactMessages(t.Context(), req)
 		require.NoError(t, err)
+	})
+
+	t.Run("失敗: account:read のみでは DM 履歴を取得できない", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-gmsgs-ro"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-gmro-acc", "x@example.test", "p", groupID)
+		testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-gmro-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.GetContactMessagesRequest{
+			HeadlessAccountId: "U-mp-gmro-acc",
+			ContactUserId:     "U-friend",
+			Limit:             10,
+		}, "U-mp-gmsgs-ro", groupID, []string{entity.PermKey_AccountRead})
+
+		_, err := client.GetContactMessages(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
+		require.True(t, ok, "expected connect.Error")
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
 
 	t.Run("失敗: 起動中のホストがない", func(t *testing.T) {
