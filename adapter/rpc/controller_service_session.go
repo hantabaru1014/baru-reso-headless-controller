@@ -63,6 +63,126 @@ func (c *ControllerService) KickUser(ctx context.Context, req *connect.Request[h
 	return res, nil
 }
 
+// ListBans implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して session:read.
+// Ban はホスト単位で管理されているため host_id を受け取る.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceListBansProcedure,
+	checkHostPermission(entity.PermKey_SessionRead, hostIDFromListBans),
+)
+
+func (c *ControllerService) ListBans(ctx context.Context, req *connect.Request[hdlctrlv1.ListBansRequest]) (*connect.Response[hdlctrlv1.ListBansResponse], error) {
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.GetHostId())
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	headlessRes, err := conn.ListBans(ctx, &headlessv1.ListBansRequest{})
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.ListBansResponse{
+		Bans: headlessRes.GetBans(),
+	})
+
+	return res, nil
+}
+
+// UnbanUser implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して session:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceUnbanUserProcedure,
+	checkHostPermission(entity.PermKey_SessionWrite, hostIDFromUnban),
+)
+
+func (c *ControllerService) UnbanUser(ctx context.Context, req *connect.Request[hdlctrlv1.UnbanUserRequest]) (*connect.Response[hdlctrlv1.UnbanUserResponse], error) {
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.GetHostId())
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	_, err = conn.UnbanUser(ctx, req.Msg.GetParameters())
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.UnbanUserResponse{})
+
+	return res, nil
+}
+
+// RespawnUser implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して session:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceRespawnUserProcedure,
+	checkHostPermission(entity.PermKey_SessionWrite, hostIDFromRespawn),
+)
+
+func (c *ControllerService) RespawnUser(ctx context.Context, req *connect.Request[hdlctrlv1.RespawnUserRequest]) (*connect.Response[hdlctrlv1.RespawnUserResponse], error) {
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.GetHostId())
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	_, err = conn.RespawnUser(ctx, req.Msg.GetParameters())
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.RespawnUserResponse{})
+
+	return res, nil
+}
+
+// SpawnItem implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して session:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceSpawnItemProcedure,
+	checkHostPermission(entity.PermKey_SessionWrite, hostIDFromSpawnItem),
+)
+
+func (c *ControllerService) SpawnItem(ctx context.Context, req *connect.Request[hdlctrlv1.SpawnItemRequest]) (*connect.Response[hdlctrlv1.SpawnItemResponse], error) {
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.GetHostId())
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	_, err = conn.SpawnItem(ctx, req.Msg.GetParameters())
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.SpawnItemResponse{})
+
+	return res, nil
+}
+
+// SendDynamicImpulse implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して session:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceSendDynamicImpulseProcedure,
+	checkHostPermission(entity.PermKey_SessionWrite, hostIDFromSendDynamicImpulse),
+)
+
+func (c *ControllerService) SendDynamicImpulse(ctx context.Context, req *connect.Request[hdlctrlv1.SendDynamicImpulseRequest]) (*connect.Response[hdlctrlv1.SendDynamicImpulseResponse], error) {
+	conn, err := c.hhrepo.GetRpcClient(ctx, req.Msg.GetHostId())
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	headlessRes, err := conn.SendDynamicImpulse(ctx, req.Msg.GetParameters())
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.SendDynamicImpulseResponse{
+		TriggeredReceivers: headlessRes.GetTriggeredReceivers(),
+	})
+
+	return res, nil
+}
+
 // GetSessionDetails implements hdlctrlv1connect.ControllerServiceHandler.
 // 権限: session.group_id に対して session:read.
 var _ = registerRPCPermission(

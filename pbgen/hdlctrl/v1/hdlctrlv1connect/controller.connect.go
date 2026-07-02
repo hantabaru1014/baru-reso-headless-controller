@@ -115,6 +115,12 @@ const (
 	// ControllerServiceAcceptFriendRequestsProcedure is the fully-qualified name of the
 	// ControllerService's AcceptFriendRequests RPC.
 	ControllerServiceAcceptFriendRequestsProcedure = "/hdlctrl.v1.ControllerService/AcceptFriendRequests"
+	// ControllerServiceSendFriendRequestProcedure is the fully-qualified name of the
+	// ControllerService's SendFriendRequest RPC.
+	ControllerServiceSendFriendRequestProcedure = "/hdlctrl.v1.ControllerService/SendFriendRequest"
+	// ControllerServiceRemoveContactProcedure is the fully-qualified name of the ControllerService's
+	// RemoveContact RPC.
+	ControllerServiceRemoveContactProcedure = "/hdlctrl.v1.ControllerService/RemoveContact"
 	// ControllerServiceListContactsProcedure is the fully-qualified name of the ControllerService's
 	// ListContacts RPC.
 	ControllerServiceListContactsProcedure = "/hdlctrl.v1.ControllerService/ListContacts"
@@ -166,6 +172,21 @@ const (
 	// ControllerServiceBanUserProcedure is the fully-qualified name of the ControllerService's BanUser
 	// RPC.
 	ControllerServiceBanUserProcedure = "/hdlctrl.v1.ControllerService/BanUser"
+	// ControllerServiceListBansProcedure is the fully-qualified name of the ControllerService's
+	// ListBans RPC.
+	ControllerServiceListBansProcedure = "/hdlctrl.v1.ControllerService/ListBans"
+	// ControllerServiceUnbanUserProcedure is the fully-qualified name of the ControllerService's
+	// UnbanUser RPC.
+	ControllerServiceUnbanUserProcedure = "/hdlctrl.v1.ControllerService/UnbanUser"
+	// ControllerServiceRespawnUserProcedure is the fully-qualified name of the ControllerService's
+	// RespawnUser RPC.
+	ControllerServiceRespawnUserProcedure = "/hdlctrl.v1.ControllerService/RespawnUser"
+	// ControllerServiceSpawnItemProcedure is the fully-qualified name of the ControllerService's
+	// SpawnItem RPC.
+	ControllerServiceSpawnItemProcedure = "/hdlctrl.v1.ControllerService/SpawnItem"
+	// ControllerServiceSendDynamicImpulseProcedure is the fully-qualified name of the
+	// ControllerService's SendDynamicImpulse RPC.
+	ControllerServiceSendDynamicImpulseProcedure = "/hdlctrl.v1.ControllerService/SendDynamicImpulse"
 	// ControllerServiceIssueResoniteLinkConnectionProcedure is the fully-qualified name of the
 	// ControllerService's IssueResoniteLinkConnection RPC.
 	ControllerServiceIssueResoniteLinkConnectionProcedure = "/hdlctrl.v1.ControllerService/IssueResoniteLinkConnection"
@@ -212,6 +233,8 @@ type ControllerServiceClient interface {
 	GetResoniteUser(context.Context, *connect.Request[v1.GetResoniteUserRequest]) (*connect.Response[v1.GetResoniteUserResponse], error)
 	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v1.GetFriendRequestsResponse], error)
 	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
+	SendFriendRequest(context.Context, *connect.Request[v1.SendFriendRequestRequest]) (*connect.Response[v1.SendFriendRequestResponse], error)
+	RemoveContact(context.Context, *connect.Request[v1.RemoveContactRequest]) (*connect.Response[v1.RemoveContactResponse], error)
 	// コンタクト・チャット系
 	ListContacts(context.Context, *connect.Request[v1.ListContactsRequest]) (*connect.Response[v1.ListContactsResponse], error)
 	GetContactMessages(context.Context, *connect.Request[v1.GetContactMessagesRequest]) (*connect.Response[v1.GetContactMessagesResponse], error)
@@ -231,6 +254,11 @@ type ControllerServiceClient interface {
 	ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error)
 	KickUser(context.Context, *connect.Request[v1.KickUserRequest]) (*connect.Response[v1.KickUserResponse], error)
 	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
+	ListBans(context.Context, *connect.Request[v1.ListBansRequest]) (*connect.Response[v1.ListBansResponse], error)
+	UnbanUser(context.Context, *connect.Request[v1.UnbanUserRequest]) (*connect.Response[v1.UnbanUserResponse], error)
+	RespawnUser(context.Context, *connect.Request[v1.RespawnUserRequest]) (*connect.Response[v1.RespawnUserResponse], error)
+	SpawnItem(context.Context, *connect.Request[v1.SpawnItemRequest]) (*connect.Response[v1.SpawnItemResponse], error)
+	SendDynamicImpulse(context.Context, *connect.Request[v1.SendDynamicImpulseRequest]) (*connect.Response[v1.SendDynamicImpulseResponse], error)
 	IssueResoniteLinkConnection(context.Context, *connect.Request[v1.IssueResoniteLinkConnectionRequest]) (*connect.Response[v1.IssueResoniteLinkConnectionResponse], error)
 	// 予約操作系
 	CreateScheduledSessionOperation(context.Context, *connect.Request[v1.CreateScheduledSessionOperationRequest]) (*connect.Response[v1.CreateScheduledSessionOperationResponse], error)
@@ -411,6 +439,18 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(controllerServiceMethods.ByName("AcceptFriendRequests")),
 			connect.WithClientOptions(opts...),
 		),
+		sendFriendRequest: connect.NewClient[v1.SendFriendRequestRequest, v1.SendFriendRequestResponse](
+			httpClient,
+			baseURL+ControllerServiceSendFriendRequestProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("SendFriendRequest")),
+			connect.WithClientOptions(opts...),
+		),
+		removeContact: connect.NewClient[v1.RemoveContactRequest, v1.RemoveContactResponse](
+			httpClient,
+			baseURL+ControllerServiceRemoveContactProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("RemoveContact")),
+			connect.WithClientOptions(opts...),
+		),
 		listContacts: connect.NewClient[v1.ListContactsRequest, v1.ListContactsResponse](
 			httpClient,
 			baseURL+ControllerServiceListContactsProcedure,
@@ -513,6 +553,36 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(controllerServiceMethods.ByName("BanUser")),
 			connect.WithClientOptions(opts...),
 		),
+		listBans: connect.NewClient[v1.ListBansRequest, v1.ListBansResponse](
+			httpClient,
+			baseURL+ControllerServiceListBansProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("ListBans")),
+			connect.WithClientOptions(opts...),
+		),
+		unbanUser: connect.NewClient[v1.UnbanUserRequest, v1.UnbanUserResponse](
+			httpClient,
+			baseURL+ControllerServiceUnbanUserProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("UnbanUser")),
+			connect.WithClientOptions(opts...),
+		),
+		respawnUser: connect.NewClient[v1.RespawnUserRequest, v1.RespawnUserResponse](
+			httpClient,
+			baseURL+ControllerServiceRespawnUserProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("RespawnUser")),
+			connect.WithClientOptions(opts...),
+		),
+		spawnItem: connect.NewClient[v1.SpawnItemRequest, v1.SpawnItemResponse](
+			httpClient,
+			baseURL+ControllerServiceSpawnItemProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("SpawnItem")),
+			connect.WithClientOptions(opts...),
+		),
+		sendDynamicImpulse: connect.NewClient[v1.SendDynamicImpulseRequest, v1.SendDynamicImpulseResponse](
+			httpClient,
+			baseURL+ControllerServiceSendDynamicImpulseProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("SendDynamicImpulse")),
+			connect.WithClientOptions(opts...),
+		),
 		issueResoniteLinkConnection: connect.NewClient[v1.IssueResoniteLinkConnectionRequest, v1.IssueResoniteLinkConnectionResponse](
 			httpClient,
 			baseURL+ControllerServiceIssueResoniteLinkConnectionProcedure,
@@ -569,6 +639,8 @@ type controllerServiceClient struct {
 	getResoniteUser                  *connect.Client[v1.GetResoniteUserRequest, v1.GetResoniteUserResponse]
 	getFriendRequests                *connect.Client[v1.GetFriendRequestsRequest, v1.GetFriendRequestsResponse]
 	acceptFriendRequests             *connect.Client[v1.AcceptFriendRequestsRequest, v1.AcceptFriendRequestsResponse]
+	sendFriendRequest                *connect.Client[v1.SendFriendRequestRequest, v1.SendFriendRequestResponse]
+	removeContact                    *connect.Client[v1.RemoveContactRequest, v1.RemoveContactResponse]
 	listContacts                     *connect.Client[v1.ListContactsRequest, v1.ListContactsResponse]
 	getContactMessages               *connect.Client[v1.GetContactMessagesRequest, v1.GetContactMessagesResponse]
 	sendContactMessage               *connect.Client[v1.SendContactMessageRequest, v1.SendContactMessageResponse]
@@ -586,6 +658,11 @@ type controllerServiceClient struct {
 	listUsersInSession               *connect.Client[v1.ListUsersInSessionRequest, v1.ListUsersInSessionResponse]
 	kickUser                         *connect.Client[v1.KickUserRequest, v1.KickUserResponse]
 	banUser                          *connect.Client[v1.BanUserRequest, v1.BanUserResponse]
+	listBans                         *connect.Client[v1.ListBansRequest, v1.ListBansResponse]
+	unbanUser                        *connect.Client[v1.UnbanUserRequest, v1.UnbanUserResponse]
+	respawnUser                      *connect.Client[v1.RespawnUserRequest, v1.RespawnUserResponse]
+	spawnItem                        *connect.Client[v1.SpawnItemRequest, v1.SpawnItemResponse]
+	sendDynamicImpulse               *connect.Client[v1.SendDynamicImpulseRequest, v1.SendDynamicImpulseResponse]
 	issueResoniteLinkConnection      *connect.Client[v1.IssueResoniteLinkConnectionRequest, v1.IssueResoniteLinkConnectionResponse]
 	createScheduledSessionOperation  *connect.Client[v1.CreateScheduledSessionOperationRequest, v1.CreateScheduledSessionOperationResponse]
 	listScheduledSessionOperations   *connect.Client[v1.ListScheduledSessionOperationsRequest, v1.ListScheduledSessionOperationsResponse]
@@ -728,6 +805,16 @@ func (c *controllerServiceClient) AcceptFriendRequests(ctx context.Context, req 
 	return c.acceptFriendRequests.CallUnary(ctx, req)
 }
 
+// SendFriendRequest calls hdlctrl.v1.ControllerService.SendFriendRequest.
+func (c *controllerServiceClient) SendFriendRequest(ctx context.Context, req *connect.Request[v1.SendFriendRequestRequest]) (*connect.Response[v1.SendFriendRequestResponse], error) {
+	return c.sendFriendRequest.CallUnary(ctx, req)
+}
+
+// RemoveContact calls hdlctrl.v1.ControllerService.RemoveContact.
+func (c *controllerServiceClient) RemoveContact(ctx context.Context, req *connect.Request[v1.RemoveContactRequest]) (*connect.Response[v1.RemoveContactResponse], error) {
+	return c.removeContact.CallUnary(ctx, req)
+}
+
 // ListContacts calls hdlctrl.v1.ControllerService.ListContacts.
 func (c *controllerServiceClient) ListContacts(ctx context.Context, req *connect.Request[v1.ListContactsRequest]) (*connect.Response[v1.ListContactsResponse], error) {
 	return c.listContacts.CallUnary(ctx, req)
@@ -813,6 +900,31 @@ func (c *controllerServiceClient) BanUser(ctx context.Context, req *connect.Requ
 	return c.banUser.CallUnary(ctx, req)
 }
 
+// ListBans calls hdlctrl.v1.ControllerService.ListBans.
+func (c *controllerServiceClient) ListBans(ctx context.Context, req *connect.Request[v1.ListBansRequest]) (*connect.Response[v1.ListBansResponse], error) {
+	return c.listBans.CallUnary(ctx, req)
+}
+
+// UnbanUser calls hdlctrl.v1.ControllerService.UnbanUser.
+func (c *controllerServiceClient) UnbanUser(ctx context.Context, req *connect.Request[v1.UnbanUserRequest]) (*connect.Response[v1.UnbanUserResponse], error) {
+	return c.unbanUser.CallUnary(ctx, req)
+}
+
+// RespawnUser calls hdlctrl.v1.ControllerService.RespawnUser.
+func (c *controllerServiceClient) RespawnUser(ctx context.Context, req *connect.Request[v1.RespawnUserRequest]) (*connect.Response[v1.RespawnUserResponse], error) {
+	return c.respawnUser.CallUnary(ctx, req)
+}
+
+// SpawnItem calls hdlctrl.v1.ControllerService.SpawnItem.
+func (c *controllerServiceClient) SpawnItem(ctx context.Context, req *connect.Request[v1.SpawnItemRequest]) (*connect.Response[v1.SpawnItemResponse], error) {
+	return c.spawnItem.CallUnary(ctx, req)
+}
+
+// SendDynamicImpulse calls hdlctrl.v1.ControllerService.SendDynamicImpulse.
+func (c *controllerServiceClient) SendDynamicImpulse(ctx context.Context, req *connect.Request[v1.SendDynamicImpulseRequest]) (*connect.Response[v1.SendDynamicImpulseResponse], error) {
+	return c.sendDynamicImpulse.CallUnary(ctx, req)
+}
+
 // IssueResoniteLinkConnection calls hdlctrl.v1.ControllerService.IssueResoniteLinkConnection.
 func (c *controllerServiceClient) IssueResoniteLinkConnection(ctx context.Context, req *connect.Request[v1.IssueResoniteLinkConnectionRequest]) (*connect.Response[v1.IssueResoniteLinkConnectionResponse], error) {
 	return c.issueResoniteLinkConnection.CallUnary(ctx, req)
@@ -867,6 +979,8 @@ type ControllerServiceHandler interface {
 	GetResoniteUser(context.Context, *connect.Request[v1.GetResoniteUserRequest]) (*connect.Response[v1.GetResoniteUserResponse], error)
 	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v1.GetFriendRequestsResponse], error)
 	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
+	SendFriendRequest(context.Context, *connect.Request[v1.SendFriendRequestRequest]) (*connect.Response[v1.SendFriendRequestResponse], error)
+	RemoveContact(context.Context, *connect.Request[v1.RemoveContactRequest]) (*connect.Response[v1.RemoveContactResponse], error)
 	// コンタクト・チャット系
 	ListContacts(context.Context, *connect.Request[v1.ListContactsRequest]) (*connect.Response[v1.ListContactsResponse], error)
 	GetContactMessages(context.Context, *connect.Request[v1.GetContactMessagesRequest]) (*connect.Response[v1.GetContactMessagesResponse], error)
@@ -886,6 +1000,11 @@ type ControllerServiceHandler interface {
 	ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error)
 	KickUser(context.Context, *connect.Request[v1.KickUserRequest]) (*connect.Response[v1.KickUserResponse], error)
 	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
+	ListBans(context.Context, *connect.Request[v1.ListBansRequest]) (*connect.Response[v1.ListBansResponse], error)
+	UnbanUser(context.Context, *connect.Request[v1.UnbanUserRequest]) (*connect.Response[v1.UnbanUserResponse], error)
+	RespawnUser(context.Context, *connect.Request[v1.RespawnUserRequest]) (*connect.Response[v1.RespawnUserResponse], error)
+	SpawnItem(context.Context, *connect.Request[v1.SpawnItemRequest]) (*connect.Response[v1.SpawnItemResponse], error)
+	SendDynamicImpulse(context.Context, *connect.Request[v1.SendDynamicImpulseRequest]) (*connect.Response[v1.SendDynamicImpulseResponse], error)
 	IssueResoniteLinkConnection(context.Context, *connect.Request[v1.IssueResoniteLinkConnectionRequest]) (*connect.Response[v1.IssueResoniteLinkConnectionResponse], error)
 	// 予約操作系
 	CreateScheduledSessionOperation(context.Context, *connect.Request[v1.CreateScheduledSessionOperationRequest]) (*connect.Response[v1.CreateScheduledSessionOperationResponse], error)
@@ -1062,6 +1181,18 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		connect.WithSchema(controllerServiceMethods.ByName("AcceptFriendRequests")),
 		connect.WithHandlerOptions(opts...),
 	)
+	controllerServiceSendFriendRequestHandler := connect.NewUnaryHandler(
+		ControllerServiceSendFriendRequestProcedure,
+		svc.SendFriendRequest,
+		connect.WithSchema(controllerServiceMethods.ByName("SendFriendRequest")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceRemoveContactHandler := connect.NewUnaryHandler(
+		ControllerServiceRemoveContactProcedure,
+		svc.RemoveContact,
+		connect.WithSchema(controllerServiceMethods.ByName("RemoveContact")),
+		connect.WithHandlerOptions(opts...),
+	)
 	controllerServiceListContactsHandler := connect.NewUnaryHandler(
 		ControllerServiceListContactsProcedure,
 		svc.ListContacts,
@@ -1164,6 +1295,36 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		connect.WithSchema(controllerServiceMethods.ByName("BanUser")),
 		connect.WithHandlerOptions(opts...),
 	)
+	controllerServiceListBansHandler := connect.NewUnaryHandler(
+		ControllerServiceListBansProcedure,
+		svc.ListBans,
+		connect.WithSchema(controllerServiceMethods.ByName("ListBans")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceUnbanUserHandler := connect.NewUnaryHandler(
+		ControllerServiceUnbanUserProcedure,
+		svc.UnbanUser,
+		connect.WithSchema(controllerServiceMethods.ByName("UnbanUser")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceRespawnUserHandler := connect.NewUnaryHandler(
+		ControllerServiceRespawnUserProcedure,
+		svc.RespawnUser,
+		connect.WithSchema(controllerServiceMethods.ByName("RespawnUser")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceSpawnItemHandler := connect.NewUnaryHandler(
+		ControllerServiceSpawnItemProcedure,
+		svc.SpawnItem,
+		connect.WithSchema(controllerServiceMethods.ByName("SpawnItem")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceSendDynamicImpulseHandler := connect.NewUnaryHandler(
+		ControllerServiceSendDynamicImpulseProcedure,
+		svc.SendDynamicImpulse,
+		connect.WithSchema(controllerServiceMethods.ByName("SendDynamicImpulse")),
+		connect.WithHandlerOptions(opts...),
+	)
 	controllerServiceIssueResoniteLinkConnectionHandler := connect.NewUnaryHandler(
 		ControllerServiceIssueResoniteLinkConnectionProcedure,
 		svc.IssueResoniteLinkConnection,
@@ -1244,6 +1405,10 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceGetFriendRequestsHandler.ServeHTTP(w, r)
 		case ControllerServiceAcceptFriendRequestsProcedure:
 			controllerServiceAcceptFriendRequestsHandler.ServeHTTP(w, r)
+		case ControllerServiceSendFriendRequestProcedure:
+			controllerServiceSendFriendRequestHandler.ServeHTTP(w, r)
+		case ControllerServiceRemoveContactProcedure:
+			controllerServiceRemoveContactHandler.ServeHTTP(w, r)
 		case ControllerServiceListContactsProcedure:
 			controllerServiceListContactsHandler.ServeHTTP(w, r)
 		case ControllerServiceGetContactMessagesProcedure:
@@ -1278,6 +1443,16 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceKickUserHandler.ServeHTTP(w, r)
 		case ControllerServiceBanUserProcedure:
 			controllerServiceBanUserHandler.ServeHTTP(w, r)
+		case ControllerServiceListBansProcedure:
+			controllerServiceListBansHandler.ServeHTTP(w, r)
+		case ControllerServiceUnbanUserProcedure:
+			controllerServiceUnbanUserHandler.ServeHTTP(w, r)
+		case ControllerServiceRespawnUserProcedure:
+			controllerServiceRespawnUserHandler.ServeHTTP(w, r)
+		case ControllerServiceSpawnItemProcedure:
+			controllerServiceSpawnItemHandler.ServeHTTP(w, r)
+		case ControllerServiceSendDynamicImpulseProcedure:
+			controllerServiceSendDynamicImpulseHandler.ServeHTTP(w, r)
 		case ControllerServiceIssueResoniteLinkConnectionProcedure:
 			controllerServiceIssueResoniteLinkConnectionHandler.ServeHTTP(w, r)
 		case ControllerServiceCreateScheduledSessionOperationProcedure:
@@ -1403,6 +1578,14 @@ func (UnimplementedControllerServiceHandler) AcceptFriendRequests(context.Contex
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.AcceptFriendRequests is not implemented"))
 }
 
+func (UnimplementedControllerServiceHandler) SendFriendRequest(context.Context, *connect.Request[v1.SendFriendRequestRequest]) (*connect.Response[v1.SendFriendRequestResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.SendFriendRequest is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) RemoveContact(context.Context, *connect.Request[v1.RemoveContactRequest]) (*connect.Response[v1.RemoveContactResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.RemoveContact is not implemented"))
+}
+
 func (UnimplementedControllerServiceHandler) ListContacts(context.Context, *connect.Request[v1.ListContactsRequest]) (*connect.Response[v1.ListContactsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.ListContacts is not implemented"))
 }
@@ -1469,6 +1652,26 @@ func (UnimplementedControllerServiceHandler) KickUser(context.Context, *connect.
 
 func (UnimplementedControllerServiceHandler) BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.BanUser is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) ListBans(context.Context, *connect.Request[v1.ListBansRequest]) (*connect.Response[v1.ListBansResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.ListBans is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) UnbanUser(context.Context, *connect.Request[v1.UnbanUserRequest]) (*connect.Response[v1.UnbanUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.UnbanUser is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) RespawnUser(context.Context, *connect.Request[v1.RespawnUserRequest]) (*connect.Response[v1.RespawnUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.RespawnUser is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) SpawnItem(context.Context, *connect.Request[v1.SpawnItemRequest]) (*connect.Response[v1.SpawnItemResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.SpawnItem is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) SendDynamicImpulse(context.Context, *connect.Request[v1.SendDynamicImpulseRequest]) (*connect.Response[v1.SendDynamicImpulseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.SendDynamicImpulse is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) IssueResoniteLinkConnection(context.Context, *connect.Request[v1.IssueResoniteLinkConnectionRequest]) (*connect.Response[v1.IssueResoniteLinkConnectionResponse], error) {

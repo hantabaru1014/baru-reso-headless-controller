@@ -1499,3 +1499,422 @@ func TestControllerService_UpdateSessionExtraSettings(t *testing.T) {
 		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 }
+
+func TestControllerService_ListBans(t *testing.T) {
+	t.Run("成功: BANリストを取得", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
+
+		setup.mockHostConnector.EXPECT().
+			GetRpcClient(gomock.Any(), gomock.Any()).
+			Return(setup.mockRpcClient, nil)
+
+		setup.mockRpcClient.EXPECT().
+			ListBans(gomock.Any(), gomock.Any()).
+			Return(&headlessv1.ListBansResponse{
+				Bans: []*headlessv1.BanEntry{
+					{UserId: "U-target", UserName: "Target"},
+				},
+			}, nil)
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListBansRequest{
+			HostId: host.ID,
+		})
+
+		res, err := client.ListBans(t.Context(), req)
+		require.NoError(t, err)
+		require.NotNil(t, res.Msg)
+		require.Len(t, res.Msg.GetBans(), 1)
+		assert.Equal(t, "U-target", res.Msg.GetBans()[0].GetUserId())
+	})
+
+	t.Run("成功: 最小権限 caller (session:read on host.group_id) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-listbans"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-lb-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-lb-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+
+		setup.mockHostConnector.EXPECT().GetRpcClient(gomock.Any(), gomock.Any()).Return(setup.mockRpcClient, nil)
+		setup.mockRpcClient.EXPECT().ListBans(gomock.Any(), gomock.Any()).Return(&headlessv1.ListBansResponse{}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.ListBansRequest{
+			HostId: host.ID,
+		}, "U-mp-listbans", groupID, []string{entity.PermKey_SessionRead})
+
+		_, err := client.ListBans(t.Context(), req)
+		require.NoError(t, err)
+	})
+
+	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test2", "TestHost2", entity.HeadlessHostStatus_RUNNING)
+
+		setup.mockHostConnector.EXPECT().
+			GetRpcClient(gomock.Any(), gomock.Any()).
+			Return(nil, connect.NewError(connect.CodeInternal, nil))
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListBansRequest{
+			HostId: host.ID,
+		})
+
+		_, err := client.ListBans(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
+		require.True(t, ok, "expected connect.Error")
+		assert.Equal(t, connect.CodeInternal, connectErr.Code())
+	})
+}
+
+func TestControllerService_UnbanUser(t *testing.T) {
+	t.Run("成功: BANを解除", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
+
+		setup.mockHostConnector.EXPECT().
+			GetRpcClient(gomock.Any(), gomock.Any()).
+			Return(setup.mockRpcClient, nil)
+
+		setup.mockRpcClient.EXPECT().
+			UnbanUser(gomock.Any(), gomock.Any()).
+			Return(&headlessv1.UnbanUserResponse{}, nil)
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.UnbanUserRequest{
+			HostId: host.ID,
+			Parameters: &headlessv1.UnbanUserRequest{
+				User: &headlessv1.UnbanUserRequest_UserId{UserId: "U-target"},
+			},
+		})
+
+		res, err := client.UnbanUser(t.Context(), req)
+		require.NoError(t, err)
+		assert.NotNil(t, res.Msg)
+	})
+
+	t.Run("成功: 最小権限 caller (session:write on host.group_id) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-unban"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-unban-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-unban-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+
+		setup.mockHostConnector.EXPECT().GetRpcClient(gomock.Any(), gomock.Any()).Return(setup.mockRpcClient, nil)
+		setup.mockRpcClient.EXPECT().UnbanUser(gomock.Any(), gomock.Any()).Return(&headlessv1.UnbanUserResponse{}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.UnbanUserRequest{
+			HostId: host.ID,
+			Parameters: &headlessv1.UnbanUserRequest{
+				User: &headlessv1.UnbanUserRequest_UserId{UserId: "U-target"},
+			},
+		}, "U-mp-unban", groupID, []string{entity.PermKey_SessionWrite})
+
+		_, err := client.UnbanUser(t.Context(), req)
+		require.NoError(t, err)
+	})
+
+	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test2", "TestHost2", entity.HeadlessHostStatus_RUNNING)
+
+		setup.mockHostConnector.EXPECT().
+			GetRpcClient(gomock.Any(), gomock.Any()).
+			Return(nil, connect.NewError(connect.CodeInternal, nil))
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.UnbanUserRequest{
+			HostId: host.ID,
+			Parameters: &headlessv1.UnbanUserRequest{
+				User: &headlessv1.UnbanUserRequest_UserId{UserId: "U-target"},
+			},
+		})
+
+		_, err := client.UnbanUser(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
+		require.True(t, ok, "expected connect.Error")
+		assert.Equal(t, connect.CodeInternal, connectErr.Code())
+	})
+}
+
+func TestControllerService_RespawnUser(t *testing.T) {
+	t.Run("成功: ユーザーをリスポーン", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
+
+		setup.mockHostConnector.EXPECT().
+			GetRpcClient(gomock.Any(), gomock.Any()).
+			Return(setup.mockRpcClient, nil)
+
+		setup.mockRpcClient.EXPECT().
+			RespawnUser(gomock.Any(), gomock.Any()).
+			Return(&headlessv1.RespawnUserResponse{}, nil)
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.RespawnUserRequest{
+			HostId: host.ID,
+			Parameters: &headlessv1.RespawnUserRequest{
+				SessionId: "session-123",
+				User:      &headlessv1.RespawnUserRequest_UserId{UserId: "U-test-respawn-1"},
+			},
+		})
+
+		res, err := client.RespawnUser(t.Context(), req)
+		require.NoError(t, err)
+		assert.NotNil(t, res.Msg)
+	})
+
+	t.Run("成功: 最小権限 caller (session:write on host.group_id) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-respawn"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-respawn-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-respawn-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+
+		setup.mockHostConnector.EXPECT().GetRpcClient(gomock.Any(), gomock.Any()).Return(setup.mockRpcClient, nil)
+		setup.mockRpcClient.EXPECT().RespawnUser(gomock.Any(), gomock.Any()).Return(&headlessv1.RespawnUserResponse{}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.RespawnUserRequest{
+			HostId: host.ID,
+			Parameters: &headlessv1.RespawnUserRequest{
+				SessionId: "session-123",
+				User:      &headlessv1.RespawnUserRequest_UserId{UserId: "U-test-respawn-mp"},
+			},
+		}, "U-mp-respawn", groupID, []string{entity.PermKey_SessionWrite})
+
+		_, err := client.RespawnUser(t.Context(), req)
+		require.NoError(t, err)
+	})
+
+	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test2", "TestHost2", entity.HeadlessHostStatus_RUNNING)
+
+		setup.mockHostConnector.EXPECT().
+			GetRpcClient(gomock.Any(), gomock.Any()).
+			Return(nil, connect.NewError(connect.CodeInternal, nil))
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.RespawnUserRequest{
+			HostId: host.ID,
+			Parameters: &headlessv1.RespawnUserRequest{
+				SessionId: "session-123",
+				User:      &headlessv1.RespawnUserRequest_UserId{UserId: "U-test-respawn-fail"},
+			},
+		})
+
+		_, err := client.RespawnUser(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
+		require.True(t, ok, "expected connect.Error")
+		assert.Equal(t, connect.CodeInternal, connectErr.Code())
+	})
+}
+
+func TestControllerService_SpawnItem(t *testing.T) {
+	t.Run("成功: アイテムをスポーン", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
+
+		setup.mockHostConnector.EXPECT().
+			GetRpcClient(gomock.Any(), gomock.Any()).
+			Return(setup.mockRpcClient, nil)
+
+		setup.mockRpcClient.EXPECT().
+			SpawnItem(gomock.Any(), gomock.Any()).
+			Return(&headlessv1.SpawnItemResponse{}, nil)
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.SpawnItemRequest{
+			HostId: host.ID,
+			Parameters: &headlessv1.SpawnItemRequest{
+				SessionId: "session-123",
+				Url:       "resrec:///U-test/R-item",
+			},
+		})
+
+		res, err := client.SpawnItem(t.Context(), req)
+		require.NoError(t, err)
+		assert.NotNil(t, res.Msg)
+	})
+
+	t.Run("成功: 最小権限 caller (session:write on host.group_id) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-spawn"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-spawn-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-spawn-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+
+		setup.mockHostConnector.EXPECT().GetRpcClient(gomock.Any(), gomock.Any()).Return(setup.mockRpcClient, nil)
+		setup.mockRpcClient.EXPECT().SpawnItem(gomock.Any(), gomock.Any()).Return(&headlessv1.SpawnItemResponse{}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.SpawnItemRequest{
+			HostId: host.ID,
+			Parameters: &headlessv1.SpawnItemRequest{
+				SessionId: "session-123",
+				Url:       "resrec:///U-mp/R-item",
+			},
+		}, "U-mp-spawn", groupID, []string{entity.PermKey_SessionWrite})
+
+		_, err := client.SpawnItem(t.Context(), req)
+		require.NoError(t, err)
+	})
+
+	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test2", "TestHost2", entity.HeadlessHostStatus_RUNNING)
+
+		setup.mockHostConnector.EXPECT().
+			GetRpcClient(gomock.Any(), gomock.Any()).
+			Return(nil, connect.NewError(connect.CodeInternal, nil))
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.SpawnItemRequest{
+			HostId: host.ID,
+			Parameters: &headlessv1.SpawnItemRequest{
+				SessionId: "session-123",
+				Url:       "resrec:///U-test/R-item",
+			},
+		})
+
+		_, err := client.SpawnItem(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
+		require.True(t, ok, "expected connect.Error")
+		assert.Equal(t, connect.CodeInternal, connectErr.Code())
+	})
+}
+
+func TestControllerService_SendDynamicImpulse(t *testing.T) {
+	t.Run("成功: dynamic impulse を送信", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
+
+		setup.mockHostConnector.EXPECT().
+			GetRpcClient(gomock.Any(), gomock.Any()).
+			Return(setup.mockRpcClient, nil)
+
+		setup.mockRpcClient.EXPECT().
+			SendDynamicImpulse(gomock.Any(), gomock.Any()).
+			Return(&headlessv1.SendDynamicImpulseResponse{
+				TriggeredReceivers: 5,
+			}, nil)
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.SendDynamicImpulseRequest{
+			HostId: host.ID,
+			Parameters: &headlessv1.SendDynamicImpulseRequest{
+				SessionId: "session-123",
+				Tag:       "ping",
+			},
+		})
+
+		res, err := client.SendDynamicImpulse(t.Context(), req)
+		require.NoError(t, err)
+		require.NotNil(t, res.Msg)
+		assert.Equal(t, int32(5), res.Msg.GetTriggeredReceivers())
+	})
+
+	t.Run("成功: 最小権限 caller (session:write on host.group_id) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-dynimp"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-di-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-di-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+
+		setup.mockHostConnector.EXPECT().GetRpcClient(gomock.Any(), gomock.Any()).Return(setup.mockRpcClient, nil)
+		setup.mockRpcClient.EXPECT().SendDynamicImpulse(gomock.Any(), gomock.Any()).Return(&headlessv1.SendDynamicImpulseResponse{}, nil)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.SendDynamicImpulseRequest{
+			HostId: host.ID,
+			Parameters: &headlessv1.SendDynamicImpulseRequest{
+				SessionId: "session-123",
+				Tag:       "ping",
+			},
+		}, "U-mp-dynimp", groupID, []string{entity.PermKey_SessionWrite})
+
+		_, err := client.SendDynamicImpulse(t.Context(), req)
+		require.NoError(t, err)
+	})
+
+	t.Run("失敗: RPCクライアントの取得に失敗", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test2", "test2@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test2", "TestHost2", entity.HeadlessHostStatus_RUNNING)
+
+		setup.mockHostConnector.EXPECT().
+			GetRpcClient(gomock.Any(), gomock.Any()).
+			Return(nil, connect.NewError(connect.CodeInternal, nil))
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.SendDynamicImpulseRequest{
+			HostId: host.ID,
+			Parameters: &headlessv1.SendDynamicImpulseRequest{
+				SessionId: "session-123",
+				Tag:       "ping",
+			},
+		})
+
+		_, err := client.SendDynamicImpulse(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		ok := errors.As(err, &connectErr)
+		require.True(t, ok, "expected connect.Error")
+		assert.Equal(t, connect.CodeInternal, connectErr.Code())
+	})
+}

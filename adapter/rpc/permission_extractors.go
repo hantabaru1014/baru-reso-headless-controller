@@ -29,7 +29,14 @@ func hostIDFromFetchWorldInfo(r *hdlctrlv1.FetchWorldInfoRequest) string {
 func hostIDFromSearchUserInfo(r *hdlctrlv1.SearchUserInfoRequest) string { return r.GetHostId() }
 func hostIDFromGetOwnWorlds(r *hdlctrlv1.GetOwnWorldsRequest) string     { return r.GetHostId() }
 func hostIDFromBan(r *hdlctrlv1.BanUserRequest) string                   { return r.GetHostId() }
+func hostIDFromListBans(r *hdlctrlv1.ListBansRequest) string             { return r.GetHostId() }
+func hostIDFromUnban(r *hdlctrlv1.UnbanUserRequest) string               { return r.GetHostId() }
 func hostIDFromKick(r *hdlctrlv1.KickUserRequest) string                 { return r.GetHostId() }
+func hostIDFromRespawn(r *hdlctrlv1.RespawnUserRequest) string           { return r.GetHostId() }
+func hostIDFromSpawnItem(r *hdlctrlv1.SpawnItemRequest) string           { return r.GetHostId() }
+func hostIDFromSendDynamicImpulse(r *hdlctrlv1.SendDynamicImpulseRequest) string {
+	return r.GetHostId()
+}
 func hostIDFromUpdateUserRole(r *hdlctrlv1.UpdateUserRoleRequest) string { return r.GetHostId() }
 func hostIDFromInviteUser(r *hdlctrlv1.InviteUserRequest) string         { return r.GetHostId() }
 func hostIDFromListUsersInSession(r *hdlctrlv1.ListUsersInSessionRequest) string {
@@ -55,6 +62,12 @@ func accountIDFromGetFriendRequests(r *hdlctrlv1.GetFriendRequestsRequest) strin
 	return r.GetHeadlessAccountId()
 }
 func accountIDFromAcceptFriends(r *hdlctrlv1.AcceptFriendRequestsRequest) string {
+	return r.GetHeadlessAccountId()
+}
+func accountIDFromSendFriendRequest(r *hdlctrlv1.SendFriendRequestRequest) string {
+	return r.GetHeadlessAccountId()
+}
+func accountIDFromRemoveContact(r *hdlctrlv1.RemoveContactRequest) string {
 	return r.GetHeadlessAccountId()
 }
 func accountIDFromListContacts(r *hdlctrlv1.ListContactsRequest) string {

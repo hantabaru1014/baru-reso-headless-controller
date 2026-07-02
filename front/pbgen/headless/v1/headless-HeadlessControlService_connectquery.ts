@@ -85,6 +85,26 @@ export const kickUser = HeadlessControlService.method.kickUser;
 export const banUser = HeadlessControlService.method.banUser;
 
 /**
+ * @generated from rpc headless.v1.HeadlessControlService.ListBans
+ */
+export const listBans = HeadlessControlService.method.listBans;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.UnbanUser
+ */
+export const unbanUser = HeadlessControlService.method.unbanUser;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.RespawnUser
+ */
+export const respawnUser = HeadlessControlService.method.respawnUser;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.SpawnItem
+ */
+export const spawnItem = HeadlessControlService.method.spawnItem;
+
+/**
  * @generated from rpc headless.v1.HeadlessControlService.GetHostSettings
  */
 export const getHostSettings = HeadlessControlService.method.getHostSettings;
@@ -108,6 +128,23 @@ export const denyHostAccess = HeadlessControlService.method.denyHostAccess;
  * @generated from rpc headless.v1.HeadlessControlService.GetStartupConfigToRestore
  */
 export const getStartupConfigToRestore = HeadlessControlService.method.getStartupConfigToRestore;
+
+/**
+ * World 内操作系
+ *
+ * @generated from rpc headless.v1.HeadlessControlService.SendDynamicImpulse
+ */
+export const sendDynamicImpulse = HeadlessControlService.method.sendDynamicImpulse;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.RunGarbageCollection
+ */
+export const runGarbageCollection = HeadlessControlService.method.runGarbageCollection;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.GetWorldDebugState
+ */
+export const getWorldDebugState = HeadlessControlService.method.getWorldDebugState;
 
 /**
  * Cloud系
@@ -135,6 +172,16 @@ export const getFriendRequests = HeadlessControlService.method.getFriendRequests
  * @generated from rpc headless.v1.HeadlessControlService.AcceptFriendRequests
  */
 export const acceptFriendRequests = HeadlessControlService.method.acceptFriendRequests;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.SendFriendRequest
+ */
+export const sendFriendRequest = HeadlessControlService.method.sendFriendRequest;
+
+/**
+ * @generated from rpc headless.v1.HeadlessControlService.RemoveContact
+ */
+export const removeContact = HeadlessControlService.method.removeContact;
 
 /**
  * @generated from rpc headless.v1.HeadlessControlService.ListContacts
