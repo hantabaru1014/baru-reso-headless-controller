@@ -57,10 +57,12 @@ func (c *ControllerService) ListContacts(ctx context.Context, req *connect.Reque
 }
 
 // GetContactMessages implements hdlctrlv1connect.ControllerServiceHandler.
-// 権限: account.group_id に対して account:read.
+// 権限: account.group_id に対して account:use.
+// DM 履歴はアカウントのメタデータ (account:read) ではなく「アカウントとして
+// 振る舞う」操作に属するため、SendContactMessage と同じ account:use に揃える.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.ControllerServiceGetContactMessagesProcedure,
-	checkAccountPermission(entity.PermKey_AccountRead, accountIDFromGetMessages),
+	checkAccountPermission(entity.PermKey_AccountUse, accountIDFromGetMessages),
 )
 
 func (c *ControllerService) GetContactMessages(ctx context.Context, req *connect.Request[hdlctrlv1.GetContactMessagesRequest]) (*connect.Response[hdlctrlv1.GetContactMessagesResponse], error) {

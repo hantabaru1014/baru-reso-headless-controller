@@ -36,7 +36,12 @@ func NewGroupUsecase(
 }
 
 // CreateGroup は normal グループを新規作成する. 作成者は自動的に admin として登録される.
+// 権限要件: system:group.manage (RPC interceptor と独立に usecase 層でも最終ガードする).
 func (u *GroupUsecase) CreateGroup(ctx context.Context, name string, creatorUserID string) (*entity.Group, error) {
+	if err := u.permUC.RequireSystemPermission(ctx, entity.PermKey_SystemGroupManage); err != nil {
+		return nil, err
+	}
+
 	if name == "" {
 		return nil, errors.New("group name is required")
 	}
@@ -120,6 +125,13 @@ func (u *GroupUsecase) ListGroupMembers(ctx context.Context, groupID string) (en
 
 // AddGroupMember は group に user を role で登録する. personal グループへの追加は禁止.
 func (u *GroupUsecase) AddGroupMember(ctx context.Context, groupID, userID, roleID string, addedBy *string) (*entity.GroupMember, error) {
+	// permission チェックを存在チェックより先に行う. 権限の無い caller に
+	// NotFound / PermissionDenied の違いでグループ存在 (ひいては
+	// `<user-id>-personal` 形式からユーザー存在) を漏らさないため.
+	if err := u.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_GroupMembersManage); err != nil {
+		return nil, err
+	}
+
 	g, err := u.groupRepo.Get(ctx, groupID)
 	if err != nil {
 		return nil, err
@@ -127,10 +139,6 @@ func (u *GroupUsecase) AddGroupMember(ctx context.Context, groupID, userID, role
 
 	if g.Type == entity.GroupType_Personal {
 		return nil, errors.WrapPrefix(ErrGroupOperationForbidden, "cannot add member to personal group", 0)
-	}
-
-	if err := u.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_GroupMembersManage); err != nil {
-		return nil, err
 	}
 
 	role, err := u.roleRepo.Get(ctx, roleID)
@@ -282,9 +290,35 @@ func isRoleAssignableToGroup(role *entity.Role, group *entity.Group) bool {
 	return false
 }
 
+// ValidatePersonalRoleAssignable は personal グループのメンバーシップに付与する
+// ロールとして roleID が妥当か検証する. 招待トークン発行 / ユーザー直接作成の
+// 入口で呼び、不正な role id・scope 違反・他グループ専用ロールの混入を防ぐ.
+func (u *GroupUsecase) ValidatePersonalRoleAssignable(ctx context.Context, roleID string) error {
+	role, err := u.roleRepo.Get(ctx, roleID)
+	if err != nil {
+		return err
+	}
+
+	if role.Scope != entity.RoleScope_Normal {
+		return errors.New("personal group role must be a normal-scope role")
+	}
+
+	if role.GroupID != nil && *role.GroupID != "" {
+		return errors.New("personal group role must be a global role")
+	}
+
+	return nil
+}
+
 // EnsurePersonalGroupForUser は user の personal グループを取得 / 作成する.
 // 引数の roleID は personal メンバーシップに付与するロール (デフォルト seed-admin).
 func (u *GroupUsecase) EnsurePersonalGroupForUser(ctx context.Context, userID, roleID string) (*entity.Group, error) {
+	if roleID != "" {
+		if err := u.ValidatePersonalRoleAssignable(ctx, roleID); err != nil {
+			return nil, err
+		}
+	}
+
 	if g, err := u.groupRepo.GetPersonalGroupByUser(ctx, userID); err == nil {
 		return g, nil
 	} else if !errors.Is(err, domain.ErrNotFound) {

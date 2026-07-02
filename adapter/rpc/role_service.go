@@ -66,10 +66,11 @@ func (s *RoleService) NewHandler() (string, http.Handler) {
 	return hdlctrlv1connect.NewRoleServiceHandler(s, interceptors)
 }
 
-// ListRoles: 認証のみ (handler 側でグローバル + 指定グループのカスタムを返す).
+// ListRoles: group_id 未指定 (グローバルロール一覧) は認証のみ.
+// 指定時はそのグループの閲覧権限 (所属 or system:group.list) を要求する.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.RoleServiceListRolesProcedure,
-	requireAuthOnly,
+	checkListRoles,
 )
 
 func (s *RoleService) ListRoles(ctx context.Context, req *connect.Request[hdlctrlv1.ListRolesRequest]) (*connect.Response[hdlctrlv1.ListRolesResponse], error) {

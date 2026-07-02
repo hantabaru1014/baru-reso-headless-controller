@@ -33,6 +33,8 @@ import { UserInSession as UserInSessionProto } from "../../pbgen/headless/v1/hea
 import { DataTable } from "./base";
 import { toast } from "sonner";
 import { useMemo } from "react";
+import { usePermissions } from "../hooks/usePermissions";
+import { PERMISSION_KEYS } from "../libs/permissionUtils";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 30];
 
@@ -169,6 +171,12 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
   const { data: hostData } = useQuery(getHeadlessHost, {
     hostId: hostId ?? "",
   });
+  const { hasPermission } = usePermissions();
+  // チャットはホストアカウントの account:use が必要 (backend の権限要件に合わせる).
+  const canUseAccount = hasPermission(
+    hostData?.host?.groupId,
+    PERMISSION_KEYS.ACCOUNT_USE,
+  );
 
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
@@ -295,6 +303,7 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
           <Button
             variant="outline"
             size="sm"
+            disabled={!canUseAccount}
             onClick={() => setChatUserId(row.original.id)}
           >
             チャット

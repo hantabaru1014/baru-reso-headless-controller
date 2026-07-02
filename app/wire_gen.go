@@ -64,7 +64,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	async_jobUsecase := async_job.NewUsecase(asyncJobRepository)
 	memoryBus := notification.NewBus()
 	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, blobUsecase, scheduledSessionOperationUsecase, async_jobUsecase, permissionUsecase, groupRepository, roleRepository, defaultClient, memoryBus)
-	notificationService := rpc.NewNotificationService(memoryBus)
+	notificationService := rpc.NewNotificationService(memoryBus, headlessHostRepository, permissionUsecase)
 	groupService := rpc.NewGroupService(groupUsecase, permissionUsecase, groupRepository, roleRepository, headlessHostRepository, sessionRepository, headlessAccountUsecase)
 	roleUsecase := usecase.NewRoleUsecase(roleRepository, groupRepository, permissionUsecase)
 	roleService := rpc.NewRoleService(roleUsecase, permissionUsecase, groupRepository, roleRepository, headlessHostRepository, sessionRepository, headlessAccountUsecase)

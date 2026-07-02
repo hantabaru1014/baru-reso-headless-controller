@@ -297,3 +297,44 @@ func (u *PermissionUsecase) RequireAllPermissionsForGroup(ctx context.Context, g
 	return nil
 }
 
+// RequireAnyPermissionForGroup は permKeys のいずれか 1 つ (OR) を要求する.
+// 権限判定のエラー (DB 障害等) は握り潰さずそのまま返すため、一時的な内部
+// エラーが PermissionDenied にすり替わることはない.
+func (u *PermissionUsecase) RequireAnyPermissionForGroup(ctx context.Context, groupID string, permKeys []string) error {
+	userID, err := CurrentUserID(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, k := range permKeys {
+		ok, err := u.HasPermission(ctx, userID, groupID, k)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+
+		if ok {
+			return nil
+		}
+	}
+
+	return errors.Wrap(fmt.Errorf("%w: one of %v on group %s", domain.ErrPermissionDenied, permKeys, groupID), 0)
+}
+
+// CanReadGroupAny は permKeys のいずれかで groupID を閲覧できるか (system:group.list
+// bypass 込み) を判定する. 通知配信フィルタ等、エラーを denial と区別したい read
+// 判定で使う.
+func (u *PermissionUsecase) CanReadGroupAny(ctx context.Context, userID, groupID string, permKeys []string) (bool, error) {
+	for _, k := range permKeys {
+		ok, err := u.CanReadGroup(ctx, userID, groupID, k)
+		if err != nil {
+			return false, err
+		}
+
+		if ok {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+

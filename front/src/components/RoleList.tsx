@@ -34,6 +34,7 @@ import {
   permissionKeyToLabel,
   roleScopeToLabel,
 } from "../libs/permissionUtils";
+import { useInvalidateMyPermissions } from "../hooks/useInvalidateMyPermissions";
 
 const roleFormSchema = z.object({
   name: z.string().min(1, "ロール名は必須です"),
@@ -56,6 +57,7 @@ function RoleEditorDialog({
   onClose?: () => void;
 }) {
   const isEdit = !!initial;
+  const invalidateMyPermissions = useInvalidateMyPermissions();
   const { data: permsData } = useQuery(listPermissions, { scope });
   const { mutateAsync: mutateCreate, isPending: isCreating } =
     useMutation(createRole);
@@ -95,6 +97,9 @@ function RoleEditorDialog({
         });
         toast.success("ロールを作成しました");
       }
+      // ロールの権限変更は自分自身の実効権限に影響しうるため getMyPermissions を invalidate.
+      // ダイアログのクローズを再取得の完了で待たせないため await しない.
+      invalidateMyPermissions();
       reset();
       onClose?.();
     } catch (e) {
@@ -220,6 +225,9 @@ export default function RoleList({
   const [editingRole, setEditingRole] = useState<Role | undefined>(undefined);
   const [isCreating, setIsCreating] = useState(false);
 
+  // ロール削除は自分自身の実効権限に影響しうるため getMyPermissions を invalidate.
+  const invalidateMyPermissions = useInvalidateMyPermissions();
+
   const columns: ColumnDef<Role>[] = useMemo(
     () => [
       {
@@ -282,6 +290,7 @@ export default function RoleList({
                     await mutateDelete({ roleId: role.id });
                     toast.success("ロールを削除しました");
                     refetch();
+                    invalidateMyPermissions();
                   } catch (e) {
                     toast.error(
                       e instanceof Error ? e.message : "削除に失敗しました",
@@ -296,7 +305,7 @@ export default function RoleList({
         },
       },
     ],
-    [canManage, mutateDelete, refetch],
+    [canManage, mutateDelete, refetch, invalidateMyPermissions],
   );
 
   return (

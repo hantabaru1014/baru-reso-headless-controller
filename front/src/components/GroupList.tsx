@@ -6,13 +6,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { ColumnDef } from "@tanstack/react-table";
-import { createConnectQueryKey } from "@connectrpc/connect-query";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   createGroup,
   listGroups,
 } from "../../pbgen/hdlctrl/v1/permission-GroupService_connectquery";
-import { getMyPermissions } from "../../pbgen/hdlctrl/v1/permission-RoleService_connectquery";
 import { Group, GroupType } from "../../pbgen/hdlctrl/v1/permission_pb";
 import {
   Button,
@@ -26,6 +23,7 @@ import {
 import { DataTable, RefetchButton, TextField } from "./base";
 import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
 import { usePermissions } from "../hooks/usePermissions";
+import { useInvalidateMyPermissions } from "../hooks/useInvalidateMyPermissions";
 import { PERMISSION_KEYS, groupTypeToLabel } from "../libs/permissionUtils";
 
 const newGroupFormSchema = z.object({
@@ -134,20 +132,15 @@ const columns: ColumnDef<Group>[] = [
 
 export default function GroupList() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { data, isPending, refetch } = useQuery(listGroups, {});
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const { hasSystemPermission } = usePermissions();
+  const invalidateMyPermissions = useInvalidateMyPermissions();
   const canCreate = hasSystemPermission(PERMISSION_KEYS.SYSTEM_GROUP_MANAGE);
 
   const handleCreated = async (newGroupId: string) => {
     // 新規グループへの権限を即時反映するため getMyPermissions を invalidate.
-    await queryClient.invalidateQueries({
-      queryKey: createConnectQueryKey({
-        schema: getMyPermissions,
-        cardinality: undefined,
-      }),
-    });
+    await invalidateMyPermissions();
     navigate(`/groups/${newGroupId}`);
   };
 

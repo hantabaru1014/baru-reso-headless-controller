@@ -293,14 +293,19 @@ function DeleteUserDialog({
 export default function AdminUsersPage() {
   const { hasSystemPermission, isPending: isPermPending } = usePermissions();
   const session = useAtomValue(sessionAtom);
-  const canList = hasSystemPermission(PERMISSION_KEYS.SYSTEM_USER_LIST);
   const canCreate = hasSystemPermission(PERMISSION_KEYS.SYSTEM_USER_CREATE);
   const canDelete = hasSystemPermission(PERMISSION_KEYS.SYSTEM_USER_DELETE);
+  // ListUsers は認証のみで許可される. list/create/delete のいずれかを持てばページを開ける
+  // (user.create のみのカスタムロールでも招待できるように).
+  const canAccess =
+    hasSystemPermission(PERMISSION_KEYS.SYSTEM_USER_LIST) ||
+    canCreate ||
+    canDelete;
 
   const { data, isPending, refetch } = useQuery(
     listUsers,
     {},
-    { enabled: canList },
+    { enabled: canAccess },
   );
   const [inviteOpen, setInviteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<User | undefined>(undefined);
@@ -373,7 +378,7 @@ export default function AdminUsersPage() {
 
   if (isPermPending) return null;
 
-  if (!canList) {
+  if (!canAccess) {
     return (
       <div className="container mx-auto p-4">
         <p className="text-destructive text-sm">権限がありません</p>

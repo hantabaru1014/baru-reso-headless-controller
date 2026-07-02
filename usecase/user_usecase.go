@@ -3,7 +3,9 @@ package usecase
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -52,6 +54,15 @@ func (u *UserUsecase) CreateUser(ctx context.Context, id, password, resoniteId, 
 
 	if id == domain.SystemUserID {
 		return errors.New("user id 'system' is reserved")
+	}
+
+	// personal role の検証は user 行を書き込む前に済ませる. CreateUser は
+	// 非トランザクションで user → personal group の順に書くため、後段で弾くと
+	// personal group を持たない user 行だけが残り CLI で修復不能になる.
+	if personalRoleID != "" {
+		if err := u.validatePersonalRole(ctx, personalRoleID); err != nil {
+			return err
+		}
 	}
 
 	passwordHash, err := auth.HashPassword(password)
@@ -183,6 +194,15 @@ func (u *UserUsecase) CreateRegistrationTokenWithInfo(ctx context.Context, reson
 
 //nolint:funcorder // CreateRegistrationToken / WithInfo のヘルパー. 直下に置く方が読みやすい
 func (u *UserUsecase) createRegistrationToken(ctx context.Context, resoniteId, personalRoleID string) (string, time.Time, error) {
+	// 発行時に personal role を検証する. 不正な role id / scope 違反 /
+	// グループ内ロールを招待に載せられないようにする (登録時の FK エラーや
+	// 無効な membership を防ぐ).
+	if personalRoleID != "" {
+		if err := u.validatePersonalRole(ctx, personalRoleID); err != nil {
+			return "", time.Time{}, err
+		}
+	}
+
 	token, err := generateSecureToken(registrationTokenLength)
 	if err != nil {
 		return "", time.Time{}, errors.Wrap(err, 0)
@@ -196,7 +216,7 @@ func (u *UserUsecase) createRegistrationToken(ctx context.Context, resoniteId, p
 	}
 
 	err = u.queries.CreateRegistrationToken(ctx, db.CreateRegistrationTokenParams{
-		Token:          token,
+		Token:          hashRegistrationToken(token),
 		ResoniteID:     resoniteId,
 		ExpiresAt:      pgtype.Timestamptz{Time: expiresAt, Valid: true},
 		PersonalRoleID: personalRole,
@@ -234,7 +254,7 @@ func (u *UserUsecase) GetUser(ctx context.Context, id string) (*db.User, error) 
 
 // ValidateRegistrationToken checks if the token is valid and returns the associated resonite ID and user info.
 func (u *UserUsecase) ValidateRegistrationToken(ctx context.Context, token string) (*skyfrost.UserInfo, error) {
-	regToken, err := u.queries.GetValidRegistrationToken(ctx, token)
+	regToken, err := u.queries.GetValidRegistrationToken(ctx, hashRegistrationToken(token))
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
@@ -258,8 +278,11 @@ func (u *UserUsecase) ValidateRegistrationToken(ctx context.Context, token strin
 // personal グループに付与するロールは registration_tokens.personal_role_id から取得する
 // (改竄不能、admin が発行時に指定). NULL なら seed-admin.
 func (u *UserUsecase) RegisterWithToken(ctx context.Context, token, userId, password string) (*db.User, error) {
+	tokenHash := hashRegistrationToken(token)
+
 	// tx 外: token 検証 (read-only). validation 失敗時は副作用ゼロで早期 return.
-	regToken, err := u.queries.GetValidRegistrationToken(ctx, token)
+	// single-use の最終保証は tx 内の MarkRegistrationTokenUsed (条件付き UPDATE) が持つ.
+	regToken, err := u.queries.GetValidRegistrationToken(ctx, tokenHash)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
@@ -314,8 +337,15 @@ func (u *UserUsecase) RegisterWithToken(ctx context.Context, token, userId, pass
 			return errors.WrapPrefix(err, "register personal member", 0)
 		}
 
-		if err := qtx.MarkRegistrationTokenUsed(ctx, token); err != nil {
+		// used_at IS NULL 条件付き UPDATE で single-use をアトミックに保証する.
+		// 並行登録では先勝ちし、後続は 0 rows でここで abort する.
+		rows, err := qtx.MarkRegistrationTokenUsed(ctx, tokenHash)
+		if err != nil {
 			return errors.Wrap(err, 0)
+		}
+
+		if rows != 1 {
+			return errors.New("registration token is already used")
 		}
 
 		u, err := qtx.GetUser(ctx, userId)
@@ -343,6 +373,15 @@ func generateSecureToken(length int) (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
+// hashRegistrationToken は登録トークンの保存用ダイジェスト (SHA-256 hex) を返す.
+// DB には平文トークンを置かず、URL で渡ってきた平文をハッシュして照合する
+// (DB read-only 漏洩時にトークンをそのまま使われないようにするため).
+func hashRegistrationToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+
+	return hex.EncodeToString(sum[:])
+}
+
 func (u *UserUsecase) ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error {
 	user, err := u.queries.GetUser(ctx, userID)
 	if err != nil {
@@ -366,4 +405,16 @@ func (u *UserUsecase) ChangePassword(ctx context.Context, userID, currentPasswor
 		ID:       userID,
 		Password: passwordHash,
 	})
+}
+
+// validatePersonalRole は招待 / ユーザー作成時に指定される personal role が
+// 割り当て可能かを検証する. GroupUsecase が未配線 (guc == nil) の場合は検証を
+// スキップせず fail-closed でエラーにする — 検証の無効化を「たまたま nil だった」
+// で握り潰すと権限昇格ロールを載せた招待が通ってしまうため.
+func (u *UserUsecase) validatePersonalRole(ctx context.Context, personalRoleID string) error {
+	if u.guc == nil {
+		return errors.New("cannot validate personal role: group usecase is not configured")
+	}
+
+	return u.guc.ValidatePersonalRoleAssignable(ctx, personalRoleID)
 }

@@ -402,45 +402,52 @@ func checkGroupPermission[T any](permKey string, extract idExtractor[T], readOnl
 		}
 
 		if readOnly {
-			// 所属していれば閲覧可. system:group.list でもOK.
-			canList, err := permUC.HasSystemPermission(ctx, claims.UserID, entity.PermKey_SystemGroupList)
-			if err != nil {
-				return connect.NewError(connect.CodeInternal, err)
-			}
-
-			if canList {
-				return nil
-			}
-
-			if _, err := deps.GroupRepo.Get(ctx, groupID); err != nil {
-				return convertErr(err)
-			}
-
-			memberPerms, err := permUC.HasPermission(ctx, claims.UserID, groupID, entity.PermKey_GroupEdit)
-			if err != nil {
-				return connect.NewError(connect.CodeInternal, err)
-			}
-
-			if memberPerms {
-				return nil
-			}
-			// 所属チェック: GetUserPermissionsForGroup が空配列でないなら所属
-			perms, err := deps.GroupRepo.ListByUser(ctx, claims.UserID)
-			if err != nil {
-				return connect.NewError(connect.CodeInternal, err)
-			}
-
-			for _, g := range perms {
-				if g.ID == groupID {
-					return nil
-				}
-			}
-
-			return permissionDenied(permKey)
+			return checkGroupReadable(ctx, claims.UserID, groupID, permKey, deps, permUC)
 		}
 
 		return requirePerm(ctx, permUC, claims.UserID, groupID, permKey)
 	}
+}
+
+// checkGroupReadable は groupID の閲覧可否を判定する共通ロジック.
+// 所属している or system:group.list (または system:group.manage bypass) で許可.
+//
+// NOTE: ここでは意図的にグループの存在チェック (GroupRepo.Get) を行わない.
+// 権限の無い caller に NotFound / PermissionDenied の違いでグループ存在
+// (`<user-id>-personal` 形式からユーザー存在) を漏らさないため、非所属は
+// グループの存在有無に関わらず一様に PermissionDenied を返す.
+func checkGroupReadable(ctx context.Context, userID, groupID, permKey string, deps *PermissionDeps, permUC *usecase.PermissionUsecase) error {
+	canList, err := permUC.HasSystemPermission(ctx, userID, entity.PermKey_SystemGroupList)
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+
+	if canList {
+		return nil
+	}
+
+	// system:group.manage bypass も HasPermission 経由で効く.
+	memberPerms, err := permUC.HasPermission(ctx, userID, groupID, entity.PermKey_GroupEdit)
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+
+	if memberPerms {
+		return nil
+	}
+	// 所属チェック: 所属グループ一覧に含まれるなら閲覧可
+	groups, err := deps.GroupRepo.ListByUser(ctx, userID)
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+
+	for _, g := range groups {
+		if g.ID == groupID {
+			return nil
+		}
+	}
+
+	return permissionDenied(permKey)
 }
 
 // ===== 個別チェック (resolver / 複合 perm) =====
@@ -611,6 +618,28 @@ func checkUpdateGroupMemberRole(ctx context.Context, req connect.AnyRequest, dep
 	}
 
 	return requirePerm(ctx, permUC, claims.UserID, groupID, entity.PermKey_GroupMembersManage)
+}
+
+// checkListRoles: group_id 未指定 (グローバルロール一覧) は認証のみ.
+// 指定時はそのグループを閲覧できること (所属 or system:group.list) を要求する.
+// 非所属グループのカスタムロール定義 (名前 + permission 構成) の列挙を防ぐ.
+func checkListRoles(ctx context.Context, req connect.AnyRequest, deps *PermissionDeps, permUC *usecase.PermissionUsecase) error {
+	msg, ok := req.Any().(*hdlctrlv1.ListRolesRequest)
+	if !ok {
+		return connect.NewError(connect.CodeInternal, errors.New("unexpected request type"))
+	}
+
+	claims, err := extractClaims(ctx)
+	if err != nil {
+		return err
+	}
+
+	groupID := strings.TrimSpace(msg.GetGroupId())
+	if groupID == "" {
+		return nil
+	}
+
+	return checkGroupReadable(ctx, claims.UserID, groupID, entity.PermKey_GroupEdit, deps, permUC)
 }
 
 // checkCreateRole: group_id 指定なら group:members.manage, 未指定 (グローバル) なら system:role.manage.

@@ -11,8 +11,8 @@ WHERE token = $1
   AND expires_at > NOW()
   AND used_at IS NULL;
 
--- name: MarkRegistrationTokenUsed :exec
-UPDATE registration_tokens SET used_at = NOW() WHERE token = $1;
+-- name: MarkRegistrationTokenUsed :execrows
+UPDATE registration_tokens SET used_at = NOW() WHERE token = $1 AND used_at IS NULL;
 
 -- name: DeleteExpiredRegistrationTokens :exec
 DELETE FROM registration_tokens WHERE expires_at < NOW();

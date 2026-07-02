@@ -458,6 +458,10 @@ export default function HeadlessAccountList() {
             row.original.groupId,
             PERMISSION_KEYS.ACCOUNT_WRITE,
           );
+          const canUse = hasPermission(
+            row.original.groupId,
+            PERMISSION_KEYS.ACCOUNT_USE,
+          );
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -467,6 +471,7 @@ export default function HeadlessAccountList() {
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem
+                  disabled={!canUse}
                   onClick={() =>
                     setChatAccount({
                       userId: row.original.userId,
