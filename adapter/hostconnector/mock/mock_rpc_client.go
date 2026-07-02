@@ -342,6 +342,26 @@ func (mr *MockHeadlessControlServiceClientMockRecorder) GetStatus(ctx, in any, o
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStatus", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).GetStatus), varargs...)
 }
 
+// GetWorldDebugState mocks base method.
+func (m *MockHeadlessControlServiceClient) GetWorldDebugState(ctx context.Context, in *headlessv1.GetWorldDebugStateRequest, opts ...grpc.CallOption) (*headlessv1.GetWorldDebugStateResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetWorldDebugState", varargs...)
+	ret0, _ := ret[0].(*headlessv1.GetWorldDebugStateResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetWorldDebugState indicates an expected call of GetWorldDebugState.
+func (mr *MockHeadlessControlServiceClientMockRecorder) GetWorldDebugState(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorldDebugState", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).GetWorldDebugState), varargs...)
+}
+
 // InviteUser mocks base method.
 func (m *MockHeadlessControlServiceClient) InviteUser(ctx context.Context, in *headlessv1.InviteUserRequest, opts ...grpc.CallOption) (*headlessv1.InviteUserResponse, error) {
 	m.ctrl.T.Helper()
@@ -380,6 +400,26 @@ func (mr *MockHeadlessControlServiceClientMockRecorder) KickUser(ctx, in any, op
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, in}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "KickUser", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).KickUser), varargs...)
+}
+
+// ListBans mocks base method.
+func (m *MockHeadlessControlServiceClient) ListBans(ctx context.Context, in *headlessv1.ListBansRequest, opts ...grpc.CallOption) (*headlessv1.ListBansResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListBans", varargs...)
+	ret0, _ := ret[0].(*headlessv1.ListBansResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListBans indicates an expected call of ListBans.
+func (mr *MockHeadlessControlServiceClientMockRecorder) ListBans(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListBans", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).ListBans), varargs...)
 }
 
 // ListContacts mocks base method.
@@ -442,6 +482,26 @@ func (mr *MockHeadlessControlServiceClientMockRecorder) ListUsersInSession(ctx, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsersInSession", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).ListUsersInSession), varargs...)
 }
 
+// RemoveContact mocks base method.
+func (m *MockHeadlessControlServiceClient) RemoveContact(ctx context.Context, in *headlessv1.RemoveContactRequest, opts ...grpc.CallOption) (*headlessv1.RemoveContactResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "RemoveContact", varargs...)
+	ret0, _ := ret[0].(*headlessv1.RemoveContactResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RemoveContact indicates an expected call of RemoveContact.
+func (mr *MockHeadlessControlServiceClientMockRecorder) RemoveContact(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveContact", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).RemoveContact), varargs...)
+}
+
 // ResoniteLinkStream mocks base method.
 func (m *MockHeadlessControlServiceClient) ResoniteLinkStream(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[headlessv1.ResoniteLinkStreamRequest, headlessv1.ResoniteLinkStreamResponse], error) {
 	m.ctrl.T.Helper()
@@ -460,6 +520,46 @@ func (mr *MockHeadlessControlServiceClientMockRecorder) ResoniteLinkStream(ctx a
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResoniteLinkStream", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).ResoniteLinkStream), varargs...)
+}
+
+// RespawnUser mocks base method.
+func (m *MockHeadlessControlServiceClient) RespawnUser(ctx context.Context, in *headlessv1.RespawnUserRequest, opts ...grpc.CallOption) (*headlessv1.RespawnUserResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "RespawnUser", varargs...)
+	ret0, _ := ret[0].(*headlessv1.RespawnUserResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RespawnUser indicates an expected call of RespawnUser.
+func (mr *MockHeadlessControlServiceClientMockRecorder) RespawnUser(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RespawnUser", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).RespawnUser), varargs...)
+}
+
+// RunGarbageCollection mocks base method.
+func (m *MockHeadlessControlServiceClient) RunGarbageCollection(ctx context.Context, in *headlessv1.RunGarbageCollectionRequest, opts ...grpc.CallOption) (*headlessv1.RunGarbageCollectionResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "RunGarbageCollection", varargs...)
+	ret0, _ := ret[0].(*headlessv1.RunGarbageCollectionResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RunGarbageCollection indicates an expected call of RunGarbageCollection.
+func (mr *MockHeadlessControlServiceClientMockRecorder) RunGarbageCollection(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunGarbageCollection", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).RunGarbageCollection), varargs...)
 }
 
 // SaveAsSessionWorld mocks base method.
@@ -542,6 +642,46 @@ func (mr *MockHeadlessControlServiceClientMockRecorder) SendContactMessage(ctx, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendContactMessage", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).SendContactMessage), varargs...)
 }
 
+// SendDynamicImpulse mocks base method.
+func (m *MockHeadlessControlServiceClient) SendDynamicImpulse(ctx context.Context, in *headlessv1.SendDynamicImpulseRequest, opts ...grpc.CallOption) (*headlessv1.SendDynamicImpulseResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "SendDynamicImpulse", varargs...)
+	ret0, _ := ret[0].(*headlessv1.SendDynamicImpulseResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SendDynamicImpulse indicates an expected call of SendDynamicImpulse.
+func (mr *MockHeadlessControlServiceClientMockRecorder) SendDynamicImpulse(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendDynamicImpulse", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).SendDynamicImpulse), varargs...)
+}
+
+// SendFriendRequest mocks base method.
+func (m *MockHeadlessControlServiceClient) SendFriendRequest(ctx context.Context, in *headlessv1.SendFriendRequestRequest, opts ...grpc.CallOption) (*headlessv1.SendFriendRequestResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "SendFriendRequest", varargs...)
+	ret0, _ := ret[0].(*headlessv1.SendFriendRequestResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SendFriendRequest indicates an expected call of SendFriendRequest.
+func (mr *MockHeadlessControlServiceClientMockRecorder) SendFriendRequest(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendFriendRequest", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).SendFriendRequest), varargs...)
+}
+
 // Shutdown mocks base method.
 func (m *MockHeadlessControlServiceClient) Shutdown(ctx context.Context, in *headlessv1.ShutdownRequest, opts ...grpc.CallOption) (*headlessv1.ShutdownResponse, error) {
 	m.ctrl.T.Helper()
@@ -560,6 +700,26 @@ func (mr *MockHeadlessControlServiceClientMockRecorder) Shutdown(ctx, in any, op
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, in}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shutdown", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).Shutdown), varargs...)
+}
+
+// SpawnItem mocks base method.
+func (m *MockHeadlessControlServiceClient) SpawnItem(ctx context.Context, in *headlessv1.SpawnItemRequest, opts ...grpc.CallOption) (*headlessv1.SpawnItemResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "SpawnItem", varargs...)
+	ret0, _ := ret[0].(*headlessv1.SpawnItemResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SpawnItem indicates an expected call of SpawnItem.
+func (mr *MockHeadlessControlServiceClientMockRecorder) SpawnItem(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SpawnItem", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).SpawnItem), varargs...)
 }
 
 // StartWorld mocks base method.
@@ -600,6 +760,26 @@ func (mr *MockHeadlessControlServiceClientMockRecorder) StopSession(ctx, in any,
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, in}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopSession", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).StopSession), varargs...)
+}
+
+// UnbanUser mocks base method.
+func (m *MockHeadlessControlServiceClient) UnbanUser(ctx context.Context, in *headlessv1.UnbanUserRequest, opts ...grpc.CallOption) (*headlessv1.UnbanUserResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "UnbanUser", varargs...)
+	ret0, _ := ret[0].(*headlessv1.UnbanUserResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UnbanUser indicates an expected call of UnbanUser.
+func (mr *MockHeadlessControlServiceClientMockRecorder) UnbanUser(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnbanUser", reflect.TypeOf((*MockHeadlessControlServiceClient)(nil).UnbanUser), varargs...)
 }
 
 // UpdateHostSettings mocks base method.

@@ -81,6 +81,18 @@ const (
 	// HeadlessControlServiceBanUserProcedure is the fully-qualified name of the
 	// HeadlessControlService's BanUser RPC.
 	HeadlessControlServiceBanUserProcedure = "/headless.v1.HeadlessControlService/BanUser"
+	// HeadlessControlServiceListBansProcedure is the fully-qualified name of the
+	// HeadlessControlService's ListBans RPC.
+	HeadlessControlServiceListBansProcedure = "/headless.v1.HeadlessControlService/ListBans"
+	// HeadlessControlServiceUnbanUserProcedure is the fully-qualified name of the
+	// HeadlessControlService's UnbanUser RPC.
+	HeadlessControlServiceUnbanUserProcedure = "/headless.v1.HeadlessControlService/UnbanUser"
+	// HeadlessControlServiceRespawnUserProcedure is the fully-qualified name of the
+	// HeadlessControlService's RespawnUser RPC.
+	HeadlessControlServiceRespawnUserProcedure = "/headless.v1.HeadlessControlService/RespawnUser"
+	// HeadlessControlServiceSpawnItemProcedure is the fully-qualified name of the
+	// HeadlessControlService's SpawnItem RPC.
+	HeadlessControlServiceSpawnItemProcedure = "/headless.v1.HeadlessControlService/SpawnItem"
 	// HeadlessControlServiceGetHostSettingsProcedure is the fully-qualified name of the
 	// HeadlessControlService's GetHostSettings RPC.
 	HeadlessControlServiceGetHostSettingsProcedure = "/headless.v1.HeadlessControlService/GetHostSettings"
@@ -105,6 +117,15 @@ const (
 	// HeadlessControlServiceWatchHostEventsProcedure is the fully-qualified name of the
 	// HeadlessControlService's WatchHostEvents RPC.
 	HeadlessControlServiceWatchHostEventsProcedure = "/headless.v1.HeadlessControlService/WatchHostEvents"
+	// HeadlessControlServiceSendDynamicImpulseProcedure is the fully-qualified name of the
+	// HeadlessControlService's SendDynamicImpulse RPC.
+	HeadlessControlServiceSendDynamicImpulseProcedure = "/headless.v1.HeadlessControlService/SendDynamicImpulse"
+	// HeadlessControlServiceRunGarbageCollectionProcedure is the fully-qualified name of the
+	// HeadlessControlService's RunGarbageCollection RPC.
+	HeadlessControlServiceRunGarbageCollectionProcedure = "/headless.v1.HeadlessControlService/RunGarbageCollection"
+	// HeadlessControlServiceGetWorldDebugStateProcedure is the fully-qualified name of the
+	// HeadlessControlService's GetWorldDebugState RPC.
+	HeadlessControlServiceGetWorldDebugStateProcedure = "/headless.v1.HeadlessControlService/GetWorldDebugState"
 	// HeadlessControlServiceGetAccountInfoProcedure is the fully-qualified name of the
 	// HeadlessControlService's GetAccountInfo RPC.
 	HeadlessControlServiceGetAccountInfoProcedure = "/headless.v1.HeadlessControlService/GetAccountInfo"
@@ -120,6 +141,12 @@ const (
 	// HeadlessControlServiceAcceptFriendRequestsProcedure is the fully-qualified name of the
 	// HeadlessControlService's AcceptFriendRequests RPC.
 	HeadlessControlServiceAcceptFriendRequestsProcedure = "/headless.v1.HeadlessControlService/AcceptFriendRequests"
+	// HeadlessControlServiceSendFriendRequestProcedure is the fully-qualified name of the
+	// HeadlessControlService's SendFriendRequest RPC.
+	HeadlessControlServiceSendFriendRequestProcedure = "/headless.v1.HeadlessControlService/SendFriendRequest"
+	// HeadlessControlServiceRemoveContactProcedure is the fully-qualified name of the
+	// HeadlessControlService's RemoveContact RPC.
+	HeadlessControlServiceRemoveContactProcedure = "/headless.v1.HeadlessControlService/RemoveContact"
 	// HeadlessControlServiceListContactsProcedure is the fully-qualified name of the
 	// HeadlessControlService's ListContacts RPC.
 	HeadlessControlServiceListContactsProcedure = "/headless.v1.HeadlessControlService/ListContacts"
@@ -149,6 +176,10 @@ type HeadlessControlServiceClient interface {
 	ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error)
 	KickUser(context.Context, *connect.Request[v1.KickUserRequest]) (*connect.Response[v1.KickUserResponse], error)
 	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
+	ListBans(context.Context, *connect.Request[v1.ListBansRequest]) (*connect.Response[v1.ListBansResponse], error)
+	UnbanUser(context.Context, *connect.Request[v1.UnbanUserRequest]) (*connect.Response[v1.UnbanUserResponse], error)
+	RespawnUser(context.Context, *connect.Request[v1.RespawnUserRequest]) (*connect.Response[v1.RespawnUserResponse], error)
+	SpawnItem(context.Context, *connect.Request[v1.SpawnItemRequest]) (*connect.Response[v1.SpawnItemResponse], error)
 	GetHostSettings(context.Context, *connect.Request[v1.GetHostSettingsRequest]) (*connect.Response[v1.GetHostSettingsResponse], error)
 	UpdateHostSettings(context.Context, *connect.Request[v1.UpdateHostSettingsRequest]) (*connect.Response[v1.UpdateHostSettingsResponse], error)
 	AllowHostAccess(context.Context, *connect.Request[v1.AllowHostAccessRequest]) (*connect.Response[v1.AllowHostAccessResponse], error)
@@ -158,12 +189,18 @@ type HeadlessControlServiceClient interface {
 	ResoniteLinkStream(context.Context) *connect.BidiStreamForClient[v1.ResoniteLinkStreamRequest, v1.ResoniteLinkStreamResponse]
 	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	WatchHostEvents(context.Context, *connect.Request[v1.WatchHostEventsRequest]) (*connect.ServerStreamForClient[v1.HostEvent], error)
+	// World 内操作系
+	SendDynamicImpulse(context.Context, *connect.Request[v1.SendDynamicImpulseRequest]) (*connect.Response[v1.SendDynamicImpulseResponse], error)
+	RunGarbageCollection(context.Context, *connect.Request[v1.RunGarbageCollectionRequest]) (*connect.Response[v1.RunGarbageCollectionResponse], error)
+	GetWorldDebugState(context.Context, *connect.Request[v1.GetWorldDebugStateRequest]) (*connect.Response[v1.GetWorldDebugStateResponse], error)
 	// Cloud系
 	GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v1.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v1.SearchUserInfoResponse], error)
 	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v1.GetFriendRequestsResponse], error)
 	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
+	SendFriendRequest(context.Context, *connect.Request[v1.SendFriendRequestRequest]) (*connect.Response[v1.SendFriendRequestResponse], error)
+	RemoveContact(context.Context, *connect.Request[v1.RemoveContactRequest]) (*connect.Response[v1.RemoveContactResponse], error)
 	ListContacts(context.Context, *connect.Request[v1.ListContactsRequest]) (*connect.Response[v1.ListContactsResponse], error)
 	GetContactMessages(context.Context, *connect.Request[v1.GetContactMessagesRequest]) (*connect.Response[v1.GetContactMessagesResponse], error)
 	SendContactMessage(context.Context, *connect.Request[v1.SendContactMessageRequest]) (*connect.Response[v1.SendContactMessageResponse], error)
@@ -276,6 +313,30 @@ func NewHeadlessControlServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(headlessControlServiceMethods.ByName("BanUser")),
 			connect.WithClientOptions(opts...),
 		),
+		listBans: connect.NewClient[v1.ListBansRequest, v1.ListBansResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceListBansProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("ListBans")),
+			connect.WithClientOptions(opts...),
+		),
+		unbanUser: connect.NewClient[v1.UnbanUserRequest, v1.UnbanUserResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceUnbanUserProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("UnbanUser")),
+			connect.WithClientOptions(opts...),
+		),
+		respawnUser: connect.NewClient[v1.RespawnUserRequest, v1.RespawnUserResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceRespawnUserProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("RespawnUser")),
+			connect.WithClientOptions(opts...),
+		),
+		spawnItem: connect.NewClient[v1.SpawnItemRequest, v1.SpawnItemResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceSpawnItemProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("SpawnItem")),
+			connect.WithClientOptions(opts...),
+		),
 		getHostSettings: connect.NewClient[v1.GetHostSettingsRequest, v1.GetHostSettingsResponse](
 			httpClient,
 			baseURL+HeadlessControlServiceGetHostSettingsProcedure,
@@ -324,6 +385,24 @@ func NewHeadlessControlServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(headlessControlServiceMethods.ByName("WatchHostEvents")),
 			connect.WithClientOptions(opts...),
 		),
+		sendDynamicImpulse: connect.NewClient[v1.SendDynamicImpulseRequest, v1.SendDynamicImpulseResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceSendDynamicImpulseProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("SendDynamicImpulse")),
+			connect.WithClientOptions(opts...),
+		),
+		runGarbageCollection: connect.NewClient[v1.RunGarbageCollectionRequest, v1.RunGarbageCollectionResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceRunGarbageCollectionProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("RunGarbageCollection")),
+			connect.WithClientOptions(opts...),
+		),
+		getWorldDebugState: connect.NewClient[v1.GetWorldDebugStateRequest, v1.GetWorldDebugStateResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceGetWorldDebugStateProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("GetWorldDebugState")),
+			connect.WithClientOptions(opts...),
+		),
 		getAccountInfo: connect.NewClient[v1.GetAccountInfoRequest, v1.GetAccountInfoResponse](
 			httpClient,
 			baseURL+HeadlessControlServiceGetAccountInfoProcedure,
@@ -352,6 +431,18 @@ func NewHeadlessControlServiceClient(httpClient connect.HTTPClient, baseURL stri
 			httpClient,
 			baseURL+HeadlessControlServiceAcceptFriendRequestsProcedure,
 			connect.WithSchema(headlessControlServiceMethods.ByName("AcceptFriendRequests")),
+			connect.WithClientOptions(opts...),
+		),
+		sendFriendRequest: connect.NewClient[v1.SendFriendRequestRequest, v1.SendFriendRequestResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceSendFriendRequestProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("SendFriendRequest")),
+			connect.WithClientOptions(opts...),
+		),
+		removeContact: connect.NewClient[v1.RemoveContactRequest, v1.RemoveContactResponse](
+			httpClient,
+			baseURL+HeadlessControlServiceRemoveContactProcedure,
+			connect.WithSchema(headlessControlServiceMethods.ByName("RemoveContact")),
 			connect.WithClientOptions(opts...),
 		),
 		listContacts: connect.NewClient[v1.ListContactsRequest, v1.ListContactsResponse](
@@ -393,6 +484,10 @@ type headlessControlServiceClient struct {
 	listUsersInSession        *connect.Client[v1.ListUsersInSessionRequest, v1.ListUsersInSessionResponse]
 	kickUser                  *connect.Client[v1.KickUserRequest, v1.KickUserResponse]
 	banUser                   *connect.Client[v1.BanUserRequest, v1.BanUserResponse]
+	listBans                  *connect.Client[v1.ListBansRequest, v1.ListBansResponse]
+	unbanUser                 *connect.Client[v1.UnbanUserRequest, v1.UnbanUserResponse]
+	respawnUser               *connect.Client[v1.RespawnUserRequest, v1.RespawnUserResponse]
+	spawnItem                 *connect.Client[v1.SpawnItemRequest, v1.SpawnItemResponse]
 	getHostSettings           *connect.Client[v1.GetHostSettingsRequest, v1.GetHostSettingsResponse]
 	updateHostSettings        *connect.Client[v1.UpdateHostSettingsRequest, v1.UpdateHostSettingsResponse]
 	allowHostAccess           *connect.Client[v1.AllowHostAccessRequest, v1.AllowHostAccessResponse]
@@ -401,11 +496,16 @@ type headlessControlServiceClient struct {
 	downloadSessionWorld      *connect.Client[v1.DownloadSessionWorldRequest, v1.DownloadSessionWorldResponse]
 	resoniteLinkStream        *connect.Client[v1.ResoniteLinkStreamRequest, v1.ResoniteLinkStreamResponse]
 	watchHostEvents           *connect.Client[v1.WatchHostEventsRequest, v1.HostEvent]
+	sendDynamicImpulse        *connect.Client[v1.SendDynamicImpulseRequest, v1.SendDynamicImpulseResponse]
+	runGarbageCollection      *connect.Client[v1.RunGarbageCollectionRequest, v1.RunGarbageCollectionResponse]
+	getWorldDebugState        *connect.Client[v1.GetWorldDebugStateRequest, v1.GetWorldDebugStateResponse]
 	getAccountInfo            *connect.Client[v1.GetAccountInfoRequest, v1.GetAccountInfoResponse]
 	fetchWorldInfo            *connect.Client[v1.FetchWorldInfoRequest, v1.FetchWorldInfoResponse]
 	searchUserInfo            *connect.Client[v1.SearchUserInfoRequest, v1.SearchUserInfoResponse]
 	getFriendRequests         *connect.Client[v1.GetFriendRequestsRequest, v1.GetFriendRequestsResponse]
 	acceptFriendRequests      *connect.Client[v1.AcceptFriendRequestsRequest, v1.AcceptFriendRequestsResponse]
+	sendFriendRequest         *connect.Client[v1.SendFriendRequestRequest, v1.SendFriendRequestResponse]
+	removeContact             *connect.Client[v1.RemoveContactRequest, v1.RemoveContactResponse]
 	listContacts              *connect.Client[v1.ListContactsRequest, v1.ListContactsResponse]
 	getContactMessages        *connect.Client[v1.GetContactMessagesRequest, v1.GetContactMessagesResponse]
 	sendContactMessage        *connect.Client[v1.SendContactMessageRequest, v1.SendContactMessageResponse]
@@ -491,6 +591,26 @@ func (c *headlessControlServiceClient) BanUser(ctx context.Context, req *connect
 	return c.banUser.CallUnary(ctx, req)
 }
 
+// ListBans calls headless.v1.HeadlessControlService.ListBans.
+func (c *headlessControlServiceClient) ListBans(ctx context.Context, req *connect.Request[v1.ListBansRequest]) (*connect.Response[v1.ListBansResponse], error) {
+	return c.listBans.CallUnary(ctx, req)
+}
+
+// UnbanUser calls headless.v1.HeadlessControlService.UnbanUser.
+func (c *headlessControlServiceClient) UnbanUser(ctx context.Context, req *connect.Request[v1.UnbanUserRequest]) (*connect.Response[v1.UnbanUserResponse], error) {
+	return c.unbanUser.CallUnary(ctx, req)
+}
+
+// RespawnUser calls headless.v1.HeadlessControlService.RespawnUser.
+func (c *headlessControlServiceClient) RespawnUser(ctx context.Context, req *connect.Request[v1.RespawnUserRequest]) (*connect.Response[v1.RespawnUserResponse], error) {
+	return c.respawnUser.CallUnary(ctx, req)
+}
+
+// SpawnItem calls headless.v1.HeadlessControlService.SpawnItem.
+func (c *headlessControlServiceClient) SpawnItem(ctx context.Context, req *connect.Request[v1.SpawnItemRequest]) (*connect.Response[v1.SpawnItemResponse], error) {
+	return c.spawnItem.CallUnary(ctx, req)
+}
+
 // GetHostSettings calls headless.v1.HeadlessControlService.GetHostSettings.
 func (c *headlessControlServiceClient) GetHostSettings(ctx context.Context, req *connect.Request[v1.GetHostSettingsRequest]) (*connect.Response[v1.GetHostSettingsResponse], error) {
 	return c.getHostSettings.CallUnary(ctx, req)
@@ -531,6 +651,21 @@ func (c *headlessControlServiceClient) WatchHostEvents(ctx context.Context, req 
 	return c.watchHostEvents.CallServerStream(ctx, req)
 }
 
+// SendDynamicImpulse calls headless.v1.HeadlessControlService.SendDynamicImpulse.
+func (c *headlessControlServiceClient) SendDynamicImpulse(ctx context.Context, req *connect.Request[v1.SendDynamicImpulseRequest]) (*connect.Response[v1.SendDynamicImpulseResponse], error) {
+	return c.sendDynamicImpulse.CallUnary(ctx, req)
+}
+
+// RunGarbageCollection calls headless.v1.HeadlessControlService.RunGarbageCollection.
+func (c *headlessControlServiceClient) RunGarbageCollection(ctx context.Context, req *connect.Request[v1.RunGarbageCollectionRequest]) (*connect.Response[v1.RunGarbageCollectionResponse], error) {
+	return c.runGarbageCollection.CallUnary(ctx, req)
+}
+
+// GetWorldDebugState calls headless.v1.HeadlessControlService.GetWorldDebugState.
+func (c *headlessControlServiceClient) GetWorldDebugState(ctx context.Context, req *connect.Request[v1.GetWorldDebugStateRequest]) (*connect.Response[v1.GetWorldDebugStateResponse], error) {
+	return c.getWorldDebugState.CallUnary(ctx, req)
+}
+
 // GetAccountInfo calls headless.v1.HeadlessControlService.GetAccountInfo.
 func (c *headlessControlServiceClient) GetAccountInfo(ctx context.Context, req *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error) {
 	return c.getAccountInfo.CallUnary(ctx, req)
@@ -554,6 +689,16 @@ func (c *headlessControlServiceClient) GetFriendRequests(ctx context.Context, re
 // AcceptFriendRequests calls headless.v1.HeadlessControlService.AcceptFriendRequests.
 func (c *headlessControlServiceClient) AcceptFriendRequests(ctx context.Context, req *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error) {
 	return c.acceptFriendRequests.CallUnary(ctx, req)
+}
+
+// SendFriendRequest calls headless.v1.HeadlessControlService.SendFriendRequest.
+func (c *headlessControlServiceClient) SendFriendRequest(ctx context.Context, req *connect.Request[v1.SendFriendRequestRequest]) (*connect.Response[v1.SendFriendRequestResponse], error) {
+	return c.sendFriendRequest.CallUnary(ctx, req)
+}
+
+// RemoveContact calls headless.v1.HeadlessControlService.RemoveContact.
+func (c *headlessControlServiceClient) RemoveContact(ctx context.Context, req *connect.Request[v1.RemoveContactRequest]) (*connect.Response[v1.RemoveContactResponse], error) {
+	return c.removeContact.CallUnary(ctx, req)
 }
 
 // ListContacts calls headless.v1.HeadlessControlService.ListContacts.
@@ -590,6 +735,10 @@ type HeadlessControlServiceHandler interface {
 	ListUsersInSession(context.Context, *connect.Request[v1.ListUsersInSessionRequest]) (*connect.Response[v1.ListUsersInSessionResponse], error)
 	KickUser(context.Context, *connect.Request[v1.KickUserRequest]) (*connect.Response[v1.KickUserResponse], error)
 	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
+	ListBans(context.Context, *connect.Request[v1.ListBansRequest]) (*connect.Response[v1.ListBansResponse], error)
+	UnbanUser(context.Context, *connect.Request[v1.UnbanUserRequest]) (*connect.Response[v1.UnbanUserResponse], error)
+	RespawnUser(context.Context, *connect.Request[v1.RespawnUserRequest]) (*connect.Response[v1.RespawnUserResponse], error)
+	SpawnItem(context.Context, *connect.Request[v1.SpawnItemRequest]) (*connect.Response[v1.SpawnItemResponse], error)
 	GetHostSettings(context.Context, *connect.Request[v1.GetHostSettingsRequest]) (*connect.Response[v1.GetHostSettingsResponse], error)
 	UpdateHostSettings(context.Context, *connect.Request[v1.UpdateHostSettingsRequest]) (*connect.Response[v1.UpdateHostSettingsResponse], error)
 	AllowHostAccess(context.Context, *connect.Request[v1.AllowHostAccessRequest]) (*connect.Response[v1.AllowHostAccessResponse], error)
@@ -599,12 +748,18 @@ type HeadlessControlServiceHandler interface {
 	ResoniteLinkStream(context.Context, *connect.BidiStream[v1.ResoniteLinkStreamRequest, v1.ResoniteLinkStreamResponse]) error
 	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	WatchHostEvents(context.Context, *connect.Request[v1.WatchHostEventsRequest], *connect.ServerStream[v1.HostEvent]) error
+	// World 内操作系
+	SendDynamicImpulse(context.Context, *connect.Request[v1.SendDynamicImpulseRequest]) (*connect.Response[v1.SendDynamicImpulseResponse], error)
+	RunGarbageCollection(context.Context, *connect.Request[v1.RunGarbageCollectionRequest]) (*connect.Response[v1.RunGarbageCollectionResponse], error)
+	GetWorldDebugState(context.Context, *connect.Request[v1.GetWorldDebugStateRequest]) (*connect.Response[v1.GetWorldDebugStateResponse], error)
 	// Cloud系
 	GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error)
 	FetchWorldInfo(context.Context, *connect.Request[v1.FetchWorldInfoRequest]) (*connect.Response[v1.FetchWorldInfoResponse], error)
 	SearchUserInfo(context.Context, *connect.Request[v1.SearchUserInfoRequest]) (*connect.Response[v1.SearchUserInfoResponse], error)
 	GetFriendRequests(context.Context, *connect.Request[v1.GetFriendRequestsRequest]) (*connect.Response[v1.GetFriendRequestsResponse], error)
 	AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error)
+	SendFriendRequest(context.Context, *connect.Request[v1.SendFriendRequestRequest]) (*connect.Response[v1.SendFriendRequestResponse], error)
+	RemoveContact(context.Context, *connect.Request[v1.RemoveContactRequest]) (*connect.Response[v1.RemoveContactResponse], error)
 	ListContacts(context.Context, *connect.Request[v1.ListContactsRequest]) (*connect.Response[v1.ListContactsResponse], error)
 	GetContactMessages(context.Context, *connect.Request[v1.GetContactMessagesRequest]) (*connect.Response[v1.GetContactMessagesResponse], error)
 	SendContactMessage(context.Context, *connect.Request[v1.SendContactMessageRequest]) (*connect.Response[v1.SendContactMessageResponse], error)
@@ -713,6 +868,30 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 		connect.WithSchema(headlessControlServiceMethods.ByName("BanUser")),
 		connect.WithHandlerOptions(opts...),
 	)
+	headlessControlServiceListBansHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceListBansProcedure,
+		svc.ListBans,
+		connect.WithSchema(headlessControlServiceMethods.ByName("ListBans")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceUnbanUserHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceUnbanUserProcedure,
+		svc.UnbanUser,
+		connect.WithSchema(headlessControlServiceMethods.ByName("UnbanUser")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceRespawnUserHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceRespawnUserProcedure,
+		svc.RespawnUser,
+		connect.WithSchema(headlessControlServiceMethods.ByName("RespawnUser")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceSpawnItemHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceSpawnItemProcedure,
+		svc.SpawnItem,
+		connect.WithSchema(headlessControlServiceMethods.ByName("SpawnItem")),
+		connect.WithHandlerOptions(opts...),
+	)
 	headlessControlServiceGetHostSettingsHandler := connect.NewUnaryHandler(
 		HeadlessControlServiceGetHostSettingsProcedure,
 		svc.GetHostSettings,
@@ -761,6 +940,24 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 		connect.WithSchema(headlessControlServiceMethods.ByName("WatchHostEvents")),
 		connect.WithHandlerOptions(opts...),
 	)
+	headlessControlServiceSendDynamicImpulseHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceSendDynamicImpulseProcedure,
+		svc.SendDynamicImpulse,
+		connect.WithSchema(headlessControlServiceMethods.ByName("SendDynamicImpulse")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceRunGarbageCollectionHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceRunGarbageCollectionProcedure,
+		svc.RunGarbageCollection,
+		connect.WithSchema(headlessControlServiceMethods.ByName("RunGarbageCollection")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceGetWorldDebugStateHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceGetWorldDebugStateProcedure,
+		svc.GetWorldDebugState,
+		connect.WithSchema(headlessControlServiceMethods.ByName("GetWorldDebugState")),
+		connect.WithHandlerOptions(opts...),
+	)
 	headlessControlServiceGetAccountInfoHandler := connect.NewUnaryHandler(
 		HeadlessControlServiceGetAccountInfoProcedure,
 		svc.GetAccountInfo,
@@ -789,6 +986,18 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 		HeadlessControlServiceAcceptFriendRequestsProcedure,
 		svc.AcceptFriendRequests,
 		connect.WithSchema(headlessControlServiceMethods.ByName("AcceptFriendRequests")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceSendFriendRequestHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceSendFriendRequestProcedure,
+		svc.SendFriendRequest,
+		connect.WithSchema(headlessControlServiceMethods.ByName("SendFriendRequest")),
+		connect.WithHandlerOptions(opts...),
+	)
+	headlessControlServiceRemoveContactHandler := connect.NewUnaryHandler(
+		HeadlessControlServiceRemoveContactProcedure,
+		svc.RemoveContact,
+		connect.WithSchema(headlessControlServiceMethods.ByName("RemoveContact")),
 		connect.WithHandlerOptions(opts...),
 	)
 	headlessControlServiceListContactsHandler := connect.NewUnaryHandler(
@@ -843,6 +1052,14 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 			headlessControlServiceKickUserHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceBanUserProcedure:
 			headlessControlServiceBanUserHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceListBansProcedure:
+			headlessControlServiceListBansHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceUnbanUserProcedure:
+			headlessControlServiceUnbanUserHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceRespawnUserProcedure:
+			headlessControlServiceRespawnUserHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceSpawnItemProcedure:
+			headlessControlServiceSpawnItemHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceGetHostSettingsProcedure:
 			headlessControlServiceGetHostSettingsHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceUpdateHostSettingsProcedure:
@@ -859,6 +1076,12 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 			headlessControlServiceResoniteLinkStreamHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceWatchHostEventsProcedure:
 			headlessControlServiceWatchHostEventsHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceSendDynamicImpulseProcedure:
+			headlessControlServiceSendDynamicImpulseHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceRunGarbageCollectionProcedure:
+			headlessControlServiceRunGarbageCollectionHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceGetWorldDebugStateProcedure:
+			headlessControlServiceGetWorldDebugStateHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceGetAccountInfoProcedure:
 			headlessControlServiceGetAccountInfoHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceFetchWorldInfoProcedure:
@@ -869,6 +1092,10 @@ func NewHeadlessControlServiceHandler(svc HeadlessControlServiceHandler, opts ..
 			headlessControlServiceGetFriendRequestsHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceAcceptFriendRequestsProcedure:
 			headlessControlServiceAcceptFriendRequestsHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceSendFriendRequestProcedure:
+			headlessControlServiceSendFriendRequestHandler.ServeHTTP(w, r)
+		case HeadlessControlServiceRemoveContactProcedure:
+			headlessControlServiceRemoveContactHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceListContactsProcedure:
 			headlessControlServiceListContactsHandler.ServeHTTP(w, r)
 		case HeadlessControlServiceGetContactMessagesProcedure:
@@ -948,6 +1175,22 @@ func (UnimplementedHeadlessControlServiceHandler) BanUser(context.Context, *conn
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.BanUser is not implemented"))
 }
 
+func (UnimplementedHeadlessControlServiceHandler) ListBans(context.Context, *connect.Request[v1.ListBansRequest]) (*connect.Response[v1.ListBansResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.ListBans is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) UnbanUser(context.Context, *connect.Request[v1.UnbanUserRequest]) (*connect.Response[v1.UnbanUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.UnbanUser is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) RespawnUser(context.Context, *connect.Request[v1.RespawnUserRequest]) (*connect.Response[v1.RespawnUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.RespawnUser is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) SpawnItem(context.Context, *connect.Request[v1.SpawnItemRequest]) (*connect.Response[v1.SpawnItemResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.SpawnItem is not implemented"))
+}
+
 func (UnimplementedHeadlessControlServiceHandler) GetHostSettings(context.Context, *connect.Request[v1.GetHostSettingsRequest]) (*connect.Response[v1.GetHostSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.GetHostSettings is not implemented"))
 }
@@ -980,6 +1223,18 @@ func (UnimplementedHeadlessControlServiceHandler) WatchHostEvents(context.Contex
 	return connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.WatchHostEvents is not implemented"))
 }
 
+func (UnimplementedHeadlessControlServiceHandler) SendDynamicImpulse(context.Context, *connect.Request[v1.SendDynamicImpulseRequest]) (*connect.Response[v1.SendDynamicImpulseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.SendDynamicImpulse is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) RunGarbageCollection(context.Context, *connect.Request[v1.RunGarbageCollectionRequest]) (*connect.Response[v1.RunGarbageCollectionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.RunGarbageCollection is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) GetWorldDebugState(context.Context, *connect.Request[v1.GetWorldDebugStateRequest]) (*connect.Response[v1.GetWorldDebugStateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.GetWorldDebugState is not implemented"))
+}
+
 func (UnimplementedHeadlessControlServiceHandler) GetAccountInfo(context.Context, *connect.Request[v1.GetAccountInfoRequest]) (*connect.Response[v1.GetAccountInfoResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.GetAccountInfo is not implemented"))
 }
@@ -998,6 +1253,14 @@ func (UnimplementedHeadlessControlServiceHandler) GetFriendRequests(context.Cont
 
 func (UnimplementedHeadlessControlServiceHandler) AcceptFriendRequests(context.Context, *connect.Request[v1.AcceptFriendRequestsRequest]) (*connect.Response[v1.AcceptFriendRequestsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.AcceptFriendRequests is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) SendFriendRequest(context.Context, *connect.Request[v1.SendFriendRequestRequest]) (*connect.Response[v1.SendFriendRequestResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.SendFriendRequest is not implemented"))
+}
+
+func (UnimplementedHeadlessControlServiceHandler) RemoveContact(context.Context, *connect.Request[v1.RemoveContactRequest]) (*connect.Response[v1.RemoveContactResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("headless.v1.HeadlessControlService.RemoveContact is not implemented"))
 }
 
 func (UnimplementedHeadlessControlServiceHandler) ListContacts(context.Context, *connect.Request[v1.ListContactsRequest]) (*connect.Response[v1.ListContactsResponse], error) {

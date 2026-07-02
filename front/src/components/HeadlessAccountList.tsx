@@ -23,6 +23,8 @@ import {
   getHeadlessAccountStorageInfo,
   listHeadlessAccounts,
   refetchHeadlessAccountInfo,
+  removeContact,
+  sendFriendRequest,
   updateHeadlessAccountCredentials,
   updateHeadlessAccountIcon,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
@@ -63,7 +65,9 @@ function FriendRequestsDialog({
   });
   const { mutateAsync: mutateAcceptFriendRequest, isPending: isPendingAccept } =
     useMutation(acceptFriendRequests);
-  const [acceptingUserId, setAcceptingUserId] = useState<string | null>(null);
+  const { mutateAsync: mutateRemoveContact, isPending: isPendingRemove } =
+    useMutation(removeContact);
+  const [actionUserId, setActionUserId] = useState<string | null>(null);
 
   const columns: ColumnDef<UserInfo>[] = [
     {
@@ -83,33 +87,64 @@ function FriendRequestsDialog({
     {
       id: "actions",
       header: "アクション",
-      cell: ({ row }) => (
-        <Button
-          onClick={async () => {
-            setAcceptingUserId(row.original.id);
-            try {
-              await mutateAcceptFriendRequest({
-                headlessAccountId: accountId,
-                targetUserId: row.original.id,
-              });
-              refetch();
-              toast.success("フレンドリクエストを承認しました");
-            } catch (e) {
-              toast.error(
-                e instanceof Error
-                  ? e.message
-                  : "フレンドリクエストの承認に失敗しました",
-              );
-            } finally {
-              setAcceptingUserId(null);
-            }
-          }}
-          className="w-full"
-          disabled={isPendingAccept && acceptingUserId === row.original.id}
-        >
-          承認
-        </Button>
-      ),
+      cell: ({ row }) => {
+        const isBusy =
+          (isPendingAccept || isPendingRemove) &&
+          actionUserId === row.original.id;
+        return (
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                setActionUserId(row.original.id);
+                try {
+                  await mutateRemoveContact({
+                    headlessAccountId: accountId,
+                    targetUserId: row.original.id,
+                  });
+                  refetch();
+                  toast.success("フレンドリクエストを拒否しました");
+                } catch (e) {
+                  toast.error(
+                    e instanceof Error
+                      ? e.message
+                      : "フレンドリクエストの拒否に失敗しました",
+                  );
+                } finally {
+                  setActionUserId(null);
+                }
+              }}
+              disabled={isBusy}
+            >
+              拒否
+            </Button>
+            <Button
+              onClick={async () => {
+                setActionUserId(row.original.id);
+                try {
+                  await mutateAcceptFriendRequest({
+                    headlessAccountId: accountId,
+                    targetUserId: row.original.id,
+                  });
+                  refetch();
+                  toast.success("フレンドリクエストを承認しました");
+                } catch (e) {
+                  toast.error(
+                    e instanceof Error
+                      ? e.message
+                      : "フレンドリクエストの承認に失敗しました",
+                  );
+                } finally {
+                  setActionUserId(null);
+                }
+              }}
+              disabled={isBusy}
+            >
+              承認
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -142,6 +177,79 @@ function FriendRequestsDialog({
           <DialogClose asChild>
             <Button variant="outline">閉じる</Button>
           </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SendFriendRequestDialog({
+  accountId,
+  open,
+  onClose,
+}: {
+  accountId: string;
+  open: boolean;
+  onClose?: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const { mutateAsync: mutateSendFriendRequest, isPending } =
+    useMutation(sendFriendRequest);
+
+  const handleSend = async () => {
+    const value = query.trim();
+    if (!value) return;
+    const isId = value.toLowerCase().startsWith("u-");
+    try {
+      await mutateSendFriendRequest({
+        headlessAccountId: accountId,
+        user: { case: isId ? "userId" : "userName", value },
+      });
+      toast.success("フレンドリクエストを送信しました");
+      setQuery("");
+      onClose?.();
+    } catch (e) {
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : "フレンドリクエストの送信に失敗しました",
+      );
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) {
+          setQuery("");
+          onClose?.();
+        }
+      }}
+    >
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>フレンド追加</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3 py-2">
+          <TextField
+            label="ユーザーID または ユーザー名"
+            placeholder="U-xxxx または username"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            &quot;U-&quot; で始まる場合は ID
+            として、そうでなければユーザー名として検索します
+          </p>
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">キャンセル</Button>
+          </DialogClose>
+          <Button onClick={handleSend} disabled={isPending || !query.trim()}>
+            {isPending ? "送信中..." : "送信"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -365,6 +473,8 @@ export default function HeadlessAccountList() {
     userId: string;
     userName: string;
   }>();
+  const [sendFriendReqAccountId, setSendFriendReqAccountId] =
+    useState<string>();
 
   const handleChangeIcon = useCallback((userId: string, iconUrl: string) => {
     setIconChangeAccount({ userId, iconUrl });
@@ -478,6 +588,12 @@ export default function HeadlessAccountList() {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!canWrite}
+                  onClick={() => setSendFriendReqAccountId(row.original.userId)}
+                >
+                  フレンド追加
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!canWrite}
                   onClick={() => setUpdateDialogAccountId(row.original.userId)}
                 >
                   ログイン情報の更新
@@ -581,6 +697,11 @@ export default function HeadlessAccountList() {
         onClose={() => setChatAccount(undefined)}
         accountId={chatAccount?.userId ?? ""}
         accountName={chatAccount?.userName ?? ""}
+      />
+      <SendFriendRequestDialog
+        accountId={sendFriendReqAccountId ?? ""}
+        open={!!sendFriendReqAccountId}
+        onClose={() => setSendFriendReqAccountId(undefined)}
       />
     </div>
   );

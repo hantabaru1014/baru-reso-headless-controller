@@ -35,6 +35,10 @@ const (
 	HeadlessControlService_ListUsersInSession_FullMethodName        = "/headless.v1.HeadlessControlService/ListUsersInSession"
 	HeadlessControlService_KickUser_FullMethodName                  = "/headless.v1.HeadlessControlService/KickUser"
 	HeadlessControlService_BanUser_FullMethodName                   = "/headless.v1.HeadlessControlService/BanUser"
+	HeadlessControlService_ListBans_FullMethodName                  = "/headless.v1.HeadlessControlService/ListBans"
+	HeadlessControlService_UnbanUser_FullMethodName                 = "/headless.v1.HeadlessControlService/UnbanUser"
+	HeadlessControlService_RespawnUser_FullMethodName               = "/headless.v1.HeadlessControlService/RespawnUser"
+	HeadlessControlService_SpawnItem_FullMethodName                 = "/headless.v1.HeadlessControlService/SpawnItem"
 	HeadlessControlService_GetHostSettings_FullMethodName           = "/headless.v1.HeadlessControlService/GetHostSettings"
 	HeadlessControlService_UpdateHostSettings_FullMethodName        = "/headless.v1.HeadlessControlService/UpdateHostSettings"
 	HeadlessControlService_AllowHostAccess_FullMethodName           = "/headless.v1.HeadlessControlService/AllowHostAccess"
@@ -43,11 +47,16 @@ const (
 	HeadlessControlService_DownloadSessionWorld_FullMethodName      = "/headless.v1.HeadlessControlService/DownloadSessionWorld"
 	HeadlessControlService_ResoniteLinkStream_FullMethodName        = "/headless.v1.HeadlessControlService/ResoniteLinkStream"
 	HeadlessControlService_WatchHostEvents_FullMethodName           = "/headless.v1.HeadlessControlService/WatchHostEvents"
+	HeadlessControlService_SendDynamicImpulse_FullMethodName        = "/headless.v1.HeadlessControlService/SendDynamicImpulse"
+	HeadlessControlService_RunGarbageCollection_FullMethodName      = "/headless.v1.HeadlessControlService/RunGarbageCollection"
+	HeadlessControlService_GetWorldDebugState_FullMethodName        = "/headless.v1.HeadlessControlService/GetWorldDebugState"
 	HeadlessControlService_GetAccountInfo_FullMethodName            = "/headless.v1.HeadlessControlService/GetAccountInfo"
 	HeadlessControlService_FetchWorldInfo_FullMethodName            = "/headless.v1.HeadlessControlService/FetchWorldInfo"
 	HeadlessControlService_SearchUserInfo_FullMethodName            = "/headless.v1.HeadlessControlService/SearchUserInfo"
 	HeadlessControlService_GetFriendRequests_FullMethodName         = "/headless.v1.HeadlessControlService/GetFriendRequests"
 	HeadlessControlService_AcceptFriendRequests_FullMethodName      = "/headless.v1.HeadlessControlService/AcceptFriendRequests"
+	HeadlessControlService_SendFriendRequest_FullMethodName         = "/headless.v1.HeadlessControlService/SendFriendRequest"
+	HeadlessControlService_RemoveContact_FullMethodName             = "/headless.v1.HeadlessControlService/RemoveContact"
 	HeadlessControlService_ListContacts_FullMethodName              = "/headless.v1.HeadlessControlService/ListContacts"
 	HeadlessControlService_GetContactMessages_FullMethodName        = "/headless.v1.HeadlessControlService/GetContactMessages"
 	HeadlessControlService_SendContactMessage_FullMethodName        = "/headless.v1.HeadlessControlService/SendContactMessage"
@@ -73,6 +82,10 @@ type HeadlessControlServiceClient interface {
 	ListUsersInSession(ctx context.Context, in *ListUsersInSessionRequest, opts ...grpc.CallOption) (*ListUsersInSessionResponse, error)
 	KickUser(ctx context.Context, in *KickUserRequest, opts ...grpc.CallOption) (*KickUserResponse, error)
 	BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*BanUserResponse, error)
+	ListBans(ctx context.Context, in *ListBansRequest, opts ...grpc.CallOption) (*ListBansResponse, error)
+	UnbanUser(ctx context.Context, in *UnbanUserRequest, opts ...grpc.CallOption) (*UnbanUserResponse, error)
+	RespawnUser(ctx context.Context, in *RespawnUserRequest, opts ...grpc.CallOption) (*RespawnUserResponse, error)
+	SpawnItem(ctx context.Context, in *SpawnItemRequest, opts ...grpc.CallOption) (*SpawnItemResponse, error)
 	GetHostSettings(ctx context.Context, in *GetHostSettingsRequest, opts ...grpc.CallOption) (*GetHostSettingsResponse, error)
 	UpdateHostSettings(ctx context.Context, in *UpdateHostSettingsRequest, opts ...grpc.CallOption) (*UpdateHostSettingsResponse, error)
 	AllowHostAccess(ctx context.Context, in *AllowHostAccessRequest, opts ...grpc.CallOption) (*AllowHostAccessResponse, error)
@@ -82,12 +95,18 @@ type HeadlessControlServiceClient interface {
 	ResoniteLinkStream(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ResoniteLinkStreamRequest, ResoniteLinkStreamResponse], error)
 	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	WatchHostEvents(ctx context.Context, in *WatchHostEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[HostEvent], error)
+	// World 内操作系
+	SendDynamicImpulse(ctx context.Context, in *SendDynamicImpulseRequest, opts ...grpc.CallOption) (*SendDynamicImpulseResponse, error)
+	RunGarbageCollection(ctx context.Context, in *RunGarbageCollectionRequest, opts ...grpc.CallOption) (*RunGarbageCollectionResponse, error)
+	GetWorldDebugState(ctx context.Context, in *GetWorldDebugStateRequest, opts ...grpc.CallOption) (*GetWorldDebugStateResponse, error)
 	// Cloud系
 	GetAccountInfo(ctx context.Context, in *GetAccountInfoRequest, opts ...grpc.CallOption) (*GetAccountInfoResponse, error)
 	FetchWorldInfo(ctx context.Context, in *FetchWorldInfoRequest, opts ...grpc.CallOption) (*FetchWorldInfoResponse, error)
 	SearchUserInfo(ctx context.Context, in *SearchUserInfoRequest, opts ...grpc.CallOption) (*SearchUserInfoResponse, error)
 	GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*GetFriendRequestsResponse, error)
 	AcceptFriendRequests(ctx context.Context, in *AcceptFriendRequestsRequest, opts ...grpc.CallOption) (*AcceptFriendRequestsResponse, error)
+	SendFriendRequest(ctx context.Context, in *SendFriendRequestRequest, opts ...grpc.CallOption) (*SendFriendRequestResponse, error)
+	RemoveContact(ctx context.Context, in *RemoveContactRequest, opts ...grpc.CallOption) (*RemoveContactResponse, error)
 	ListContacts(ctx context.Context, in *ListContactsRequest, opts ...grpc.CallOption) (*ListContactsResponse, error)
 	GetContactMessages(ctx context.Context, in *GetContactMessagesRequest, opts ...grpc.CallOption) (*GetContactMessagesResponse, error)
 	SendContactMessage(ctx context.Context, in *SendContactMessageRequest, opts ...grpc.CallOption) (*SendContactMessageResponse, error)
@@ -261,6 +280,46 @@ func (c *headlessControlServiceClient) BanUser(ctx context.Context, in *BanUserR
 	return out, nil
 }
 
+func (c *headlessControlServiceClient) ListBans(ctx context.Context, in *ListBansRequest, opts ...grpc.CallOption) (*ListBansResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListBansResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_ListBans_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) UnbanUser(ctx context.Context, in *UnbanUserRequest, opts ...grpc.CallOption) (*UnbanUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnbanUserResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_UnbanUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) RespawnUser(ctx context.Context, in *RespawnUserRequest, opts ...grpc.CallOption) (*RespawnUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RespawnUserResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_RespawnUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) SpawnItem(ctx context.Context, in *SpawnItemRequest, opts ...grpc.CallOption) (*SpawnItemResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SpawnItemResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_SpawnItem_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *headlessControlServiceClient) GetHostSettings(ctx context.Context, in *GetHostSettingsRequest, opts ...grpc.CallOption) (*GetHostSettingsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetHostSettingsResponse)
@@ -362,6 +421,36 @@ func (c *headlessControlServiceClient) WatchHostEvents(ctx context.Context, in *
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type HeadlessControlService_WatchHostEventsClient = grpc.ServerStreamingClient[HostEvent]
 
+func (c *headlessControlServiceClient) SendDynamicImpulse(ctx context.Context, in *SendDynamicImpulseRequest, opts ...grpc.CallOption) (*SendDynamicImpulseResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendDynamicImpulseResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_SendDynamicImpulse_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) RunGarbageCollection(ctx context.Context, in *RunGarbageCollectionRequest, opts ...grpc.CallOption) (*RunGarbageCollectionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunGarbageCollectionResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_RunGarbageCollection_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) GetWorldDebugState(ctx context.Context, in *GetWorldDebugStateRequest, opts ...grpc.CallOption) (*GetWorldDebugStateResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetWorldDebugStateResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_GetWorldDebugState_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *headlessControlServiceClient) GetAccountInfo(ctx context.Context, in *GetAccountInfoRequest, opts ...grpc.CallOption) (*GetAccountInfoResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetAccountInfoResponse)
@@ -406,6 +495,26 @@ func (c *headlessControlServiceClient) AcceptFriendRequests(ctx context.Context,
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AcceptFriendRequestsResponse)
 	err := c.cc.Invoke(ctx, HeadlessControlService_AcceptFriendRequests_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) SendFriendRequest(ctx context.Context, in *SendFriendRequestRequest, opts ...grpc.CallOption) (*SendFriendRequestResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendFriendRequestResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_SendFriendRequest_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *headlessControlServiceClient) RemoveContact(ctx context.Context, in *RemoveContactRequest, opts ...grpc.CallOption) (*RemoveContactResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveContactResponse)
+	err := c.cc.Invoke(ctx, HeadlessControlService_RemoveContact_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -462,6 +571,10 @@ type HeadlessControlServiceServer interface {
 	ListUsersInSession(context.Context, *ListUsersInSessionRequest) (*ListUsersInSessionResponse, error)
 	KickUser(context.Context, *KickUserRequest) (*KickUserResponse, error)
 	BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error)
+	ListBans(context.Context, *ListBansRequest) (*ListBansResponse, error)
+	UnbanUser(context.Context, *UnbanUserRequest) (*UnbanUserResponse, error)
+	RespawnUser(context.Context, *RespawnUserRequest) (*RespawnUserResponse, error)
+	SpawnItem(context.Context, *SpawnItemRequest) (*SpawnItemResponse, error)
 	GetHostSettings(context.Context, *GetHostSettingsRequest) (*GetHostSettingsResponse, error)
 	UpdateHostSettings(context.Context, *UpdateHostSettingsRequest) (*UpdateHostSettingsResponse, error)
 	AllowHostAccess(context.Context, *AllowHostAccessRequest) (*AllowHostAccessResponse, error)
@@ -471,12 +584,18 @@ type HeadlessControlServiceServer interface {
 	ResoniteLinkStream(grpc.BidiStreamingServer[ResoniteLinkStreamRequest, ResoniteLinkStreamResponse]) error
 	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	WatchHostEvents(*WatchHostEventsRequest, grpc.ServerStreamingServer[HostEvent]) error
+	// World 内操作系
+	SendDynamicImpulse(context.Context, *SendDynamicImpulseRequest) (*SendDynamicImpulseResponse, error)
+	RunGarbageCollection(context.Context, *RunGarbageCollectionRequest) (*RunGarbageCollectionResponse, error)
+	GetWorldDebugState(context.Context, *GetWorldDebugStateRequest) (*GetWorldDebugStateResponse, error)
 	// Cloud系
 	GetAccountInfo(context.Context, *GetAccountInfoRequest) (*GetAccountInfoResponse, error)
 	FetchWorldInfo(context.Context, *FetchWorldInfoRequest) (*FetchWorldInfoResponse, error)
 	SearchUserInfo(context.Context, *SearchUserInfoRequest) (*SearchUserInfoResponse, error)
 	GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*GetFriendRequestsResponse, error)
 	AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error)
+	SendFriendRequest(context.Context, *SendFriendRequestRequest) (*SendFriendRequestResponse, error)
+	RemoveContact(context.Context, *RemoveContactRequest) (*RemoveContactResponse, error)
 	ListContacts(context.Context, *ListContactsRequest) (*ListContactsResponse, error)
 	GetContactMessages(context.Context, *GetContactMessagesRequest) (*GetContactMessagesResponse, error)
 	SendContactMessage(context.Context, *SendContactMessageRequest) (*SendContactMessageResponse, error)
@@ -538,6 +657,18 @@ func (UnimplementedHeadlessControlServiceServer) KickUser(context.Context, *Kick
 func (UnimplementedHeadlessControlServiceServer) BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BanUser not implemented")
 }
+func (UnimplementedHeadlessControlServiceServer) ListBans(context.Context, *ListBansRequest) (*ListBansResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListBans not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) UnbanUser(context.Context, *UnbanUserRequest) (*UnbanUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnbanUser not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) RespawnUser(context.Context, *RespawnUserRequest) (*RespawnUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RespawnUser not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) SpawnItem(context.Context, *SpawnItemRequest) (*SpawnItemResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SpawnItem not implemented")
+}
 func (UnimplementedHeadlessControlServiceServer) GetHostSettings(context.Context, *GetHostSettingsRequest) (*GetHostSettingsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetHostSettings not implemented")
 }
@@ -562,6 +693,15 @@ func (UnimplementedHeadlessControlServiceServer) ResoniteLinkStream(grpc.BidiStr
 func (UnimplementedHeadlessControlServiceServer) WatchHostEvents(*WatchHostEventsRequest, grpc.ServerStreamingServer[HostEvent]) error {
 	return status.Error(codes.Unimplemented, "method WatchHostEvents not implemented")
 }
+func (UnimplementedHeadlessControlServiceServer) SendDynamicImpulse(context.Context, *SendDynamicImpulseRequest) (*SendDynamicImpulseResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendDynamicImpulse not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) RunGarbageCollection(context.Context, *RunGarbageCollectionRequest) (*RunGarbageCollectionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RunGarbageCollection not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) GetWorldDebugState(context.Context, *GetWorldDebugStateRequest) (*GetWorldDebugStateResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetWorldDebugState not implemented")
+}
 func (UnimplementedHeadlessControlServiceServer) GetAccountInfo(context.Context, *GetAccountInfoRequest) (*GetAccountInfoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAccountInfo not implemented")
 }
@@ -576,6 +716,12 @@ func (UnimplementedHeadlessControlServiceServer) GetFriendRequests(context.Conte
 }
 func (UnimplementedHeadlessControlServiceServer) AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AcceptFriendRequests not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) SendFriendRequest(context.Context, *SendFriendRequestRequest) (*SendFriendRequestResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendFriendRequest not implemented")
+}
+func (UnimplementedHeadlessControlServiceServer) RemoveContact(context.Context, *RemoveContactRequest) (*RemoveContactResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveContact not implemented")
 }
 func (UnimplementedHeadlessControlServiceServer) ListContacts(context.Context, *ListContactsRequest) (*ListContactsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListContacts not implemented")
@@ -896,6 +1042,78 @@ func _HeadlessControlService_BanUser_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _HeadlessControlService_ListBans_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListBansRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).ListBans(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_ListBans_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).ListBans(ctx, req.(*ListBansRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_UnbanUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnbanUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).UnbanUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_UnbanUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).UnbanUser(ctx, req.(*UnbanUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_RespawnUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RespawnUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).RespawnUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_RespawnUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).RespawnUser(ctx, req.(*RespawnUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_SpawnItem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SpawnItemRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).SpawnItem(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_SpawnItem_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).SpawnItem(ctx, req.(*SpawnItemRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _HeadlessControlService_GetHostSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetHostSettingsRequest)
 	if err := dec(in); err != nil {
@@ -1015,6 +1233,60 @@ func _HeadlessControlService_WatchHostEvents_Handler(srv interface{}, stream grp
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type HeadlessControlService_WatchHostEventsServer = grpc.ServerStreamingServer[HostEvent]
 
+func _HeadlessControlService_SendDynamicImpulse_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendDynamicImpulseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).SendDynamicImpulse(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_SendDynamicImpulse_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).SendDynamicImpulse(ctx, req.(*SendDynamicImpulseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_RunGarbageCollection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RunGarbageCollectionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).RunGarbageCollection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_RunGarbageCollection_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).RunGarbageCollection(ctx, req.(*RunGarbageCollectionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_GetWorldDebugState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWorldDebugStateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).GetWorldDebugState(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_GetWorldDebugState_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).GetWorldDebugState(ctx, req.(*GetWorldDebugStateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _HeadlessControlService_GetAccountInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetAccountInfoRequest)
 	if err := dec(in); err != nil {
@@ -1101,6 +1373,42 @@ func _HeadlessControlService_AcceptFriendRequests_Handler(srv interface{}, ctx c
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(HeadlessControlServiceServer).AcceptFriendRequests(ctx, req.(*AcceptFriendRequestsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_SendFriendRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendFriendRequestRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).SendFriendRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_SendFriendRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).SendFriendRequest(ctx, req.(*SendFriendRequestRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HeadlessControlService_RemoveContact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveContactRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HeadlessControlServiceServer).RemoveContact(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HeadlessControlService_RemoveContact_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HeadlessControlServiceServer).RemoveContact(ctx, req.(*RemoveContactRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1231,6 +1539,22 @@ var HeadlessControlService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _HeadlessControlService_BanUser_Handler,
 		},
 		{
+			MethodName: "ListBans",
+			Handler:    _HeadlessControlService_ListBans_Handler,
+		},
+		{
+			MethodName: "UnbanUser",
+			Handler:    _HeadlessControlService_UnbanUser_Handler,
+		},
+		{
+			MethodName: "RespawnUser",
+			Handler:    _HeadlessControlService_RespawnUser_Handler,
+		},
+		{
+			MethodName: "SpawnItem",
+			Handler:    _HeadlessControlService_SpawnItem_Handler,
+		},
+		{
 			MethodName: "GetHostSettings",
 			Handler:    _HeadlessControlService_GetHostSettings_Handler,
 		},
@@ -1251,6 +1575,18 @@ var HeadlessControlService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _HeadlessControlService_GetStartupConfigToRestore_Handler,
 		},
 		{
+			MethodName: "SendDynamicImpulse",
+			Handler:    _HeadlessControlService_SendDynamicImpulse_Handler,
+		},
+		{
+			MethodName: "RunGarbageCollection",
+			Handler:    _HeadlessControlService_RunGarbageCollection_Handler,
+		},
+		{
+			MethodName: "GetWorldDebugState",
+			Handler:    _HeadlessControlService_GetWorldDebugState_Handler,
+		},
+		{
 			MethodName: "GetAccountInfo",
 			Handler:    _HeadlessControlService_GetAccountInfo_Handler,
 		},
@@ -1269,6 +1605,14 @@ var HeadlessControlService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AcceptFriendRequests",
 			Handler:    _HeadlessControlService_AcceptFriendRequests_Handler,
+		},
+		{
+			MethodName: "SendFriendRequest",
+			Handler:    _HeadlessControlService_SendFriendRequest_Handler,
+		},
+		{
+			MethodName: "RemoveContact",
+			Handler:    _HeadlessControlService_RemoveContact_Handler,
 		},
 		{
 			MethodName: "ListContacts",

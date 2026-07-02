@@ -146,6 +146,16 @@ export const getFriendRequests = ControllerService.method.getFriendRequests;
 export const acceptFriendRequests = ControllerService.method.acceptFriendRequests;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.SendFriendRequest
+ */
+export const sendFriendRequest = ControllerService.method.sendFriendRequest;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.RemoveContact
+ */
+export const removeContact = ControllerService.method.removeContact;
+
+/**
  * コンタクト・チャット系
  *
  * @generated from rpc hdlctrl.v1.ControllerService.ListContacts
@@ -233,6 +243,31 @@ export const kickUser = ControllerService.method.kickUser;
  * @generated from rpc hdlctrl.v1.ControllerService.BanUser
  */
 export const banUser = ControllerService.method.banUser;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.ListBans
+ */
+export const listBans = ControllerService.method.listBans;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.UnbanUser
+ */
+export const unbanUser = ControllerService.method.unbanUser;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.RespawnUser
+ */
+export const respawnUser = ControllerService.method.respawnUser;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.SpawnItem
+ */
+export const spawnItem = ControllerService.method.spawnItem;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.SendDynamicImpulse
+ */
+export const sendDynamicImpulse = ControllerService.method.sendDynamicImpulse;
 
 /**
  * @generated from rpc hdlctrl.v1.ControllerService.IssueResoniteLinkConnection

@@ -16,10 +16,14 @@ import {
   inviteUser,
   kickUser,
   listUsersInSession,
+  respawnUser,
   searchUserInfo,
+  sendDynamicImpulse,
+  spawnItem,
   updateUserRole,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { UserInfoSchema } from "../../pbgen/hdlctrl/v1/controller_pb";
+import { TextField } from "./base/TextField";
 import { DirectChatDialog } from "./chat";
 import { create } from "@bufbuild/protobuf";
 import { UserRoles } from "../constants";
@@ -35,6 +39,229 @@ import { toast } from "sonner";
 import { useMemo } from "react";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 30];
+
+function SpawnItemDialog({
+  isOpen: open,
+  onClose,
+  hostId,
+  sessionId,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  hostId?: string;
+  sessionId?: string;
+}) {
+  const [url, setUrl] = useState("");
+  const [posX, setPosX] = useState("");
+  const [posY, setPosY] = useState("");
+  const [posZ, setPosZ] = useState("");
+  const { mutateAsync: mutateSpawn, isPending } = useMutation(spawnItem);
+
+  const anyPosSet =
+    posX.trim() !== "" || posY.trim() !== "" || posZ.trim() !== "";
+  const positionOrUndefined = anyPosSet
+    ? {
+        x: Number(posX) || 0,
+        y: Number(posY) || 0,
+        z: Number(posZ) || 0,
+      }
+    : undefined;
+
+  const handleSpawn = async () => {
+    if (!hostId || !sessionId) return;
+    try {
+      await mutateSpawn({
+        hostId,
+        parameters: {
+          sessionId,
+          url: url.trim(),
+          position: positionOrUndefined,
+        },
+      });
+      toast.success("アイテムをスポーンしました");
+      setUrl("");
+      setPosX("");
+      setPosY("");
+      setPosZ("");
+      onClose();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "アイテムのスポーンに失敗しました",
+      );
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>アイテムをスポーン</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3 py-2">
+          <TextField
+            label="Record URL (resrec:// または https://)"
+            placeholder="resrec:///U-Resonite/R-Public-Cube"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+          />
+          <div>
+            <p className="text-sm font-medium mb-1">
+              スポーン位置 (未指定なら world 原点)
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <TextField
+                label="X"
+                type="number"
+                value={posX}
+                onChange={(e) => setPosX(e.target.value)}
+              />
+              <TextField
+                label="Y"
+                type="number"
+                value={posY}
+                onChange={(e) => setPosY(e.target.value)}
+              />
+              <TextField
+                label="Z"
+                type="number"
+                value={posZ}
+                onChange={(e) => setPosZ(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onClose()}>
+            キャンセル
+          </Button>
+          <Button
+            onClick={handleSpawn}
+            disabled={isPending || !url.trim() || !hostId || !sessionId}
+          >
+            {isPending ? "スポーン中..." : "スポーン"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type ImpulseValueType = "none" | "string" | "int" | "float";
+
+function SendDynamicImpulseDialog({
+  isOpen: open,
+  onClose,
+  hostId,
+  sessionId,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  hostId?: string;
+  sessionId?: string;
+}) {
+  const [tag, setTag] = useState("");
+  const [valueType, setValueType] = useState<ImpulseValueType>("none");
+  const [valueStr, setValueStr] = useState("");
+  const { mutateAsync: mutateSend, isPending } =
+    useMutation(sendDynamicImpulse);
+
+  const handleSend = async () => {
+    if (!hostId || !sessionId) return;
+    let value:
+      | { case: "stringValue"; value: string }
+      | { case: "intValue"; value: number }
+      | { case: "floatValue"; value: number }
+      | undefined;
+    switch (valueType) {
+      case "string":
+        value = { case: "stringValue", value: valueStr };
+        break;
+      case "int":
+        value = { case: "intValue", value: parseInt(valueStr, 10) || 0 };
+        break;
+      case "float":
+        value = { case: "floatValue", value: parseFloat(valueStr) || 0 };
+        break;
+      case "none":
+        value = undefined;
+        break;
+    }
+    try {
+      const res = await mutateSend({
+        hostId,
+        parameters: {
+          sessionId,
+          tag: tag.trim(),
+          value,
+        },
+      });
+      toast.success(
+        `送信しました (${res.triggeredReceivers} 個のレシーバに到達)`,
+      );
+      setTag("");
+      setValueStr("");
+      onClose();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "DynamicImpulseの送信に失敗しました",
+      );
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>DynamicImpulse 送信</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3 py-2">
+          <TextField
+            label="Tag"
+            placeholder="例: OnStart"
+            value={tag}
+            onChange={(e) => setTag(e.target.value)}
+          />
+          <div>
+            <p className="text-sm font-medium mb-1">値の種類</p>
+            <div className="flex gap-2 flex-wrap">
+              {(["none", "string", "int", "float"] as const).map((t) => (
+                <Button
+                  key={t}
+                  size="sm"
+                  variant={valueType === t ? "default" : "outline"}
+                  onClick={() => setValueType(t)}
+                >
+                  {t}
+                </Button>
+              ))}
+            </div>
+          </div>
+          {valueType !== "none" && (
+            <TextField
+              label={`値 (${valueType})`}
+              type={
+                valueType === "int" || valueType === "float" ? "number" : "text"
+              }
+              value={valueStr}
+              onChange={(e) => setValueStr(e.target.value)}
+            />
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onClose()}>
+            キャンセル
+          </Button>
+          <Button
+            onClick={handleSend}
+            disabled={isPending || !tag.trim() || !hostId || !sessionId}
+          >
+            {isPending ? "送信中..." : "送信"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function UserInviteDialog({
   isOpen: open,
@@ -162,7 +389,11 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
     useMutation(kickUser);
   const { mutateAsync: mutateBanUser, isPending: isPendingBan } =
     useMutation(banUser);
+  const { mutateAsync: mutateRespawnUser, isPending: isPendingRespawn } =
+    useMutation(respawnUser);
   const [isOpenInviteDialog, setIsOpenInviteDialog] = useState(false);
+  const [isOpenSpawnDialog, setIsOpenSpawnDialog] = useState(false);
+  const [isOpenImpulseDialog, setIsOpenImpulseDialog] = useState(false);
   const [chatUserId, setChatUserId] = useState<string | null>(null);
   const [actionUserId, setActionUserId] = useState<string | null>(null);
 
@@ -264,6 +495,29 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
     }
   };
 
+  const handleRespawnUser = async (userId: string) => {
+    setActionUserId(userId);
+    try {
+      await mutateRespawnUser({
+        hostId,
+        parameters: {
+          sessionId,
+          user: {
+            case: "userId",
+            value: userId,
+          },
+        },
+      });
+      toast.success("ユーザーをリスポーンさせました");
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "ユーザーのリスポーンに失敗しました",
+      );
+    } finally {
+      setActionUserId(null);
+    }
+  };
+
   const columns: ColumnDef<UserInSession>[] = [
     {
       accessorKey: "name",
@@ -304,9 +558,20 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => handleRespawnUser(row.original.id)}
+                disabled={
+                  (isPendingKick || isPendingBan || isPendingRespawn) &&
+                  actionUserId === row.original.id
+                }
+              >
+                Respawn
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => handleKickUser(row.original.id)}
                 disabled={
-                  (isPendingKick || isPendingBan) &&
+                  (isPendingKick || isPendingBan || isPendingRespawn) &&
                   actionUserId === row.original.id
                 }
               >
@@ -317,7 +582,7 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
                 size="sm"
                 onClick={() => handleBanUser(row.original.id)}
                 disabled={
-                  (isPendingKick || isPendingBan) &&
+                  (isPendingKick || isPendingBan || isPendingRespawn) &&
                   actionUserId === row.original.id
                 }
               >
@@ -334,6 +599,15 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
     <>
       <div className="space-y-4">
         <div className="flex justify-end space-x-2">
+          <Button
+            variant="outline"
+            onClick={() => setIsOpenImpulseDialog(true)}
+          >
+            DynamicImpulse
+          </Button>
+          <Button variant="outline" onClick={() => setIsOpenSpawnDialog(true)}>
+            アイテムスポーン
+          </Button>
           <Button onClick={() => setIsOpenInviteDialog(true)}>
             ユーザー招待
           </Button>
@@ -359,6 +633,18 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
           setIsOpenInviteDialog(false);
           refetch();
         }}
+        hostId={hostId}
+        sessionId={sessionId}
+      />
+      <SpawnItemDialog
+        isOpen={isOpenSpawnDialog}
+        onClose={() => setIsOpenSpawnDialog(false)}
+        hostId={hostId}
+        sessionId={sessionId}
+      />
+      <SendDynamicImpulseDialog
+        isOpen={isOpenImpulseDialog}
+        onClose={() => setIsOpenImpulseDialog(false)}
         hostId={hostId}
         sessionId={sessionId}
       />
