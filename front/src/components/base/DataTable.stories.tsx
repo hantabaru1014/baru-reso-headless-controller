@@ -178,6 +178,7 @@ export const WithPaginationSinglePage: Story = {
  * 初期状態はリサイズ無効時と同じく content による auto-sizing。
  * 幅は境界の両隣の列だけでトレードされるため、それより右の列は位置も幅も動かず、
  * 横スクロールも発生しない。どちらかの列が minSize に達するとドラッグは停止する。
+ * 列幅は % で保持されるため、ブラウザ幅を変えると全列が比例スケールして常に収まる。
  * `minSize` / `maxSize` を column 定義で指定するとドラッグ時の上下限を制限できる。
  */
 export const ColumnResizing: Story = {

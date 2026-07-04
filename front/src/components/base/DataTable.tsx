@@ -29,6 +29,9 @@ import { cn } from "@/libs/cssUtils";
  * - ドラッグ中の幅のトレードは境界の両隣 (対象列と右隣) だけで行い、それより右の列は
  *   位置も幅も動かさない。列幅の合計が常に一定なので横スクロールも発生しない。
  * - どちらかの列が minSize / maxSize に達したところでドラッグは停止する。
+ * - columnSizing state はテーブル幅に対する % で保持する。px 固定だとブラウザ幅を
+ *   狭めたときに合計がコンテナを超えて横スクロールや最終列の消失が起きるため、
+ *   % にして全列を比例スケールさせる。
  */
 function useColumnResizing<TData>(table: TableInstance<TData>) {
   const [resizingColumnId, setResizingColumnId] = useState<string | null>(null);
@@ -42,7 +45,7 @@ function useColumnResizing<TData>(table: TableInstance<TData>) {
   // 最終列には explicit width を与えず、fixed レイアウトの余り (丸め誤差など) の吸収役にする
   const widthStyle = (id: string): React.CSSProperties | undefined =>
     columnSizing[id] !== undefined && id !== lastLeafColumnId
-      ? { width: columnSizing[id] }
+      ? { width: `${columnSizing[id]}%` }
       : undefined;
 
   // 最終 leaf カラムは右に隣接列がないのでリサイズハンドルを出さない
@@ -73,6 +76,11 @@ function useColumnResizing<TData>(table: TableInstance<TData>) {
     const startX = e.clientX;
     const startWidth = th.getBoundingClientRect().width;
     const neighborStartWidth = neighborTh.getBoundingClientRect().width;
+    // ドラッグ中の計算は px で行い、state へは % に変換して保存する
+    const tableWidth = (
+      th.closest("table") as HTMLElement
+    ).getBoundingClientRect().width;
+    const toPercent = (px: number) => (px / tableWidth) * 100;
 
     // minSize: 20 等のデフォルトは TanStack Table が columnDef へマージ済み
     const { minSize = 20, maxSize = Number.MAX_SAFE_INTEGER } =
@@ -101,7 +109,9 @@ function useColumnResizing<TData>(table: TableInstance<TData>) {
     const snapshot: Record<string, number> = {};
     leafColumns.forEach((column, i) => {
       if (headerCells[i] && column.id !== lastLeafColumnId) {
-        snapshot[column.id] = headerCells[i].getBoundingClientRect().width;
+        snapshot[column.id] = toPercent(
+          headerCells[i].getBoundingClientRect().width,
+        );
       }
     });
     table.setColumnSizing((prev) => ({ ...prev, ...snapshot }));
@@ -113,9 +123,9 @@ function useColumnResizing<TData>(table: TableInstance<TData>) {
       );
       table.setColumnSizing((prev) => ({
         ...prev,
-        [header.column.id]: next,
+        [header.column.id]: toPercent(next),
         // 増減分は右隣だけが吸収する
-        [neighbor.id]: neighborStartWidth - (next - startWidth),
+        [neighbor.id]: toPercent(neighborStartWidth - (next - startWidth)),
       }));
     };
     const onEnd = () => {
