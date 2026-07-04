@@ -14,34 +14,47 @@ import {
   DropdownMenuItem,
   Skeleton,
 } from "./ui";
-import { useMutation, useQuery } from "@connectrpc/connect-query";
+import {
+  callUnaryMethod,
+  useMutation,
+  useQuery,
+  useTransport,
+} from "@connectrpc/connect-query";
 import {
   acceptFriendRequests,
   createHeadlessAccount,
   deleteHeadlessAccount,
   getFriendRequests,
   getHeadlessAccountStorageInfo,
+  getResoniteUser,
+  listContacts,
   listHeadlessAccounts,
+  listHeadlessHost,
   refetchHeadlessAccountInfo,
   removeContact,
+  searchResoniteUsers,
   sendFriendRequest,
   updateHeadlessAccountCredentials,
   updateHeadlessAccountIcon,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { RefetchButton } from "./base/RefetchButton";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { keepPreviousData } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { usePaginationState } from "../hooks/usePaginationState";
 import { toast } from "sonner";
 import { DataTable, TextField } from "./base";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   HeadlessAccount,
+  HeadlessHostStatus,
   UserInfo,
 } from "../../pbgen/hdlctrl/v1/controller_pb";
 import prettyBytes from "@/libs/prettyBytes";
 import { resolveUrl } from "@/libs/skyfrostUtils";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, Search } from "lucide-react";
+import { Input } from "./ui";
+import { UserList } from "./base/UserList";
+import { ScrollBase } from "./base/ScrollBase";
 import { IconChangeDialog } from "./IconChangeDialog";
 import { ResoniteUserIcon } from "./ResoniteUserIcon";
 import { ChatDialog } from "./chat";
@@ -192,28 +205,144 @@ function SendFriendRequestDialog({
   open: boolean;
   onClose?: () => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
-  const { mutateAsync: mutateSendFriendRequest, isPending } =
-    useMutation(sendFriendRequest);
+  const transport = useTransport();
 
-  const handleSend = async () => {
-    const value = query.trim();
-    if (!value) return;
-    const isId = value.toLowerCase().startsWith("u-");
+  // フレンド申請 (SendFriendRequest) は container 経由で cloud を叩くため、
+  // 対象アカウントで起動中のホストが必要. 検索側は Resonite の公開 API を叩く
+  // controller RPC (SearchResoniteUsers / GetResoniteUser) を使うのでホスト不要.
+  const { data: hostsData } = useQuery(
+    listHeadlessHost,
+    { page: { pageIndex: 0, pageSize: 100 } },
+    { enabled: open },
+  );
+  const runningHost = useMemo(
+    () =>
+      hostsData?.hosts.find(
+        (h) =>
+          h.accountId === accountId && h.status === HeadlessHostStatus.RUNNING,
+      ),
+    [hostsData, accountId],
+  );
+  const hasRunningHost = !!runningHost;
+
+  // 既存フレンド (Accepted) を除外するため全 contacts を取得.
+  // ListContacts は container 経由なので、起動中ホストが必要. 無い時は空扱いで検索は動かす.
+  const {
+    data: contactsData,
+    fetchNextPage: fetchNextContacts,
+    hasNextPage: hasMoreContacts,
+    isFetchingNextPage: isFetchingMoreContacts,
+  } = useInfiniteQuery({
+    queryKey: ["allContacts", accountId],
+    queryFn: async ({ pageParam }) => {
+      const res = await callUnaryMethod(transport, listContacts, {
+        headlessAccountId: accountId,
+        limit: 200,
+        cursor: pageParam?.cursor,
+      });
+      return { contacts: res.contacts, nextCursor: res.nextCursor };
+    },
+    initialPageParam: undefined as { cursor?: string } | undefined,
+    getNextPageParam: (last) =>
+      last.nextCursor ? { cursor: last.nextCursor } : undefined,
+    enabled: open && hasRunningHost,
+  });
+
+  // 未取得ページが残っていれば自動で次を fetch (dialog を開いた瞬間から順次全ページを取り切る)
+  useEffect(() => {
+    if (open && hasMoreContacts && !isFetchingMoreContacts) {
+      fetchNextContacts();
+    }
+  }, [open, hasMoreContacts, isFetchingMoreContacts, fetchNextContacts]);
+
+  const contactIdSet = useMemo(() => {
+    const s = new Set<string>();
+    contactsData?.pages.forEach((p) => p.contacts.forEach((c) => s.add(c.id)));
+    return s;
+  }, [contactsData]);
+
+  // 名前検索: Resonite Cloud の GET /users?name=... を叩く controller RPC.
+  const {
+    data: searchResult,
+    mutateAsync: mutateSearch,
+    isPending: isPendingSearch,
+    reset: resetSearch,
+  } = useMutation(searchResoniteUsers);
+  // ID 検索: 部分一致は非対応. 完全一致で GET /users/{id} を叩く RPC.
+  const {
+    data: idLookupResult,
+    mutateAsync: mutateIdLookup,
+    isPending: isPendingIdLookup,
+    reset: resetIdLookup,
+  } = useMutation(getResoniteUser);
+  const { mutateAsync: mutateSendFriendRequest, isPending: isPendingSend } =
+    useMutation(sendFriendRequest);
+  const [sendingUserId, setSendingUserId] = useState<string | null>(null);
+
+  const rawResults = useMemo(() => {
+    if (idLookupResult) {
+      return [
+        {
+          id: idLookupResult.id,
+          name: idLookupResult.name,
+          iconUrl: idLookupResult.iconUrl,
+        },
+      ];
+    }
+    return searchResult?.users ?? [];
+  }, [idLookupResult, searchResult]);
+
+  const visibleUsers = useMemo(
+    () => rawResults.filter((u) => !contactIdSet.has(u.id)),
+    [rawResults, contactIdSet],
+  );
+
+  const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setQuery(value);
+    const trimmed = value.trim();
+    if (!trimmed) {
+      resetSearch();
+      resetIdLookup();
+      return;
+    }
+    // "U-" prefix なら ID 完全一致 lookup、それ以外は name の部分一致検索.
+    // Cloud API は case-insensitive なので入力の大小を保つ.
+    if (trimmed.toLowerCase().startsWith("u-")) {
+      resetSearch();
+      mutateIdLookup({ resoniteId: trimmed }).catch(() => {
+        // 未存在などは無視 (毎打鍵で toast すると煩い)
+      });
+    } else {
+      resetIdLookup();
+      mutateSearch({ name: trimmed }).catch(() => {
+        // 空結果や API エラーは無視
+      });
+    }
+  };
+
+  const handleSend = async (userId: string) => {
+    setSendingUserId(userId);
     try {
       await mutateSendFriendRequest({
         headlessAccountId: accountId,
-        user: { case: isId ? "userId" : "userName", value },
+        user: { case: "userId", value: userId },
       });
       toast.success("フレンドリクエストを送信しました");
       setQuery("");
-      onClose?.();
+      resetSearch();
+      resetIdLookup();
+      inputRef.current?.focus();
     } catch (e) {
       toast.error(
         e instanceof Error
           ? e.message
           : "フレンドリクエストの送信に失敗しました",
       );
+    } finally {
+      setSendingUserId(null);
     }
   };
 
@@ -223,33 +352,65 @@ function SendFriendRequestDialog({
       onOpenChange={(o) => {
         if (!o) {
           setQuery("");
+          resetSearch();
+          resetIdLookup();
           onClose?.();
         }
       }}
     >
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>フレンド追加</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-3 py-2">
-          <TextField
-            label="ユーザーID または ユーザー名"
-            placeholder="U-xxxx または username"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">
-            &quot;U-&quot; で始まる場合は ID
-            として、そうでなければユーザー名として検索します
-          </p>
+        <div className="space-y-4">
+          {!hasRunningHost && (
+            <p className="text-sm text-destructive">
+              このアカウントで起動中のホストが必要です
+              (申請送信・既存フレンド除外に使用)
+            </p>
+          )}
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input
+              ref={inputRef}
+              placeholder="ユーザーID (U-...) または ユーザー名"
+              value={query}
+              onChange={handleQueryChange}
+              className="pl-10"
+            />
+          </div>
+          <ScrollBase height="60vh">
+            <UserList
+              data={visibleUsers}
+              isLoading={isPendingSearch || isPendingIdLookup}
+              renderActions={(user) => {
+                const isLoading = isPendingSend && sendingUserId === user.id;
+                return (
+                  <Button
+                    onClick={() => handleSend(user.id)}
+                    disabled={isLoading || !hasRunningHost}
+                  >
+                    {isLoading ? "送信中..." : "申請"}
+                  </Button>
+                );
+              }}
+            />
+            {!isPendingSearch &&
+              !isPendingIdLookup &&
+              query.trim() !== "" &&
+              visibleUsers.length === 0 && (
+                <p className="text-center text-sm text-muted-foreground py-4">
+                  一致するユーザーがいません
+                  {rawResults.length > 0 &&
+                    " (既にフレンドのユーザーは除外されます)"}
+                </p>
+              )}
+          </ScrollBase>
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">キャンセル</Button>
+            <Button variant="outline">閉じる</Button>
           </DialogClose>
-          <Button onClick={handleSend} disabled={isPending || !query.trim()}>
-            {isPending ? "送信中..." : "送信"}
-          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

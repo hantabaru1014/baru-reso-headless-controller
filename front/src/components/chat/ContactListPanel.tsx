@@ -2,7 +2,7 @@ import { Input } from "../ui";
 import { callUnaryMethod, useTransport } from "@connectrpc/connect-query";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { listContacts } from "../../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/libs/cssUtils";
@@ -66,13 +66,21 @@ export function ContactListPanel({
     );
   }, [contacts, contactSearch]);
 
+  const getScrollElement = useCallback(() => contactsScrollRef.current, []);
+  const estimateSize = useCallback(() => 48, []);
+  const filteredContactsRef = useRef(filteredContacts);
+  filteredContactsRef.current = filteredContacts;
+  const getItemKey = useCallback(
+    (index: number) => filteredContactsRef.current[index]?.id ?? index,
+    [],
+  );
   // Contacts virtual scrolling
   const contactsVirtualizer = useVirtualizer({
     count: filteredContacts.length,
-    getScrollElement: () => contactsScrollRef.current,
-    estimateSize: () => 48,
+    getScrollElement,
+    estimateSize,
     overscan: 5,
-    getItemKey: (index) => filteredContacts[index]?.id ?? index,
+    getItemKey,
   });
 
   // Force virtualizer to remeasure when enabled or contacts data changes

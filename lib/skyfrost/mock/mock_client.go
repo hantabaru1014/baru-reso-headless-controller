@@ -101,6 +101,21 @@ func (mr *MockClientMockRecorder) GetStorageInfo(ctx, credential, password, owne
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStorageInfo", reflect.TypeOf((*MockClient)(nil).GetStorageInfo), ctx, credential, password, ownerId)
 }
 
+// SearchUsersByName mocks base method.
+func (m *MockClient) SearchUsersByName(ctx context.Context, name string) ([]skyfrost.UserInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SearchUsersByName", ctx, name)
+	ret0, _ := ret[0].([]skyfrost.UserInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SearchUsersByName indicates an expected call of SearchUsersByName.
+func (mr *MockClientMockRecorder) SearchUsersByName(ctx, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchUsersByName", reflect.TypeOf((*MockClient)(nil).SearchUsersByName), ctx, name)
+}
+
 // SearchWorlds mocks base method.
 func (m *MockClient) SearchWorlds(ctx context.Context, query string, featuredOnly bool, pageIndex int) (*skyfrost.SearchWorldsResult, error) {
 	m.ctrl.T.Helper()

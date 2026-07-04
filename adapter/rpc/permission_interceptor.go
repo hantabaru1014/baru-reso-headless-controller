@@ -117,6 +117,7 @@ func allKnownProcedures() []string {
 		hdlctrlv1connect.ControllerServiceSearchWorldsProcedure,
 		hdlctrlv1connect.ControllerServiceGetOwnWorldsProcedure,
 		hdlctrlv1connect.ControllerServiceGetResoniteUserProcedure,
+		hdlctrlv1connect.ControllerServiceSearchResoniteUsersProcedure,
 		hdlctrlv1connect.ControllerServiceGetFriendRequestsProcedure,
 		hdlctrlv1connect.ControllerServiceAcceptFriendRequestsProcedure,
 		hdlctrlv1connect.ControllerServiceSendFriendRequestProcedure,

@@ -208,6 +208,36 @@ func (c *ControllerService) FetchWorldInfo(ctx context.Context, req *connect.Req
 	return res, nil
 }
 
+// SearchResoniteUsers implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: 認証のみ (Resonite の公開エンドポイントを叩くだけ).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceSearchResoniteUsersProcedure,
+	requireAuthOnly,
+)
+
+func (c *ControllerService) SearchResoniteUsers(ctx context.Context, req *connect.Request[hdlctrlv1.SearchResoniteUsersRequest]) (*connect.Response[hdlctrlv1.SearchResoniteUsersResponse], error) {
+	name := req.Msg.GetName()
+	if name == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+
+	users, err := c.skyfrostClient.SearchUsersByName(ctx, name)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to search users: %w", err))
+	}
+
+	out := make([]*hdlctrlv1.UserInfo, 0, len(users))
+	for _, u := range users {
+		out = append(out, &hdlctrlv1.UserInfo{
+			Id:      u.ID,
+			Name:    u.UserName,
+			IconUrl: u.IconUrl,
+		})
+	}
+
+	return connect.NewResponse(&hdlctrlv1.SearchResoniteUsersResponse{Users: out}), nil
+}
+
 // GetResoniteUser implements hdlctrlv1connect.ControllerServiceHandler.
 // 権限: 認証のみ (Resonite 公開プロフィール参照).
 var _ = registerRPCPermission(

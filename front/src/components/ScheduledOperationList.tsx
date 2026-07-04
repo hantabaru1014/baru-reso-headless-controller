@@ -177,11 +177,14 @@ export default function ScheduledOperationList({ sessionId }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end gap-2">
-        <RefetchButton refetch={refetch} />
-        <Button asChild>
-          <Link to={newHref}>新規予約</Link>
-        </Button>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">予約操作</h2>
+        <div className="flex items-center gap-2">
+          <RefetchButton refetch={refetch} />
+          <Button asChild>
+            <Link to={newHref}>新規予約</Link>
+          </Button>
+        </div>
       </div>
       <DataTable
         columns={columns}

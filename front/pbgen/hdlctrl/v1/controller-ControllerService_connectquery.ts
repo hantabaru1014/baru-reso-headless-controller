@@ -136,6 +136,11 @@ export const getOwnWorlds = ControllerService.method.getOwnWorlds;
 export const getResoniteUser = ControllerService.method.getResoniteUser;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.SearchResoniteUsers
+ */
+export const searchResoniteUsers = ControllerService.method.searchResoniteUsers;
+
+/**
  * @generated from rpc hdlctrl.v1.ControllerService.GetFriendRequests
  */
 export const getFriendRequests = ControllerService.method.getFriendRequests;

@@ -24,11 +24,13 @@ export default function SessionControlButtons({
   sessionId,
   canSaveOverride,
   canSaveAs,
+  leadingButtons,
   additionalButtons,
 }: {
   sessionId: string;
   canSaveOverride?: boolean;
   canSaveAs?: boolean;
+  leadingButtons?: React.ReactNode;
   additionalButtons?: React.ReactNode;
 }) {
   const navigate = useNavigate();
@@ -112,6 +114,7 @@ export default function SessionControlButtons({
 
   return (
     <div className="flex items-center gap-2">
+      {leadingButtons}
       <SplitButton
         variant="outline"
         disabled={isPendingSave || !canSaveOverride}

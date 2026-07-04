@@ -45,6 +45,7 @@ const (
 	ControllerService_SearchWorlds_FullMethodName                     = "/hdlctrl.v1.ControllerService/SearchWorlds"
 	ControllerService_GetOwnWorlds_FullMethodName                     = "/hdlctrl.v1.ControllerService/GetOwnWorlds"
 	ControllerService_GetResoniteUser_FullMethodName                  = "/hdlctrl.v1.ControllerService/GetResoniteUser"
+	ControllerService_SearchResoniteUsers_FullMethodName              = "/hdlctrl.v1.ControllerService/SearchResoniteUsers"
 	ControllerService_GetFriendRequests_FullMethodName                = "/hdlctrl.v1.ControllerService/GetFriendRequests"
 	ControllerService_AcceptFriendRequests_FullMethodName             = "/hdlctrl.v1.ControllerService/AcceptFriendRequests"
 	ControllerService_SendFriendRequest_FullMethodName                = "/hdlctrl.v1.ControllerService/SendFriendRequest"
@@ -109,6 +110,7 @@ type ControllerServiceClient interface {
 	SearchWorlds(ctx context.Context, in *SearchWorldsRequest, opts ...grpc.CallOption) (*SearchWorldsResponse, error)
 	GetOwnWorlds(ctx context.Context, in *GetOwnWorldsRequest, opts ...grpc.CallOption) (*GetOwnWorldsResponse, error)
 	GetResoniteUser(ctx context.Context, in *GetResoniteUserRequest, opts ...grpc.CallOption) (*GetResoniteUserResponse, error)
+	SearchResoniteUsers(ctx context.Context, in *SearchResoniteUsersRequest, opts ...grpc.CallOption) (*SearchResoniteUsersResponse, error)
 	GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*GetFriendRequestsResponse, error)
 	AcceptFriendRequests(ctx context.Context, in *AcceptFriendRequestsRequest, opts ...grpc.CallOption) (*AcceptFriendRequestsResponse, error)
 	SendFriendRequest(ctx context.Context, in *SendFriendRequestRequest, opts ...grpc.CallOption) (*SendFriendRequestResponse, error)
@@ -396,6 +398,16 @@ func (c *controllerServiceClient) GetResoniteUser(ctx context.Context, in *GetRe
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetResoniteUserResponse)
 	err := c.cc.Invoke(ctx, ControllerService_GetResoniteUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) SearchResoniteUsers(ctx context.Context, in *SearchResoniteUsersRequest, opts ...grpc.CallOption) (*SearchResoniteUsersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchResoniteUsersResponse)
+	err := c.cc.Invoke(ctx, ControllerService_SearchResoniteUsers_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -734,6 +746,7 @@ type ControllerServiceServer interface {
 	SearchWorlds(context.Context, *SearchWorldsRequest) (*SearchWorldsResponse, error)
 	GetOwnWorlds(context.Context, *GetOwnWorldsRequest) (*GetOwnWorldsResponse, error)
 	GetResoniteUser(context.Context, *GetResoniteUserRequest) (*GetResoniteUserResponse, error)
+	SearchResoniteUsers(context.Context, *SearchResoniteUsersRequest) (*SearchResoniteUsersResponse, error)
 	GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*GetFriendRequestsResponse, error)
 	AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error)
 	SendFriendRequest(context.Context, *SendFriendRequestRequest) (*SendFriendRequestResponse, error)
@@ -851,6 +864,9 @@ func (UnimplementedControllerServiceServer) GetOwnWorlds(context.Context, *GetOw
 }
 func (UnimplementedControllerServiceServer) GetResoniteUser(context.Context, *GetResoniteUserRequest) (*GetResoniteUserResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetResoniteUser not implemented")
+}
+func (UnimplementedControllerServiceServer) SearchResoniteUsers(context.Context, *SearchResoniteUsersRequest) (*SearchResoniteUsersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchResoniteUsers not implemented")
 }
 func (UnimplementedControllerServiceServer) GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*GetFriendRequestsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetFriendRequests not implemented")
@@ -1409,6 +1425,24 @@ func _ControllerService_GetResoniteUser_Handler(srv interface{}, ctx context.Con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).GetResoniteUser(ctx, req.(*GetResoniteUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_SearchResoniteUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchResoniteUsersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).SearchResoniteUsers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_SearchResoniteUsers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).SearchResoniteUsers(ctx, req.(*SearchResoniteUsersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2059,6 +2093,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetResoniteUser",
 			Handler:    _ControllerService_GetResoniteUser_Handler,
+		},
+		{
+			MethodName: "SearchResoniteUsers",
+			Handler:    _ControllerService_SearchResoniteUsers_Handler,
 		},
 		{
 			MethodName: "GetFriendRequests",
