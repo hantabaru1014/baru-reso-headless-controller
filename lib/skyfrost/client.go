@@ -11,6 +11,8 @@ type Client interface {
 	UserLogin(ctx context.Context, credential, password string) (*UserSession, error)
 	// FetchUserInfo fetches user information by Resonite ID
 	FetchUserInfo(ctx context.Context, resoniteID string) (*UserInfo, error)
+	// SearchUsersByName searches Resonite users by partial (case-insensitive) name
+	SearchUsersByName(ctx context.Context, name string) ([]UserInfo, error)
 	// GetStorageInfo gets storage information for a user
 	GetStorageInfo(ctx context.Context, credential, password, ownerId string) (*StorageInfo, error)
 	// GetContacts gets contacts for a user by logging in with the given credentials
@@ -47,6 +49,11 @@ func (c *DefaultClient) UserLogin(ctx context.Context, credential, password stri
 // FetchUserInfo implements Client.FetchUserInfo.
 func (c *DefaultClient) FetchUserInfo(ctx context.Context, resoniteID string) (*UserInfo, error) {
 	return FetchUserInfo(ctx, resoniteID)
+}
+
+// SearchUsersByName implements Client.SearchUsersByName.
+func (c *DefaultClient) SearchUsersByName(ctx context.Context, name string) ([]UserInfo, error) {
+	return SearchUsersByName(ctx, name)
 }
 
 // GetStorageInfo implements Client.GetStorageInfo.

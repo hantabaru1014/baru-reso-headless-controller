@@ -5,8 +5,10 @@ import {
   denyHostAccess,
   getHeadlessHost,
   killHeadlessHost,
+  listBans,
   restartHeadlessHost,
   shutdownHeadlessHost,
+  unbanUser,
   updateHeadlessHostSettings,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import {
@@ -221,6 +223,106 @@ function AllowedUrlHostsDialog({
             <Button variant="outline" onClick={() => onClose?.()}>
               閉じる
             </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function BanManagementDialog({ hostId }: { hostId: string }) {
+  const [open, setOpen] = useState(false);
+  const { data, isPending, refetch } = useQuery(
+    listBans,
+    { hostId },
+    { enabled: open },
+  );
+  const { mutateAsync: mutateUnban, isPending: isPendingUnban } =
+    useMutation(unbanUser);
+  const [actionUserId, setActionUserId] = useState<string | null>(null);
+
+  const handleUnban = async (userId: string, userName: string) => {
+    setActionUserId(userId);
+    try {
+      await mutateUnban({
+        hostId,
+        parameters: {
+          user: userId
+            ? { case: "userId", value: userId }
+            : { case: "userName", value: userName },
+        },
+      });
+      toast.success("Banを解除しました");
+      refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Ban解除に失敗しました");
+    } finally {
+      setActionUserId(null);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">Ban管理</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Ban管理</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2">
+          <div className="flex justify-end">
+            <RefetchButton refetch={refetch} />
+          </div>
+          <ScrollBase height="60vh">
+            {isPending ? (
+              <p className="text-center text-sm text-muted-foreground py-4">
+                読み込み中...
+              </p>
+            ) : (data?.bans?.length ?? 0) === 0 ? (
+              <p className="text-center text-sm text-muted-foreground py-4">
+                Banされているユーザーはいません
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {data?.bans?.map((b) => (
+                  <div
+                    key={`${b.userId}-${b.userName}`}
+                    className="flex items-center justify-between p-2 border rounded"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">
+                        {b.userName || "(不明)"}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {b.userId || "(ID不明 / name only ban)"}
+                      </p>
+                      {b.machineIds.length > 0 && (
+                        <p className="text-xs text-muted-foreground truncate">
+                          Machine: {b.machineIds.join(", ")}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleUnban(b.userId, b.userName)}
+                      disabled={
+                        isPendingUnban &&
+                        actionUserId === (b.userId || b.userName)
+                      }
+                    >
+                      解除
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollBase>
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">閉じる</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -617,6 +719,7 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
                 items={settings.autoSpawnItems}
                 onClose={() => refetch()}
               />
+              <BanManagementDialog hostId={hostId} />
             </>
           )}
         </div>

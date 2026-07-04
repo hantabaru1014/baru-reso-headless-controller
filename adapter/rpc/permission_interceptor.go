@@ -117,8 +117,11 @@ func allKnownProcedures() []string {
 		hdlctrlv1connect.ControllerServiceSearchWorldsProcedure,
 		hdlctrlv1connect.ControllerServiceGetOwnWorldsProcedure,
 		hdlctrlv1connect.ControllerServiceGetResoniteUserProcedure,
+		hdlctrlv1connect.ControllerServiceSearchResoniteUsersProcedure,
 		hdlctrlv1connect.ControllerServiceGetFriendRequestsProcedure,
 		hdlctrlv1connect.ControllerServiceAcceptFriendRequestsProcedure,
+		hdlctrlv1connect.ControllerServiceSendFriendRequestProcedure,
+		hdlctrlv1connect.ControllerServiceRemoveContactProcedure,
 
 		// ===== ControllerService: コンタクト・チャット系 =====
 		hdlctrlv1connect.ControllerServiceListContactsProcedure,
@@ -140,6 +143,11 @@ func allKnownProcedures() []string {
 		hdlctrlv1connect.ControllerServiceListUsersInSessionProcedure,
 		hdlctrlv1connect.ControllerServiceKickUserProcedure,
 		hdlctrlv1connect.ControllerServiceBanUserProcedure,
+		hdlctrlv1connect.ControllerServiceListBansProcedure,
+		hdlctrlv1connect.ControllerServiceUnbanUserProcedure,
+		hdlctrlv1connect.ControllerServiceRespawnUserProcedure,
+		hdlctrlv1connect.ControllerServiceSpawnItemProcedure,
+		hdlctrlv1connect.ControllerServiceSendDynamicImpulseProcedure,
 		hdlctrlv1connect.ControllerServiceIssueResoniteLinkConnectionProcedure,
 
 		// ===== ControllerService: 予約操作系 =====

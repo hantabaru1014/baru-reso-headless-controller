@@ -24,8 +24,7 @@ export default function SessionDetail() {
               <SessionUserList sessionId={id} />
             </div>
           )}
-          <div className="w-full space-y-2 border-t pt-4">
-            <h2 className="text-lg font-semibold">予約操作</h2>
+          <div className="w-full border-t pt-4">
             <ScheduledOperationList sessionId={id} />
           </div>
         </>

@@ -16,6 +16,7 @@ import {
   inviteUser,
   kickUser,
   listUsersInSession,
+  respawnUser,
   searchUserInfo,
   updateUserRole,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
@@ -164,9 +165,31 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
     useMutation(kickUser);
   const { mutateAsync: mutateBanUser, isPending: isPendingBan } =
     useMutation(banUser);
+  const { mutateAsync: mutateRespawnUser, isPending: isPendingRespawn } =
+    useMutation(respawnUser);
   const [isOpenInviteDialog, setIsOpenInviteDialog] = useState(false);
   const [chatUserId, setChatUserId] = useState<string | null>(null);
   const [actionUserId, setActionUserId] = useState<string | null>(null);
+
+  // DirectChatDialog に渡す contact は id / name が同じ間は identity を保つ必要がある
+  // (ChatMessagesPanel が contact を useEffect の dep に置いており、毎render新オブジェクトだと
+  // ポーリング useEffect が毎回張り直され、非常に高頻度に再レンダーが発生する).
+  const chatContactName = useMemo(
+    () =>
+      data?.users?.find((u) => u.id === chatUserId)?.name ?? chatUserId ?? "",
+    [data?.users, chatUserId],
+  );
+  const chatContact = useMemo(
+    () =>
+      chatUserId
+        ? create(UserInfoSchema, {
+            id: chatUserId,
+            name: chatContactName,
+            iconUrl: "",
+          })
+        : null,
+    [chatUserId, chatContactName],
+  );
 
   const { data: hostData } = useQuery(getHeadlessHost, {
     hostId: hostId ?? "",
@@ -272,6 +295,29 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
     }
   };
 
+  const handleRespawnUser = async (userId: string) => {
+    setActionUserId(userId);
+    try {
+      await mutateRespawnUser({
+        hostId,
+        parameters: {
+          sessionId,
+          user: {
+            case: "userId",
+            value: userId,
+          },
+        },
+      });
+      toast.success("ユーザーをリスポーンさせました");
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "ユーザーのリスポーンに失敗しました",
+      );
+    } finally {
+      setActionUserId(null);
+    }
+  };
+
   const columns: ColumnDef<UserInSession>[] = [
     {
       accessorKey: "name",
@@ -313,9 +359,20 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => handleRespawnUser(row.original.id)}
+                disabled={
+                  (isPendingKick || isPendingBan || isPendingRespawn) &&
+                  actionUserId === row.original.id
+                }
+              >
+                Respawn
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => handleKickUser(row.original.id)}
                 disabled={
-                  (isPendingKick || isPendingBan) &&
+                  (isPendingKick || isPendingBan || isPendingRespawn) &&
                   actionUserId === row.original.id
                 }
               >
@@ -326,7 +383,7 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
                 size="sm"
                 onClick={() => handleBanUser(row.original.id)}
                 disabled={
-                  (isPendingKick || isPendingBan) &&
+                  (isPendingKick || isPendingBan || isPendingRespawn) &&
                   actionUserId === row.original.id
                 }
               >
@@ -342,11 +399,14 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
   return (
     <>
       <div className="space-y-4">
-        <div className="flex justify-end space-x-2">
-          <Button onClick={() => setIsOpenInviteDialog(true)}>
-            ユーザー招待
-          </Button>
-          <RefetchButton refetch={refetch} />
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">ユーザー一覧</h2>
+          <div className="flex items-center space-x-2">
+            <RefetchButton refetch={refetch} />
+            <Button onClick={() => setIsOpenInviteDialog(true)}>
+              ユーザー招待
+            </Button>
+          </div>
         </div>
         <DataTable
           columns={columns}
@@ -371,18 +431,13 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
         hostId={hostId}
         sessionId={sessionId}
       />
-      {chatUserId && hostData?.host && (
+      {chatUserId && chatContact && hostData?.host && (
         <DirectChatDialog
           open={!!chatUserId}
           onClose={() => setChatUserId(null)}
           accountId={hostData.host.accountId}
           accountName={hostData.host.accountName}
-          contact={create(UserInfoSchema, {
-            id: chatUserId,
-            name:
-              data?.users?.find((u) => u.id === chatUserId)?.name ?? chatUserId,
-            iconUrl: "",
-          })}
+          contact={chatContact}
         />
       )}
     </>

@@ -90,6 +90,71 @@ func FetchUserInfo(ctx context.Context, resoniteID string) (*UserInfo, error) {
 	return &result, nil
 }
 
+// SearchUsersByName は Resonite Cloud の `GET /users?name=<query>` を叩いて
+// 部分一致するユーザー一覧を返す. 公開エンドポイント (認証不要), case-insensitive.
+// container の gRPC SearchUserInfo は SDK 経由でフレンドしか引けないため、
+// 未フレンドユーザー検索はこの関数を使う.
+func SearchUsersByName(ctx context.Context, name string) ([]UserInfo, error) {
+	reqUrl, err := url.JoinPath(API_BASE_URL, "users")
+	if err != nil {
+		return nil, errors.Errorf("failed to make request URL: %w", err)
+	}
+
+	q := url.Values{"name": []string{name}}
+	reqUrl = reqUrl + "?" + q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqUrl, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	if resp.StatusCode > 299 { //nolint:mnd // HTTP 2xx success range
+		return nil, errors.Errorf("failed to search users: %s", body)
+	}
+
+	jsonBody := string(body)
+	if !gjson.Valid(jsonBody) {
+		return nil, errors.Errorf("failed to search users: invalid json: %s", jsonBody)
+	}
+
+	arr := gjson.Parse(jsonBody)
+	if !arr.IsArray() {
+		return nil, errors.Errorf("failed to search users: expected array")
+	}
+
+	results := make([]UserInfo, 0, len(arr.Array()))
+
+	arr.ForEach(func(_, v gjson.Result) bool {
+		id := v.Get("id").String()
+		if id == "" {
+			return true
+		}
+
+		results = append(results, UserInfo{
+			ID:                 id,
+			UserName:           v.Get("username").String(),
+			NormalizedUserName: v.Get("normalizedUsername").String(),
+			IconUrl:            v.Get("profile.iconUrl").String(),
+		})
+
+		return true
+	})
+
+	return results, nil
+}
+
 type UserSession struct {
 	UserId string
 	token  string

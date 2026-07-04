@@ -36,8 +36,11 @@ service ControllerService {
   rpc SearchWorlds(SearchWorldsRequest) returns (SearchWorldsResponse);
   rpc GetOwnWorlds(GetOwnWorldsRequest) returns (GetOwnWorldsResponse);
   rpc GetResoniteUser(GetResoniteUserRequest) returns (GetResoniteUserResponse);
+  rpc SearchResoniteUsers(SearchResoniteUsersRequest) returns (SearchResoniteUsersResponse);
   rpc GetFriendRequests(GetFriendRequestsRequest) returns (GetFriendRequestsResponse);
   rpc AcceptFriendRequests(AcceptFriendRequestsRequest) returns (AcceptFriendRequestsResponse);
+  rpc SendFriendRequest(SendFriendRequestRequest) returns (SendFriendRequestResponse);
+  rpc RemoveContact(RemoveContactRequest) returns (RemoveContactResponse);
 
   // コンタクト・チャット系
   rpc ListContacts(ListContactsRequest) returns (ListContactsResponse);
@@ -59,6 +62,11 @@ service ControllerService {
   rpc ListUsersInSession(ListUsersInSessionRequest) returns (ListUsersInSessionResponse);
   rpc KickUser(KickUserRequest) returns (KickUserResponse);
   rpc BanUser(BanUserRequest) returns (BanUserResponse);
+  rpc ListBans(ListBansRequest) returns (ListBansResponse);
+  rpc UnbanUser(UnbanUserRequest) returns (UnbanUserResponse);
+  rpc RespawnUser(RespawnUserRequest) returns (RespawnUserResponse);
+  rpc SpawnItem(SpawnItemRequest) returns (SpawnItemResponse);
+  rpc SendDynamicImpulse(SendDynamicImpulseRequest) returns (SendDynamicImpulseResponse);
   rpc IssueResoniteLinkConnection(IssueResoniteLinkConnectionRequest) returns (IssueResoniteLinkConnectionResponse);
 
   // 予約操作系
@@ -309,6 +317,62 @@ message BanUserRequest {
 }
 
 message BanUserResponse {}
+
+// Ban はホスト単位で管理されているため session_id を持たない.
+message ListBansRequest {
+  string host_id = 1;
+}
+
+message ListBansResponse {
+  repeated headless.v1.BanEntry bans = 1;
+}
+
+message UnbanUserRequest {
+  string host_id = 1;
+  headless.v1.UnbanUserRequest parameters = 2;
+}
+
+message UnbanUserResponse {}
+
+message RespawnUserRequest {
+  string host_id = 1;
+  headless.v1.RespawnUserRequest parameters = 2;
+}
+
+message RespawnUserResponse {}
+
+message SpawnItemRequest {
+  string host_id = 1;
+  headless.v1.SpawnItemRequest parameters = 2;
+}
+
+message SpawnItemResponse {}
+
+message SendDynamicImpulseRequest {
+  string host_id = 1;
+  headless.v1.SendDynamicImpulseRequest parameters = 2;
+}
+
+message SendDynamicImpulseResponse {
+  int32 triggered_receivers = 1;
+}
+
+message SendFriendRequestRequest {
+  string headless_account_id = 1;
+  oneof user {
+    string user_id = 2;
+    string user_name = 3;
+  }
+}
+
+message SendFriendRequestResponse {}
+
+message RemoveContactRequest {
+  string headless_account_id = 1;
+  string target_user_id = 2;
+}
+
+message RemoveContactResponse {}
 
 // ResoniteLink (WebSocket) 接続用の短期トークン付きパスを発行する。
 // 返される ws_path は path + query のみ。クライアント (フロントエンド) は
@@ -635,6 +699,16 @@ message GetResoniteUserResponse {
   string id = 1;
   string name = 2;
   string icon_url = 3;
+}
+
+// Resonite Cloud の GET /users?name=<query> を叩く公開検索.
+// container を経由しないので、対象アカウントで起動中のホストが不要.
+message SearchResoniteUsersRequest {
+  string name = 1;
+}
+
+message SearchResoniteUsersResponse {
+  repeated UserInfo users = 1;
 }
 
 // コンタクト・チャット系メッセージ

@@ -136,12 +136,23 @@ export function ChatMessagesPanel({
   }, [messagesData?.pages, optimisticMessages]);
 
   // Virtual scrolling for messages
+  // NOTE: useVirtualizer (v3.14) は options のクロージャ identity 変化に敏感で、
+  // React 19 strict mode 下ではインラインの getScrollElement / estimateSize / getItemKey が
+  // 無限再レンダーを引き起こす. コールバックは useCallback で識別を安定化させる.
+  const getScrollElement = useCallback(() => scrollContainerRef.current, []);
+  const estimateSize = useCallback(() => 80, []);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  const getItemKey = useCallback(
+    (index: number) => messagesRef.current[index]?.id ?? index,
+    [],
+  );
   const virtualizer = useVirtualizer({
     count: messages.length,
-    getScrollElement: () => scrollContainerRef.current,
-    estimateSize: () => 80,
+    getScrollElement,
+    estimateSize,
     overscan: 5,
-    getItemKey: (index) => messages[index]?.id ?? index,
+    getItemKey,
   });
 
   const shouldScrollToBottomRef = useRef(true);

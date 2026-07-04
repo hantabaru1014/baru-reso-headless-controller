@@ -45,8 +45,11 @@ const (
 	ControllerService_SearchWorlds_FullMethodName                     = "/hdlctrl.v1.ControllerService/SearchWorlds"
 	ControllerService_GetOwnWorlds_FullMethodName                     = "/hdlctrl.v1.ControllerService/GetOwnWorlds"
 	ControllerService_GetResoniteUser_FullMethodName                  = "/hdlctrl.v1.ControllerService/GetResoniteUser"
+	ControllerService_SearchResoniteUsers_FullMethodName              = "/hdlctrl.v1.ControllerService/SearchResoniteUsers"
 	ControllerService_GetFriendRequests_FullMethodName                = "/hdlctrl.v1.ControllerService/GetFriendRequests"
 	ControllerService_AcceptFriendRequests_FullMethodName             = "/hdlctrl.v1.ControllerService/AcceptFriendRequests"
+	ControllerService_SendFriendRequest_FullMethodName                = "/hdlctrl.v1.ControllerService/SendFriendRequest"
+	ControllerService_RemoveContact_FullMethodName                    = "/hdlctrl.v1.ControllerService/RemoveContact"
 	ControllerService_ListContacts_FullMethodName                     = "/hdlctrl.v1.ControllerService/ListContacts"
 	ControllerService_GetContactMessages_FullMethodName               = "/hdlctrl.v1.ControllerService/GetContactMessages"
 	ControllerService_SendContactMessage_FullMethodName               = "/hdlctrl.v1.ControllerService/SendContactMessage"
@@ -64,6 +67,11 @@ const (
 	ControllerService_ListUsersInSession_FullMethodName               = "/hdlctrl.v1.ControllerService/ListUsersInSession"
 	ControllerService_KickUser_FullMethodName                         = "/hdlctrl.v1.ControllerService/KickUser"
 	ControllerService_BanUser_FullMethodName                          = "/hdlctrl.v1.ControllerService/BanUser"
+	ControllerService_ListBans_FullMethodName                         = "/hdlctrl.v1.ControllerService/ListBans"
+	ControllerService_UnbanUser_FullMethodName                        = "/hdlctrl.v1.ControllerService/UnbanUser"
+	ControllerService_RespawnUser_FullMethodName                      = "/hdlctrl.v1.ControllerService/RespawnUser"
+	ControllerService_SpawnItem_FullMethodName                        = "/hdlctrl.v1.ControllerService/SpawnItem"
+	ControllerService_SendDynamicImpulse_FullMethodName               = "/hdlctrl.v1.ControllerService/SendDynamicImpulse"
 	ControllerService_IssueResoniteLinkConnection_FullMethodName      = "/hdlctrl.v1.ControllerService/IssueResoniteLinkConnection"
 	ControllerService_CreateScheduledSessionOperation_FullMethodName  = "/hdlctrl.v1.ControllerService/CreateScheduledSessionOperation"
 	ControllerService_ListScheduledSessionOperations_FullMethodName   = "/hdlctrl.v1.ControllerService/ListScheduledSessionOperations"
@@ -102,8 +110,11 @@ type ControllerServiceClient interface {
 	SearchWorlds(ctx context.Context, in *SearchWorldsRequest, opts ...grpc.CallOption) (*SearchWorldsResponse, error)
 	GetOwnWorlds(ctx context.Context, in *GetOwnWorldsRequest, opts ...grpc.CallOption) (*GetOwnWorldsResponse, error)
 	GetResoniteUser(ctx context.Context, in *GetResoniteUserRequest, opts ...grpc.CallOption) (*GetResoniteUserResponse, error)
+	SearchResoniteUsers(ctx context.Context, in *SearchResoniteUsersRequest, opts ...grpc.CallOption) (*SearchResoniteUsersResponse, error)
 	GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*GetFriendRequestsResponse, error)
 	AcceptFriendRequests(ctx context.Context, in *AcceptFriendRequestsRequest, opts ...grpc.CallOption) (*AcceptFriendRequestsResponse, error)
+	SendFriendRequest(ctx context.Context, in *SendFriendRequestRequest, opts ...grpc.CallOption) (*SendFriendRequestResponse, error)
+	RemoveContact(ctx context.Context, in *RemoveContactRequest, opts ...grpc.CallOption) (*RemoveContactResponse, error)
 	// コンタクト・チャット系
 	ListContacts(ctx context.Context, in *ListContactsRequest, opts ...grpc.CallOption) (*ListContactsResponse, error)
 	GetContactMessages(ctx context.Context, in *GetContactMessagesRequest, opts ...grpc.CallOption) (*GetContactMessagesResponse, error)
@@ -123,6 +134,11 @@ type ControllerServiceClient interface {
 	ListUsersInSession(ctx context.Context, in *ListUsersInSessionRequest, opts ...grpc.CallOption) (*ListUsersInSessionResponse, error)
 	KickUser(ctx context.Context, in *KickUserRequest, opts ...grpc.CallOption) (*KickUserResponse, error)
 	BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*BanUserResponse, error)
+	ListBans(ctx context.Context, in *ListBansRequest, opts ...grpc.CallOption) (*ListBansResponse, error)
+	UnbanUser(ctx context.Context, in *UnbanUserRequest, opts ...grpc.CallOption) (*UnbanUserResponse, error)
+	RespawnUser(ctx context.Context, in *RespawnUserRequest, opts ...grpc.CallOption) (*RespawnUserResponse, error)
+	SpawnItem(ctx context.Context, in *SpawnItemRequest, opts ...grpc.CallOption) (*SpawnItemResponse, error)
+	SendDynamicImpulse(ctx context.Context, in *SendDynamicImpulseRequest, opts ...grpc.CallOption) (*SendDynamicImpulseResponse, error)
 	IssueResoniteLinkConnection(ctx context.Context, in *IssueResoniteLinkConnectionRequest, opts ...grpc.CallOption) (*IssueResoniteLinkConnectionResponse, error)
 	// 予約操作系
 	CreateScheduledSessionOperation(ctx context.Context, in *CreateScheduledSessionOperationRequest, opts ...grpc.CallOption) (*CreateScheduledSessionOperationResponse, error)
@@ -388,6 +404,16 @@ func (c *controllerServiceClient) GetResoniteUser(ctx context.Context, in *GetRe
 	return out, nil
 }
 
+func (c *controllerServiceClient) SearchResoniteUsers(ctx context.Context, in *SearchResoniteUsersRequest, opts ...grpc.CallOption) (*SearchResoniteUsersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchResoniteUsersResponse)
+	err := c.cc.Invoke(ctx, ControllerService_SearchResoniteUsers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *controllerServiceClient) GetFriendRequests(ctx context.Context, in *GetFriendRequestsRequest, opts ...grpc.CallOption) (*GetFriendRequestsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetFriendRequestsResponse)
@@ -402,6 +428,26 @@ func (c *controllerServiceClient) AcceptFriendRequests(ctx context.Context, in *
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AcceptFriendRequestsResponse)
 	err := c.cc.Invoke(ctx, ControllerService_AcceptFriendRequests_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) SendFriendRequest(ctx context.Context, in *SendFriendRequestRequest, opts ...grpc.CallOption) (*SendFriendRequestResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendFriendRequestResponse)
+	err := c.cc.Invoke(ctx, ControllerService_SendFriendRequest_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) RemoveContact(ctx context.Context, in *RemoveContactRequest, opts ...grpc.CallOption) (*RemoveContactResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveContactResponse)
+	err := c.cc.Invoke(ctx, ControllerService_RemoveContact_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -578,6 +624,56 @@ func (c *controllerServiceClient) BanUser(ctx context.Context, in *BanUserReques
 	return out, nil
 }
 
+func (c *controllerServiceClient) ListBans(ctx context.Context, in *ListBansRequest, opts ...grpc.CallOption) (*ListBansResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListBansResponse)
+	err := c.cc.Invoke(ctx, ControllerService_ListBans_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) UnbanUser(ctx context.Context, in *UnbanUserRequest, opts ...grpc.CallOption) (*UnbanUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnbanUserResponse)
+	err := c.cc.Invoke(ctx, ControllerService_UnbanUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) RespawnUser(ctx context.Context, in *RespawnUserRequest, opts ...grpc.CallOption) (*RespawnUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RespawnUserResponse)
+	err := c.cc.Invoke(ctx, ControllerService_RespawnUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) SpawnItem(ctx context.Context, in *SpawnItemRequest, opts ...grpc.CallOption) (*SpawnItemResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SpawnItemResponse)
+	err := c.cc.Invoke(ctx, ControllerService_SpawnItem_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) SendDynamicImpulse(ctx context.Context, in *SendDynamicImpulseRequest, opts ...grpc.CallOption) (*SendDynamicImpulseResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendDynamicImpulseResponse)
+	err := c.cc.Invoke(ctx, ControllerService_SendDynamicImpulse_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *controllerServiceClient) IssueResoniteLinkConnection(ctx context.Context, in *IssueResoniteLinkConnectionRequest, opts ...grpc.CallOption) (*IssueResoniteLinkConnectionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(IssueResoniteLinkConnectionResponse)
@@ -650,8 +746,11 @@ type ControllerServiceServer interface {
 	SearchWorlds(context.Context, *SearchWorldsRequest) (*SearchWorldsResponse, error)
 	GetOwnWorlds(context.Context, *GetOwnWorldsRequest) (*GetOwnWorldsResponse, error)
 	GetResoniteUser(context.Context, *GetResoniteUserRequest) (*GetResoniteUserResponse, error)
+	SearchResoniteUsers(context.Context, *SearchResoniteUsersRequest) (*SearchResoniteUsersResponse, error)
 	GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*GetFriendRequestsResponse, error)
 	AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error)
+	SendFriendRequest(context.Context, *SendFriendRequestRequest) (*SendFriendRequestResponse, error)
+	RemoveContact(context.Context, *RemoveContactRequest) (*RemoveContactResponse, error)
 	// コンタクト・チャット系
 	ListContacts(context.Context, *ListContactsRequest) (*ListContactsResponse, error)
 	GetContactMessages(context.Context, *GetContactMessagesRequest) (*GetContactMessagesResponse, error)
@@ -671,6 +770,11 @@ type ControllerServiceServer interface {
 	ListUsersInSession(context.Context, *ListUsersInSessionRequest) (*ListUsersInSessionResponse, error)
 	KickUser(context.Context, *KickUserRequest) (*KickUserResponse, error)
 	BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error)
+	ListBans(context.Context, *ListBansRequest) (*ListBansResponse, error)
+	UnbanUser(context.Context, *UnbanUserRequest) (*UnbanUserResponse, error)
+	RespawnUser(context.Context, *RespawnUserRequest) (*RespawnUserResponse, error)
+	SpawnItem(context.Context, *SpawnItemRequest) (*SpawnItemResponse, error)
+	SendDynamicImpulse(context.Context, *SendDynamicImpulseRequest) (*SendDynamicImpulseResponse, error)
 	IssueResoniteLinkConnection(context.Context, *IssueResoniteLinkConnectionRequest) (*IssueResoniteLinkConnectionResponse, error)
 	// 予約操作系
 	CreateScheduledSessionOperation(context.Context, *CreateScheduledSessionOperationRequest) (*CreateScheduledSessionOperationResponse, error)
@@ -761,11 +865,20 @@ func (UnimplementedControllerServiceServer) GetOwnWorlds(context.Context, *GetOw
 func (UnimplementedControllerServiceServer) GetResoniteUser(context.Context, *GetResoniteUserRequest) (*GetResoniteUserResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetResoniteUser not implemented")
 }
+func (UnimplementedControllerServiceServer) SearchResoniteUsers(context.Context, *SearchResoniteUsersRequest) (*SearchResoniteUsersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchResoniteUsers not implemented")
+}
 func (UnimplementedControllerServiceServer) GetFriendRequests(context.Context, *GetFriendRequestsRequest) (*GetFriendRequestsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetFriendRequests not implemented")
 }
 func (UnimplementedControllerServiceServer) AcceptFriendRequests(context.Context, *AcceptFriendRequestsRequest) (*AcceptFriendRequestsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AcceptFriendRequests not implemented")
+}
+func (UnimplementedControllerServiceServer) SendFriendRequest(context.Context, *SendFriendRequestRequest) (*SendFriendRequestResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendFriendRequest not implemented")
+}
+func (UnimplementedControllerServiceServer) RemoveContact(context.Context, *RemoveContactRequest) (*RemoveContactResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveContact not implemented")
 }
 func (UnimplementedControllerServiceServer) ListContacts(context.Context, *ListContactsRequest) (*ListContactsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListContacts not implemented")
@@ -817,6 +930,21 @@ func (UnimplementedControllerServiceServer) KickUser(context.Context, *KickUserR
 }
 func (UnimplementedControllerServiceServer) BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BanUser not implemented")
+}
+func (UnimplementedControllerServiceServer) ListBans(context.Context, *ListBansRequest) (*ListBansResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListBans not implemented")
+}
+func (UnimplementedControllerServiceServer) UnbanUser(context.Context, *UnbanUserRequest) (*UnbanUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnbanUser not implemented")
+}
+func (UnimplementedControllerServiceServer) RespawnUser(context.Context, *RespawnUserRequest) (*RespawnUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RespawnUser not implemented")
+}
+func (UnimplementedControllerServiceServer) SpawnItem(context.Context, *SpawnItemRequest) (*SpawnItemResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SpawnItem not implemented")
+}
+func (UnimplementedControllerServiceServer) SendDynamicImpulse(context.Context, *SendDynamicImpulseRequest) (*SendDynamicImpulseResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendDynamicImpulse not implemented")
 }
 func (UnimplementedControllerServiceServer) IssueResoniteLinkConnection(context.Context, *IssueResoniteLinkConnectionRequest) (*IssueResoniteLinkConnectionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method IssueResoniteLinkConnection not implemented")
@@ -1301,6 +1429,24 @@ func _ControllerService_GetResoniteUser_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_SearchResoniteUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchResoniteUsersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).SearchResoniteUsers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_SearchResoniteUsers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).SearchResoniteUsers(ctx, req.(*SearchResoniteUsersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ControllerService_GetFriendRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetFriendRequestsRequest)
 	if err := dec(in); err != nil {
@@ -1333,6 +1479,42 @@ func _ControllerService_AcceptFriendRequests_Handler(srv interface{}, ctx contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).AcceptFriendRequests(ctx, req.(*AcceptFriendRequestsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_SendFriendRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendFriendRequestRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).SendFriendRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_SendFriendRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).SendFriendRequest(ctx, req.(*SendFriendRequestRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_RemoveContact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveContactRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).RemoveContact(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_RemoveContact_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).RemoveContact(ctx, req.(*RemoveContactRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1643,6 +1825,96 @@ func _ControllerService_BanUser_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_ListBans_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListBansRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).ListBans(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_ListBans_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).ListBans(ctx, req.(*ListBansRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_UnbanUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnbanUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).UnbanUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_UnbanUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).UnbanUser(ctx, req.(*UnbanUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_RespawnUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RespawnUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).RespawnUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_RespawnUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).RespawnUser(ctx, req.(*RespawnUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_SpawnItem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SpawnItemRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).SpawnItem(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_SpawnItem_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).SpawnItem(ctx, req.(*SpawnItemRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_SendDynamicImpulse_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendDynamicImpulseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).SendDynamicImpulse(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_SendDynamicImpulse_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).SendDynamicImpulse(ctx, req.(*SendDynamicImpulseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ControllerService_IssueResoniteLinkConnection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(IssueResoniteLinkConnectionRequest)
 	if err := dec(in); err != nil {
@@ -1823,12 +2095,24 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ControllerService_GetResoniteUser_Handler,
 		},
 		{
+			MethodName: "SearchResoniteUsers",
+			Handler:    _ControllerService_SearchResoniteUsers_Handler,
+		},
+		{
 			MethodName: "GetFriendRequests",
 			Handler:    _ControllerService_GetFriendRequests_Handler,
 		},
 		{
 			MethodName: "AcceptFriendRequests",
 			Handler:    _ControllerService_AcceptFriendRequests_Handler,
+		},
+		{
+			MethodName: "SendFriendRequest",
+			Handler:    _ControllerService_SendFriendRequest_Handler,
+		},
+		{
+			MethodName: "RemoveContact",
+			Handler:    _ControllerService_RemoveContact_Handler,
 		},
 		{
 			MethodName: "ListContacts",
@@ -1897,6 +2181,26 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BanUser",
 			Handler:    _ControllerService_BanUser_Handler,
+		},
+		{
+			MethodName: "ListBans",
+			Handler:    _ControllerService_ListBans_Handler,
+		},
+		{
+			MethodName: "UnbanUser",
+			Handler:    _ControllerService_UnbanUser_Handler,
+		},
+		{
+			MethodName: "RespawnUser",
+			Handler:    _ControllerService_RespawnUser_Handler,
+		},
+		{
+			MethodName: "SpawnItem",
+			Handler:    _ControllerService_SpawnItem_Handler,
+		},
+		{
+			MethodName: "SendDynamicImpulse",
+			Handler:    _ControllerService_SendDynamicImpulse_Handler,
 		},
 		{
 			MethodName: "IssueResoniteLinkConnection",

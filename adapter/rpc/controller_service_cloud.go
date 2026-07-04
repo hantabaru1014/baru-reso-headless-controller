@@ -51,6 +51,81 @@ func (c *ControllerService) AcceptFriendRequests(ctx context.Context, req *conne
 	return res, nil
 }
 
+// SendFriendRequest implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: account.group_id に対して account:use.
+// container RPC が cloud を叩くため、そのアカウントで起動中のホストが必要.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceSendFriendRequestProcedure,
+	checkAccountPermission(entity.PermKey_AccountUse, accountIDFromSendFriendRequest),
+)
+
+func (c *ControllerService) SendFriendRequest(ctx context.Context, req *connect.Request[hdlctrlv1.SendFriendRequestRequest]) (*connect.Response[hdlctrlv1.SendFriendRequestResponse], error) {
+	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.GetHeadlessAccountId())
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	if len(hosts) == 0 {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("このアカウントで起動中のヘッドレスホストが必要です"))
+	}
+
+	conn, err := c.hhrepo.GetRpcClient(ctx, hosts[0].ID)
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	hreq := &headlessv1.SendFriendRequestRequest{}
+
+	switch req.Msg.GetUser().(type) {
+	case *hdlctrlv1.SendFriendRequestRequest_UserId:
+		hreq.User = &headlessv1.SendFriendRequestRequest_UserId{UserId: req.Msg.GetUserId()}
+	case *hdlctrlv1.SendFriendRequestRequest_UserName:
+		hreq.User = &headlessv1.SendFriendRequestRequest_UserName{UserName: req.Msg.GetUserName()}
+	default:
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_id or user_name is required"))
+	}
+
+	_, err = conn.SendFriendRequest(ctx, hreq)
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.SendFriendRequestResponse{}), nil
+}
+
+// RemoveContact implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: account.group_id に対して account:use.
+// フレンドリクエストの拒否や既存コンタクトの削除に使う.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceRemoveContactProcedure,
+	checkAccountPermission(entity.PermKey_AccountUse, accountIDFromRemoveContact),
+)
+
+func (c *ControllerService) RemoveContact(ctx context.Context, req *connect.Request[hdlctrlv1.RemoveContactRequest]) (*connect.Response[hdlctrlv1.RemoveContactResponse], error) {
+	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.GetHeadlessAccountId())
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	if len(hosts) == 0 {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("このアカウントで起動中のヘッドレスホストが必要です"))
+	}
+
+	conn, err := c.hhrepo.GetRpcClient(ctx, hosts[0].ID)
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	_, err = conn.RemoveContact(ctx, &headlessv1.RemoveContactRequest{
+		UserId: req.Msg.GetTargetUserId(),
+	})
+	if err != nil {
+		return nil, convertRpcClientErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.RemoveContactResponse{}), nil
+}
+
 // GetFriendRequests implements hdlctrlv1connect.ControllerServiceHandler.
 // 権限: account.group_id に対して account:use.
 var _ = registerRPCPermission(
@@ -132,6 +207,36 @@ func (c *ControllerService) FetchWorldInfo(ctx context.Context, req *connect.Req
 	res := connect.NewResponse(headlessRes)
 
 	return res, nil
+}
+
+// SearchResoniteUsers implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: 認証のみ (Resonite の公開エンドポイントを叩くだけ).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceSearchResoniteUsersProcedure,
+	requireAuthOnly,
+)
+
+func (c *ControllerService) SearchResoniteUsers(ctx context.Context, req *connect.Request[hdlctrlv1.SearchResoniteUsersRequest]) (*connect.Response[hdlctrlv1.SearchResoniteUsersResponse], error) {
+	name := req.Msg.GetName()
+	if name == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+
+	users, err := c.skyfrostClient.SearchUsersByName(ctx, name)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to search users: %w", err))
+	}
+
+	out := make([]*hdlctrlv1.UserInfo, 0, len(users))
+	for _, u := range users {
+		out = append(out, &hdlctrlv1.UserInfo{
+			Id:      u.ID,
+			Name:    u.UserName,
+			IconUrl: u.IconUrl,
+		})
+	}
+
+	return connect.NewResponse(&hdlctrlv1.SearchResoniteUsersResponse{Users: out}), nil
 }
 
 // GetResoniteUser implements hdlctrlv1connect.ControllerServiceHandler.

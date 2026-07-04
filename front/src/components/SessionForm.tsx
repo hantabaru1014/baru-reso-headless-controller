@@ -1,5 +1,4 @@
 import { useMutation, useQuery } from "@connectrpc/connect-query";
-import { useState } from "react";
 import {
   deleteEndedSession,
   getSessionDetails,
@@ -22,7 +21,7 @@ import { toast } from "sonner";
 import { EditableTextArea, SplitButton } from "./base";
 import { AspectRatio, DropdownMenuItem } from "./ui";
 import HostTip from "./HostTip";
-import { ResoniteLinkConnectionDialog } from "./ResoniteLinkConnectionDialog";
+import { SessionOpsMenu } from "./SessionOpsMenu";
 
 const BOOL_SELECT_OPTIONS = [
   { id: "true", label: "はい", value: true },
@@ -40,7 +39,6 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
   const { mutateAsync: mutateDelete, isPending: isPendingDelete } =
     useMutation(deleteEndedSession);
   const navigate = useNavigate();
-  const [openLinkDialog, setOpenLinkDialog] = useState(false);
 
   const hostId = data?.session?.hostId;
   const isRunning = data?.session?.status === SessionStatus.RUNNING;
@@ -148,6 +146,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                 sessionId={sessionId}
                 canSaveOverride={sessionState?.canSave}
                 canSaveAs={sessionState?.canSaveAs}
+                leadingButtons={<RefetchButton refetch={refetch} />}
                 additionalButtons={
                   <>
                     <SplitButton
@@ -164,20 +163,11 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                     >
                       URLをコピー
                     </SplitButton>
-                    <Button
-                      variant="outline"
-                      onClick={() => setOpenLinkDialog(true)}
-                    >
-                      ResoniteLink接続URL
-                    </Button>
-                    <RefetchButton refetch={refetch} />
+                    {hostId && (
+                      <SessionOpsMenu hostId={hostId} sessionId={sessionId} />
+                    )}
                   </>
                 }
-              />
-              <ResoniteLinkConnectionDialog
-                sessionId={sessionId}
-                open={openLinkDialog}
-                onOpenChange={setOpenLinkDialog}
               />
             </>
           ) : (
