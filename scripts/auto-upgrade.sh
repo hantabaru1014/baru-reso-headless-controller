@@ -112,7 +112,7 @@ else
 fi
 
 echo "4. データベースマイグレーションを実行中..."
-./brhcli migrate
+docker compose run --rm -T app -migrate-only
 
 # container_logsテーブルが新規作成された場合のみ、fluentbit関連のセットアップを実行
 if [ "$NEEDS_CONTAINER_LOGS_SETUP" = "true" ]; then
@@ -151,6 +151,11 @@ else
   echo "   rustfsコンテナを起動しました"
 fi
 
+# app コンテナを新しいイメージで再作成する.
+# 既に古いイメージで起動中の場合でも確実に新イメージに置き換わるよう --force-recreate を付ける.
+echo "8. app コンテナを新しいイメージで再作成中..."
+docker compose up -d --force-recreate
+
 echo ""
 echo "✅ アップグレードが完了しました！"
 echo ""
@@ -165,4 +170,5 @@ if [ "$NEEDS_RUSTFS_SETUP" = "true" ]; then
   echo "- RustFS関連の設定を.envに追加"
 fi
 echo "- rustfsコンテナを起動"
+echo "- app コンテナを新しいイメージで再作成"
 echo ""

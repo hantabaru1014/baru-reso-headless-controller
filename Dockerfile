@@ -13,4 +13,4 @@ FROM gcr.io/distroless/static-debian12
 
 COPY --from=build /go/bin/app /
 USER nonroot
-CMD ["/app"]
+ENTRYPOINT ["/app"]

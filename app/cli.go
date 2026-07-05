@@ -33,7 +33,6 @@ func NewCli(
 	}
 	rootCmd.AddCommand(commands.NewHostCommand(hu))
 	rootCmd.AddCommand(commands.NewUserCommand(uu, skyfrostClient))
-	rootCmd.AddCommand(commands.NewMigrateCommand())
 	rootCmd.AddCommand(commands.NewImportLegacyHostsCommand(queries, skyfrostClient))
 	rootCmd.AddCommand(commands.NewScheduledCommand(sou))
 	rootCmd.AddCommand(commands.NewSystemAdminCommand(guc))
