@@ -22,6 +22,7 @@ func Migrate(dbURL string) error {
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = d.Close() }()
 
 	m, err := migrate.NewWithSourceInstance("iofs", d, dbURL)
