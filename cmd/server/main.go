@@ -11,19 +11,22 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/app"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
+	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 )
 
 const (
-	flagHost    = "host"
-	flagFDev    = "fdev"
-	flagFDevURL = "fdev-url"
+	flagHost        = "host"
+	flagFDev        = "fdev"
+	flagFDevURL     = "fdev-url"
+	flagMigrateOnly = "migrate-only"
 )
 
 var (
 	hostAddress       = flag.String(flagHost, "", "The address to serve the server (overrides HOST env)")
 	isFrontDev        = flag.Bool(flagFDev, false, "Whether to use the front-end development server (overrides FDEV env)")
 	frontDevServerUrl = flag.String(flagFDevURL, "", "The URL of the front-end development server (overrides FDEV_URL env)")
+	migrateOnly       = flag.Bool(flagMigrateOnly, false, "Run DB migrations and exit without starting the server")
 )
 
 func main() {
@@ -35,10 +38,33 @@ func main() {
 		os.Exit(1)
 	}
 
+	// -migrate-only は最小 config (DB_URL) で走らせられるように、
+	// フルの Validate と applyFlagOverrides より前で分岐する.
+	if *migrateOnly {
+		if cfg.Database.URL == "" {
+			slog.Error("DB_URL is required")
+			os.Exit(1)
+		}
+
+		if err := db.Migrate(cfg.Database.URL); err != nil {
+			slog.Error("Failed to run database migrations", "error", err)
+			os.Exit(1)
+		}
+
+		slog.Info("Migration-only mode: exiting after successful migration")
+
+		return
+	}
+
 	applyFlagOverrides(cfg)
 
 	if err := cfg.Validate(); err != nil {
 		slog.Error("Invalid config", "error", err)
+		os.Exit(1)
+	}
+
+	if err := db.Migrate(cfg.Database.URL); err != nil {
+		slog.Error("Failed to run database migrations", "error", err)
 		os.Exit(1)
 	}
 

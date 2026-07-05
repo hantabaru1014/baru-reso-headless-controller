@@ -96,9 +96,9 @@ for i in $(seq 1 30); do
   sleep 1
 done
 
-# マイグレーションを実行
+# マイグレーションを実行 (app コンテナに埋め込まれたマイグレーションを one-shot 実行)
 echo "3. データベースマイグレーションを実行中..."
-./brhcli migrate
+docker compose run --rm -T app -migrate-only
 
 # fluentbitユーザーのパスワードを設定
 echo "4. fluentbitユーザーのパスワードを設定中..."

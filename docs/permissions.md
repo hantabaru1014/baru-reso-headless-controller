@@ -152,7 +152,6 @@ session.group_id == host.group_id == account.group_id
 | `brhcli user delete <id>` | ユーザーを削除 |
 | `brhcli system-admin add <userID>` | system グループに `system-admin` ロールで追加 |
 | `brhcli system-admin remove <userID>` | system グループから削除 (最後の 1 人は削除不可) |
-| `brhcli migrate` | DB マイグレーションの適用 |
 
 CLI は内部的に固定の **system ユーザー** として実行されるため、すべての権限を持ちます。
 
