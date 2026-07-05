@@ -19,6 +19,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/async_job"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/image_builder"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/notification"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/hantabaru1014/baru-reso-headless-controller/worker"
@@ -51,7 +52,11 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	serverConfig := ProvideServerConfig(cfg)
 	resoniteLinkConfig := ProvideResoniteLinkConfig(cfg)
 	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, hostUpgradeOrchestrator, memoryCache, serverConfig, resoniteLinkConfig, permissionUsecase)
-	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase, permissionUsecase)
+	resoniteVersionRepository := adapter.NewResoniteVersionRepository(queries)
+	resoniteBuildConfig := ProvideResoniteBuildConfig(cfg)
+	builder := image_builder.NewBuilder(resoniteBuildConfig, dockerConfig)
+	resoniteVersionUsecase := usecase.NewResoniteVersionUsecase(resoniteVersionRepository, builder, resoniteBuildConfig)
+	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase, permissionUsecase, resoniteVersionUsecase)
 	rustFSConfig := ProvideRustFSConfig(cfg)
 	minioClient, err := blobstore.NewMinioClient(rustFSConfig)
 	if err != nil {
@@ -63,12 +68,12 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	asyncJobRepository := adapter.NewAsyncJobRepository(queries)
 	async_jobUsecase := async_job.NewUsecase(asyncJobRepository)
 	memoryBus := notification.NewBus()
-	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, blobUsecase, scheduledSessionOperationUsecase, async_jobUsecase, permissionUsecase, groupRepository, roleRepository, defaultClient, memoryBus)
+	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, blobUsecase, scheduledSessionOperationUsecase, async_jobUsecase, resoniteVersionUsecase, permissionUsecase, groupRepository, roleRepository, defaultClient, memoryBus)
 	notificationService := rpc.NewNotificationService(memoryBus, headlessHostRepository, permissionUsecase)
 	groupService := rpc.NewGroupService(groupUsecase, permissionUsecase, groupRepository, roleRepository, headlessHostRepository, sessionRepository, headlessAccountUsecase)
 	roleUsecase := usecase.NewRoleUsecase(roleRepository, groupRepository, permissionUsecase)
 	roleService := rpc.NewRoleService(roleUsecase, permissionUsecase, groupRepository, roleRepository, headlessHostRepository, sessionRepository, headlessAccountUsecase)
-	imageChecker := worker.NewImageChecker(dockerHostConnector, workerConfig)
+	contentPoller := ProvideContentPoller(resoniteVersionUsecase, async_jobUsecase, workerConfig)
 	dockerEventWatcher := worker.NewDockerEventWatcher(dockerHostConnector, queries, memoryBus, workerConfig)
 	sqlHostEventStore := worker.NewSQLHostEventStore(queries)
 	sessionStateSyncHandler := worker.NewSessionStateSyncHandler(sessionRepository, headlessHostRepository, memoryCache)
@@ -79,9 +84,10 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	hostEventWatcher := worker.NewHostEventWatcher(headlessHostRepository, sqlHostEventStore, workerConfig, v)
 	userExistenceChecker := adapter.NewUserExistenceChecker(queries)
 	scheduledOperationExecutor := ProvideScheduledOperationExecutor(scheduledSessionOperationRepository, sessionUsecase, sessionRepository, memoryCache, userExistenceChecker)
-	dispatcher := ProvideAsyncJobDispatcher(headlessHostUsecase, sessionUsecase, headlessAccountUsecase)
+	imageBuildOperator := ProvideImageBuildOperator(resoniteVersionUsecase)
+	dispatcher := ProvideAsyncJobDispatcher(headlessHostUsecase, sessionUsecase, headlessAccountUsecase, imageBuildOperator, async_jobUsecase)
 	asyncJobExecutor := ProvideAsyncJobExecutor(asyncJobRepository, dispatcher, memoryBus, userExistenceChecker)
-	manager := ProvideWorkerManager(imageChecker, dockerEventWatcher, hostEventWatcher, hostUpgradeOrchestrator, scheduledOperationExecutor, asyncJobExecutor, sessionUsecase)
+	manager := ProvideWorkerManager(contentPoller, dockerEventWatcher, hostEventWatcher, hostUpgradeOrchestrator, scheduledOperationExecutor, asyncJobExecutor, sessionUsecase, resoniteVersionUsecase)
 	bridge := resonitelink.NewBridge(headlessHostRepository, sessionRepository, resoniteLinkConfig)
 	server := NewServer(userService, controllerService, notificationService, groupService, roleService, manager, minioClient, bridge)
 	return server, nil
@@ -109,7 +115,11 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 	resoniteLinkConfig := ProvideResoniteLinkConfig(cfg)
 	sessionUsecase := usecase.NewSessionUsecase(sessionRepository, headlessHostRepository, noopHostDrainer, memoryCache, serverConfig, resoniteLinkConfig, permissionUsecase)
 	headlessAccountUsecase := usecase.NewHeadlessAccountUsecase(queries, defaultClient, permissionUsecase)
-	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase, permissionUsecase)
+	resoniteVersionRepository := adapter.NewResoniteVersionRepository(queries)
+	resoniteBuildConfig := ProvideResoniteBuildConfig(cfg)
+	builder := image_builder.NewBuilder(resoniteBuildConfig, dockerConfig)
+	resoniteVersionUsecase := usecase.NewResoniteVersionUsecase(resoniteVersionRepository, builder, resoniteBuildConfig)
+	headlessHostUsecase := usecase.NewHeadlessHostUsecase(headlessHostRepository, sessionRepository, sessionUsecase, headlessAccountUsecase, permissionUsecase, resoniteVersionUsecase)
 	scheduledSessionOperationRepository := adapter.NewScheduledSessionOperationRepository(queries)
 	scheduledSessionOperationUsecase := usecase.NewScheduledSessionOperationUsecase(scheduledSessionOperationRepository, headlessHostRepository, sessionRepository, permissionUsecase)
 	cli := NewCli(queries, userUsecase, headlessHostUsecase, scheduledSessionOperationUsecase, groupUsecase, defaultClient)
@@ -147,34 +157,56 @@ func ProvideResoniteLinkConfig(cfg *config.EnvConfig) *config.ResoniteLinkConfig
 	return &cfg.ResoniteLink
 }
 
+func ProvideResoniteBuildConfig(cfg *config.EnvConfig) *config.ResoniteBuildConfig {
+	return &cfg.ResoniteBuild
+}
+
 // ProvideWorkerManager groups the concrete background workers AND
 // performs two post-construction links that wire itself cannot express:
 //   - The orchestrator needs a SessionStopper (SessionUsecase), but
 //     SessionUsecase needs a HostDrainer (the orchestrator). Wire can
 //     pick only one direction at construction time; we close the cycle
 //     by setting the stopper here, after both ends exist.
-//   - The orchestrator subscribes to ImageChecker so registry polling
-//     happens in exactly one place.
+//   - The orchestrator subscribes to ResoniteVersionUsecase's build-success
+//     stream so a freshly-built image can trigger draining of RUNNING
+//     auto-update hosts.
 func ProvideWorkerManager(
-	imageChecker *worker.ImageChecker,
+	contentPoller *worker.ContentPoller,
 	dockerEventWatcher *worker.DockerEventWatcher,
 	hostEventWatcher *worker.HostEventWatcher,
 	upgradeOrchestrator *worker.HostUpgradeOrchestrator,
 	scheduledOpExecutor *worker.ScheduledOperationExecutor,
 	asyncJobExecutor *worker.AsyncJobExecutor,
 	sessionStopper port.SessionStopper,
+	rvuc *usecase.ResoniteVersionUsecase,
 ) *worker.Manager {
 	upgradeOrchestrator.SetSessionStopper(sessionStopper)
-	imageChecker.Subscribe(upgradeOrchestrator.OnNewImage)
+	rvuc.Subscribe(upgradeOrchestrator.OnNewImage)
 
 	return worker.NewManager([]worker.Runner{
-		imageChecker,
+		contentPoller,
 		dockerEventWatcher,
 		hostEventWatcher,
 		upgradeOrchestrator,
 		scheduledOpExecutor,
 		asyncJobExecutor,
 	})
+}
+
+// ProvideContentPoller は worker.ContentPoller に必要な narrow interface を
+// ResoniteVersionUsecase / async_job.Usecase から供給する.
+func ProvideContentPoller(
+	rvuc *usecase.ResoniteVersionUsecase,
+	ajuc *async_job.Usecase,
+	cfg *config.WorkerConfig,
+) *worker.ContentPoller {
+	return worker.NewContentPoller(rvuc, ajuc, cfg)
+}
+
+// ProvideImageBuildOperator は async_job.Dispatcher に ImageBuildOperator を
+// 供給する. ResoniteVersionUsecase.RunBuild を裏で呼ぶ.
+func ProvideImageBuildOperator(rvuc *usecase.ResoniteVersionUsecase) async_job.ImageBuildOperator {
+	return rvuc
 }
 
 // ProvideScheduledOperationExecutor は scheduled session operation worker を
@@ -197,8 +229,10 @@ func ProvideAsyncJobDispatcher(
 	hhuc *usecase.HeadlessHostUsecase,
 	suc *usecase.SessionUsecase,
 	hauc *usecase.HeadlessAccountUsecase,
+	imgOp async_job.ImageBuildOperator,
+	ajuc *async_job.Usecase,
 ) *async_job.Dispatcher {
-	return async_job.NewDispatcher(hhuc, suc, hauc)
+	return async_job.NewDispatcher(hhuc, suc, hauc, imgOp, ajuc)
 }
 
 // ProvideAsyncJobExecutor は AsyncJobExecutor worker を構築する.
@@ -244,4 +278,5 @@ var ConfigSet = wire.NewSet(
 	ProvideServerConfig,
 	ProvideRustFSConfig,
 	ProvideResoniteLinkConfig,
+	ProvideResoniteBuildConfig,
 )

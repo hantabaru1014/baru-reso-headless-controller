@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -12,7 +13,6 @@ import (
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/testutil"
-	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,71 +20,76 @@ import (
 )
 
 func TestControllerService_ListHeadlessHostImageTags(t *testing.T) {
-	t.Run("成功: イメージタグ一覧を取得", func(t *testing.T) {
+	t.Run("成功: DB の built 済み resonite_versions を返す", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
 		client := setupAuthenticatedClient(t, setup.service)
 
-		// Mock HostConnector to return test tags
-		setup.mockHostConnector.EXPECT().
-			ListContainerTags(gomock.Any(), nil).
-			Return(port.ContainerImageList{
-				{
-					Tag:             "2024.1.1-v1.0.0",
-					ResoniteVersion: "2024.1.1",
-					IsPreRelease:    false,
-					AppVersion:      "v1.0.0",
-				},
-				{
-					Tag:             "prerelease-2024.1.2-v1.1.0",
-					ResoniteVersion: "2024.1.2",
-					IsPreRelease:    true,
-					AppVersion:      "v1.1.0",
-				},
-			}, nil)
+		ctx := t.Context()
+		// build 済み 1 件 (headless)
+		gv1 := "2024.1.1"
+		require.NoError(t, seedBuiltResoVersion(ctx, setup.queries, "MANIFEST-1", "headless", gv1, "2024.1.1-v1.0.0", "v1.0.0"))
+		// build 済み 1 件 (prerelease)
+		gv2 := "2024.1.2"
+		require.NoError(t, seedBuiltResoVersion(ctx, setup.queries, "MANIFEST-2", "prerelease", gv2, "prerelease-2024.1.2-v1.1.0", "v1.1.0"))
+		// 未 built (返却対象外)
+		require.NoError(t, seedNotBuiltResoVersion(ctx, setup.queries, "MANIFEST-3", "headless", "2024.1.3"))
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessHostImageTagsRequest{})
 
-		res, err := client.ListHeadlessHostImageTags(t.Context(), req)
+		res, err := client.ListHeadlessHostImageTags(ctx, req)
 		require.NoError(t, err)
 		assert.NotNil(t, res.Msg)
 		assert.Len(t, res.Msg.GetTags(), 2)
 
-		// Verify first tag
-		assert.Equal(t, "2024.1.1-v1.0.0", res.Msg.GetTags()[0].GetTag())
-		assert.Equal(t, "2024.1.1", res.Msg.GetTags()[0].GetResoniteVersion())
-		assert.False(t, res.Msg.GetTags()[0].GetIsPrerelease())
-		assert.Equal(t, "v1.0.0", res.Msg.GetTags()[0].GetAppVersion())
+		gotTags := map[string]*hdlctrlv1.ListHeadlessHostImageTagsResponse_ContainerImage{}
+		for _, t := range res.Msg.GetTags() {
+			gotTags[t.GetTag()] = t
+		}
 
-		// Verify second tag
-		assert.Equal(t, "prerelease-2024.1.2-v1.1.0", res.Msg.GetTags()[1].GetTag())
-		assert.Equal(t, "2024.1.2", res.Msg.GetTags()[1].GetResoniteVersion())
-		assert.True(t, res.Msg.GetTags()[1].GetIsPrerelease())
-		assert.Equal(t, "v1.1.0", res.Msg.GetTags()[1].GetAppVersion())
+		require.Contains(t, gotTags, "2024.1.1-v1.0.0")
+		assert.Equal(t, "2024.1.1", gotTags["2024.1.1-v1.0.0"].GetResoniteVersion())
+		assert.False(t, gotTags["2024.1.1-v1.0.0"].GetIsPrerelease())
+		assert.Equal(t, "v1.0.0", gotTags["2024.1.1-v1.0.0"].GetAppVersion())
+
+		require.Contains(t, gotTags, "prerelease-2024.1.2-v1.1.0")
+		assert.True(t, gotTags["prerelease-2024.1.2-v1.1.0"].GetIsPrerelease())
+		assert.Equal(t, "v1.1.0", gotTags["prerelease-2024.1.2-v1.1.0"].GetAppVersion())
+	})
+}
+
+func seedBuiltResoVersion(ctx context.Context, q *db.Queries, manifestID, branch, gameVersion, imageTag, appVersion string) error {
+	if _, err := q.UpsertResoniteVersion(ctx, db.UpsertResoniteVersionParams{
+		ManifestID:  manifestID,
+		Branch:      branch,
+		GameVersion: pgtype.Text{String: gameVersion, Valid: true},
+		ReleasedAt:  pgtype.Timestamptz{Time: time.Now(), Valid: true},
+	}); err != nil {
+		return err
+	}
+
+	if _, err := q.SetResoniteVersionBuilt(ctx, db.SetResoniteVersionBuiltParams{
+		ManifestID:          manifestID,
+		Branch:              branch,
+		ImageTag:            imageTag,
+		BuiltWithAppVersion: appVersion,
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func seedNotBuiltResoVersion(ctx context.Context, q *db.Queries, manifestID, branch, gameVersion string) error {
+	_, err := q.UpsertResoniteVersion(ctx, db.UpsertResoniteVersionParams{
+		ManifestID:  manifestID,
+		Branch:      branch,
+		GameVersion: pgtype.Text{String: gameVersion, Valid: true},
+		ReleasedAt:  pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	})
 
-	t.Run("失敗: コネクタでエラー発生", func(t *testing.T) {
-		setup := setupControllerServiceTest(t)
-		defer setup.Cleanup()
-
-		client := setupAuthenticatedClient(t, setup.service)
-
-		// Mock HostConnector to return error
-		setup.mockHostConnector.EXPECT().
-			ListContainerTags(gomock.Any(), nil).
-			Return(nil, connect.NewError(connect.CodeInternal, nil))
-
-		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessHostImageTagsRequest{})
-
-		_, err := client.ListHeadlessHostImageTags(t.Context(), req)
-		require.Error(t, err)
-
-		connectErr := &connect.Error{}
-		ok := errors.As(err, &connectErr)
-		require.True(t, ok, "expected connect.Error")
-		assert.Equal(t, connect.CodeInternal, connectErr.Code())
-	})
+	return err
 }
 
 func TestControllerService_StartHeadlessHost(t *testing.T) {

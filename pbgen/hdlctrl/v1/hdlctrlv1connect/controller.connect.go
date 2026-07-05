@@ -73,6 +73,12 @@ const (
 	// ControllerServiceListHeadlessHostInstancesProcedure is the fully-qualified name of the
 	// ControllerService's ListHeadlessHostInstances RPC.
 	ControllerServiceListHeadlessHostInstancesProcedure = "/hdlctrl.v1.ControllerService/ListHeadlessHostInstances"
+	// ControllerServiceListResoniteVersionsProcedure is the fully-qualified name of the
+	// ControllerService's ListResoniteVersions RPC.
+	ControllerServiceListResoniteVersionsProcedure = "/hdlctrl.v1.ControllerService/ListResoniteVersions"
+	// ControllerServiceBuildResoniteImageProcedure is the fully-qualified name of the
+	// ControllerService's BuildResoniteImage RPC.
+	ControllerServiceBuildResoniteImageProcedure = "/hdlctrl.v1.ControllerService/BuildResoniteImage"
 	// ControllerServiceCreateHeadlessAccountProcedure is the fully-qualified name of the
 	// ControllerService's CreateHeadlessAccount RPC.
 	ControllerServiceCreateHeadlessAccountProcedure = "/hdlctrl.v1.ControllerService/CreateHeadlessAccount"
@@ -220,6 +226,8 @@ type ControllerServiceClient interface {
 	ListHeadlessHostImageTags(context.Context, *connect.Request[v1.ListHeadlessHostImageTagsRequest]) (*connect.Response[v1.ListHeadlessHostImageTagsResponse], error)
 	DeleteHeadlessHost(context.Context, *connect.Request[v1.DeleteHeadlessHostRequest]) (*connect.Response[v1.DeleteHeadlessHostResponse], error)
 	ListHeadlessHostInstances(context.Context, *connect.Request[v1.ListHeadlessHostInstancesRequest]) (*connect.Response[v1.ListHeadlessHostInstancesResponse], error)
+	ListResoniteVersions(context.Context, *connect.Request[v1.ListResoniteVersionsRequest]) (*connect.Response[v1.ListResoniteVersionsResponse], error)
+	BuildResoniteImage(context.Context, *connect.Request[v1.BuildResoniteImageRequest]) (*connect.Response[v1.BuildResoniteImageResponse], error)
 	// アカウント系
 	CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error)
 	ListHeadlessAccounts(context.Context, *connect.Request[v1.ListHeadlessAccountsRequest]) (*connect.Response[v1.ListHeadlessAccountsResponse], error)
@@ -357,6 +365,18 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+ControllerServiceListHeadlessHostInstancesProcedure,
 			connect.WithSchema(controllerServiceMethods.ByName("ListHeadlessHostInstances")),
+			connect.WithClientOptions(opts...),
+		),
+		listResoniteVersions: connect.NewClient[v1.ListResoniteVersionsRequest, v1.ListResoniteVersionsResponse](
+			httpClient,
+			baseURL+ControllerServiceListResoniteVersionsProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("ListResoniteVersions")),
+			connect.WithClientOptions(opts...),
+		),
+		buildResoniteImage: connect.NewClient[v1.BuildResoniteImageRequest, v1.BuildResoniteImageResponse](
+			httpClient,
+			baseURL+ControllerServiceBuildResoniteImageProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("BuildResoniteImage")),
 			connect.WithClientOptions(opts...),
 		),
 		createHeadlessAccount: connect.NewClient[v1.CreateHeadlessAccountRequest, v1.CreateHeadlessAccountResponse](
@@ -635,6 +655,8 @@ type controllerServiceClient struct {
 	listHeadlessHostImageTags        *connect.Client[v1.ListHeadlessHostImageTagsRequest, v1.ListHeadlessHostImageTagsResponse]
 	deleteHeadlessHost               *connect.Client[v1.DeleteHeadlessHostRequest, v1.DeleteHeadlessHostResponse]
 	listHeadlessHostInstances        *connect.Client[v1.ListHeadlessHostInstancesRequest, v1.ListHeadlessHostInstancesResponse]
+	listResoniteVersions             *connect.Client[v1.ListResoniteVersionsRequest, v1.ListResoniteVersionsResponse]
+	buildResoniteImage               *connect.Client[v1.BuildResoniteImageRequest, v1.BuildResoniteImageResponse]
 	createHeadlessAccount            *connect.Client[v1.CreateHeadlessAccountRequest, v1.CreateHeadlessAccountResponse]
 	listHeadlessAccounts             *connect.Client[v1.ListHeadlessAccountsRequest, v1.ListHeadlessAccountsResponse]
 	deleteHeadlessAccount            *connect.Client[v1.DeleteHeadlessAccountRequest, v1.DeleteHeadlessAccountResponse]
@@ -743,6 +765,16 @@ func (c *controllerServiceClient) DeleteHeadlessHost(ctx context.Context, req *c
 // ListHeadlessHostInstances calls hdlctrl.v1.ControllerService.ListHeadlessHostInstances.
 func (c *controllerServiceClient) ListHeadlessHostInstances(ctx context.Context, req *connect.Request[v1.ListHeadlessHostInstancesRequest]) (*connect.Response[v1.ListHeadlessHostInstancesResponse], error) {
 	return c.listHeadlessHostInstances.CallUnary(ctx, req)
+}
+
+// ListResoniteVersions calls hdlctrl.v1.ControllerService.ListResoniteVersions.
+func (c *controllerServiceClient) ListResoniteVersions(ctx context.Context, req *connect.Request[v1.ListResoniteVersionsRequest]) (*connect.Response[v1.ListResoniteVersionsResponse], error) {
+	return c.listResoniteVersions.CallUnary(ctx, req)
+}
+
+// BuildResoniteImage calls hdlctrl.v1.ControllerService.BuildResoniteImage.
+func (c *controllerServiceClient) BuildResoniteImage(ctx context.Context, req *connect.Request[v1.BuildResoniteImageRequest]) (*connect.Response[v1.BuildResoniteImageResponse], error) {
+	return c.buildResoniteImage.CallUnary(ctx, req)
 }
 
 // CreateHeadlessAccount calls hdlctrl.v1.ControllerService.CreateHeadlessAccount.
@@ -979,6 +1011,8 @@ type ControllerServiceHandler interface {
 	ListHeadlessHostImageTags(context.Context, *connect.Request[v1.ListHeadlessHostImageTagsRequest]) (*connect.Response[v1.ListHeadlessHostImageTagsResponse], error)
 	DeleteHeadlessHost(context.Context, *connect.Request[v1.DeleteHeadlessHostRequest]) (*connect.Response[v1.DeleteHeadlessHostResponse], error)
 	ListHeadlessHostInstances(context.Context, *connect.Request[v1.ListHeadlessHostInstancesRequest]) (*connect.Response[v1.ListHeadlessHostInstancesResponse], error)
+	ListResoniteVersions(context.Context, *connect.Request[v1.ListResoniteVersionsRequest]) (*connect.Response[v1.ListResoniteVersionsResponse], error)
+	BuildResoniteImage(context.Context, *connect.Request[v1.BuildResoniteImageRequest]) (*connect.Response[v1.BuildResoniteImageResponse], error)
 	// アカウント系
 	CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error)
 	ListHeadlessAccounts(context.Context, *connect.Request[v1.ListHeadlessAccountsRequest]) (*connect.Response[v1.ListHeadlessAccountsResponse], error)
@@ -1112,6 +1146,18 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		ControllerServiceListHeadlessHostInstancesProcedure,
 		svc.ListHeadlessHostInstances,
 		connect.WithSchema(controllerServiceMethods.ByName("ListHeadlessHostInstances")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceListResoniteVersionsHandler := connect.NewUnaryHandler(
+		ControllerServiceListResoniteVersionsProcedure,
+		svc.ListResoniteVersions,
+		connect.WithSchema(controllerServiceMethods.ByName("ListResoniteVersions")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceBuildResoniteImageHandler := connect.NewUnaryHandler(
+		ControllerServiceBuildResoniteImageProcedure,
+		svc.BuildResoniteImage,
+		connect.WithSchema(controllerServiceMethods.ByName("BuildResoniteImage")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceCreateHeadlessAccountHandler := connect.NewUnaryHandler(
@@ -1400,6 +1446,10 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceDeleteHeadlessHostHandler.ServeHTTP(w, r)
 		case ControllerServiceListHeadlessHostInstancesProcedure:
 			controllerServiceListHeadlessHostInstancesHandler.ServeHTTP(w, r)
+		case ControllerServiceListResoniteVersionsProcedure:
+			controllerServiceListResoniteVersionsHandler.ServeHTTP(w, r)
+		case ControllerServiceBuildResoniteImageProcedure:
+			controllerServiceBuildResoniteImageHandler.ServeHTTP(w, r)
 		case ControllerServiceCreateHeadlessAccountProcedure:
 			controllerServiceCreateHeadlessAccountHandler.ServeHTTP(w, r)
 		case ControllerServiceListHeadlessAccountsProcedure:
@@ -1545,6 +1595,14 @@ func (UnimplementedControllerServiceHandler) DeleteHeadlessHost(context.Context,
 
 func (UnimplementedControllerServiceHandler) ListHeadlessHostInstances(context.Context, *connect.Request[v1.ListHeadlessHostInstancesRequest]) (*connect.Response[v1.ListHeadlessHostInstancesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.ListHeadlessHostInstances is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) ListResoniteVersions(context.Context, *connect.Request[v1.ListResoniteVersionsRequest]) (*connect.Response[v1.ListResoniteVersionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.ListResoniteVersions is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) BuildResoniteImage(context.Context, *connect.Request[v1.BuildResoniteImageRequest]) (*connect.Response[v1.BuildResoniteImageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.BuildResoniteImage is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error) {

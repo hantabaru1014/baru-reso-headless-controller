@@ -9,6 +9,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -30,6 +31,12 @@ type (
 	AccountFetcher interface {
 		GetHeadlessAccount(ctx context.Context, id string) (*entity.HeadlessAccount, error)
 	}
+
+	// ImageBuildOperator は BUILD_IMAGE job handler が呼ぶ「実ビルド」インタフェース.
+	// ResoniteVersionUsecase.RunBuild を裏で叩く.
+	ImageBuildOperator interface {
+		RunBuild(ctx context.Context, manifestID string, branch entity.ResoniteVersionBranch) (string, error)
+	}
 )
 
 // Dispatcher は jobType ごとの handler を保持する. Dispatch は payload を
@@ -38,10 +45,12 @@ type Dispatcher struct {
 	host    HostOperator
 	session SessionOperator
 	account AccountFetcher
+	image   ImageBuildOperator
+	uc      *Usecase // BUILD_IMAGE 成功時の chain enqueue に使う
 }
 
-func NewDispatcher(host HostOperator, session SessionOperator, account AccountFetcher) *Dispatcher {
-	return &Dispatcher{host: host, session: session, account: account}
+func NewDispatcher(host HostOperator, session SessionOperator, account AccountFetcher, image ImageBuildOperator, uc *Usecase) *Dispatcher {
+	return &Dispatcher{host: host, session: session, account: account, image: image, uc: uc}
 }
 
 // JobResult は MarkSucceeded.result_payload に詰める形. 完了通知の message 組み立てや
@@ -65,6 +74,8 @@ func (d *Dispatcher) Dispatch(ctx context.Context, job *entity.AsyncJob) (JobRes
 		return d.startSession(ctx, job)
 	case entity.AsyncJobType_STOP_SESSION:
 		return d.stopSession(ctx, job)
+	case entity.AsyncJobType_BUILD_IMAGE:
+		return d.buildImage(ctx, job)
 	case entity.AsyncJobType_UNKNOWN:
 		return JobResult{}, "", errors.Errorf("unknown job type")
 	default:
@@ -106,10 +117,52 @@ func (d *Dispatcher) startHost(ctx context.Context, job *entity.AsyncJob) (JobRe
 
 	hostID, err := d.host.HeadlessHostStart(ctx, params, job.CreatedBy)
 	if err != nil {
+		// 未 built なら BUILD_IMAGE を chain し、この job は「build enqueue」で成功終了.
+		var nbe *usecase.NotBuiltError
+		if errors.As(err, &nbe) {
+			buildJobID, chainErr := d.uc.EnqueueBuildImage(ctx, nbe.ManifestID, nbe.Branch, req, job.CreatedBy)
+			if chainErr != nil {
+				return JobResult{}, "", errors.WrapPrefix(chainErr, "enqueue chained build", 0)
+			}
+
+			return JobResult{}, fmt.Sprintf("イメージ未ビルドのためビルドキューに追加しました (build_job=%s)", buildJobID), nil
+		}
+
 		return JobResult{}, "", err
 	}
 
 	return JobResult{HostID: hostID}, fmt.Sprintf("ホスト %q を起動しました", req.GetName()), nil
+}
+
+func (d *Dispatcher) buildImage(ctx context.Context, job *entity.AsyncJob) (JobResult, string, error) {
+	req := &hdlctrlv1.BuildResoniteImageRequest{}
+	if err := protojson.Unmarshal(job.Payload, req); err != nil {
+		return JobResult{}, "", errors.WrapPrefix(err, "decode build_image payload", 0)
+	}
+
+	branch := entity.ResoniteVersionBranch(req.GetBranch())
+
+	tag, err := d.image.RunBuild(ctx, req.GetManifestId(), branch)
+	if err != nil {
+		return JobResult{}, "", err
+	}
+
+	msg := fmt.Sprintf("イメージ %s をビルドしました", tag)
+
+	if req.ThenStartHost != nil {
+		// build 成功後の chained host start.
+		start := req.GetThenStartHost()
+		// 解決済みタグを埋め込んで再度 resolveTagToUse を通さないようにする.
+		start.ImageTag = &tag
+		startJobID, chainErr := d.uc.EnqueueStartHost(ctx, start, job.CreatedBy)
+		if chainErr != nil {
+			return JobResult{}, "", errors.WrapPrefix(chainErr, "enqueue chained start_host", 0)
+		}
+
+		msg = fmt.Sprintf("%s (host_start_job=%s)", msg, startJobID)
+	}
+
+	return JobResult{}, msg, nil
 }
 
 func (d *Dispatcher) shutdownHost(ctx context.Context, job *entity.AsyncJob) (JobResult, string, error) {

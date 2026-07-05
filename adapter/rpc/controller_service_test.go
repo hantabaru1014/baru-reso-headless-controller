@@ -17,6 +17,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/testutil"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/async_job"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/image_builder"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/notification"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -82,7 +83,10 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 	// Setup usecases with real repositories
 	hauc := usecase.NewHeadlessAccountUsecase(queries, mockSkyfrost, permUC)
 	suc := usecase.NewSessionUsecase(srepo, hhrepo, port.NoopHostDrainer{}, stateCache, &cfg.Server, &cfg.ResoniteLink, permUC)
-	hhuc := usecase.NewHeadlessHostUsecase(hhrepo, srepo, suc, hauc, permUC)
+	rvrepo := adapter.NewResoniteVersionRepository(queries)
+	builder := image_builder.NewBuilder(&cfg.ResoniteBuild, &cfg.Docker)
+	rvuc := usecase.NewResoniteVersionUsecase(rvrepo, builder, &cfg.ResoniteBuild)
+	hhuc := usecase.NewHeadlessHostUsecase(hhrepo, srepo, suc, hauc, permUC, rvuc)
 	buc := usecase.NewBlobUsecase(srepo, hhrepo, mockBlobstore)
 	sorepo := adapter.NewScheduledSessionOperationRepository(queries)
 	souc := usecase.NewScheduledSessionOperationUsecase(sorepo, hhrepo, srepo, permUC)
@@ -90,7 +94,7 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 	ajuc := async_job.NewUsecase(ajrepo)
 
 	// Setup service with real repositories
-	service := NewControllerService(hhrepo, srepo, hhuc, hauc, suc, buc, souc, ajuc, permUC, groupRepo, roleRepo, mockSkyfrost, notification.NewBus())
+	service := NewControllerService(hhrepo, srepo, hhuc, hauc, suc, buc, souc, ajuc, rvuc, permUC, groupRepo, roleRepo, mockSkyfrost, notification.NewBus())
 
 	return &controllerServiceTestSetup{
 		service:           service,

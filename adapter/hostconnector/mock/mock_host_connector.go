@@ -16,7 +16,6 @@ import (
 	hostconnector "github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	entity "github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
-	port "github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -85,36 +84,6 @@ func (m *MockHostConnector) Kill(ctx context.Context, connect_string hostconnect
 func (mr *MockHostConnectorMockRecorder) Kill(ctx, connect_string any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Kill", reflect.TypeOf((*MockHostConnector)(nil).Kill), ctx, connect_string)
-}
-
-// ListContainerTags mocks base method.
-func (m *MockHostConnector) ListContainerTags(ctx context.Context, lastTag *string) (port.ContainerImageList, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListContainerTags", ctx, lastTag)
-	ret0, _ := ret[0].(port.ContainerImageList)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListContainerTags indicates an expected call of ListContainerTags.
-func (mr *MockHostConnectorMockRecorder) ListContainerTags(ctx, lastTag any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListContainerTags", reflect.TypeOf((*MockHostConnector)(nil).ListContainerTags), ctx, lastTag)
-}
-
-// PullContainerImage mocks base method.
-func (m *MockHostConnector) PullContainerImage(ctx context.Context, tag string) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PullContainerImage", ctx, tag)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// PullContainerImage indicates an expected call of PullContainerImage.
-func (mr *MockHostConnectorMockRecorder) PullContainerImage(ctx, tag any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PullContainerImage", reflect.TypeOf((*MockHostConnector)(nil).PullContainerImage), ctx, tag)
 }
 
 // Remove mocks base method.

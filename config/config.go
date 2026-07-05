@@ -10,14 +10,15 @@ import (
 )
 
 type EnvConfig struct {
-	Database     DatabaseConfig
-	Auth         AuthConfig
-	Docker       DockerConfig
-	GRPC         GRPCConfig
-	Worker       WorkerConfig
-	Server       ServerConfig
-	RustFS       RustFSConfig
-	ResoniteLink ResoniteLinkConfig
+	Database        DatabaseConfig
+	Auth            AuthConfig
+	Docker          DockerConfig
+	GRPC            GRPCConfig
+	Worker          WorkerConfig
+	Server          ServerConfig
+	RustFS          RustFSConfig
+	ResoniteLink    ResoniteLinkConfig
+	ResoniteBuild   ResoniteBuildConfig
 }
 
 type DatabaseConfig struct {
@@ -29,10 +30,9 @@ type AuthConfig struct {
 }
 
 type DockerConfig struct {
-	HeadlessImageName    string
-	FluentdAddress       string
-	GHCRAuthToken        string
-	HeadlessRegistryAuth string
+	HeadlessImageName string
+	FluentdAddress    string
+	GHCRAuthToken     string
 }
 
 type GRPCConfig struct {
@@ -41,10 +41,17 @@ type GRPCConfig struct {
 }
 
 type WorkerConfig struct {
-	ImageCheckInterval    time.Duration
-	AutoPullNewImage      bool
-	EventReconnectDelay   time.Duration
-	EventMaxReconnectWait time.Duration
+	// ContentCheckInterval controls how often ContentPoller polls
+	// versions.json AND the container repo AppVersion.
+	ContentCheckInterval time.Duration
+	// AutoBuildNewVersions は versions.json 上で新規に検知された headless / prerelease
+	// バージョンを自動ビルドキューに投入するかどうか.
+	AutoBuildNewVersions bool
+	// AutoBuildOnAppVersionBump は container repo の Headless/AppVersion が上がった時に、
+	// 対象ブランチ (headless / prerelease) の built 済みバージョンを自動再ビルドするかどうか.
+	AutoBuildOnAppVersionBump bool
+	EventReconnectDelay       time.Duration
+	EventMaxReconnectWait     time.Duration
 	// HostEventPollInterval controls how often HostEventWatcher reconciles
 	// its set of per-host event-stream subscriptions against the RUNNING
 	// hosts in the DB.
@@ -53,6 +60,27 @@ type WorkerConfig struct {
 	// polls for newly available container image tags and reconciles its
 	// drain set.
 	UpgradeCheckInterval time.Duration
+}
+
+// ResoniteBuildConfig はローカルで Resonite headless container image を
+// ビルドするための設定. Steam 認証情報と container repo の checkout 情報を持つ.
+type ResoniteBuildConfig struct {
+	// Steam authentication credentials.
+	SteamUsername    string
+	SteamPassword    string
+	HeadlessPassword string
+
+	// Steam app / depot IDs.
+	AppID          string // Resonite の Steam AppID (default 2519830)
+	HeadlessDepotID string // Resonite headless の Steam DepotID
+
+	// container repo (baru-reso-headless-container) の checkout 設定.
+	ContainerRepoURL  string // git URL
+	ContainerRepoRef  string // branch or tag (default "release")
+	ContainerRepoPath string // ローカル checkout 先ディレクトリ
+
+	// versions.json の source URL.
+	VersionsJSONURL string
 }
 
 type ServerConfig struct {
@@ -96,17 +124,27 @@ func LoadEnvConfig() (*EnvConfig, error) {
 	cfg.Docker.HeadlessImageName = os.Getenv("HEADLESS_IMAGE_NAME")
 	cfg.Docker.FluentdAddress = os.Getenv("CONTAINER_LOGS_FLUENTD_ADDRESS")
 	cfg.Docker.GHCRAuthToken = os.Getenv("GHCR_AUTH_TOKEN")
-	cfg.Docker.HeadlessRegistryAuth = os.Getenv("HEADLESS_REGISTRY_AUTH")
 
-	cfg.GRPC.ConnectTimeout = getEnvDuration("GRPC_CONNECT_TIMEOUT", 5*time.Second)   //nolint:mnd // default
-	cfg.GRPC.CallTimeout = getEnvDuration("GRPC_CALL_TIMEOUT", 10*time.Second)        //nolint:mnd // default
+	cfg.GRPC.ConnectTimeout = getEnvDuration("GRPC_CONNECT_TIMEOUT", 5*time.Second)                      //nolint:mnd // default
+	cfg.GRPC.CallTimeout = getEnvDuration("GRPC_CALL_TIMEOUT", 10*time.Second)                           //nolint:mnd // default
 
-	cfg.Worker.ImageCheckInterval = getEnvDurationSec("IMAGE_CHECK_INTERVAL_SEC", 15*time.Second)      //nolint:mnd // default
-	cfg.Worker.AutoPullNewImage = os.Getenv("AUTO_PULL_NEW_IMAGE") == "true"
-	cfg.Worker.EventReconnectDelay = getEnvDuration("EVENT_WATCHER_RECONNECT_DELAY", 5*time.Second)    //nolint:mnd // default
+	cfg.Worker.ContentCheckInterval = getEnvDuration("CONTENT_CHECK_INTERVAL", time.Hour)
+	cfg.Worker.AutoBuildNewVersions = getEnvBoolWithDefault("AUTO_BUILD_NEW_VERSIONS", true)
+	cfg.Worker.AutoBuildOnAppVersionBump = getEnvBoolWithDefault("AUTO_BUILD_ON_APP_VERSION_BUMP", true)
+	cfg.Worker.EventReconnectDelay = getEnvDuration("EVENT_WATCHER_RECONNECT_DELAY", 5*time.Second)      //nolint:mnd // default
 	cfg.Worker.EventMaxReconnectWait = getEnvDuration("EVENT_WATCHER_MAX_RECONNECT_WAIT", 5*time.Minute) //nolint:mnd // default
 	cfg.Worker.HostEventPollInterval = getEnvDuration("HOST_EVENT_POLL_INTERVAL", 10*time.Second)        //nolint:mnd // default
 	cfg.Worker.UpgradeCheckInterval = getEnvDuration("UPGRADE_CHECK_INTERVAL", time.Minute)
+
+	cfg.ResoniteBuild.SteamUsername = os.Getenv("STEAM_USERNAME")
+	cfg.ResoniteBuild.SteamPassword = os.Getenv("STEAM_PASSWORD")
+	cfg.ResoniteBuild.HeadlessPassword = os.Getenv("HEADLESS_PASSWORD")
+	cfg.ResoniteBuild.AppID = getEnvWithDefault("RESONITE_APP_ID", "2519830")
+	cfg.ResoniteBuild.HeadlessDepotID = getEnvWithDefault("RESONITE_HEADLESS_DEPOT_ID", "2519832")
+	cfg.ResoniteBuild.ContainerRepoURL = getEnvWithDefault("RESONITE_CONTAINER_REPO_URL", "https://github.com/hantabaru1014/baru-reso-headless-container")
+	cfg.ResoniteBuild.ContainerRepoRef = getEnvWithDefault("RESONITE_CONTAINER_REPO_REF", "release")
+	cfg.ResoniteBuild.ContainerRepoPath = getEnvWithDefault("RESONITE_CONTAINER_REPO_PATH", "./var/container-src")
+	cfg.ResoniteBuild.VersionsJSONURL = getEnvWithDefault("RESONITE_VERSIONS_JSON_URL", "https://raw.githubusercontent.com/resonite-love/resonite-version-monitor/master/data/versions.json")
 
 	cfg.Server.Host = getEnvWithDefault("HOST", ":8014")
 	cfg.Server.FrontDevMode = os.Getenv("FDEV") == "true"
@@ -146,6 +184,18 @@ func (c *EnvConfig) Validate() error {
 
 	if c.Docker.HeadlessImageName == "" {
 		return errors.New("HEADLESS_IMAGE_NAME is required")
+	}
+
+	if c.ResoniteBuild.SteamUsername == "" {
+		return errors.New("STEAM_USERNAME is required")
+	}
+
+	if c.ResoniteBuild.SteamPassword == "" {
+		return errors.New("STEAM_PASSWORD is required")
+	}
+
+	if c.ResoniteBuild.HeadlessPassword == "" {
+		return errors.New("HEADLESS_PASSWORD is required")
 	}
 
 	if c.RustFS.Endpoint == "" {
@@ -207,6 +257,15 @@ func getEnvDurationSec(key string, defaultValue time.Duration) time.Duration {
 	}
 
 	return defaultValue
+}
+
+func getEnvBoolWithDefault(key string, defaultValue bool) bool {
+	v := os.Getenv(key)
+	if v == "" {
+		return defaultValue
+	}
+
+	return v == "true" || v == "1"
 }
 
 func parseCSV(s string) []string {

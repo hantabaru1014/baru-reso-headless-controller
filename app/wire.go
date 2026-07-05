@@ -15,6 +15,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/async_job"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/image_builder"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/notification"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/hantabaru1014/baru-reso-headless-controller/worker"
@@ -49,34 +50,56 @@ func ProvideResoniteLinkConfig(cfg *config.EnvConfig) *config.ResoniteLinkConfig
 	return &cfg.ResoniteLink
 }
 
+func ProvideResoniteBuildConfig(cfg *config.EnvConfig) *config.ResoniteBuildConfig {
+	return &cfg.ResoniteBuild
+}
+
 // ProvideWorkerManager groups the concrete background workers AND
 // performs two post-construction links that wire itself cannot express:
 //   - The orchestrator needs a SessionStopper (SessionUsecase), but
 //     SessionUsecase needs a HostDrainer (the orchestrator). Wire can
 //     pick only one direction at construction time; we close the cycle
 //     by setting the stopper here, after both ends exist.
-//   - The orchestrator subscribes to ImageChecker so registry polling
-//     happens in exactly one place.
+//   - The orchestrator subscribes to ResoniteVersionUsecase's build-success
+//     stream so a freshly-built image can trigger draining of RUNNING
+//     auto-update hosts.
 func ProvideWorkerManager(
-	imageChecker *worker.ImageChecker,
+	contentPoller *worker.ContentPoller,
 	dockerEventWatcher *worker.DockerEventWatcher,
 	hostEventWatcher *worker.HostEventWatcher,
 	upgradeOrchestrator *worker.HostUpgradeOrchestrator,
 	scheduledOpExecutor *worker.ScheduledOperationExecutor,
 	asyncJobExecutor *worker.AsyncJobExecutor,
 	sessionStopper port.SessionStopper,
+	rvuc *usecase.ResoniteVersionUsecase,
 ) *worker.Manager {
 	upgradeOrchestrator.SetSessionStopper(sessionStopper)
-	imageChecker.Subscribe(upgradeOrchestrator.OnNewImage)
+	rvuc.Subscribe(upgradeOrchestrator.OnNewImage)
 
 	return worker.NewManager([]worker.Runner{
-		imageChecker,
+		contentPoller,
 		dockerEventWatcher,
 		hostEventWatcher,
 		upgradeOrchestrator,
 		scheduledOpExecutor,
 		asyncJobExecutor,
 	})
+}
+
+// ProvideContentPoller は worker.ContentPoller に必要な narrow interface を
+// ResoniteVersionUsecase / async_job.Usecase から供給する.
+func ProvideContentPoller(
+	rvuc *usecase.ResoniteVersionUsecase,
+	ajuc *async_job.Usecase,
+	cfg *config.WorkerConfig,
+) *worker.ContentPoller {
+	return worker.NewContentPoller(rvuc, ajuc, cfg)
+}
+
+// ProvideImageBuildOperator は async_job.Dispatcher に ImageBuildOperator を
+// 供給する. ResoniteVersionUsecase.RunBuild を裏で呼ぶ.
+func ProvideImageBuildOperator(rvuc *usecase.ResoniteVersionUsecase) async_job.ImageBuildOperator {
+	return rvuc
 }
 
 // ProvideScheduledOperationExecutor は scheduled session operation worker を
@@ -99,8 +122,10 @@ func ProvideAsyncJobDispatcher(
 	hhuc *usecase.HeadlessHostUsecase,
 	suc *usecase.SessionUsecase,
 	hauc *usecase.HeadlessAccountUsecase,
+	imgOp async_job.ImageBuildOperator,
+	ajuc *async_job.Usecase,
 ) *async_job.Dispatcher {
-	return async_job.NewDispatcher(hhuc, suc, hauc)
+	return async_job.NewDispatcher(hhuc, suc, hauc, imgOp, ajuc)
 }
 
 // ProvideAsyncJobExecutor は AsyncJobExecutor worker を構築する.
@@ -146,6 +171,7 @@ var ConfigSet = wire.NewSet(
 	ProvideServerConfig,
 	ProvideRustFSConfig,
 	ProvideResoniteLinkConfig,
+	ProvideResoniteBuildConfig,
 )
 
 func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
@@ -178,6 +204,8 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		adapter.NewScheduledSessionOperationRepository,
 		wire.Bind(new(port.AsyncJobRepository), new(*adapter.AsyncJobRepository)),
 		adapter.NewAsyncJobRepository,
+		wire.Bind(new(port.ResoniteVersionRepository), new(*adapter.ResoniteVersionRepository)),
+		adapter.NewResoniteVersionRepository,
 		wire.Bind(new(worker.UserExistenceChecker), new(*adapter.UserExistenceChecker)),
 		adapter.NewUserExistenceChecker,
 		wire.Bind(new(port.GroupRepository), new(*adapter.GroupRepository)),
@@ -195,8 +223,11 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		notification.NewBus,
 		wire.Bind(new(notification.Bus), new(*notification.MemoryBus)),
 
+		// image builder
+		image_builder.NewBuilder,
+
 		// worker
-		worker.NewImageChecker,
+		ProvideContentPoller,
 		worker.NewDockerEventWatcher,
 		worker.NewHostEventWatcher,
 		worker.NewSQLHostEventStore,
@@ -210,6 +241,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		ProvideScheduledOperationExecutor,
 		ProvideAsyncJobDispatcher,
 		ProvideAsyncJobExecutor,
+		ProvideImageBuildOperator,
 		ProvideHeadlessAccountFetcher,
 		ProvideHostEventHandlers,
 		ProvideWorkerManager,
@@ -224,6 +256,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		usecase.NewPermissionUsecase,
 		usecase.NewGroupUsecase,
 		usecase.NewRoleUsecase,
+		usecase.NewResoniteVersionUsecase,
 		async_job.NewUsecase,
 		wire.Bind(new(port.SessionStopper), new(*usecase.SessionUsecase)),
 
@@ -282,6 +315,13 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 		// SessionUsecase の constructor 依存を満たすために bind だけする)
 		sessionstate.NewMemoryCache,
 		wire.Bind(new(port.SessionStateCache), new(*sessionstate.MemoryCache)),
+
+		// resonite version + image builder (CLI 用にも wire する。CLI 経由の起動でも
+		// 使う可能性があるため。)
+		wire.Bind(new(port.ResoniteVersionRepository), new(*adapter.ResoniteVersionRepository)),
+		adapter.NewResoniteVersionRepository,
+		image_builder.NewBuilder,
+		usecase.NewResoniteVersionUsecase,
 
 		// usecase
 		usecase.NewUserUsecase,

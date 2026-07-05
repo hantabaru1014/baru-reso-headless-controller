@@ -94,6 +94,20 @@ type RegistrationToken struct {
 	PersonalRoleID pgtype.Text
 }
 
+type ResoniteVersion struct {
+	ManifestID          string
+	Branch              string
+	GameVersion         pgtype.Text
+	ReleasedAt          pgtype.Timestamptz
+	BuildStatus         string
+	ImageTag            pgtype.Text
+	BuiltWithAppVersion pgtype.Text
+	BuiltAt             pgtype.Timestamptz
+	BuildError          pgtype.Text
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+}
+
 type Role struct {
 	ID        string
 	GroupID   pgtype.Text

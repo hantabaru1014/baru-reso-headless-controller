@@ -90,8 +90,6 @@ type HeadlessHostRepository interface {
 	Rename(ctx context.Context, id, newName string) error
 	UpdateHostSettings(ctx context.Context, id string, settings *entity.HeadlessHostSettings) error
 	UpdateAutoUpdatePolicy(ctx context.Context, id string, policy entity.HostAutoUpdatePolicy) error
-	// コンテナイメージのタグ一覧をリモートから取得する。一番新しいタグが最後。
-	ListContainerTags(ctx context.Context, lastTag *string) (ContainerImageList, error)
 	Restart(ctx context.Context, id string, newStartupConfig HeadlessHostStartParams, timeoutSeconds int) error
 	Start(ctx context.Context, connector HostConnectorType, params HeadlessHostStartParams, userId *string) (id string, err error)
 	// コンテナを終了する

@@ -20,6 +20,8 @@ service ControllerService {
   rpc ListHeadlessHostImageTags(ListHeadlessHostImageTagsRequest) returns (ListHeadlessHostImageTagsResponse);
   rpc DeleteHeadlessHost(DeleteHeadlessHostRequest) returns (DeleteHeadlessHostResponse);
   rpc ListHeadlessHostInstances(ListHeadlessHostInstancesRequest) returns (ListHeadlessHostInstancesResponse);
+  rpc ListResoniteVersions(ListResoniteVersionsRequest) returns (ListResoniteVersionsResponse);
+  rpc BuildResoniteImage(BuildResoniteImageRequest) returns (BuildResoniteImageResponse);
 
   // アカウント系
   rpc CreateHeadlessAccount(CreateHeadlessAccountRequest) returns (CreateHeadlessAccountResponse);
@@ -202,6 +204,48 @@ message ListHeadlessHostImageTagsResponse {
     string app_version = 4;
   }
   repeated ContainerImage tags = 1;
+}
+
+// Resonite バージョン管理 (versions.json + ローカルビルド)
+enum ResoniteVersionBuildStatus {
+  RESONITE_VERSION_BUILD_STATUS_UNSPECIFIED = 0;
+  RESONITE_VERSION_BUILD_STATUS_NOT_BUILT = 1;
+  RESONITE_VERSION_BUILD_STATUS_BUILDING = 2;
+  RESONITE_VERSION_BUILD_STATUS_BUILT = 3;
+  RESONITE_VERSION_BUILD_STATUS_FAILED = 4;
+}
+
+message ResoniteVersion {
+  string manifest_id = 1;
+  // versions.json の branch 名 (`public`/`prerelease`/`release`/`headless`/`pre-splittening`).
+  string branch = 2;
+  optional string game_version = 3;
+  google.protobuf.Timestamp released_at = 4;
+  ResoniteVersionBuildStatus build_status = 5;
+  optional string image_tag = 6;
+  optional string built_with_app_version = 7;
+  optional google.protobuf.Timestamp built_at = 8;
+  optional string build_error = 9;
+}
+
+message ListResoniteVersionsRequest {
+  // 未指定なら全 branch を返す.
+  optional string branch = 1;
+}
+
+message ListResoniteVersionsResponse {
+  repeated ResoniteVersion versions = 1;
+}
+
+message BuildResoniteImageRequest {
+  string manifest_id = 1;
+  string branch = 2;
+  // ビルド完了後に自動 enqueue するホスト起動 job (chain 用).
+  optional StartHeadlessHostRequest then_start_host = 3;
+}
+
+message BuildResoniteImageResponse {
+  string job_id = 1;
 }
 
 message AcceptFriendRequestsRequest {
