@@ -111,18 +111,38 @@ else
   echo "   RustFS関連の設定は既に存在します"
 fi
 
-echo "4. データベースマイグレーションを実行中..."
+# Steam認証情報の.env項目を追加 (未設定の場合のみ)
+# ヘッドレスイメージはレジストリからの pull ではなくローカルビルドに変わったため必須
+echo "4. Steam認証情報 (ヘッドレスイメージのローカルビルド用) を確認中..."
+if ! grep -q "^STEAM_USERNAME=" .env 2>/dev/null; then
+  echo "   ヘッドレスイメージのビルドに使う Steam 認証情報を入力してください"
+  read -p 'Steam ユーザー名: ' STEAM_USERNAME
+  read -p 'Steam パスワード: ' STEAM_PASSWORD
+  read -p 'Resonite headless ブランチのベータアクセスコード: ' HEADLESS_PASSWORD
+  cat >> .env << EOF
+
+# ヘッドレスイメージのローカルビルド用 Steam 認証情報
+STEAM_USERNAME="${STEAM_USERNAME}"
+STEAM_PASSWORD="${STEAM_PASSWORD}"
+HEADLESS_PASSWORD="${HEADLESS_PASSWORD}"
+EOF
+  echo "   Steam認証情報を.envに追加しました"
+else
+  echo "   Steam認証情報は既に存在します"
+fi
+
+echo "5. データベースマイグレーションを実行中..."
 docker compose run --rm -T app -migrate-only
 
 # container_logsテーブルが新規作成された場合のみ、fluentbit関連のセットアップを実行
 if [ "$NEEDS_CONTAINER_LOGS_SETUP" = "true" ]; then
-  echo "5. fluentbitユーザーのパスワードを設定中..."
+  echo "6. fluentbitユーザーのパスワードを設定中..."
   FLUENTBIT_PGSQL_PASSWORD="$(openssl rand -base64 32)"
   docker compose -f docker-compose.db.yml exec -T db psql -U postgres -d brhcdb -c "ALTER USER fluentbit WITH PASSWORD '${FLUENTBIT_PGSQL_PASSWORD}';"
   echo "FLUENTBIT_PGPASSWORD=\"${FLUENTBIT_PGSQL_PASSWORD}\"" >> .env
   echo "   FLUENTBIT_PGPASSWORDを.envに追加しました"
 else
-  echo "5. container_logsテーブルは既に存在するため、fluentbit関連のセットアップをスキップします"
+  echo "6. container_logsテーブルは既に存在するため、fluentbit関連のセットアップをスキップします"
 
   # FLUENTBIT_PGPASSWORDが.envに存在しない場合は警告
   if ! grep -q "^FLUENTBIT_PGPASSWORD=" .env 2>/dev/null; then
@@ -133,7 +153,7 @@ else
 fi
 
 # fluentdコンテナの再起動
-echo "6. fluentdコンテナを再起動中..."
+echo "7. fluentdコンテナを再起動中..."
 if docker compose -f docker-compose.db.yml ps fluentd 2>/dev/null | grep -q "Up"; then
   docker compose -f docker-compose.db.yml restart fluentd
   echo "   fluentdコンテナを再起動しました"
@@ -143,7 +163,7 @@ else
 fi
 
 # rustfsコンテナの起動
-echo "7. rustfsコンテナを起動中..."
+echo "8. rustfsコンテナを起動中..."
 if docker compose -f docker-compose.db.yml ps rustfs 2>/dev/null | grep -q "Up"; then
   echo "   rustfsコンテナは既に起動しています"
 else
@@ -153,7 +173,7 @@ fi
 
 # app コンテナを新しいイメージで再作成する.
 # 既に古いイメージで起動中の場合でも確実に新イメージに置き換わるよう --force-recreate を付ける.
-echo "8. app コンテナを新しいイメージで再作成中..."
+echo "9. app コンテナを新しいイメージで再作成中..."
 docker compose up -d --force-recreate
 
 echo ""

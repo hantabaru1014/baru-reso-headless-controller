@@ -23,27 +23,16 @@ RUSTFS_ACCESS_KEY="$(openssl rand -hex 8)"
 RUSTFS_SECRET_KEY="$(openssl rand -base64 32)"
 DOCKER_GID="$(grep docker /etc/group | cut -d: -f3)"
 
-DEFAULT_IMAGE="ghcr.io/hantabaru1014/baru-reso-headless-container"
+DEFAULT_IMAGE="baru-reso-headless-container"
 read -p "ヘッドレスのdocker image nameを入力 (default: ${DEFAULT_IMAGE}): " HEADLESS_IMAGE_NAME
 HEADLESS_IMAGE_NAME=${HEADLESS_IMAGE_NAME:-$DEFAULT_IMAGE}
 
-read -p 'レジストリはGitHub Container Registry？ [y/N] (default: y): ' IS_GHCR
-case "${IS_GHCR}" in
-n|N|no|NO)
-  read -p 'docker image pullに必要なAuth情報を入力: ' HEADLESS_REGISTRY_AUTH
-  ;;
-*)
-  if command -v git >/dev/null 2>&1 && DEFAULT_GITHUB_USER="$(git config user.name)"; then
-    read -p "image pullを行うGitHubのユーザー名を入力 (default: ${DEFAULT_GITHUB_USER}): " GHCR_USERNAME
-    GHCR_USERNAME=${GHCR_USERNAME:-$DEFAULT_GITHUB_USER}
-  else
-    read -p "image pullを行うGitHubのユーザー名を入力: " GHCR_USERNAME
-  fi
-  read -p 'read:packages scope を持つ GitHub Personal Access Token を入力: ' GHCR_TOKEN
-  HEADLESS_REGISTRY_AUTH="{\\\"username\\\":\\\"${GHCR_USERNAME}\\\",\\\"password\\\":\\\"${GHCR_TOKEN}\\\"}"
-  GHCR_AUTH_TOKEN="${GHCR_TOKEN}"
-  ;;
-esac
+# ヘッドレスイメージはローカルビルドされるため、Resonite を DepotDownloader で
+# 取得するための Steam 認証情報が必要
+echo "ヘッドレスイメージのビルドに使う Steam 認証情報を入力してください"
+read -p 'Steam ユーザー名: ' STEAM_USERNAME
+read -p 'Steam パスワード: ' STEAM_PASSWORD
+read -p 'Resonite headless ブランチのベータアクセスコード: ' HEADLESS_PASSWORD
 
 read -p 'DB_URL を入力 (default: postgres://postgres:${POSTGRES_PASSWORD}@localhost:5432/brhcdb?sslmode=disable): ' DB_URL
 DB_URL=${DB_URL:-"postgres://postgres:$(echo $POSTGRES_PASSWORD | jq -Rr @uri)@localhost:5432/brhcdb?sslmode=disable"}
@@ -51,8 +40,6 @@ DB_URL=${DB_URL:-"postgres://postgres:$(echo $POSTGRES_PASSWORD | jq -Rr @uri)@l
 cat > .env << EOF
 JWT_SECRET="${JWT_SECRET}"
 HEADLESS_IMAGE_NAME="${HEADLESS_IMAGE_NAME}"
-HEADLESS_REGISTRY_AUTH="${HEADLESS_REGISTRY_AUTH}"
-GHCR_AUTH_TOKEN="${GHCR_AUTH_TOKEN}"
 DOCKER_GID="${DOCKER_GID}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
 FLUENTBIT_PGPASSWORD="${FLUENTBIT_PGSQL_PASSWORD}"
@@ -60,10 +47,17 @@ DB_URL="${DB_URL}"
 HOST=":8014"
 CONTAINER_LOGS_FLUENTD_ADDRESS=":24224"
 
-# コンテナイメージの確認間隔（秒単位、デフォルト: 15秒）
-IMAGE_CHECK_INTERVAL_SEC=15
-# 新しいコンテナイメージを自動的にプルするか（デフォルト: false）
-AUTO_PULL_NEW_IMAGE=true
+# ヘッドレスイメージのローカルビルド用 Steam 認証情報
+STEAM_USERNAME="${STEAM_USERNAME}"
+STEAM_PASSWORD="${STEAM_PASSWORD}"
+HEADLESS_PASSWORD="${HEADLESS_PASSWORD}"
+
+# versions.json / container repo の確認間隔 (デフォルト: 1h)
+#CONTENT_CHECK_INTERVAL=1h
+# 新バージョン検知時に自動ビルドするか (デフォルト: true)
+#AUTO_BUILD_NEW_VERSIONS=true
+# container repo の AppVersion 更新時に自動再ビルドするか (デフォルト: true)
+#AUTO_BUILD_ON_APP_VERSION_BUMP=true
 
 # RustFS (S3互換ストレージ)
 RUSTFS_ACCESS_KEY="${RUSTFS_ACCESS_KEY}"

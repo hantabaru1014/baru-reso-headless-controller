@@ -9,6 +9,17 @@
 | データベース | PostgreSQL (golang-migrate によるマイグレーション。app 起動時に自動実行) |
 | ストレージ | RustFS (S3互換。ワールドバイナリの保存に使用) |
 | ログ | fluent-bit 経由でコンテナログを PostgreSQL に集約 |
+| イメージビルド | DepotDownloader で Resonite を取得し、[baru-reso-headless-container](https://github.com/hantabaru1014/baru-reso-headless-container) を docker build (BuildKit) でローカルビルド |
+
+### ヘッドレスイメージのローカルビルド
+
+ヘッドレスコンテナのイメージはレジストリから pull せず、controller 自身がローカルでビルドする (`usecase/image_builder`)。流れ:
+
+1. [versions.json](https://github.com/resonite-love/resonite-version-monitor) と container repo の `Headless/AppVersion` を `worker/content_poller.go` が定期ポーリングし、新バージョンを `resonite_versions` テーブルに記録・自動ビルドを enqueue
+2. ビルド時は container repo を clone/fetch → DepotDownloader で対象 manifest の Resonite を取得 → `docker build` でホストの Docker デーモンにイメージを格納
+3. タグは `<[prerelease-]ResoniteVersion>-<AppVersion>` 形式
+
+必要な環境変数は `STEAM_USERNAME` / `STEAM_PASSWORD` / `HEADLESS_PASSWORD` (headless ブランチのベータアクセスコード)。`git` / `docker` (BuildKit) / DepotDownloader が実行環境に必要で、controller の Docker イメージには同梱済み。ローカル開発 (`go run`) では PATH に DepotDownloader が無ければ GitHub Releases から自動ダウンロードされる。
 
 ### ディレクトリ構成
 
