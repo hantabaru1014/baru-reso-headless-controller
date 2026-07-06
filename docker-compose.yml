@@ -4,7 +4,12 @@ services:
     env_file: .env
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      # container repo の checkout + Resonite download (数GB) の永続化先
+      - container-src:/data
     # docker.sockのpermission denied対策 ref: https://qiita.com/asaneyuki/items/c46b93cf55e0835c9cd4
     group_add:
       - ${DOCKER_GID}
     network_mode: host
+
+volumes:
+  container-src:

@@ -32,7 +32,6 @@ type AuthConfig struct {
 type DockerConfig struct {
 	HeadlessImageName string
 	FluentdAddress    string
-	GHCRAuthToken     string
 }
 
 type GRPCConfig struct {
@@ -123,7 +122,6 @@ func LoadEnvConfig() (*EnvConfig, error) {
 
 	cfg.Docker.HeadlessImageName = os.Getenv("HEADLESS_IMAGE_NAME")
 	cfg.Docker.FluentdAddress = os.Getenv("CONTAINER_LOGS_FLUENTD_ADDRESS")
-	cfg.Docker.GHCRAuthToken = os.Getenv("GHCR_AUTH_TOKEN")
 
 	cfg.GRPC.ConnectTimeout = getEnvDuration("GRPC_CONNECT_TIMEOUT", 5*time.Second)                      //nolint:mnd // default
 	cfg.GRPC.CallTimeout = getEnvDuration("GRPC_CALL_TIMEOUT", 10*time.Second)                           //nolint:mnd // default

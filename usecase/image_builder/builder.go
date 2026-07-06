@@ -257,9 +257,15 @@ func (b *Builder) downloadResonite(ctx context.Context, p BuildParams) error {
 	return nil
 }
 
-// ensureDepotDownloader は DepotDownloader バイナリが container repo/bin にあるか確認し、
-// 無ければ GitHub Releases から latest を落とす.
+// ensureDepotDownloader は DepotDownloader バイナリを解決する.
+// PATH 上にあればそれを使う (controller の Docker イメージには焼き込み済み).
+// 無ければ container repo/bin を確認し、それも無ければ GitHub Releases から
+// latest を落とす (ローカル開発用のフォールバック).
 func (b *Builder) ensureDepotDownloader(ctx context.Context) (string, error) {
+	if p, err := exec.LookPath("DepotDownloader"); err == nil {
+		return p, nil
+	}
+
 	binDir := filepath.Join(b.repoPath, "bin")
 	if err := os.MkdirAll(binDir, 0o755); err != nil {
 		return "", errors.WrapPrefix(err, "mkdir bin", 0)
