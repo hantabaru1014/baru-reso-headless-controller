@@ -23,6 +23,13 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 )
 
+const (
+	// dirPerm は builder が作成するディレクトリのパーミッション (owner + group).
+	dirPerm = 0o750
+	// execPerm は DepotDownloader バイナリに付与する実行パーミッション.
+	execPerm = 0o755
+)
+
 // Builder は container repo と DepotDownloader を組み合わせて image をビルドするサービス.
 type Builder struct {
 	cfg       *config.ResoniteBuildConfig
@@ -38,28 +45,6 @@ func NewBuilder(cfg *config.ResoniteBuildConfig, dockerCfg *config.DockerConfig)
 	}
 }
 
-// resolveRepoPath は cfg.ContainerRepoPath を絶対パスに正規化して repoPath に保持する.
-// cmd.Dir と組み合わせる際にパス崩れが起きないよう常に絶対にしておく.
-func (b *Builder) resolveRepoPath() (string, error) {
-	if b.repoPath != "" {
-		return b.repoPath, nil
-	}
-
-	p := b.cfg.ContainerRepoPath
-	if p == "" {
-		return "", errors.New("container repo path is not configured")
-	}
-
-	abs, err := filepath.Abs(p)
-	if err != nil {
-		return "", errors.WrapPrefix(err, "resolve container repo path", 0)
-	}
-
-	b.repoPath = abs
-
-	return abs, nil
-}
-
 // EnsureRepo は container repo を clone (未存在時) / fetch + reset で最新化する.
 // mutex 内で呼ぶ想定 (Build と CurrentAppVersion からのみ呼ばれる).
 func (b *Builder) EnsureRepo(ctx context.Context) error {
@@ -70,7 +55,7 @@ func (b *Builder) EnsureRepo(ctx context.Context) error {
 
 	gitDir := filepath.Join(path, ".git")
 	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
-		if mkErr := os.MkdirAll(filepath.Dir(path), 0o755); mkErr != nil {
+		if mkErr := os.MkdirAll(filepath.Dir(path), dirPerm); mkErr != nil {
 			return errors.WrapPrefix(mkErr, "mkdir parent", 0)
 		}
 
@@ -103,17 +88,6 @@ func (b *Builder) CurrentAppVersion(ctx context.Context) (string, error) {
 	}
 
 	return b.readAppVersion()
-}
-
-func (b *Builder) readAppVersion() (string, error) {
-	p := filepath.Join(b.repoPath, "Headless", "AppVersion")
-
-	data, err := os.ReadFile(p)
-	if err != nil {
-		return "", errors.WrapPrefix(err, "read Headless/AppVersion", 0)
-	}
-
-	return strings.TrimSpace(string(data)), nil
 }
 
 // BuildParams は 1 回のビルド invocation の入力.
@@ -194,6 +168,39 @@ func (b *Builder) Build(ctx context.Context, p BuildParams) (*BuildResult, error
 	}, nil
 }
 
+// resolveRepoPath は cfg.ContainerRepoPath を絶対パスに正規化して repoPath に保持する.
+// cmd.Dir と組み合わせる際にパス崩れが起きないよう常に絶対にしておく.
+func (b *Builder) resolveRepoPath() (string, error) {
+	if b.repoPath != "" {
+		return b.repoPath, nil
+	}
+
+	p := b.cfg.ContainerRepoPath
+	if p == "" {
+		return "", errors.New("container repo path is not configured")
+	}
+
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		return "", errors.WrapPrefix(err, "resolve container repo path", 0)
+	}
+
+	b.repoPath = abs
+
+	return abs, nil
+}
+
+func (b *Builder) readAppVersion() (string, error) {
+	p := filepath.Join(b.repoPath, "Headless", "AppVersion")
+
+	data, err := os.ReadFile(p) //nolint:gosec // G304: container repo 内の固定相対パス
+	if err != nil {
+		return "", errors.WrapPrefix(err, "read Headless/AppVersion", 0)
+	}
+
+	return strings.TrimSpace(string(data)), nil
+}
+
 func (b *Builder) validateCreds() error {
 	if b.cfg.SteamUsername == "" || b.cfg.SteamPassword == "" || b.cfg.HeadlessPassword == "" {
 		return errors.New("STEAM_USERNAME / STEAM_PASSWORD / HEADLESS_PASSWORD are required")
@@ -218,7 +225,7 @@ func (b *Builder) downloadResonite(ctx context.Context, p BuildParams) error {
 		return errors.WrapPrefix(err, "clean Resonite dir", 0)
 	}
 
-	if err := os.MkdirAll(resoDir, 0o755); err != nil {
+	if err := os.MkdirAll(resoDir, dirPerm); err != nil {
 		return errors.WrapPrefix(err, "mkdir Resonite dir", 0)
 	}
 
@@ -238,7 +245,7 @@ func (b *Builder) downloadResonite(ctx context.Context, p BuildParams) error {
 		args = append(args, "-depot", b.cfg.HeadlessDepotID)
 	}
 
-	switch p.Branch {
+	switch p.Branch { //nolint:exhaustive // それ以外の branch は -beta 指定不要 (default depot)
 	case entity.ResoniteVersionBranch_Prerelease:
 		args = append(args, "-beta", "prerelease")
 	case entity.ResoniteVersionBranch_Headless:
@@ -267,7 +274,7 @@ func (b *Builder) ensureDepotDownloader(ctx context.Context) (string, error) {
 	}
 
 	binDir := filepath.Join(b.repoPath, "bin")
-	if err := os.MkdirAll(binDir, 0o755); err != nil {
+	if err := os.MkdirAll(binDir, dirPerm); err != nil {
 		return "", errors.WrapPrefix(err, "mkdir bin", 0)
 	}
 
@@ -296,7 +303,7 @@ func (b *Builder) ensureDepotDownloader(ctx context.Context) (string, error) {
 		return "", errors.WrapPrefix(err, "unzip DepotDownloader", 0)
 	}
 
-	if err := os.Chmod(binPath, 0o755); err != nil {
+	if err := os.Chmod(binPath, execPerm); err != nil {
 		return "", errors.WrapPrefix(err, "chmod DepotDownloader", 0)
 	}
 
@@ -323,7 +330,7 @@ func (b *Builder) prepareNativeLibs() error {
 			return errors.WrapPrefix(err, "clean native-libs", 0)
 		}
 
-		if err := os.MkdirAll(dst, 0o755); err != nil {
+		if err := os.MkdirAll(dst, dirPerm); err != nil {
 			return errors.WrapPrefix(err, "mkdir native-libs", 0)
 		}
 
@@ -369,16 +376,18 @@ func copyFlatFiles(src, dst string) error {
 }
 
 func copyFile(src, dst string) error {
-	sf, err := os.Open(src)
+	sf, err := os.Open(src) //nolint:gosec // G304: container repo 内を walk したパス
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = sf.Close() }()
 
-	df, err := os.Create(dst)
+	df, err := os.Create(dst) //nolint:gosec // G304: container repo 内の固定 dst
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = df.Close() }()
 
 	_, err = io.Copy(df, sf)
@@ -389,7 +398,7 @@ func copyFile(src, dst string) error {
 func (b *Builder) readBuildVersion() (string, error) {
 	p := filepath.Join(b.repoPath, "Resonite", "Headless", "Build.version")
 
-	data, err := os.ReadFile(p)
+	data, err := os.ReadFile(p) //nolint:gosec // G304: container repo 内の固定相対パス
 	if err != nil {
 		return "", err
 	}
@@ -397,7 +406,7 @@ func (b *Builder) readBuildVersion() (string, error) {
 	return strings.TrimSpace(string(data)), nil
 }
 
-// computeTag は既存の parseTag と互換のあるタグ文字列を組み立てる.
+// computeTag は従来の GHCR タグと互換のあるタグ文字列を組み立てる.
 // `<[prerelease-]resoniteVersion>-<appVersion>`.
 func computeTag(branch entity.ResoniteVersionBranch, resoniteVersion, appVersion string) string {
 	prefix := ""

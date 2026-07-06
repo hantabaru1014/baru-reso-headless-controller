@@ -1,5 +1,3 @@
-// Package worker: ContentPoller.
-//
 // ContentPoller periodically fetches versions.json (from
 // resonite-love/resonite-version-monitor) and reconciles the local
 // resonite_versions table. It also polls the container repo
@@ -17,6 +15,7 @@
 //
 // Successful builds fire ResoniteVersionUsecase's Subscribe observers so
 // HostUpgradeOrchestrator can enroll RUNNING auto-update hosts.
+
 package worker
 
 import (
@@ -142,6 +141,7 @@ func (c *ContentPoller) checkVersions(ctx context.Context) {
 		}
 
 		systemUser := domain.SystemUserID
+
 		jobID, err := c.jobs.EnqueueBuildImage(ctx, v.ManifestID, v.Branch, nil, &systemUser)
 		if err != nil {
 			slog.Warn("content-poller: enqueue build for new version failed",
@@ -194,6 +194,7 @@ func (c *ContentPoller) checkContainerRepo(ctx context.Context) {
 		}
 
 		systemUser := domain.SystemUserID
+
 		jobID, err := c.jobs.EnqueueBuildImage(ctx, v.ManifestID, v.Branch, nil, &systemUser)
 		if err != nil {
 			slog.Warn("content-poller: enqueue rebuild failed",

@@ -134,33 +134,6 @@ func (u *ResoniteVersionUsecase) ResolveForStart(ctx context.Context, tagInput s
 	return *row.ImageTag, nil
 }
 
-func (u *ResoniteVersionUsecase) resolveLatest(ctx context.Context, branch entity.ResoniteVersionBranch) (string, error) {
-	built, err := u.repo.GetLatestBuiltByBranch(ctx, branch)
-	if err == nil {
-		if built.ImageTag != nil {
-			return *built.ImageTag, nil
-		}
-	} else if !errors.Is(err, domain.ErrNotFound) {
-		return "", errors.Wrap(err, 0)
-	}
-
-	// built が無ければ、未 built の中で最新のものを chain 対象として返す.
-	all, err := u.repo.List(ctx, &branch)
-	if err != nil {
-		return "", errors.Wrap(err, 0)
-	}
-
-	for _, r := range all {
-		if r.GameVersion == nil {
-			continue
-		}
-
-		return "", &NotBuiltError{ManifestID: r.ManifestID, Branch: r.Branch}
-	}
-
-	return "", errors.Errorf("no resonite_versions found for branch=%s (versions.json fetched?)", branch)
-}
-
 // RunBuild は BUILD_IMAGE async job の handler 本体.
 // build 前に status=building へ遷移し、成功時 status=built + image_tag / built_with_app_version 更新、
 // 失敗時 status=failed + build_error 記録.
@@ -201,23 +174,6 @@ func (u *ResoniteVersionUsecase) RunBuild(ctx context.Context, manifestID string
 	})
 
 	return res.ImageTag, nil
-}
-
-func (u *ResoniteVersionUsecase) notify(ctx context.Context, image *port.ContainerImage) {
-	u.mu.Lock()
-	obs := append([]BuildSuccessObserver(nil), u.observers...)
-	u.mu.Unlock()
-
-	for _, o := range obs {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					slog.Error("build-success observer panicked", "panic", r)
-				}
-			}()
-			o(ctx, image)
-		}()
-	}
 }
 
 // versionsJSONShape は resonite-love/resonite-version-monitor の JSON 形状.
@@ -311,4 +267,49 @@ func (u *ResoniteVersionUsecase) CurrentAppVersion(ctx context.Context) (string,
 // AppVersion bump 時の再ビルド対象特定に使う (auto-build 対象ブランチのみ).
 func (u *ResoniteVersionUsecase) ListStaleBuilt(ctx context.Context, currentAppVersion string) (entity.ResoniteVersionList, error) {
 	return u.repo.ListStaleBuilt(ctx, entity.AutoBuildBranches, currentAppVersion)
+}
+
+func (u *ResoniteVersionUsecase) resolveLatest(ctx context.Context, branch entity.ResoniteVersionBranch) (string, error) {
+	built, err := u.repo.GetLatestBuiltByBranch(ctx, branch)
+	if err == nil {
+		if built.ImageTag != nil {
+			return *built.ImageTag, nil
+		}
+	} else if !errors.Is(err, domain.ErrNotFound) {
+		return "", errors.Wrap(err, 0)
+	}
+
+	// built が無ければ、未 built の中で最新のものを chain 対象として返す.
+	all, err := u.repo.List(ctx, &branch)
+	if err != nil {
+		return "", errors.Wrap(err, 0)
+	}
+
+	for _, r := range all {
+		if r.GameVersion == nil {
+			continue
+		}
+
+		return "", &NotBuiltError{ManifestID: r.ManifestID, Branch: r.Branch}
+	}
+
+	return "", errors.Errorf("no resonite_versions found for branch=%s (versions.json fetched?)", branch)
+}
+
+func (u *ResoniteVersionUsecase) notify(ctx context.Context, image *port.ContainerImage) {
+	u.mu.Lock()
+	obs := append([]BuildSuccessObserver(nil), u.observers...)
+	u.mu.Unlock()
+
+	for _, o := range obs {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Error("build-success observer panicked", "panic", r)
+				}
+			}()
+
+			o(ctx, image)
+		}()
+	}
 }

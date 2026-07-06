@@ -12,7 +12,6 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
-	"github.com/hantabaru1014/baru-reso-headless-controller/lib"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
@@ -254,43 +253,6 @@ func parseConnectString(connect_string HostConnectString) (string, int, error) {
 	}
 
 	return splitted[0], port, nil
-}
-
-type TagInfo struct {
-	Tag             string
-	IsVersioned     bool
-	IsPreRelease    bool
-	ResoniteVersion string
-	AppVersion      string
-}
-
-// TODO: imageに情報を埋め込んだらタグ名からパースするのをやめる.
-func parseTag(tag string) TagInfo {
-	trimmed := strings.TrimPrefix(tag, "prerelease-")
-	splitted := strings.Split(trimmed, "-")
-
-	appVersion := "v0.0.0"
-
-	if len(splitted) == 2 { //nolint:mnd // version-appVersion format
-		appVersion = splitted[1]
-	}
-
-	if len(splitted) > 0 && lib.ValidateResoniteVersionString(splitted[0]) {
-		return TagInfo{
-			Tag:             tag,
-			IsVersioned:     true,
-			IsPreRelease:    strings.HasPrefix(tag, "prerelease-"),
-			ResoniteVersion: splitted[0],
-			AppVersion:      appVersion,
-		}
-	} else {
-		return TagInfo{
-			Tag:             tag,
-			IsVersioned:     false,
-			IsPreRelease:    false,
-			ResoniteVersion: "",
-		}
-	}
 }
 
 func getFreePort() (int, error) {

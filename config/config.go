@@ -247,16 +247,6 @@ func getEnvInt(key string, defaultValue int) int {
 	return defaultValue
 }
 
-func getEnvDurationSec(key string, defaultValue time.Duration) time.Duration {
-	if v := os.Getenv(key); v != "" {
-		if seconds, err := strconv.Atoi(v); err == nil && seconds > 0 {
-			return time.Duration(seconds) * time.Second
-		}
-	}
-
-	return defaultValue
-}
-
 func getEnvBoolWithDefault(key string, defaultValue bool) bool {
 	v := os.Getenv(key)
 	if v == "" {

@@ -55,6 +55,7 @@ var _ = registerRPCPermission(
 
 func (c *ControllerService) ListResoniteVersions(ctx context.Context, req *connect.Request[hdlctrlv1.ListResoniteVersionsRequest]) (*connect.Response[hdlctrlv1.ListResoniteVersionsResponse], error) {
 	var branchFilter *entity.ResoniteVersionBranch
+
 	if req.Msg.Branch != nil {
 		b := entity.ResoniteVersionBranch(req.Msg.GetBranch())
 		branchFilter = &b

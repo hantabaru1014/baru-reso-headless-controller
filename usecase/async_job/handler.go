@@ -149,11 +149,11 @@ func (d *Dispatcher) buildImage(ctx context.Context, job *entity.AsyncJob) (JobR
 
 	msg := fmt.Sprintf("イメージ %s をビルドしました", tag)
 
-	if req.ThenStartHost != nil {
+	if start := req.GetThenStartHost(); start != nil {
 		// build 成功後の chained host start.
-		start := req.GetThenStartHost()
 		// 解決済みタグを埋め込んで再度 resolveTagToUse を通さないようにする.
 		start.ImageTag = &tag
+
 		startJobID, chainErr := d.uc.EnqueueStartHost(ctx, start, job.CreatedBy)
 		if chainErr != nil {
 			return JobResult{}, "", errors.WrapPrefix(chainErr, "enqueue chained start_host", 0)
