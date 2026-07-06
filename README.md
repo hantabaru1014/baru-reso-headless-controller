@@ -1,85 +1,66 @@
 # baru-reso-headless-controller
 
-[baru-reso-headless-container](https://github.com/hantabaru1014/baru-reso-headless-container) の管理ダッシュボードWebアプリ
+A self-hosted control plane for [baru-reso-headless-container](https://github.com/hantabaru1014/baru-reso-headless-container) that turns Resonite headless hosting into a multi-instance, multi-user service.
 
-ステータス:
-(WIP) 開発の初期段階なのでいろいろ破壊します  
-とりあえず最低限コンテナのマネジメントとセッション管理ができる
+The official headless client is a console application: one terminal per instance, hand-edited config files, and access limited to whoever can reach the shell. This controller instead runs headless instances as Docker containers, so you and your team can spin up, operate, upgrade, and shut down any number of them from the browser — with group-based access control deciding who can manage what.
 
-## 動作環境
-- `network: host` が利用できるdocker
-- 対応CPU archはAMD64 or ARM64
+## Features
+
+- **Host management**: start / stop / restart / delete headless containers, view their logs
+  - Detects and pulls new container images automatically, and can upgrade running hosts on its own
+- **Session management**: create / stop sessions, edit session parameters, invite / kick / ban users, change user roles
+  - Schedule session operations with time- or condition-based triggers
+  - Save worlds and download world binaries
+- **Headless account management**: credentials, storage usage, friend requests and messaging
+- **Access control**: group-based RBAC — see [docs/permissions.md](docs/permissions.md)
+- **Log aggregation**: container logs are collected into PostgreSQL and browsable from the dashboard
+- **Live updates**: server-side push keeps the dashboard in sync without reloading
+
+## Requirements
+
+- Docker with `network: host` available
+- CPU arch: AMD64 or ARM64
+- Access to a baru-reso-headless-container image registry
 
 ## Setup
-以下はcontrollerとPostgresSQLをdocker-composeで立ち上げる場合の手順。  
-k8sで立ち上げたり、既存のpostgresに接続したい場合はsetup.shの実行まで行ったらcomposeファイルや.envを見て良しなにやってください。  
-また、baru-reso-headless-containerのdockerイメージのレジストリにアクセスできる状態である必要があります。
 
-- 空のディレクトリを用意してカレントディレクトリとする
-- 必要なファイルのダウンロード、`.env` のセットアップ、DBの起動とマイグレーションを行う
-  ```sh
-  sh <(curl -s https://raw.githubusercontent.com/hantabaru1014/baru-reso-headless-controller/refs/heads/main/scripts/setup.sh)
-  ```
-  このスクリプトは以下を自動的に実行します：
-  - 必要なファイルのダウンロード（docker-compose.yml、brhcliなど）
-  - `.env` ファイルの生成
-  - データベースの起動
-  - データベースマイグレーションの実行
-  - fluentbitユーザーのパスワード設定
-- 管理者ユーザの作成
-  ```sh
-  ./brhcli user create <メールアドレス> <パスワード> <Resonite UserID>
-  ```
-- 本体を起動
-  ```sh
-  docker compose up -d
-  ```
-- 完了。 http://localhost:8014/ でアクセスできます。
-  - ポートは `.env` にある `HOST` 環境変数で設定可能
-  - 認証認可部分はまだちゃんと作ってないのでエンドポイント自体を何らかの信頼できる方法で保護してください(おすすめ: CloudFlare Zero Trust)
+The steps below bring up the controller, PostgreSQL, and friends with docker compose.
+If you want to run on k8s or connect to an existing PostgreSQL, run setup.sh first and then adjust the compose files and `.env`.
 
-## 既存環境のアップグレード
+1. Create an empty directory and cd into it
+2. Run the setup script
+   ```sh
+   sh <(curl -s https://raw.githubusercontent.com/hantabaru1014/baru-reso-headless-controller/refs/heads/main/scripts/setup.sh)
+   ```
+   The script takes care of:
+   - Downloading the required files (docker-compose.yml, brhcli, etc.)
+   - Generating the `.env` file
+   - Starting PostgreSQL / fluent-bit / RustFS
+   - Running database migrations
+3. Create an admin user
+   ```sh
+   ./brhcli user create <email> <password> <Resonite UserID>
+   ```
+4. Start the controller
+   ```sh
+   docker compose up -d
+   ```
+5. Done. The dashboard is available at http://localhost:8014/
+   - The port can be changed via the `HOST` variable in `.env`
+   - If you expose it to the internet, protect the endpoint with a reverse proxy, Cloudflare Zero Trust, or similar
 
-既に稼働中の環境で最新版にアップグレードする場合、以下のコマンドを実行してください：
+## Upgrading
+
+To upgrade a running deployment to the latest version, run the following in the directory you used for setup:
 
 ```sh
 sh <(curl -s https://raw.githubusercontent.com/hantabaru1014/baru-reso-headless-controller/refs/heads/main/scripts/auto-upgrade.sh)
 ```
 
-このスクリプトは以下を自動的に実行します：
-- 最新のdocker-compose.yml、brhcli等のダウンロード
-- データベースマイグレーションの実行
-- データベースの状態に応じたFluentBit設定
-- fluentdコンテナの再起動
+It downloads the latest compose files, images, and brhcli, runs database migrations, appends any newly required settings to `.env`, and recreates the containers.
+Backing up important data before upgrading is recommended.
 
-**注意事項:**
-- このスクリプトは`.env`ファイルが存在する既存環境向けです
-- 新規セットアップの場合は `setup.sh` を使用してください
-- アップグレード前に重要なデータのバックアップを推奨します
+## Documentation
 
-## 開発
-
-### テスト
-
-#### 初回セットアップ
-
-テスト用データベースの作成とマイグレーション:
-```sh
-make test.setup
-```
-このコマンドは、環境変数 `DB_URL` で指定されたデータベース名に `_test` を追加したテストデータベースを作成し、マイグレーションを実行します。
-
-#### テストの実行
-
-```sh
-make test
-```
-
-#### テストの構造
-
-- **テストデータベース**: 実際の PostgreSQL データベースを使用しますが、データベース名に `_test` サフィックスが付きます
-- **モック**: `mockgen` を使用して、外部依存である `HostConnector` インターフェースのモックを生成します
-  - Dockerコンテナを実行せずにテストできるよう、`HostConnector`のみをモック化
-  - Repository層は実際の実装を使用し、データベース操作も含めてテスト
-  - コード変更後は `make gen.mock` でmock生成が必要
-- **テストヘルパー**: `testutil/` パッケージに共通のテストユーティリティが含まれています
+- [Development guide](docs/development.md) - architecture, dev environment setup, testing
+- [Permission system](docs/permissions.md) - RBAC concepts and configuration
