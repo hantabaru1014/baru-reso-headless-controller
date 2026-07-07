@@ -237,6 +237,114 @@ func assertJobEnqueued(t *testing.T, setup *controllerServiceTestSetup, jobID st
 	assert.Equal(t, int32(entity.AsyncJobStatus_PENDING), row.Status)
 }
 
+func TestControllerService_BuildResoniteImage(t *testing.T) {
+	t.Run("成功: system-admin で BUILD_IMAGE job が登録される", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.BuildResoniteImageRequest{
+			ManifestId: "MANIFEST-1",
+			Branch:     "headless",
+		})
+
+		res, err := client.BuildResoniteImage(t.Context(), req)
+		require.NoError(t, err)
+		require.NotNil(t, res.Msg)
+		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_BUILD_IMAGE))
+	})
+
+	t.Run("成功: いずれかのグループの host:write のみで実行できる", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.BuildResoniteImageRequest{
+			ManifestId: "MANIFEST-1",
+			Branch:     "headless",
+		}, "U-mp-build", "g-mp-build", []string{entity.PermKey_HostWrite})
+
+		res, err := client.BuildResoniteImage(t.Context(), req)
+		require.NoError(t, err)
+		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_BUILD_IMAGE))
+	})
+
+	t.Run("失敗: host:write をどのグループにも持たないと PermissionDenied", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.BuildResoniteImageRequest{
+			ManifestId: "MANIFEST-1",
+			Branch:     "headless",
+		}, "U-mp-build-nowrite", "g-mp-build-nowrite", []string{entity.PermKey_HostRead})
+
+		_, err := client.BuildResoniteImage(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+		assert.Contains(t, connectErr.Message(), entity.PermKey_HostWrite)
+	})
+
+	t.Run("成功: then_start_host 付きは host:write + account:use で実行できる", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-build-chain"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-acc", "mp@example.test", "password", groupID)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.BuildResoniteImageRequest{
+			ManifestId: "MANIFEST-1",
+			Branch:     "headless",
+			ThenStartHost: &hdlctrlv1.StartHeadlessHostRequest{
+				HeadlessAccountId: "U-mp-acc",
+				Name:              "TestHost",
+			},
+		}, "U-mp-build-chain", groupID, []string{
+			entity.PermKey_HostWrite,
+			entity.PermKey_AccountUse,
+		})
+
+		res, err := client.BuildResoniteImage(t.Context(), req)
+		require.NoError(t, err)
+		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_BUILD_IMAGE))
+	})
+
+	t.Run("失敗: then_start_host 付きで account:use 不足なら PermissionDenied", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-build-chain-noaccuse"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-acc", "mp@example.test", "password", groupID)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.BuildResoniteImageRequest{
+			ManifestId: "MANIFEST-1",
+			Branch:     "headless",
+			ThenStartHost: &hdlctrlv1.StartHeadlessHostRequest{
+				HeadlessAccountId: "U-mp-acc",
+				Name:              "TestHost",
+			},
+		}, "U-mp-build-chain-noaccuse", groupID, []string{entity.PermKey_HostWrite})
+
+		_, err := client.BuildResoniteImage(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+		assert.Contains(t, connectErr.Message(), entity.PermKey_AccountUse)
+	})
+}
+
 func TestControllerService_RestartHeadlessHost(t *testing.T) {
 	t.Run("成功: 非同期 job が登録される", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)

@@ -75,11 +75,12 @@ func (c *ControllerService) ListResoniteVersions(ctx context.Context, req *conne
 }
 
 // BuildResoniteImage implements hdlctrlv1connect.ControllerServiceHandler.
-// イメージビルドは host 単体に閉じない共有リソース (Steam 認証情報 / docker daemon / disk)
-// を消費するため system-scope 権限で限定する. dedicated な PermKey は将来切り出す.
+// 権限: いずれかのグループで host:write を持つこと (ホストを起動できるユーザーは
+// 前提となるイメージビルドも実行できる). then_start_host 付きは StartHeadlessHost と
+// 同一のチェック. 詳細は checkBuildResoniteImage を参照.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.ControllerServiceBuildResoniteImageProcedure,
-	requireSystemPerm(entity.PermKey_SystemGroupManage),
+	checkBuildResoniteImage,
 )
 
 func (c *ControllerService) BuildResoniteImage(ctx context.Context, req *connect.Request[hdlctrlv1.BuildResoniteImageRequest]) (*connect.Response[hdlctrlv1.BuildResoniteImageResponse], error) {

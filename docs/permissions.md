@@ -106,6 +106,7 @@ scope が合致しないロールは作成・割り当てできません。
 | 操作したいこと | 必要な権限 |
 |---|---|
 | ホストを起動・停止・削除 | 対象グループに `host:write` |
+| ヘッドレスイメージをビルド | いずれかのグループに `host:write` (起動 chain 付きは対象グループに `host:write` + `account:use`) |
 | 自分のセッションを建てる (任意ホスト指定) | 対象グループに `host:use` + `account:use` + `session:write` |
 | セッションを停止 / 設定変更 / kick / ban | 対象グループに `session:write` |
 | アカウントを追加・更新 | 対象グループに `account:write` |

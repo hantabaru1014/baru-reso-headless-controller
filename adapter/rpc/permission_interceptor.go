@@ -473,6 +473,12 @@ func checkStartHeadlessHost(ctx context.Context, req connect.AnyRequest, deps *P
 		return err
 	}
 
+	return checkStartHeadlessHostMsg(ctx, claims.UserID, msg, deps, permUC)
+}
+
+// checkStartHeadlessHostMsg は StartHeadlessHostRequest 本体に対する権限判定.
+// StartHeadlessHost 直接呼び出しと BuildResoniteImage の then_start_host chain の両方から使う.
+func checkStartHeadlessHostMsg(ctx context.Context, userID string, msg *hdlctrlv1.StartHeadlessHostRequest, deps *PermissionDeps, permUC *usecase.PermissionUsecase) error {
 	accID := msg.GetHeadlessAccountId()
 	if accID == "" {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("headless_account_id is required"))
@@ -493,11 +499,61 @@ func checkStartHeadlessHost(ctx context.Context, req connect.AnyRequest, deps *P
 
 	groupID := acc.GroupID
 
-	if err := requirePerm(ctx, permUC, claims.UserID, groupID, entity.PermKey_HostWrite); err != nil {
+	if err := requirePerm(ctx, permUC, userID, groupID, entity.PermKey_HostWrite); err != nil {
 		return err
 	}
 
-	return requirePerm(ctx, permUC, claims.UserID, groupID, entity.PermKey_AccountUse)
+	return requirePerm(ctx, permUC, userID, groupID, entity.PermKey_AccountUse)
+}
+
+// checkBuildResoniteImage: イメージビルドは host 単体に閉じない共有リソース
+// (Steam 認証情報 / docker daemon / disk) を消費するが、いずれかのグループで
+// ホストを起動できる (host:write を持つ) ユーザーには許可する.
+// then_start_host 付きの場合は chain される起動要求に対して StartHeadlessHost と
+// 同一のチェック (対象グループへの host:write + account:use) を行う.
+func checkBuildResoniteImage(ctx context.Context, req connect.AnyRequest, deps *PermissionDeps, permUC *usecase.PermissionUsecase) error {
+	msg, ok := req.Any().(*hdlctrlv1.BuildResoniteImageRequest)
+	if !ok {
+		return connect.NewError(connect.CodeInternal, errors.New("unexpected request type"))
+	}
+
+	claims, err := extractClaims(ctx)
+	if err != nil {
+		return err
+	}
+
+	if ts := msg.GetThenStartHost(); ts != nil {
+		return checkStartHeadlessHostMsg(ctx, claims.UserID, ts, deps, permUC)
+	}
+
+	// 無所属の system 管理者でも通せるよう、先に system:group.manage を確認する
+	// (所属グループがあれば HasPermission の bypass でも通る).
+	isAdmin, err := permUC.HasSystemPermission(ctx, claims.UserID, entity.PermKey_SystemGroupManage)
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+
+	if isAdmin {
+		return nil
+	}
+
+	groups, err := deps.GroupRepo.ListByUser(ctx, claims.UserID)
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+
+	for _, g := range groups {
+		ok, err := permUC.HasPermission(ctx, claims.UserID, g.ID, entity.PermKey_HostWrite)
+		if err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+
+		if ok {
+			return nil
+		}
+	}
+
+	return permissionDenied(entity.PermKey_HostWrite)
 }
 
 // checkCreateHeadlessAccount: アカウント作成. group_id 未指定なら personal group.
