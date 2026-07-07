@@ -20,7 +20,9 @@ The official headless client is a console application: one terminal per instance
 
 - Docker with `network: host` available
 - CPU arch: AMD64 or ARM64
-- A Steam account that can access the Resonite `headless` beta branch (username / password / beta access code) — headless container images are built locally from it
+- A Steam account for building headless container images (username / password / Resonite `headless` beta access code)
+  - Create a new dedicated account that can log in with a password and has two-factor authentication (Steam Guard) disabled
+  - The beta access code is passed to DepotDownloader at download time, so the account itself does not need the beta branch enabled
 
 ## Setup
 
