@@ -24,12 +24,13 @@ RUSTFS_SECRET_KEY="$(openssl rand -base64 32)"
 DOCKER_GID="$(grep docker /etc/group | cut -d: -f3)"
 
 DEFAULT_IMAGE="baru-reso-headless-container"
-read -p "ヘッドレスのdocker image nameを入力 (default: ${DEFAULT_IMAGE}): " HEADLESS_IMAGE_NAME
 HEADLESS_IMAGE_NAME=${HEADLESS_IMAGE_NAME:-$DEFAULT_IMAGE}
 
 # ヘッドレスイメージはローカルビルドされるため、Resonite を DepotDownloader で
 # 取得するための Steam 認証情報が必要
 echo "ヘッドレスイメージのビルドに使う Steam 認証情報を入力してください"
+echo "※ パスワードログインができて2段階認証 (Steam Guard) をオフにした新規の専用アカウントを用意してください"
+echo "※ ベータアクセスコードはダウンロード時に指定されるため、アカウント自体で headless ブランチを有効化する必要はありません"
 read -p 'Steam ユーザー名: ' STEAM_USERNAME
 read -p 'Steam パスワード: ' STEAM_PASSWORD
 read -p 'Resonite headless ブランチのベータアクセスコード: ' HEADLESS_PASSWORD
@@ -98,15 +99,16 @@ docker compose run --rm -T app -migrate-only
 echo "4. fluentbitユーザーのパスワードを設定中..."
 docker compose -f docker-compose.db.yml exec -T db psql -U postgres -d brhcdb -c "ALTER USER fluentbit WITH PASSWORD '${FLUENTBIT_PGSQL_PASSWORD}';"
 
+echo "5. サービス起動中..."
+docker compose up -d
+
 echo ""
 echo "✅ データベースのセットアップが完了しました！"
 echo ""
 echo "次のステップ:"
 echo "1. 管理者ユーザを作成してください:"
-echo "   ./brhcli user create <メールアドレス> <パスワード> <Resonite UserID>"
+echo "   ./brhcli user create <ID> <パスワード> <Resonite UserID>"
+echo "   ./brhcli system-admin add <ID>"
 echo ""
-echo "2. 本体を起動してください:"
-echo "   docker compose up -d"
-echo ""
-echo "3. http://localhost:8014/ でアクセスできます"
+echo "2. http://localhost:8014/ でアクセスできます"
 echo ""
