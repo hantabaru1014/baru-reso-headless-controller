@@ -52,6 +52,7 @@ const (
 	PermKey_SystemGroupList      = "system:group.list"
 	PermKey_SystemGroupManage    = "system:group.manage"
 	PermKey_SystemRoleManage     = "system:role.manage"
+	PermKey_SystemMessageManage  = "system:message.manage"
 )
 
 // Group は権限スコープ単位のグループ.
@@ -116,6 +117,7 @@ var AllPermissionKeys = []PermissionKeyDef{
 	{Key: PermKey_SystemGroupList, Description: "List all groups", Scope: RoleScope_System},
 	{Key: PermKey_SystemGroupManage, Description: "Manage any group (including personal), and personal role changes", Scope: RoleScope_System},
 	{Key: PermKey_SystemRoleManage, Description: "Manage global custom roles", Scope: RoleScope_System},
+	{Key: PermKey_SystemMessageManage, Description: "Create / update / delete announcement messages", Scope: RoleScope_System},
 }
 
 // IsValidPermissionKey は AllPermissionKeys に含まれる key か検証する.

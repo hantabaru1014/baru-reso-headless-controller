@@ -9,6 +9,7 @@ export * from "./FieldFooter";
 export * from "./FieldHeader";
 export * from "./GroupSwitcher";
 export * from "./Loading";
+export * from "./Markdown";
 export * from "./RadioGroupField";
 export * from "./ReadOnlyField";
 export * from "./RefetchButton";

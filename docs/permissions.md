@@ -93,6 +93,7 @@ scope が合致しないロールは作成・割り当てできません。
 | `system:group.list` | 全グループの一覧閲覧 |
 | `system:group.manage` | 全グループへの管理操作 (personal含む)、personalグループのロール変更、グループ作成 |
 | `system:role.manage` | グローバルカスタムロールの作成・編集・削除 |
+| `system:message.manage` | お知らせメッセージの作成・編集・削除 |
 
 ## 5. 操作と必要権限
 

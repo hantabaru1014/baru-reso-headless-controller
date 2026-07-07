@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package hdlctrl.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// 管理者から利用者へのお知らせメッセージ (掲示板) を管理する。
+// 本文は markdown。既読管理やリアルタイム通知は行わない。
+service MessageService {
+  // ログインユーザーが閲覧可能なメッセージを updated_at 降順で返す。
+  // 全員向け (group_id 未設定) + 所属グループ向けが対象。
+  // system:message.manage を持つ場合は全メッセージを返す。
+  rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
+  // system:message.manage が必要。
+  rpc CreateMessage(CreateMessageRequest) returns (CreateMessageResponse);
+  // system:message.manage が必要。title / body / 対象グループを完全置換する。
+  rpc UpdateMessage(UpdateMessageRequest) returns (UpdateMessageResponse);
+  // system:message.manage が必要。
+  rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse);
+}
+
+message Message {
+  string id = 1;
+  string title = 2;
+  // markdown 本文。
+  string body = 3;
+  // 未設定なら全員向け。設定時はそのグループのメンバー向け。
+  optional string group_id = 4;
+  // 表示用に解決済みのグループ名 (group_id 設定時のみ)。
+  optional string group_name = 5;
+  // NULL の場合は削除済みユーザー。
+  optional string created_by = 6;
+  optional string last_updated_by = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message ListMessagesRequest {}
+
+message ListMessagesResponse {
+  // updated_at 降順。
+  repeated Message messages = 1;
+}
+
+message CreateMessageRequest {
+  string title = 1;
+  string body = 2;
+  // 未設定なら全員向け。
+  optional string group_id = 3;
+}
+
+message CreateMessageResponse {
+  Message message = 1;
+}
+
+message UpdateMessageRequest {
+  string message_id = 1;
+  string title = 2;
+  string body = 3;
+  // 未設定なら全員向けに変更。設定時はそのグループ向けに変更。
+  optional string group_id = 4;
+}
+
+message UpdateMessageResponse {
+  Message message = 1;
+}
+
+message DeleteMessageRequest {
+  string message_id = 1;
+}
+
+message DeleteMessageResponse {}

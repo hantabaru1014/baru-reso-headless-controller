@@ -27,6 +27,7 @@ type Server struct {
 	notificationService *rpc.NotificationService
 	groupService        *rpc.GroupService
 	roleService         *rpc.RoleService
+	messageService      *rpc.MessageService
 	workerManager       *worker.Manager
 	blobClient          blobstore.Client
 	resoniteLinkBridge  *resonitelink.Bridge
@@ -39,6 +40,7 @@ func NewServer(
 	notificationService *rpc.NotificationService,
 	groupService *rpc.GroupService,
 	roleService *rpc.RoleService,
+	messageService *rpc.MessageService,
 	workerManager *worker.Manager,
 	blobClient blobstore.Client,
 	resoniteLinkBridge *resonitelink.Bridge,
@@ -49,6 +51,7 @@ func NewServer(
 		notificationService: notificationService,
 		groupService:        groupService,
 		roleService:         roleService,
+		messageService:      messageService,
 		workerManager:       workerManager,
 		blobClient:          blobClient,
 		resoniteLinkBridge:  resoniteLinkBridge,
@@ -156,6 +159,10 @@ func (s *Server) ListenAndServe(addr string, frontUrl string) error {
 	}
 	{
 		p, h := s.roleService.NewHandler()
+		router.PathPrefix(p).Handler(h)
+	}
+	{
+		p, h := s.messageService.NewHandler()
 		router.PathPrefix(p).Handler(h)
 	}
 
