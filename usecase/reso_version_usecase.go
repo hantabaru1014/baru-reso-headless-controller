@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-errors/errors"
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
@@ -35,10 +36,16 @@ type BuildSuccessObserver func(ctx context.Context, image *port.ContainerImage)
 // ResoniteVersionUsecase は versions.json 由来のバージョン管理 + ローカルビルドの
 // 中枢. HeadlessHostUsecase / Dispatcher / ContentPoller / RPC handler / Orchestrator
 // はここ経由でバージョン情報にアクセスする.
+//
+// DB の build_status は履歴・診断用の記録であり、「起動に使えるか」の判定には
+// 使わない. docker image はユーザー操作 (prune 等) でいつでも消えうるため、
+// 候補生成 (List / ListBuiltAsContainerImages) と起動解決 (ResolveForStart) の
+// 時点でローカル image の実在を connector 経由で確認する.
 type ResoniteVersionUsecase struct {
-	repo    port.ResoniteVersionRepository
-	builder *image_builder.Builder
-	cfg     *config.ResoniteBuildConfig
+	repo      port.ResoniteVersionRepository
+	builder   *image_builder.Builder
+	connector hostconnector.HostConnector
+	cfg       *config.ResoniteBuildConfig
 
 	mu        sync.Mutex
 	observers []BuildSuccessObserver
@@ -47,12 +54,14 @@ type ResoniteVersionUsecase struct {
 func NewResoniteVersionUsecase(
 	repo port.ResoniteVersionRepository,
 	builder *image_builder.Builder,
+	connector hostconnector.HostConnector,
 	cfg *config.ResoniteBuildConfig,
 ) *ResoniteVersionUsecase {
 	return &ResoniteVersionUsecase{
-		repo:    repo,
-		builder: builder,
-		cfg:     cfg,
+		repo:      repo,
+		builder:   builder,
+		connector: connector,
+		cfg:       cfg,
 	}
 }
 
@@ -65,16 +74,47 @@ func (u *ResoniteVersionUsecase) Subscribe(o BuildSuccessObserver) {
 }
 
 // List はすべての resonite_versions を返す (RPC の ListResoniteVersions で利用).
+// build_status が built でもローカルに image が存在しない行は not_built に落として
+// 返す (prune 等で image が消えた場合、フロントは再ビルド候補として扱える).
+// ローカル image の列挙に失敗した場合は warn ログを出して DB の記録のまま返す.
 func (u *ResoniteVersionUsecase) List(ctx context.Context, branch *entity.ResoniteVersionBranch) (entity.ResoniteVersionList, error) {
-	return u.repo.List(ctx, branch)
+	rows, err := u.repo.List(ctx, branch)
+	if err != nil {
+		return nil, err
+	}
+
+	local, err := u.localTagSet(ctx)
+	if err != nil {
+		slog.Warn("resonite versions: failed to list local images; returning DB build status as-is", "err", err)
+
+		return rows, nil
+	}
+
+	for _, r := range rows {
+		if r.BuildStatus != entity.ResoniteVersionBuildStatus_Built || r.ImageTag == nil {
+			continue
+		}
+
+		if _, ok := local[*r.ImageTag]; !ok {
+			r.BuildStatus = entity.ResoniteVersionBuildStatus_NotBuilt
+		}
+	}
+
+	return rows, nil
 }
 
 // ListBuiltAsContainerImages は既存の ListHeadlessHostImageTags と互換のある
-// ContainerImage list を返す. built 済み行のみ.
+// ContainerImage list を返す. built 済みかつローカルに image が実在する行のみ
+// (prune 等で image が消えたタグを起動候補に出さない).
 func (u *ResoniteVersionUsecase) ListBuiltAsContainerImages(ctx context.Context) (port.ContainerImageList, error) {
 	rows, err := u.repo.List(ctx, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
+	}
+
+	local, err := u.localTagSet(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	out := make(port.ContainerImageList, 0, len(rows))
@@ -85,6 +125,10 @@ func (u *ResoniteVersionUsecase) ListBuiltAsContainerImages(ctx context.Context)
 		}
 
 		if r.ImageTag == nil || r.GameVersion == nil {
+			continue
+		}
+
+		if _, ok := local[*r.ImageTag]; !ok {
 			continue
 		}
 
@@ -128,6 +172,16 @@ func (u *ResoniteVersionUsecase) ResolveForStart(ctx context.Context, tagInput s
 	}
 
 	if row.BuildStatus != entity.ResoniteVersionBuildStatus_Built || row.ImageTag == nil {
+		return "", &NotBuiltError{ManifestID: row.ManifestID, Branch: row.Branch}
+	}
+
+	// DB 上 built でも image が prune 等で消えていたら再ビルドを chain する.
+	exists, err := u.imageExists(ctx, *row.ImageTag)
+	if err != nil {
+		return "", err
+	}
+
+	if !exists {
 		return "", &NotBuiltError{ManifestID: row.ManifestID, Branch: row.Branch}
 	}
 
@@ -269,11 +323,48 @@ func (u *ResoniteVersionUsecase) ListStaleBuilt(ctx context.Context, currentAppV
 	return u.repo.ListStaleBuilt(ctx, entity.AutoBuildBranches, currentAppVersion)
 }
 
+// localTagSet はローカルに存在する headless image のタグ集合を返す.
+func (u *ResoniteVersionUsecase) localTagSet(ctx context.Context) (map[string]struct{}, error) {
+	tags, err := u.connector.ListLocalImageTags(ctx)
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "list local image tags", 0)
+	}
+
+	set := make(map[string]struct{}, len(tags))
+	for _, t := range tags {
+		set[t] = struct{}{}
+	}
+
+	return set, nil
+}
+
+// imageExists は tag のローカル image が実在するかを返す.
+func (u *ResoniteVersionUsecase) imageExists(ctx context.Context, tag string) (bool, error) {
+	local, err := u.localTagSet(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	_, ok := local[tag]
+
+	return ok, nil
+}
+
 func (u *ResoniteVersionUsecase) resolveLatest(ctx context.Context, branch entity.ResoniteVersionBranch) (string, error) {
 	built, err := u.repo.GetLatestBuiltByBranch(ctx, branch)
 	if err == nil {
 		if built.ImageTag != nil {
-			return *built.ImageTag, nil
+			// DB 上 built でも image が prune 等で消えていたら再ビルドを chain する.
+			exists, err := u.imageExists(ctx, *built.ImageTag)
+			if err != nil {
+				return "", err
+			}
+
+			if exists {
+				return *built.ImageTag, nil
+			}
+
+			return "", &NotBuiltError{ManifestID: built.ManifestID, Branch: built.Branch}
 		}
 	} else if !errors.Is(err, domain.ErrNotFound) {
 		return "", errors.Wrap(err, 0)

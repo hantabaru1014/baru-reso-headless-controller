@@ -35,6 +35,12 @@ func TestControllerService_ListHeadlessHostImageTags(t *testing.T) {
 		require.NoError(t, seedBuiltResoVersion(ctx, setup.queries, "MANIFEST-2", "prerelease", gv2, "prerelease-2024.1.2-v1.1.0", "v1.1.0"))
 		// 未 built (返却対象外)
 		require.NoError(t, seedNotBuiltResoVersion(ctx, setup.queries, "MANIFEST-3", "headless", "2024.1.3"))
+		// DB 上 built だがローカル image が prune 済み (返却対象外)
+		require.NoError(t, seedBuiltResoVersion(ctx, setup.queries, "MANIFEST-4", "headless", "2024.1.4", "2024.1.4-v1.0.0", "v1.0.0"))
+
+		// ローカルに実在する image は MANIFEST-1 / MANIFEST-2 の 2 つのみ.
+		setup.mockHostConnector.EXPECT().ListLocalImageTags(gomock.Any()).
+			Return([]string{"2024.1.1-v1.0.0", "prerelease-2024.1.2-v1.1.0"}, nil).AnyTimes()
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListHeadlessHostImageTagsRequest{})
 
@@ -56,6 +62,23 @@ func TestControllerService_ListHeadlessHostImageTags(t *testing.T) {
 		require.Contains(t, gotTags, "prerelease-2024.1.2-v1.1.0")
 		assert.True(t, gotTags["prerelease-2024.1.2-v1.1.0"].GetIsPrerelease())
 		assert.Equal(t, "v1.1.0", gotTags["prerelease-2024.1.2-v1.1.0"].GetAppVersion())
+
+		// image が消えたタグは起動候補から除外される.
+		assert.NotContains(t, gotTags, "2024.1.4-v1.0.0")
+
+		// ListResoniteVersions では image が消えた built 行は not_built として返る
+		// (フロントが再ビルド候補として扱えるように).
+		lvRes, err := client.ListResoniteVersions(ctx,
+			testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListResoniteVersionsRequest{}))
+		require.NoError(t, err)
+
+		statusByManifest := map[string]hdlctrlv1.ResoniteVersionBuildStatus{}
+		for _, v := range lvRes.Msg.GetVersions() {
+			statusByManifest[v.GetManifestId()] = v.GetBuildStatus()
+		}
+
+		assert.Equal(t, hdlctrlv1.ResoniteVersionBuildStatus_RESONITE_VERSION_BUILD_STATUS_BUILT, statusByManifest["MANIFEST-1"])
+		assert.Equal(t, hdlctrlv1.ResoniteVersionBuildStatus_RESONITE_VERSION_BUILD_STATUS_NOT_BUILT, statusByManifest["MANIFEST-4"])
 	})
 }
 

@@ -404,11 +404,12 @@ func (d *DockerHostConnector) ListAllContainerStatuses(ctx context.Context) (map
 	return result, nil
 }
 
-// 指定したタグがローカルに存在するかどうかを確認する.
-func (d *DockerHostConnector) isAvailableTag(ctx context.Context, tag string) bool {
+// ListLocalImageTags implements HostConnector.
+// ローカルに存在する headless image (HEADLESS_IMAGE_NAME) のタグ一覧を返す.
+func (d *DockerHostConnector) ListLocalImageTags(ctx context.Context) ([]string, error) {
 	cli, err := d.newDockerClient()
 	if err != nil {
-		return false
+		return nil, errors.Errorf("failed to create docker client: %w", err)
 	}
 
 	images, err := cli.ImageList(ctx, client.ImageListOptions{
@@ -416,8 +417,10 @@ func (d *DockerHostConnector) isAvailableTag(ctx context.Context, tag string) bo
 		Filters: make(client.Filters).Add("reference", d.dockerCfg.HeadlessImageName),
 	})
 	if err != nil {
-		return false
+		return nil, errors.Errorf("failed to list images: %w", err)
 	}
+
+	tags := make([]string, 0, len(images.Items))
 
 	for _, img := range slices.Backward(images.Items) {
 		for _, repoTag := range img.RepoTags {
@@ -427,14 +430,22 @@ func (d *DockerHostConnector) isAvailableTag(ctx context.Context, tag string) bo
 					continue
 				}
 
-				if splitted[1] == tag {
-					return true
-				}
+				tags = append(tags, splitted[1])
 			}
 		}
 	}
 
-	return false
+	return tags, nil
+}
+
+// 指定したタグがローカルに存在するかどうかを確認する.
+func (d *DockerHostConnector) isAvailableTag(ctx context.Context, tag string) bool {
+	tags, err := d.ListLocalImageTags(ctx)
+	if err != nil {
+		return false
+	}
+
+	return slices.Contains(tags, tag)
 }
 
 func (d *DockerHostConnector) newDockerClient() (*client.Client, error) {

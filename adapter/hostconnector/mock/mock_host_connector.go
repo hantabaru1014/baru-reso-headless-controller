@@ -86,6 +86,21 @@ func (mr *MockHostConnectorMockRecorder) Kill(ctx, connect_string any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Kill", reflect.TypeOf((*MockHostConnector)(nil).Kill), ctx, connect_string)
 }
 
+// ListLocalImageTags mocks base method.
+func (m *MockHostConnector) ListLocalImageTags(ctx context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListLocalImageTags", ctx)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListLocalImageTags indicates an expected call of ListLocalImageTags.
+func (mr *MockHostConnectorMockRecorder) ListLocalImageTags(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListLocalImageTags", reflect.TypeOf((*MockHostConnector)(nil).ListLocalImageTags), ctx)
+}
+
 // Remove mocks base method.
 func (m *MockHostConnector) Remove(ctx context.Context, connect_string hostconnector.HostConnectString) error {
 	m.ctrl.T.Helper()

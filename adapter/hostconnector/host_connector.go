@@ -25,4 +25,8 @@ type HostConnector interface {
 	Kill(ctx context.Context, connect_string HostConnectString) error
 	// Remove removes the container. Returns nil if the container does not exist.
 	Remove(ctx context.Context, connect_string HostConnectString) error
+	// ListLocalImageTags はローカルに存在する headless image のタグ一覧を返す.
+	// docker image はユーザー操作 (prune 等) で消えうるため、ビルド済み判定は
+	// DB の記録を信頼せずこれで実在確認する.
+	ListLocalImageTags(ctx context.Context) ([]string, error)
 }

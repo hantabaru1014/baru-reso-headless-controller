@@ -85,7 +85,7 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 	suc := usecase.NewSessionUsecase(srepo, hhrepo, port.NoopHostDrainer{}, stateCache, &cfg.Server, &cfg.ResoniteLink, permUC)
 	rvrepo := adapter.NewResoniteVersionRepository(queries)
 	builder := image_builder.NewBuilder(&cfg.ResoniteBuild, &cfg.Docker)
-	rvuc := usecase.NewResoniteVersionUsecase(rvrepo, builder, &cfg.ResoniteBuild)
+	rvuc := usecase.NewResoniteVersionUsecase(rvrepo, builder, mockHostConnector, &cfg.ResoniteBuild)
 	hhuc := usecase.NewHeadlessHostUsecase(hhrepo, srepo, suc, hauc, permUC, rvuc)
 	buc := usecase.NewBlobUsecase(srepo, hhrepo, mockBlobstore)
 	sorepo := adapter.NewScheduledSessionOperationRepository(queries)
