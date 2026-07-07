@@ -41,12 +41,12 @@ type GRPCConfig struct {
 
 type WorkerConfig struct {
 	// ContentCheckInterval controls how often ContentPoller polls
-	// versions.json AND the container repo AppVersion.
+	// versions.json AND the builder image AppVersion label.
 	ContentCheckInterval time.Duration
 	// AutoBuildNewVersions は versions.json 上で新規に検知された headless / prerelease
 	// バージョンを自動ビルドキューに投入するかどうか.
 	AutoBuildNewVersions bool
-	// AutoBuildOnAppVersionBump は container repo の Headless/AppVersion が上がった時に、
+	// AutoBuildOnAppVersionBump は builder image の Headless/AppVersion が上がった時に、
 	// 対象ブランチ (headless / prerelease) の built 済みバージョンを自動再ビルドするかどうか.
 	AutoBuildOnAppVersionBump bool
 	EventReconnectDelay       time.Duration
@@ -62,7 +62,7 @@ type WorkerConfig struct {
 }
 
 // ResoniteBuildConfig はローカルで Resonite headless container image を
-// ビルドするための設定. Steam 認証情報と container repo の checkout 情報を持つ.
+// ビルドするための設定. Steam 認証情報と builder image の起動設定を持つ.
 type ResoniteBuildConfig struct {
 	// Steam authentication credentials.
 	SteamUsername    string
@@ -73,10 +73,10 @@ type ResoniteBuildConfig struct {
 	AppID          string // Resonite の Steam AppID (default 2519830)
 	HeadlessDepotID string // Resonite headless の Steam DepotID
 
-	// container repo (baru-reso-headless-container) の checkout 設定.
-	ContainerRepoURL  string // git URL
-	ContainerRepoRef  string // branch or tag (default "release")
-	ContainerRepoPath string // ローカル checkout 先ディレクトリ
+	// builder image の起動設定. controller は builder image を one-shot container として
+	// 起動し, ホストの docker.sock 経由で inner build を走らせる.
+	BuilderImage     string // builder image 名 (tag 込み)
+	DockerSocketPath string // builder container にマウントするホスト側 docker.sock パス
 
 	// versions.json の source URL.
 	VersionsJSONURL string
@@ -139,9 +139,8 @@ func LoadEnvConfig() (*EnvConfig, error) {
 	cfg.ResoniteBuild.HeadlessPassword = os.Getenv("HEADLESS_PASSWORD")
 	cfg.ResoniteBuild.AppID = getEnvWithDefault("RESONITE_APP_ID", "2519830")
 	cfg.ResoniteBuild.HeadlessDepotID = getEnvWithDefault("RESONITE_HEADLESS_DEPOT_ID", "2519832")
-	cfg.ResoniteBuild.ContainerRepoURL = getEnvWithDefault("RESONITE_CONTAINER_REPO_URL", "https://github.com/hantabaru1014/baru-reso-headless-container")
-	cfg.ResoniteBuild.ContainerRepoRef = getEnvWithDefault("RESONITE_CONTAINER_REPO_REF", "release")
-	cfg.ResoniteBuild.ContainerRepoPath = getEnvWithDefault("RESONITE_CONTAINER_REPO_PATH", "./var/container-src")
+	cfg.ResoniteBuild.BuilderImage = getEnvWithDefault("RESONITE_BUILDER_IMAGE", "ghcr.io/hantabaru1014/baru-reso-headless-container/builder:latest")
+	cfg.ResoniteBuild.DockerSocketPath = getEnvWithDefault("RESONITE_BUILDER_DOCKER_SOCKET", "/var/run/docker.sock")
 	cfg.ResoniteBuild.VersionsJSONURL = getEnvWithDefault("RESONITE_VERSIONS_JSON_URL", "https://raw.githubusercontent.com/resonite-love/resonite-version-monitor/master/data/versions.json")
 
 	cfg.Server.Host = getEnvWithDefault("HOST", ":8014")

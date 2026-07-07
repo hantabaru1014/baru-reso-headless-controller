@@ -1,40 +1,48 @@
-// Package image_builder は Resonite headless container のローカルビルドを担う.
+// Package image_builder は Resonite headless container image のローカルビルドを
+// builder image への委譲で行う.
 //
-// container repo (baru-reso-headless-container) を clone/fetch し、DepotDownloader で
-// 指定 manifest の Resonite を取得、native-libs を整形して docker build を実行する.
+// container repo (baru-reso-headless-container) が発行する builder image
+// (git / DepotDownloader / docker CLI + buildx を同梱) を Docker SDK で one-shot
+// container として起動し、ホストの docker.sock を経由して inner build を走らせる.
+// controller 自身は git clone / DepotDownloader / docker build を一切実行しない.
 // 並列ビルドはプロセス内 mutex で排他する.
 package image_builder
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
-	"strings"
 	"sync"
 
 	"github.com/go-errors/errors"
+	"github.com/google/uuid"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 )
 
 const (
-	// dirPerm は builder が作成するディレクトリのパーミッション (owner + group).
-	dirPerm = 0o750
-	// execPerm は DepotDownloader バイナリに付与する実行パーミッション.
-	execPerm = 0o755
+	// labelBuildID は builder が built image に焼く BUILD_ID label. 結果逆引きに使う.
+	labelBuildID = "brhc.build-id"
+	// labelImageTag は built image のタグ (name 抜き) label.
+	labelImageTag = "brhc.image-tag"
+	// labelResoniteVersion は built image の Resonite バージョン label.
+	labelResoniteVersion = "brhc.resonite-version"
+	// labelAppVersion は builder image / built image に焼かれる Headless/AppVersion label.
+	labelAppVersion = "brhc.app-version"
+
+	// builderSocketPath は builder container 内から見た docker.sock のマウント先 (契約で固定).
+	builderSocketPath = "/var/run/docker.sock"
 )
 
-// Builder は container repo と DepotDownloader を組み合わせて image をビルドするサービス.
+// Builder は builder image を起動して headless container image をビルドするサービス.
 type Builder struct {
 	cfg       *config.ResoniteBuildConfig
 	dockerCfg *config.DockerConfig
-	repoPath  string // 絶対パス (cfg.ContainerRepoPath の Abs 版; 初回 EnsureRepo で lazily resolve).
 	mu        sync.Mutex
 }
 
@@ -45,56 +53,11 @@ func NewBuilder(cfg *config.ResoniteBuildConfig, dockerCfg *config.DockerConfig)
 	}
 }
 
-// EnsureRepo は container repo を clone (未存在時) / fetch + reset で最新化する.
-// mutex 内で呼ぶ想定 (Build と CurrentAppVersion からのみ呼ばれる).
-func (b *Builder) EnsureRepo(ctx context.Context) error {
-	path, err := b.resolveRepoPath()
-	if err != nil {
-		return err
-	}
-
-	gitDir := filepath.Join(path, ".git")
-	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
-		if mkErr := os.MkdirAll(filepath.Dir(path), dirPerm); mkErr != nil {
-			return errors.WrapPrefix(mkErr, "mkdir parent", 0)
-		}
-
-		if err := runCmd(ctx, "", "git", "clone", "--depth", "1", "--branch", b.cfg.ContainerRepoRef, b.cfg.ContainerRepoURL, path); err != nil {
-			return errors.WrapPrefix(err, "git clone", 0)
-		}
-
-		return nil
-	}
-
-	if err := runCmd(ctx, path, "git", "fetch", "--depth", "1", "origin", b.cfg.ContainerRepoRef); err != nil {
-		return errors.WrapPrefix(err, "git fetch", 0)
-	}
-
-	if err := runCmd(ctx, path, "git", "reset", "--hard", "FETCH_HEAD"); err != nil {
-		return errors.WrapPrefix(err, "git reset", 0)
-	}
-
-	return nil
-}
-
-// CurrentAppVersion は container repo に checkout 済みの Headless/AppVersion を読む.
-// EnsureRepo を先に呼んでおくこと.
-func (b *Builder) CurrentAppVersion(ctx context.Context) (string, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if err := b.EnsureRepo(ctx); err != nil {
-		return "", err
-	}
-
-	return b.readAppVersion()
-}
-
 // BuildParams は 1 回のビルド invocation の入力.
 type BuildParams struct {
 	ManifestID  string
 	Branch      entity.ResoniteVersionBranch
-	GameVersion *string // versions.json 由来. nil の場合はビルド後に Build.version から読む.
+	GameVersion *string // versions.json 由来. nil の場合は builder 側が Build.version から読む.
 }
 
 // BuildResult は成功時に返されるイメージ情報.
@@ -118,87 +81,232 @@ func (b *Builder) Build(ctx context.Context, p BuildParams) (*BuildResult, error
 		return nil, err
 	}
 
-	if err := b.EnsureRepo(ctx); err != nil {
-		return nil, errors.WrapPrefix(err, "ensure container repo", 0)
+	cli, err := b.newDockerClient()
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "create docker client", 0)
 	}
 
-	appVersion, err := b.readAppVersion()
+	defer func() { _ = cli.Close() }()
+
+	if err := b.ensureBuilderImage(ctx, cli); err != nil {
+		return nil, err
+	}
+
+	buildID := uuid.NewString()
+
+	slog.Info("image_builder: starting build",
+		"manifest_id", p.ManifestID, "branch", p.Branch, "build_id", buildID)
+
+	containerID, err := b.startBuilder(ctx, cli, p, buildID)
 	if err != nil {
 		return nil, err
 	}
 
-	slog.Info("image_builder: starting build", "manifest_id", p.ManifestID, "branch", p.Branch, "app_version", appVersion)
+	defer func() {
+		if _, rmErr := cli.ContainerRemove(context.WithoutCancel(ctx), containerID, client.ContainerRemoveOptions{
+			Force: true,
+		}); rmErr != nil {
+			slog.Warn("image_builder: failed to remove builder container", "container", containerID, "err", rmErr)
+		}
+	}()
 
-	if err := b.downloadResonite(ctx, p); err != nil {
-		return nil, errors.WrapPrefix(err, "download resonite", 0)
+	if err := b.relayLogs(ctx, cli, containerID); err != nil {
+		slog.Warn("image_builder: failed to relay builder logs", "container", containerID, "err", err)
 	}
 
-	resoVersion := ""
-	if p.GameVersion != nil {
-		resoVersion = *p.GameVersion
+	exitCode, err := b.waitBuilder(ctx, cli, containerID)
+	if err != nil {
+		return nil, err
 	}
 
-	if resoVersion == "" {
-		v, err := b.readBuildVersion()
-		if err != nil {
-			return nil, errors.WrapPrefix(err, "read Build.version", 0)
+	if exitCode != 0 {
+		// エラー文字列には builder のログを一切含めない. RunBuild の SetFailed 経由で
+		// DB の build_error に保存されるため, credentials を含みうるログの混入を防ぐ.
+		return nil, errors.Errorf("builder container %s exited with code %d", containerID, exitCode)
+	}
+
+	res, err := b.resultFromLabels(ctx, cli, buildID)
+	if err != nil {
+		return nil, err
+	}
+
+	slog.Info("image_builder: build succeeded", "image", res.ImageRef)
+
+	return res, nil
+}
+
+// CurrentAppVersion は builder image の label brhc.app-version を読む.
+// builder image を pull で最新化してから読むが, pull 失敗時はローカル既存で継続する.
+func (b *Builder) CurrentAppVersion(ctx context.Context) (string, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	cli, err := b.newDockerClient()
+	if err != nil {
+		return "", errors.WrapPrefix(err, "create docker client", 0)
+	}
+
+	defer func() { _ = cli.Close() }()
+
+	if err := b.ensureBuilderImage(ctx, cli); err != nil {
+		return "", err
+	}
+
+	inspect, err := cli.ImageInspect(ctx, b.cfg.BuilderImage)
+	if err != nil {
+		return "", errors.WrapPrefix(err, "inspect builder image", 0)
+	}
+
+	if inspect.Config == nil || inspect.Config.Labels[labelAppVersion] == "" {
+		return "", errors.Errorf("builder image %s has no %s label", b.cfg.BuilderImage, labelAppVersion)
+	}
+
+	return inspect.Config.Labels[labelAppVersion], nil
+}
+
+// ensureBuilderImage は builder image の pull を試みる. pull に失敗しても
+// ローカルに image があれば warn ログを出して継続, 無ければエラーを返す.
+func (b *Builder) ensureBuilderImage(ctx context.Context, cli *client.Client) error {
+	resp, pullErr := cli.ImagePull(ctx, b.cfg.BuilderImage, client.ImagePullOptions{})
+	if pullErr == nil {
+		// pull の進捗は読み切って完了を待つ (途中で close すると DL が中断される).
+		if _, err := io.Copy(io.Discard, resp); err != nil {
+			pullErr = err
 		}
 
-		resoVersion = v
+		_ = resp.Close()
 	}
 
-	if err := b.prepareNativeLibs(); err != nil {
-		return nil, errors.WrapPrefix(err, "prepare native-libs", 0)
+	if pullErr != nil {
+		if _, inspectErr := cli.ImageInspect(ctx, b.cfg.BuilderImage); inspectErr != nil {
+			return errors.Errorf("pull builder image %s failed and no local copy exists: %w", b.cfg.BuilderImage, pullErr)
+		}
+
+		slog.Warn("image_builder: failed to pull builder image; using local copy",
+			"image", b.cfg.BuilderImage, "err", pullErr)
 	}
 
-	tag := computeTag(p.Branch, resoVersion, appVersion)
-	ref := fmt.Sprintf("%s:%s", b.dockerCfg.HeadlessImageName, tag)
+	return nil
+}
 
-	if err := runCmd(ctx, b.repoPath, "docker", "build", "-t", ref, "."); err != nil {
-		return nil, errors.WrapPrefix(err, "docker build", 0)
+// startBuilder は builder container を作成・起動して container ID を返す.
+func (b *Builder) startBuilder(ctx context.Context, cli *client.Client, p BuildParams, buildID string) (string, error) {
+	// 毎回変わるパラメータは CLI 引数 (ENTRYPOINT への引数) で渡す. secrets のみ env.
+	cmd := []string{
+		"--manifest", p.ManifestID,
+		"--branch", string(p.Branch),
+		"--output-image", b.dockerCfg.HeadlessImageName,
+		"--build-id", buildID,
+		"--app-id", b.cfg.AppID,
 	}
 
-	slog.Info("image_builder: build succeeded", "image", ref)
+	if b.cfg.HeadlessDepotID != "" {
+		cmd = append(cmd, "--depot-id", b.cfg.HeadlessDepotID)
+	}
+
+	if p.GameVersion != nil {
+		cmd = append(cmd, "--game-version", *p.GameVersion)
+	}
+
+	env := []string{
+		"STEAM_USERNAME=" + b.cfg.SteamUsername,
+		"STEAM_PASSWORD=" + b.cfg.SteamPassword,
+		"HEADLESS_PASSWORD=" + b.cfg.HeadlessPassword,
+	}
+
+	createResp, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config: &container.Config{
+			Image: b.cfg.BuilderImage,
+			Cmd:   cmd,
+			Env:   env,
+		},
+		HostConfig: &container.HostConfig{
+			// docker.sock の1本のみ. Resonite の DL 先 (/src/Resonite) は builder
+			// container 内で ephemeral に扱う (契約: 永続 volume だと古い manifest の
+			// 残骸が built image に混入しうるため).
+			Binds: []string{
+				b.cfg.DockerSocketPath + ":" + builderSocketPath,
+			},
+		},
+	})
+	if err != nil {
+		return "", errors.WrapPrefix(err, "create builder container", 0)
+	}
+
+	if _, err := cli.ContainerStart(ctx, createResp.ID, client.ContainerStartOptions{}); err != nil {
+		return "", errors.WrapPrefix(err, "start builder container", 0)
+	}
+
+	return createResp.ID, nil
+}
+
+// relayLogs は builder container のログ (stdout+stderr) を controller の
+// os.Stdout / os.Stderr に転送する. Follow するため container 終了までブロックする.
+func (b *Builder) relayLogs(ctx context.Context, cli *client.Client, containerID string) error {
+	logs, err := cli.ContainerLogs(ctx, containerID, client.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true,
+	})
+	if err != nil {
+		return errors.WrapPrefix(err, "attach builder logs", 0)
+	}
+
+	defer func() { _ = logs.Close() }()
+
+	if _, err := stdcopy.StdCopy(os.Stdout, os.Stderr, logs); err != nil {
+		return errors.WrapPrefix(err, "copy builder logs", 0)
+	}
+
+	return nil
+}
+
+// waitBuilder は container の終了を待ち exit code を返す.
+func (b *Builder) waitBuilder(ctx context.Context, cli *client.Client, containerID string) (int64, error) {
+	waitResult := cli.ContainerWait(ctx, containerID, client.ContainerWaitOptions{
+		Condition: container.WaitConditionNotRunning,
+	})
+
+	select {
+	case <-ctx.Done():
+		return 0, errors.Wrap(ctx.Err(), 0)
+	case err := <-waitResult.Error:
+		return 0, errors.WrapPrefix(err, "wait builder container", 0)
+	case res := <-waitResult.Result:
+		return res.StatusCode, nil
+	}
+}
+
+// resultFromLabels は BUILD_ID label で built image を逆引きし, label から BuildResult を組む.
+func (b *Builder) resultFromLabels(ctx context.Context, cli *client.Client, buildID string) (*BuildResult, error) {
+	images, err := cli.ImageList(ctx, client.ImageListOptions{
+		Filters: make(client.Filters).Add("label", labelBuildID+"="+buildID),
+	})
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "list built image", 0)
+	}
+
+	if len(images.Items) == 0 {
+		return nil, errors.Errorf("no image found with %s=%s (builder did not produce an image?)", labelBuildID, buildID)
+	}
+
+	if len(images.Items) > 1 {
+		return nil, errors.Errorf("multiple images found with %s=%s", labelBuildID, buildID)
+	}
+
+	labels := images.Items[0].Labels
+
+	tag := labels[labelImageTag]
+	if tag == "" {
+		return nil, errors.Errorf("built image is missing %s label", labelImageTag)
+	}
 
 	return &BuildResult{
 		ImageTag:        tag,
-		ImageRef:        ref,
-		ResoniteVersion: resoVersion,
-		AppVersion:      appVersion,
+		ImageRef:        fmt.Sprintf("%s:%s", b.dockerCfg.HeadlessImageName, tag),
+		ResoniteVersion: labels[labelResoniteVersion],
+		AppVersion:      labels[labelAppVersion],
 	}, nil
-}
-
-// resolveRepoPath は cfg.ContainerRepoPath を絶対パスに正規化して repoPath に保持する.
-// cmd.Dir と組み合わせる際にパス崩れが起きないよう常に絶対にしておく.
-func (b *Builder) resolveRepoPath() (string, error) {
-	if b.repoPath != "" {
-		return b.repoPath, nil
-	}
-
-	p := b.cfg.ContainerRepoPath
-	if p == "" {
-		return "", errors.New("container repo path is not configured")
-	}
-
-	abs, err := filepath.Abs(p)
-	if err != nil {
-		return "", errors.WrapPrefix(err, "resolve container repo path", 0)
-	}
-
-	b.repoPath = abs
-
-	return abs, nil
-}
-
-func (b *Builder) readAppVersion() (string, error) {
-	p := filepath.Join(b.repoPath, "Headless", "AppVersion")
-
-	data, err := os.ReadFile(p) //nolint:gosec // G304: container repo 内の固定相対パス
-	if err != nil {
-		return "", errors.WrapPrefix(err, "read Headless/AppVersion", 0)
-	}
-
-	return strings.TrimSpace(string(data)), nil
 }
 
 func (b *Builder) validateCreds() error {
@@ -209,246 +317,11 @@ func (b *Builder) validateCreds() error {
 	return nil
 }
 
-// downloadResonite は DepotDownloader を用いて指定 manifest の Resonite headless を取得する.
-// container repo の Resonite/ ディレクトリに書き込む.
-func (b *Builder) downloadResonite(ctx context.Context, p BuildParams) error {
-	// 破壊的な cleanup は DepotDownloader の準備が済んでから. ensureDepotDownloader が
-	// 失敗した場合に前回の Resonite/ を残しておいて調査可能にする.
-	ddPath, err := b.ensureDepotDownloader(ctx)
+func (b *Builder) newDockerClient() (*client.Client, error) {
+	cli, err := client.New(client.FromEnv)
 	if err != nil {
-		return err
+		return nil, errors.Wrap(err, 0)
 	}
 
-	resoDir := filepath.Join(b.repoPath, "Resonite")
-
-	if err := os.RemoveAll(resoDir); err != nil {
-		return errors.WrapPrefix(err, "clean Resonite dir", 0)
-	}
-
-	if err := os.MkdirAll(resoDir, dirPerm); err != nil {
-		return errors.WrapPrefix(err, "mkdir Resonite dir", 0)
-	}
-
-	filelist := filepath.Join(b.repoPath, "depot-dl-list.txt")
-
-	args := []string{
-		"-app", b.cfg.AppID,
-		"-manifest", p.ManifestID,
-		"-username", b.cfg.SteamUsername,
-		"-password", b.cfg.SteamPassword,
-		"-dir", resoDir,
-		"-os", "linux",
-		"-filelist", filelist,
-	}
-
-	if b.cfg.HeadlessDepotID != "" {
-		args = append(args, "-depot", b.cfg.HeadlessDepotID)
-	}
-
-	switch p.Branch { //nolint:exhaustive // それ以外の branch は -beta 指定不要 (default depot)
-	case entity.ResoniteVersionBranch_Prerelease:
-		args = append(args, "-beta", "prerelease")
-	case entity.ResoniteVersionBranch_Headless:
-		args = append(args, "-beta", "headless", "-betapassword", b.cfg.HeadlessPassword)
-	}
-
-	if err := runCmd(ctx, b.repoPath, ddPath, args...); err != nil {
-		return errors.WrapPrefix(err, "DepotDownloader", 0)
-	}
-
-	entries, err := os.ReadDir(filepath.Join(resoDir, "Headless"))
-	if err != nil || len(entries) == 0 {
-		return errors.Errorf("DepotDownloader did not populate Resonite/Headless")
-	}
-
-	return nil
+	return cli, nil
 }
-
-// ensureDepotDownloader は DepotDownloader バイナリを解決する.
-// PATH 上にあればそれを使う (controller の Docker イメージには焼き込み済み).
-// 無ければ container repo/bin を確認し、それも無ければ GitHub Releases から
-// latest を落とす (ローカル開発用のフォールバック).
-func (b *Builder) ensureDepotDownloader(ctx context.Context) (string, error) {
-	if p, err := exec.LookPath("DepotDownloader"); err == nil {
-		return p, nil
-	}
-
-	binDir := filepath.Join(b.repoPath, "bin")
-	if err := os.MkdirAll(binDir, dirPerm); err != nil {
-		return "", errors.WrapPrefix(err, "mkdir bin", 0)
-	}
-
-	binPath := filepath.Join(binDir, "DepotDownloader")
-
-	if _, err := os.Stat(binPath); err == nil {
-		return binPath, nil
-	}
-
-	depotOS := "linux"
-
-	arch := "x64"
-	if runtime.GOARCH == "arm64" {
-		arch = "arm64"
-	}
-
-	url := fmt.Sprintf("https://github.com/SteamRE/DepotDownloader/releases/latest/download/DepotDownloader-%s-%s.zip", depotOS, arch)
-	zipPath := filepath.Join(binDir, "DepotDownloader.zip")
-
-	// wget / unzip は絶対パスを渡すので cmd.Dir は不要.
-	if err := runCmd(ctx, "", "wget", "-q", "-O", zipPath, url); err != nil {
-		return "", errors.WrapPrefix(err, "download DepotDownloader", 0)
-	}
-
-	if err := runCmd(ctx, "", "unzip", "-o", zipPath, "-d", binDir); err != nil {
-		return "", errors.WrapPrefix(err, "unzip DepotDownloader", 0)
-	}
-
-	if err := os.Chmod(binPath, execPerm); err != nil {
-		return "", errors.WrapPrefix(err, "chmod DepotDownloader", 0)
-	}
-
-	_ = os.Remove(zipPath)
-
-	return binPath, nil
-}
-
-// prepareNativeLibs は download-resonite.sh の後半と同等の native-libs 整形を Go で行う.
-// container repo の Dockerfile が ./native-libs/${TARGETARCH}/* を要求するため.
-func (b *Builder) prepareNativeLibs() error {
-	root := b.repoPath
-
-	for _, arch := range []struct {
-		Name     string
-		RuntimeD string
-	}{
-		{"amd64", "linux-x64"},
-		{"arm64", "linux-arm64"},
-	} {
-		dst := filepath.Join(root, "native-libs", arch.Name)
-
-		if err := os.RemoveAll(dst); err != nil {
-			return errors.WrapPrefix(err, "clean native-libs", 0)
-		}
-
-		if err := os.MkdirAll(dst, dirPerm); err != nil {
-			return errors.WrapPrefix(err, "mkdir native-libs", 0)
-		}
-
-		runtimeRoot := filepath.Join(root, "Resonite", "Headless", "runtimes", arch.RuntimeD)
-
-		for _, sub := range []string{"lib", "native"} {
-			base := filepath.Join(runtimeRoot, sub)
-			// lib 側は net<ver> 等の中間ディレクトリを持つので walk.
-			// 前提: `base` が丸ごと存在しないのは正常 (headless の linux ビルドは
-			// arm64 runtime を欠くことがある); それ以外の I/O エラーは build を止める.
-			if _, statErr := os.Stat(base); os.IsNotExist(statErr) {
-				continue
-			}
-
-			if err := copyFlatFiles(base, dst); err != nil {
-				return errors.WrapPrefix(err, fmt.Sprintf("copy native-libs %s/%s", arch.Name, sub), 0)
-			}
-		}
-
-		if arch.Name == "amd64" {
-			// download-resonite.sh L124: amd64 側の libbrolib.so は死蔵ファイルなので削除
-			_ = os.Remove(filepath.Join(dst, "libbrolib.so"))
-		}
-	}
-
-	return nil
-}
-
-func copyFlatFiles(src, dst string) error {
-	return filepath.Walk(src, func(p string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		out := filepath.Join(dst, filepath.Base(p))
-
-		return copyFile(p, out)
-	})
-}
-
-func copyFile(src, dst string) error {
-	sf, err := os.Open(src) //nolint:gosec // G304: container repo 内を walk したパス
-	if err != nil {
-		return err
-	}
-
-	defer func() { _ = sf.Close() }()
-
-	df, err := os.Create(dst) //nolint:gosec // G304: container repo 内の固定 dst
-	if err != nil {
-		return err
-	}
-
-	defer func() { _ = df.Close() }()
-
-	_, err = io.Copy(df, sf)
-
-	return err
-}
-
-func (b *Builder) readBuildVersion() (string, error) {
-	p := filepath.Join(b.repoPath, "Resonite", "Headless", "Build.version")
-
-	data, err := os.ReadFile(p) //nolint:gosec // G304: container repo 内の固定相対パス
-	if err != nil {
-		return "", err
-	}
-
-	return strings.TrimSpace(string(data)), nil
-}
-
-// computeTag は従来の GHCR タグと互換のあるタグ文字列を組み立てる.
-// `<[prerelease-]resoniteVersion>-<appVersion>`.
-func computeTag(branch entity.ResoniteVersionBranch, resoniteVersion, appVersion string) string {
-	prefix := ""
-	if branch == entity.ResoniteVersionBranch_Prerelease {
-		prefix = "prerelease-"
-	}
-
-	return fmt.Sprintf("%s%s-%s", prefix, resoniteVersion, appVersion)
-}
-
-// runCmd は cmd を実行し、stdout/stderr を controller ログに流す.
-// 失敗時は cmd 名と ExitError の型付きラップを返し、stderr 全文は controller ログに
-// 転送するだけで戻り値には含めない (DepotDownloader の stderr に credentials が
-// エコーされうるため、上位で DB の build_error に保存されると漏洩する).
-func runCmd(ctx context.Context, dir, name string, args ...string) error {
-	cmd := exec.CommandContext(ctx, name, args...)
-	if dir != "" {
-		cmd.Dir = dir
-	}
-
-	var stderr bytes.Buffer
-
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = &stderr
-
-	slog.Debug("image_builder: running command", "cmd", name, "dir", dir)
-
-	runErr := cmd.Run()
-
-	// 成功・失敗どちらも stderr は controller ログに出す (build 進捗が stderr に来る).
-	if s := stderr.String(); s != "" {
-		if _, err := io.Copy(os.Stderr, strings.NewReader(s)); err != nil {
-			slog.Debug("failed to relay stderr", "err", err)
-		}
-	}
-
-	if runErr != nil {
-		// %w で ExitError を保持し、errors.Is/As による判定を可能にする.
-		// 呼び出し側の SetFailed 経由で DB に流れうるので stderr は含めない.
-		return fmt.Errorf("%s failed: %w", name, runErr)
-	}
-
-	return nil
-}
-

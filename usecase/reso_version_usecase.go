@@ -185,7 +185,7 @@ type versionsJSONShape map[string][]struct {
 
 // versionsFetchTimeout は versions.json GET のリクエスト単位タイムアウト.
 // 上位の tick timeout (10 分) より短く切って、fetch がハングしても poller が
-// 別サブタスク (container repo チェック) に進める.
+// 別サブタスク (builder image の AppVersion チェック) に進める.
 const versionsFetchTimeout = 30 * time.Second
 
 // FetchAndUpsertVersions は versions.json を fetch し、resonite_versions に upsert する.
@@ -258,7 +258,7 @@ func (u *ResoniteVersionUsecase) FetchAndUpsertVersions(ctx context.Context) (en
 	return newlyAdded, nil
 }
 
-// CurrentAppVersion は container repo のチェックアウトを最新化しつつ Headless/AppVersion を読む.
+// CurrentAppVersion は builder image を pull で最新化しつつ label brhc.app-version を読む.
 func (u *ResoniteVersionUsecase) CurrentAppVersion(ctx context.Context) (string, error) {
 	return u.builder.CurrentAppVersion(ctx)
 }

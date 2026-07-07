@@ -52,11 +52,11 @@ STEAM_USERNAME="${STEAM_USERNAME}"
 STEAM_PASSWORD="${STEAM_PASSWORD}"
 HEADLESS_PASSWORD="${HEADLESS_PASSWORD}"
 
-# versions.json / container repo の確認間隔 (デフォルト: 1h)
+# versions.json / builder image の確認間隔 (デフォルト: 1h)
 #CONTENT_CHECK_INTERVAL=1h
 # 新バージョン検知時に自動ビルドするか (デフォルト: true)
 #AUTO_BUILD_NEW_VERSIONS=true
-# container repo の AppVersion 更新時に自動再ビルドするか (デフォルト: true)
+# builder image の AppVersion 更新時に自動再ビルドするか (デフォルト: true)
 #AUTO_BUILD_ON_APP_VERSION_BUMP=true
 
 # RustFS (S3互換ストレージ)

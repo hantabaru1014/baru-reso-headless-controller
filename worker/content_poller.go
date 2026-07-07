@@ -1,14 +1,14 @@
 // ContentPoller periodically fetches versions.json (from
 // resonite-love/resonite-version-monitor) and reconciles the local
-// resonite_versions table. It also polls the container repo
-// (baru-reso-headless-container) via git for Headless/AppVersion bumps.
+// resonite_versions table. It also pulls the builder image and reads its
+// brhc.app-version label to detect Headless/AppVersion bumps.
 //
 // It replaces the old GHCR-tag-polling ImageChecker. Two auto-build
 // triggers fire from here:
 //
 //  1. NEW versions detected on the `headless` or `prerelease` branch of
 //     versions.json → enqueue BUILD_IMAGE for each.
-//  2. `Headless/AppVersion` incremented in the container repo → enqueue
+//  2. `Headless/AppVersion` incremented in the builder image → enqueue
 //     BUILD_IMAGE for every currently-built version on `headless` or
 //     `prerelease` whose `built_with_app_version` differs from the new
 //     value.
@@ -107,7 +107,7 @@ func (c *ContentPoller) tick(parent context.Context) {
 	defer cancel()
 
 	c.checkVersions(ctx)
-	c.checkContainerRepo(ctx)
+	c.checkAppVersion(ctx)
 }
 
 func (c *ContentPoller) checkVersions(ctx context.Context) {
@@ -157,10 +157,10 @@ func (c *ContentPoller) checkVersions(ctx context.Context) {
 	}
 }
 
-func (c *ContentPoller) checkContainerRepo(ctx context.Context) {
+func (c *ContentPoller) checkAppVersion(ctx context.Context) {
 	appVersion, err := c.versions.CurrentAppVersion(ctx)
 	if err != nil {
-		slog.Warn("content-poller: read container repo AppVersion failed", "err", err)
+		slog.Warn("content-poller: read builder image AppVersion failed", "err", err)
 
 		return
 	}
@@ -180,7 +180,7 @@ func (c *ContentPoller) checkContainerRepo(ctx context.Context) {
 		return
 	}
 
-	slog.Info("content-poller: container repo AppVersion changed",
+	slog.Info("content-poller: builder image AppVersion changed",
 		"appVersion", appVersion, "staleCount", len(stale), "enqueueLimit", staleBuildEnqueueLimit)
 
 	enqueuedCount := 0

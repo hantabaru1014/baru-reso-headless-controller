@@ -1,9 +1,6 @@
 /bin
 .envrc
 
-# ローカルビルド時に clone/generate される作業ディレクトリ
-/var
-
 # Logs
 logs
 *.log
