@@ -72,6 +72,16 @@ export const deleteHeadlessHost = ControllerService.method.deleteHeadlessHost;
 export const listHeadlessHostInstances = ControllerService.method.listHeadlessHostInstances;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.ListResoniteVersions
+ */
+export const listResoniteVersions = ControllerService.method.listResoniteVersions;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.BuildResoniteImage
+ */
+export const buildResoniteImage = ControllerService.method.buildResoniteImage;
+
+/**
  * アカウント系
  *
  * @generated from rpc hdlctrl.v1.ControllerService.CreateHeadlessAccount

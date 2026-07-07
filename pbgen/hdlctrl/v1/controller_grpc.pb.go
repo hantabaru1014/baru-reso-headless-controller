@@ -33,6 +33,8 @@ const (
 	ControllerService_ListHeadlessHostImageTags_FullMethodName        = "/hdlctrl.v1.ControllerService/ListHeadlessHostImageTags"
 	ControllerService_DeleteHeadlessHost_FullMethodName               = "/hdlctrl.v1.ControllerService/DeleteHeadlessHost"
 	ControllerService_ListHeadlessHostInstances_FullMethodName        = "/hdlctrl.v1.ControllerService/ListHeadlessHostInstances"
+	ControllerService_ListResoniteVersions_FullMethodName             = "/hdlctrl.v1.ControllerService/ListResoniteVersions"
+	ControllerService_BuildResoniteImage_FullMethodName               = "/hdlctrl.v1.ControllerService/BuildResoniteImage"
 	ControllerService_CreateHeadlessAccount_FullMethodName            = "/hdlctrl.v1.ControllerService/CreateHeadlessAccount"
 	ControllerService_ListHeadlessAccounts_FullMethodName             = "/hdlctrl.v1.ControllerService/ListHeadlessAccounts"
 	ControllerService_DeleteHeadlessAccount_FullMethodName            = "/hdlctrl.v1.ControllerService/DeleteHeadlessAccount"
@@ -96,6 +98,8 @@ type ControllerServiceClient interface {
 	ListHeadlessHostImageTags(ctx context.Context, in *ListHeadlessHostImageTagsRequest, opts ...grpc.CallOption) (*ListHeadlessHostImageTagsResponse, error)
 	DeleteHeadlessHost(ctx context.Context, in *DeleteHeadlessHostRequest, opts ...grpc.CallOption) (*DeleteHeadlessHostResponse, error)
 	ListHeadlessHostInstances(ctx context.Context, in *ListHeadlessHostInstancesRequest, opts ...grpc.CallOption) (*ListHeadlessHostInstancesResponse, error)
+	ListResoniteVersions(ctx context.Context, in *ListResoniteVersionsRequest, opts ...grpc.CallOption) (*ListResoniteVersionsResponse, error)
+	BuildResoniteImage(ctx context.Context, in *BuildResoniteImageRequest, opts ...grpc.CallOption) (*BuildResoniteImageResponse, error)
 	// アカウント系
 	CreateHeadlessAccount(ctx context.Context, in *CreateHeadlessAccountRequest, opts ...grpc.CallOption) (*CreateHeadlessAccountResponse, error)
 	ListHeadlessAccounts(ctx context.Context, in *ListHeadlessAccountsRequest, opts ...grpc.CallOption) (*ListHeadlessAccountsResponse, error)
@@ -278,6 +282,26 @@ func (c *controllerServiceClient) ListHeadlessHostInstances(ctx context.Context,
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListHeadlessHostInstancesResponse)
 	err := c.cc.Invoke(ctx, ControllerService_ListHeadlessHostInstances_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) ListResoniteVersions(ctx context.Context, in *ListResoniteVersionsRequest, opts ...grpc.CallOption) (*ListResoniteVersionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListResoniteVersionsResponse)
+	err := c.cc.Invoke(ctx, ControllerService_ListResoniteVersions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) BuildResoniteImage(ctx context.Context, in *BuildResoniteImageRequest, opts ...grpc.CallOption) (*BuildResoniteImageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BuildResoniteImageResponse)
+	err := c.cc.Invoke(ctx, ControllerService_BuildResoniteImage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -732,6 +756,8 @@ type ControllerServiceServer interface {
 	ListHeadlessHostImageTags(context.Context, *ListHeadlessHostImageTagsRequest) (*ListHeadlessHostImageTagsResponse, error)
 	DeleteHeadlessHost(context.Context, *DeleteHeadlessHostRequest) (*DeleteHeadlessHostResponse, error)
 	ListHeadlessHostInstances(context.Context, *ListHeadlessHostInstancesRequest) (*ListHeadlessHostInstancesResponse, error)
+	ListResoniteVersions(context.Context, *ListResoniteVersionsRequest) (*ListResoniteVersionsResponse, error)
+	BuildResoniteImage(context.Context, *BuildResoniteImageRequest) (*BuildResoniteImageResponse, error)
 	// アカウント系
 	CreateHeadlessAccount(context.Context, *CreateHeadlessAccountRequest) (*CreateHeadlessAccountResponse, error)
 	ListHeadlessAccounts(context.Context, *ListHeadlessAccountsRequest) (*ListHeadlessAccountsResponse, error)
@@ -828,6 +854,12 @@ func (UnimplementedControllerServiceServer) DeleteHeadlessHost(context.Context, 
 }
 func (UnimplementedControllerServiceServer) ListHeadlessHostInstances(context.Context, *ListHeadlessHostInstancesRequest) (*ListHeadlessHostInstancesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListHeadlessHostInstances not implemented")
+}
+func (UnimplementedControllerServiceServer) ListResoniteVersions(context.Context, *ListResoniteVersionsRequest) (*ListResoniteVersionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListResoniteVersions not implemented")
+}
+func (UnimplementedControllerServiceServer) BuildResoniteImage(context.Context, *BuildResoniteImageRequest) (*BuildResoniteImageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BuildResoniteImage not implemented")
 }
 func (UnimplementedControllerServiceServer) CreateHeadlessAccount(context.Context, *CreateHeadlessAccountRequest) (*CreateHeadlessAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateHeadlessAccount not implemented")
@@ -1209,6 +1241,42 @@ func _ControllerService_ListHeadlessHostInstances_Handler(srv interface{}, ctx c
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).ListHeadlessHostInstances(ctx, req.(*ListHeadlessHostInstancesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_ListResoniteVersions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListResoniteVersionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).ListResoniteVersions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_ListResoniteVersions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).ListResoniteVersions(ctx, req.(*ListResoniteVersionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_BuildResoniteImage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BuildResoniteImageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).BuildResoniteImage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_BuildResoniteImage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).BuildResoniteImage(ctx, req.(*BuildResoniteImageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2045,6 +2113,14 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListHeadlessHostInstances",
 			Handler:    _ControllerService_ListHeadlessHostInstances_Handler,
+		},
+		{
+			MethodName: "ListResoniteVersions",
+			Handler:    _ControllerService_ListResoniteVersions_Handler,
+		},
+		{
+			MethodName: "BuildResoniteImage",
+			Handler:    _ControllerService_BuildResoniteImage_Handler,
 		},
 		{
 			MethodName: "CreateHeadlessAccount",

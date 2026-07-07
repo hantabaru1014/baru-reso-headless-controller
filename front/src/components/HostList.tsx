@@ -1,9 +1,12 @@
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import {
+  buildResoniteImage,
   listHeadlessAccounts,
   listHeadlessHost,
+  listResoniteVersions,
   startHeadlessHost,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
+import { ResoniteVersionBuildStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { ColumnDef } from "@tanstack/react-table";
 import { keepPreviousData } from "@tanstack/react-query";
 import { usePaginationState } from "../hooks/usePaginationState";
@@ -65,8 +68,10 @@ function NewHostDialog({
   onClose?: () => void;
 }) {
   const { data: accounts } = useQuery(listHeadlessAccounts);
+  const { data: resoVersions } = useQuery(listResoniteVersions, {});
   const { mutateAsync: mutateStartHost, isPending } =
     useMutation(startHeadlessHost);
+  const { mutateAsync: mutateBuildImage } = useMutation(buildResoniteImage);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const defaultGroupId = useDefaultGroupId(PERMISSION_KEYS.HOST_WRITE);
 
@@ -101,23 +106,36 @@ function NewHostDialog({
   }, [defaultGroupId, getValues, setValue]);
 
   const onSubmit = async (data: NewHostFormData) => {
+    const startReq = {
+      name: data.name,
+      headlessAccountId: data.accountId,
+      imageTag: data.tag,
+      startupConfig: {
+        universeId: data.universeId || undefined,
+        usernameOverride: data.usernameOverride || undefined,
+      },
+      autoUpdatePolicy: data.autoUpdate
+        ? HeadlessHostAutoUpdatePolicy.USERS_EMPTY
+        : HeadlessHostAutoUpdatePolicy.NEVER,
+      groupId: data.groupId || undefined,
+    };
     try {
-      await mutateStartHost({
-        name: data.name,
-        headlessAccountId: data.accountId,
-        imageTag: data.tag,
-        startupConfig: {
-          universeId: data.universeId || undefined,
-          usernameOverride: data.usernameOverride || undefined,
-        },
-        autoUpdatePolicy: data.autoUpdate
-          ? HeadlessHostAutoUpdatePolicy.USERS_EMPTY
-          : HeadlessHostAutoUpdatePolicy.NEVER,
-        groupId: data.groupId || undefined,
-      });
-      // 非同期 job として実行されるので「受け付けた」だけ通知し、
-      // 完了は notificationDispatch 経由の JobCompletedEvent toast で出す.
-      toast.success("ホストの起動を受け付けました");
+      // "manifest:<branch>:<id>" 形式なら未 built のバージョンを指定している.
+      // BUILD_IMAGE を chain 経由で enqueue する.
+      if (data.tag.startsWith("manifest:")) {
+        const parts = data.tag.split(":");
+        const branch = parts[1];
+        const manifestId = parts.slice(2).join(":");
+        await mutateBuildImage({
+          manifestId,
+          branch,
+          thenStartHost: { ...startReq, imageTag: undefined },
+        });
+        toast.success("イメージビルド + ホスト起動を受け付けました");
+      } else {
+        await mutateStartHost(startReq);
+        toast.success("ホストの起動を受け付けました");
+      }
       onClose?.();
     } catch (e) {
       toast.error(
@@ -159,18 +177,67 @@ function NewHostDialog({
           <Controller
             name="tag"
             control={control}
-            render={({ field }) => (
-              <SelectField
-                label="バージョン"
-                options={[
-                  { id: "latestRelease", label: "最新リリース" },
-                  { id: "latestPreRelease", label: "最新プレリリース" },
-                ]}
-                selectedId={field.value}
-                onChange={(option) => field.onChange(option.id)}
-                error={errors.tag?.message}
-              />
-            )}
+            render={({ field }) => {
+              const rawVersions = (resoVersions?.versions ?? []).filter(
+                (v) =>
+                  (v.branch === "headless" || v.branch === "prerelease") &&
+                  !!v.gameVersion,
+              );
+              // 同一 gameVersion が複数の manifest で存在するケース (prerelease で
+              // 再ビルドされた版など) を区別するため、重複ラベルには manifestId の
+              // 先頭 8 桁を付与する.
+              const labelCounts = rawVersions.reduce<Record<string, number>>(
+                (acc, v) => {
+                  const key = `${v.gameVersion}|${v.branch}`;
+                  acc[key] = (acc[key] ?? 0) + 1;
+                  return acc;
+                },
+                {},
+              );
+              const dynamicVersionOptions = rawVersions.map((v) => {
+                const built =
+                  v.buildStatus === ResoniteVersionBuildStatus.BUILT &&
+                  v.imageTag;
+                const key = `${v.gameVersion}|${v.branch}`;
+                const disambig =
+                  (labelCounts[key] ?? 0) > 1
+                    ? ` [#${v.manifestId.slice(0, 8)}]`
+                    : "";
+                const label = `${v.gameVersion} (${v.branch})${disambig}${
+                  built ? "" : " [要ビルド]"
+                }`;
+                return {
+                  id: built
+                    ? (v.imageTag as string)
+                    : `manifest:${v.branch}:${v.manifestId}`,
+                  label,
+                  manifestId: v.manifestId,
+                  branch: v.branch,
+                  built,
+                };
+              });
+              const options = [
+                { id: "latestRelease", label: "最新リリース (自動選択)" },
+                {
+                  id: "latestPreRelease",
+                  label: "最新プレリリース (自動選択)",
+                },
+                ...dynamicVersionOptions.map((o) => ({
+                  id: o.id,
+                  label: o.label,
+                })),
+              ];
+              return (
+                <SelectField
+                  label="バージョン"
+                  options={options}
+                  selectedId={field.value}
+                  onChange={(option) => field.onChange(option.id)}
+                  error={errors.tag?.message}
+                  helperText="未 built のバージョンを選ぶと、ホスト起動前に自動でビルドが走ります"
+                />
+              );
+            }}
           />
           <Controller
             name="groupId"

@@ -176,11 +176,11 @@ func (o *HostUpgradeOrchestrator) Run(ctx context.Context) error {
 	}
 }
 
-// OnNewImage is the ImageChecker subscription. It returns immediately
-// after dispatching the work to a goroutine so the caller's tick loop is
-// not blocked by RPC fetches or Restart calls (which can take minutes).
-// The orchestrator's lifecycle ctx (captured by Run) bounds the work so
-// Manager shutdown cancels it cleanly.
+// OnNewImage is the ResoniteVersionUsecase build-success subscription.
+// Fires when a new built image is confirmed (locally) after ContentPoller
+// enqueues an auto-build and it completes. Returns immediately after
+// dispatching the work to a goroutine so the notifier is not blocked by
+// RPC fetches or Restart calls (which can take minutes).
 func (o *HostUpgradeOrchestrator) OnNewImage(_ context.Context, latest *port.ContainerImage) {
 	if latest == nil || latest.IsPreRelease {
 		return

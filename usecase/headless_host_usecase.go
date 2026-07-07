@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"slices"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -19,15 +18,17 @@ type HeadlessHostUsecase struct {
 	huc    *SessionUsecase
 	hauc   *HeadlessAccountUsecase
 	permUC *PermissionUsecase
+	rvuc   *ResoniteVersionUsecase
 }
 
-func NewHeadlessHostUsecase(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, huc *SessionUsecase, hauc *HeadlessAccountUsecase, permUC *PermissionUsecase) *HeadlessHostUsecase {
+func NewHeadlessHostUsecase(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, huc *SessionUsecase, hauc *HeadlessAccountUsecase, permUC *PermissionUsecase, rvuc *ResoniteVersionUsecase) *HeadlessHostUsecase {
 	return &HeadlessHostUsecase{
 		hhrepo: hhrepo,
 		srepo:  srepo,
 		huc:    huc,
 		hauc:   hauc,
 		permUC: permUC,
+		rvuc:   rvuc,
 	}
 }
 
@@ -354,27 +355,12 @@ func (hhuc *HeadlessHostUsecase) requireHostRead(ctx context.Context, hostID str
 }
 
 func (hhuc *HeadlessHostUsecase) resolveTagToUse(ctx context.Context, tagInput *string) (string, error) {
-	if tagInput == nil || *tagInput == "" || *tagInput == "latestRelease" || *tagInput == "latestPreRelease" {
-		tags, err := hhuc.hhrepo.ListContainerTags(ctx, nil)
-		if err != nil {
-			return "", errors.Wrap(err, 0)
-		}
-
-		if len(tags) == 0 {
-			return "", errors.New("no available container image tags")
-		}
-
-		wantPreRelease := tagInput != nil && *tagInput == "latestPreRelease"
-		for _, tag := range slices.Backward(tags) {
-			if tag.IsPreRelease == wantPreRelease {
-				return tag.Tag, nil
-			}
-		}
-
-		return "", errors.New("no available container image tags")
+	input := ""
+	if tagInput != nil {
+		input = *tagInput
 	}
 
-	return *tagInput, nil
+	return hhuc.rvuc.ResolveForStart(ctx, input)
 }
 
 func (hhuc *HeadlessHostUsecase) markSessionsAsEnded(ctx context.Context, sessions entity.SessionList) error {

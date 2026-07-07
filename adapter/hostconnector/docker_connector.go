@@ -1,27 +1,20 @@
 package hostconnector
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net"
-	"net/http"
 	"slices"
 	"strconv"
 	"strings"
 
-	"github.com/moby/moby/api/types/container"
-	"github.com/moby/moby/client"
 	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
-	"github.com/hantabaru1014/baru-reso-headless-controller/lib"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
-	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -93,117 +86,6 @@ func (d *DockerHostConnector) GetRpcClient(ctx context.Context, connect_string H
 	return headlessv1.NewHeadlessControlServiceClient(conn), nil
 }
 
-func (d *DockerHostConnector) ListContainerTags(ctx context.Context, lastTag *string) (port.ContainerImageList, error) {
-	type tagsResponse struct {
-		Name string   `json:"name"`
-		Tags []string `json:"tags"`
-	}
-
-	imageNameParts := strings.Split(d.dockerCfg.HeadlessImageName, "/")
-	if len(imageNameParts) != 3 { //nolint:mnd // registry/user/image format
-		return nil, errors.Errorf("invalid image name format: %s", d.dockerCfg.HeadlessImageName)
-	}
-
-	registryName := imageNameParts[0]
-	userImagePair := strings.Join(imageNameParts[1:], "/")
-
-	allTags := make(port.ContainerImageList, 0)
-	currentLastTag := lastTag
-	client := &http.Client{}
-
-	for {
-		url := fmt.Sprintf("https://%s/v2/%s/tags/list", registryName, userImagePair)
-		if currentLastTag != nil {
-			url = fmt.Sprintf("%s?last=%s", url, *currentLastTag)
-		}
-
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-		if err != nil {
-			return nil, errors.Errorf("failed to create request: %w", err)
-		}
-
-		if registryName == "ghcr.io" {
-			if d.dockerCfg.GHCRAuthToken == "" {
-				return nil, errors.Errorf("GHCR_AUTH_TOKEN is not set")
-			}
-
-			req.Header.Set("Authorization", "Bearer "+base64.StdEncoding.EncodeToString([]byte(d.dockerCfg.GHCRAuthToken)))
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			return nil, errors.Errorf("failed to send request: %w", err)
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			_ = resp.Body.Close()
-
-			return nil, errors.Errorf("failed to get tags: %s", resp.Status)
-		}
-
-		var tagsResp tagsResponse
-		if err := json.NewDecoder(resp.Body).Decode(&tagsResp); err != nil {
-			_ = resp.Body.Close()
-
-			return nil, errors.Errorf("failed to decode response: %w", err)
-		}
-
-		_ = resp.Body.Close()
-
-		tags := make(port.ContainerImageList, 0, len(tagsResp.Tags))
-
-		for _, tag := range tagsResp.Tags {
-			info := parseTag(tag)
-			if info.IsVersioned {
-				tags = append(tags, &port.ContainerImage{
-					Tag:             info.Tag,
-					ResoniteVersion: info.ResoniteVersion,
-					IsPreRelease:    info.IsPreRelease,
-					AppVersion:      info.AppVersion,
-				})
-			}
-		}
-
-		allTags = append(allTags, tags...)
-
-		if len(tagsResp.Tags) > 0 {
-			lastTagInPage := tagsResp.Tags[len(tagsResp.Tags)-1]
-			currentLastTag = &lastTagInPage
-		} else {
-			break
-		}
-	}
-
-	return allTags, nil
-}
-
-func (d *DockerHostConnector) PullContainerImage(ctx context.Context, tag string) (string, error) {
-	cli, err := d.newDockerClient()
-	if err != nil {
-		return "", errors.New(err)
-	}
-
-	registryAuth := base64.StdEncoding.EncodeToString([]byte(d.dockerCfg.HeadlessRegistryAuth))
-	refStr := fmt.Sprintf("%s:%s", d.dockerCfg.HeadlessImageName, tag)
-
-	reader, err := cli.ImagePull(ctx, refStr, client.ImagePullOptions{
-		All:          false,
-		RegistryAuth: registryAuth,
-	})
-	if err != nil {
-		return "", errors.New(err)
-	}
-
-	defer func() { _ = reader.Close() }()
-
-	buf := new(bytes.Buffer)
-	if _, err := io.Copy(buf, reader); err != nil {
-		return "", errors.Errorf("failed to read pull response: %w", err)
-	}
-
-	return buf.String(), nil
-}
-
 // Start implements HostConnector.
 func (d *DockerHostConnector) Start(ctx context.Context, params HostStartParams) (HostConnectString, error) {
 	cli, err := d.newDockerClient()
@@ -213,10 +95,7 @@ func (d *DockerHostConnector) Start(ctx context.Context, params HostStartParams)
 
 	imageTag := params.ContainerImageTag
 	if !d.isAvailableTag(ctx, imageTag) {
-		_, err := d.PullContainerImage(ctx, imageTag)
-		if err != nil {
-			return "", errors.Errorf("failed to pull container image: %w", err)
-		}
+		return "", errors.Errorf("image %s:%s is not available locally (build first)", d.dockerCfg.HeadlessImageName, imageTag)
 	}
 
 	port, err := getFreePort()
@@ -376,43 +255,6 @@ func parseConnectString(connect_string HostConnectString) (string, int, error) {
 	return splitted[0], port, nil
 }
 
-type TagInfo struct {
-	Tag             string
-	IsVersioned     bool
-	IsPreRelease    bool
-	ResoniteVersion string
-	AppVersion      string
-}
-
-// TODO: imageに情報を埋め込んだらタグ名からパースするのをやめる.
-func parseTag(tag string) TagInfo {
-	trimmed := strings.TrimPrefix(tag, "prerelease-")
-	splitted := strings.Split(trimmed, "-")
-
-	appVersion := "v0.0.0"
-
-	if len(splitted) == 2 { //nolint:mnd // version-appVersion format
-		appVersion = splitted[1]
-	}
-
-	if len(splitted) > 0 && lib.ValidateResoniteVersionString(splitted[0]) {
-		return TagInfo{
-			Tag:             tag,
-			IsVersioned:     true,
-			IsPreRelease:    strings.HasPrefix(tag, "prerelease-"),
-			ResoniteVersion: splitted[0],
-			AppVersion:      appVersion,
-		}
-	} else {
-		return TagInfo{
-			Tag:             tag,
-			IsVersioned:     false,
-			IsPreRelease:    false,
-			ResoniteVersion: "",
-		}
-	}
-}
-
 func getFreePort() (int, error) {
 	a, err := net.ResolveTCPAddr("tcp", "localhost:0")
 	if err != nil {
@@ -562,11 +404,12 @@ func (d *DockerHostConnector) ListAllContainerStatuses(ctx context.Context) (map
 	return result, nil
 }
 
-// 指定したタグがローカルに存在するかどうかを確認する.
-func (d *DockerHostConnector) isAvailableTag(ctx context.Context, tag string) bool {
+// ListLocalImageTags implements HostConnector.
+// ローカルに存在する headless image (HEADLESS_IMAGE_NAME) のタグ一覧を返す.
+func (d *DockerHostConnector) ListLocalImageTags(ctx context.Context) ([]string, error) {
 	cli, err := d.newDockerClient()
 	if err != nil {
-		return false
+		return nil, errors.Errorf("failed to create docker client: %w", err)
 	}
 
 	images, err := cli.ImageList(ctx, client.ImageListOptions{
@@ -574,8 +417,10 @@ func (d *DockerHostConnector) isAvailableTag(ctx context.Context, tag string) bo
 		Filters: make(client.Filters).Add("reference", d.dockerCfg.HeadlessImageName),
 	})
 	if err != nil {
-		return false
+		return nil, errors.Errorf("failed to list images: %w", err)
 	}
+
+	tags := make([]string, 0, len(images.Items))
 
 	for _, img := range slices.Backward(images.Items) {
 		for _, repoTag := range img.RepoTags {
@@ -585,14 +430,22 @@ func (d *DockerHostConnector) isAvailableTag(ctx context.Context, tag string) bo
 					continue
 				}
 
-				if splitted[1] == tag {
-					return true
-				}
+				tags = append(tags, splitted[1])
 			}
 		}
 	}
 
-	return false
+	return tags, nil
+}
+
+// 指定したタグがローカルに存在するかどうかを確認する.
+func (d *DockerHostConnector) isAvailableTag(ctx context.Context, tag string) bool {
+	tags, err := d.ListLocalImageTags(ctx)
+	if err != nil {
+		return false
+	}
+
+	return slices.Contains(tags, tag)
 }
 
 func (d *DockerHostConnector) newDockerClient() (*client.Client, error) {

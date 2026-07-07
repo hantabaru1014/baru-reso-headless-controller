@@ -60,6 +60,7 @@ type ControllerService struct {
 	buc            *usecase.BlobUsecase
 	souc           *usecase.ScheduledSessionOperationUsecase
 	ajuc           *async_job.Usecase
+	rvuc           *usecase.ResoniteVersionUsecase
 	permUC         *usecase.PermissionUsecase
 	groupRepo      port.GroupRepository
 	roleRepo       port.RoleRepository
@@ -76,6 +77,7 @@ func NewControllerService(
 	buc *usecase.BlobUsecase,
 	souc *usecase.ScheduledSessionOperationUsecase,
 	ajuc *async_job.Usecase,
+	rvuc *usecase.ResoniteVersionUsecase,
 	permUC *usecase.PermissionUsecase,
 	groupRepo port.GroupRepository,
 	roleRepo port.RoleRepository,
@@ -91,6 +93,7 @@ func NewControllerService(
 		buc:            buc,
 		souc:           souc,
 		ajuc:           ajuc,
+		rvuc:           rvuc,
 		permUC:         permUC,
 		groupRepo:      groupRepo,
 		roleRepo:       roleRepo,

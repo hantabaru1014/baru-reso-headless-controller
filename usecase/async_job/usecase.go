@@ -39,6 +39,27 @@ func (u *Usecase) EnqueueStartHost(ctx context.Context, req *hdlctrlv1.StartHead
 	return u.enqueue(ctx, entity.AsyncJobType_START_HOST, payload, nil, nil, createdBy)
 }
 
+// EnqueueBuildImage は 1 バージョンのローカルビルド job を投入する.
+// thenStart が非 nil の場合、build 成功後に自動で START_HOST job が enqueue される (chain).
+func (u *Usecase) EnqueueBuildImage(
+	ctx context.Context,
+	manifestID string,
+	branch entity.ResoniteVersionBranch,
+	thenStart *hdlctrlv1.StartHeadlessHostRequest,
+	createdBy *string,
+) (string, error) {
+	payload, err := marshalPayload(&hdlctrlv1.BuildResoniteImageRequest{
+		ManifestId:    manifestID,
+		Branch:        string(branch),
+		ThenStartHost: thenStart,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return u.enqueue(ctx, entity.AsyncJobType_BUILD_IMAGE, payload, nil, nil, createdBy)
+}
+
 func (u *Usecase) EnqueueShutdownHost(ctx context.Context, req *hdlctrlv1.ShutdownHeadlessHostRequest, createdBy *string) (string, error) {
 	payload, err := marshalPayload(req)
 	if err != nil {

@@ -24,7 +24,7 @@ var _ = registerRPCPermission(
 )
 
 func (c *ControllerService) ListHeadlessHostImageTags(ctx context.Context, req *connect.Request[hdlctrlv1.ListHeadlessHostImageTagsRequest]) (*connect.Response[hdlctrlv1.ListHeadlessHostImageTagsResponse], error) {
-	tags, err := c.hhrepo.ListContainerTags(ctx, nil)
+	tags, err := c.rvuc.ListBuiltAsContainerImages(ctx)
 	if err != nil {
 		return nil, convertErr(err)
 	}
@@ -44,6 +44,94 @@ func (c *ControllerService) ListHeadlessHostImageTags(ctx context.Context, req *
 	})
 
 	return res, nil
+}
+
+// ListResoniteVersions implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: 認証のみ (バージョンリストは機密でない).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceListResoniteVersionsProcedure,
+	requireAuthOnly,
+)
+
+func (c *ControllerService) ListResoniteVersions(ctx context.Context, req *connect.Request[hdlctrlv1.ListResoniteVersionsRequest]) (*connect.Response[hdlctrlv1.ListResoniteVersionsResponse], error) {
+	var branchFilter *entity.ResoniteVersionBranch
+
+	if req.Msg.Branch != nil {
+		b := entity.ResoniteVersionBranch(req.Msg.GetBranch())
+		branchFilter = &b
+	}
+
+	rows, err := c.rvuc.List(ctx, branchFilter)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	pv := make([]*hdlctrlv1.ResoniteVersion, 0, len(rows))
+	for _, r := range rows {
+		pv = append(pv, resoniteVersionToProto(r))
+	}
+
+	return connect.NewResponse(&hdlctrlv1.ListResoniteVersionsResponse{Versions: pv}), nil
+}
+
+// BuildResoniteImage implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: いずれかのグループで host:write を持つこと (ホストを起動できるユーザーは
+// 前提となるイメージビルドも実行できる). then_start_host 付きは StartHeadlessHost と
+// 同一のチェック. 詳細は checkBuildResoniteImage を参照.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceBuildResoniteImageProcedure,
+	checkBuildResoniteImage,
+)
+
+func (c *ControllerService) BuildResoniteImage(ctx context.Context, req *connect.Request[hdlctrlv1.BuildResoniteImageRequest]) (*connect.Response[hdlctrlv1.BuildResoniteImageResponse], error) {
+	claims, err := auth.GetAuthClaimsFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	jobID, err := c.ajuc.EnqueueBuildImage(ctx, req.Msg.GetManifestId(), entity.ResoniteVersionBranch(req.Msg.GetBranch()), req.Msg.GetThenStartHost(), &claims.UserID)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.BuildResoniteImageResponse{JobId: jobID}), nil
+}
+
+func resoniteVersionToProto(v *entity.ResoniteVersion) *hdlctrlv1.ResoniteVersion {
+	p := &hdlctrlv1.ResoniteVersion{
+		ManifestId:  v.ManifestID,
+		Branch:      string(v.Branch),
+		GameVersion: v.GameVersion,
+		ReleasedAt:  timestamppb.New(v.ReleasedAt),
+		BuildStatus: buildStatusToProto(v.BuildStatus),
+		ImageTag:    v.ImageTag,
+		BuildError:  v.BuildError,
+	}
+
+	if v.BuiltWithAppVersion != nil {
+		p.BuiltWithAppVersion = v.BuiltWithAppVersion
+	}
+
+	if v.BuiltAt != nil {
+		p.BuiltAt = timestamppb.New(*v.BuiltAt)
+	}
+
+	return p
+}
+
+func buildStatusToProto(s entity.ResoniteVersionBuildStatus) hdlctrlv1.ResoniteVersionBuildStatus {
+	switch s {
+	case entity.ResoniteVersionBuildStatus_NotBuilt:
+		return hdlctrlv1.ResoniteVersionBuildStatus_RESONITE_VERSION_BUILD_STATUS_NOT_BUILT
+	case entity.ResoniteVersionBuildStatus_Building:
+		return hdlctrlv1.ResoniteVersionBuildStatus_RESONITE_VERSION_BUILD_STATUS_BUILDING
+	case entity.ResoniteVersionBuildStatus_Built:
+		return hdlctrlv1.ResoniteVersionBuildStatus_RESONITE_VERSION_BUILD_STATUS_BUILT
+	case entity.ResoniteVersionBuildStatus_Failed:
+		return hdlctrlv1.ResoniteVersionBuildStatus_RESONITE_VERSION_BUILD_STATUS_FAILED
+	default:
+		return hdlctrlv1.ResoniteVersionBuildStatus_RESONITE_VERSION_BUILD_STATUS_UNSPECIFIED
+	}
 }
 
 // StartHeadlessHost implements hdlctrlv1connect.ControllerServiceHandler.

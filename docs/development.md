@@ -9,6 +9,23 @@
 | データベース | PostgreSQL (golang-migrate によるマイグレーション。app 起動時に自動実行) |
 | ストレージ | RustFS (S3互換。ワールドバイナリの保存に使用) |
 | ログ | fluent-bit 経由でコンテナログを PostgreSQL に集約 |
+| イメージビルド | [baru-reso-headless-container](https://github.com/hantabaru1014/baru-reso-headless-container) が発行する builder image を one-shot container として起動し、ローカルでビルド |
+
+### ヘッドレスイメージのローカルビルド
+
+ヘッドレスコンテナのイメージはレジストリから pull せず、controller が builder image に委譲してローカルでビルドする (`usecase/image_builder`)。controller 自身は git clone / DepotDownloader / docker build を一切実行しない。流れ:
+
+1. [versions.json](https://github.com/resonite-love/resonite-version-monitor) と builder image の `brhc.app-version` label を `worker/content_poller.go` が定期ポーリングし、新バージョンを `resonite_versions` テーブルに記録・自動ビルドを enqueue
+2. ビルド時は builder image (`ghcr.io/hantabaru1014/baru-reso-headless-container/builder`) を pull し、Docker SDK で one-shot container として起動。builder が同梱の DepotDownloader で対象 manifest の Resonite を container 内 (ephemeral) に取得し、マウントされたホストの `docker.sock` 経由で inner build を実行してイメージをホストの Docker デーモンに格納する
+3. controller は builder container の exit code とビルド結果 image の label (`brhc.build-id` で逆引き → `brhc.image-tag` / `brhc.resonite-version` / `brhc.app-version`) から結果を受け取る
+4. タグは `<[prerelease-]ResoniteVersion>-<AppVersion>` 形式
+
+必要な環境変数は `STEAM_USERNAME` / `STEAM_PASSWORD` / `HEADLESS_PASSWORD` (headless ブランチのベータアクセスコード)。builder image の起動先はホストの `docker.sock` で、controller の Docker イメージには git / DepotDownloader / docker CLI を焼き込まない (すべて builder image 側に移管済み)。DepotDownloader のダウンロード先は builder container 内 (ephemeral) で、cache volume は使わない (永続 volume だと古い manifest の残骸が built image に混入しうるため)。builder image 名やマウントする docker.sock パスは環境変数で上書きできる:
+
+| 環境変数 | デフォルト | 用途 |
+|---|---|---|
+| `RESONITE_BUILDER_IMAGE` | `ghcr.io/hantabaru1014/baru-reso-headless-container/builder:latest` | 起動する builder image |
+| `RESONITE_BUILDER_DOCKER_SOCKET` | `/var/run/docker.sock` | builder container にマウントするホスト側 docker.sock パス |
 
 ### ディレクトリ構成
 

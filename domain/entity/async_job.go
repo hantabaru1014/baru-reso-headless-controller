@@ -8,12 +8,13 @@ import (
 type AsyncJobType int32
 
 const (
-	AsyncJobType_UNKNOWN          AsyncJobType = 0
-	AsyncJobType_START_HOST       AsyncJobType = 1
-	AsyncJobType_SHUTDOWN_HOST    AsyncJobType = 2
-	AsyncJobType_RESTART_HOST     AsyncJobType = 3
-	AsyncJobType_START_SESSION    AsyncJobType = 4
-	AsyncJobType_STOP_SESSION     AsyncJobType = 5
+	AsyncJobType_UNKNOWN       AsyncJobType = 0
+	AsyncJobType_START_HOST    AsyncJobType = 1
+	AsyncJobType_SHUTDOWN_HOST AsyncJobType = 2
+	AsyncJobType_RESTART_HOST  AsyncJobType = 3
+	AsyncJobType_START_SESSION AsyncJobType = 4
+	AsyncJobType_STOP_SESSION  AsyncJobType = 5
+	AsyncJobType_BUILD_IMAGE   AsyncJobType = 6
 )
 
 type AsyncJobStatus int32

@@ -7,7 +7,7 @@ The official headless client is a console application: one terminal per instance
 ## Features
 
 - **Host management**: start / stop / restart / delete headless containers, view their logs
-  - Detects and pulls new container images automatically, and can upgrade running hosts on its own
+  - Detects new Resonite versions automatically, builds container images locally (no registry needed), and can upgrade running hosts on its own
 - **Session management**: create / stop sessions, edit session parameters, invite / kick / ban users, change user roles
   - Schedule session operations with time- or condition-based triggers
   - Save worlds and download world binaries
@@ -20,7 +20,7 @@ The official headless client is a console application: one terminal per instance
 
 - Docker with `network: host` available
 - CPU arch: AMD64 or ARM64
-- Access to a baru-reso-headless-container image registry
+- A Steam account that can access the Resonite `headless` beta branch (username / password / beta access code) — headless container images are built locally from it
 
 ## Setup
 

@@ -77,7 +77,7 @@ func (s *stubSessionOperator) StopSession(ctx context.Context, _ string) error {
 }
 
 func newTestAsyncJobExecutor(repo port.AsyncJobRepository, checker UserExistenceChecker, session async_job.SessionOperator) *AsyncJobExecutor {
-	dispatcher := async_job.NewDispatcher(nil, session, nil)
+	dispatcher := async_job.NewDispatcher(nil, session, nil, nil, nil)
 
 	return NewAsyncJobExecutor(repo, dispatcher, noopBus{}, checker, AsyncJobExecutorOptions{})
 }

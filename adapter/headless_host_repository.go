@@ -235,11 +235,6 @@ func (h *HeadlessHostRepository) ListRunningByAccount(ctx context.Context, accou
 	return result, nil
 }
 
-// ListContainerTags implements port.HeadlessHostRepository.
-func (h *HeadlessHostRepository) ListContainerTags(ctx context.Context, lastTag *string) (port.ContainerImageList, error) {
-	return h.connector.ListContainerTags(ctx, lastTag)
-}
-
 // Rename implements port.HeadlessHostRepository.
 func (h *HeadlessHostRepository) Rename(ctx context.Context, id string, newName string) error {
 	return h.q.UpdateHostName(ctx, db.UpdateHostNameParams{

@@ -98,6 +98,9 @@ jobs:
           RUSTFS_ACCESS_KEY: test-access-key
           RUSTFS_SECRET_KEY: test-secret-key
           WORLD_DOWNLOADS_BUCKET_NAME: world-downloads
+          STEAM_USERNAME: test-steam-user
+          STEAM_PASSWORD: test-steam-password
+          HEADLESS_PASSWORD: test-headless-password
         run: go run gotest.tools/gotestsum@latest --junitfile report.xml --format testdox -- ./...
 
       - name: Test Report Summary
