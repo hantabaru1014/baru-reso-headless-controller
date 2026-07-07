@@ -73,6 +73,9 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	groupService := rpc.NewGroupService(groupUsecase, permissionUsecase, groupRepository, roleRepository, headlessHostRepository, sessionRepository, headlessAccountUsecase)
 	roleUsecase := usecase.NewRoleUsecase(roleRepository, groupRepository, permissionUsecase)
 	roleService := rpc.NewRoleService(roleUsecase, permissionUsecase, groupRepository, roleRepository, headlessHostRepository, sessionRepository, headlessAccountUsecase)
+	messageRepository := adapter.NewMessageRepository(queries)
+	messageUsecase := usecase.NewMessageUsecase(messageRepository, groupRepository, permissionUsecase)
+	messageService := rpc.NewMessageService(messageUsecase, permissionUsecase, headlessHostRepository, sessionRepository, headlessAccountUsecase, groupRepository, roleRepository)
 	contentPoller := ProvideContentPoller(resoniteVersionUsecase, async_jobUsecase, workerConfig)
 	dockerEventWatcher := worker.NewDockerEventWatcher(dockerHostConnector, queries, memoryBus, workerConfig)
 	sqlHostEventStore := worker.NewSQLHostEventStore(queries)
@@ -89,7 +92,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	asyncJobExecutor := ProvideAsyncJobExecutor(asyncJobRepository, dispatcher, memoryBus, userExistenceChecker)
 	manager := ProvideWorkerManager(contentPoller, dockerEventWatcher, hostEventWatcher, hostUpgradeOrchestrator, scheduledOperationExecutor, asyncJobExecutor, sessionUsecase, resoniteVersionUsecase)
 	bridge := resonitelink.NewBridge(headlessHostRepository, sessionRepository, resoniteLinkConfig)
-	server := NewServer(userService, controllerService, notificationService, groupService, roleService, manager, minioClient, bridge)
+	server := NewServer(userService, controllerService, notificationService, groupService, roleService, messageService, manager, minioClient, bridge)
 	return server, nil
 }
 

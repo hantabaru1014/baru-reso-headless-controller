@@ -21,6 +21,7 @@ export const PERMISSION_KEYS = {
   SYSTEM_GROUP_LIST: "system:group.list",
   SYSTEM_GROUP_MANAGE: "system:group.manage",
   SYSTEM_ROLE_MANAGE: "system:role.manage",
+  SYSTEM_MESSAGE_MANAGE: "system:message.manage",
 } as const;
 
 export type PermissionKey =
@@ -88,6 +89,8 @@ export function permissionKeyToLabel(key: string): string {
       return "全グループ管理";
     case PERMISSION_KEYS.SYSTEM_ROLE_MANAGE:
       return "グローバルロール管理";
+    case PERMISSION_KEYS.SYSTEM_MESSAGE_MANAGE:
+      return "お知らせ管理";
     default:
       return key;
   }

@@ -85,6 +85,17 @@ type HostEventCheckpoint struct {
 	UpdatedAt   pgtype.Timestamptz
 }
 
+type Message struct {
+	ID            string
+	Title         string
+	Body          string
+	GroupID       pgtype.Text
+	CreatedBy     pgtype.Text
+	LastUpdatedBy pgtype.Text
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
 type RegistrationToken struct {
 	Token          string
 	ResoniteID     string

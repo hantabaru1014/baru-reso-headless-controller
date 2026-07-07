@@ -174,6 +174,12 @@ func allKnownProcedures() []string {
 		hdlctrlv1connect.RoleServiceListPermissionsProcedure,
 		hdlctrlv1connect.RoleServiceGetMyPermissionsProcedure,
 
+		// ===== MessageService =====
+		hdlctrlv1connect.MessageServiceListMessagesProcedure,
+		hdlctrlv1connect.MessageServiceCreateMessageProcedure,
+		hdlctrlv1connect.MessageServiceUpdateMessageProcedure,
+		hdlctrlv1connect.MessageServiceDeleteMessageProcedure,
+
 		// ===== UserService (管理用 RPC) =====
 		hdlctrlv1connect.UserServiceListUsersProcedure,
 		hdlctrlv1connect.UserServiceGetUserProcedure,

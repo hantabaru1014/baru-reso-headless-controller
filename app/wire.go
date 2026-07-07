@@ -214,6 +214,8 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		adapter.NewRoleRepository,
 		wire.Bind(new(port.GroupMemberRepository), new(*adapter.GroupMemberRepository)),
 		adapter.NewGroupMemberRepository,
+		wire.Bind(new(port.MessageRepository), new(*adapter.MessageRepository)),
+		adapter.NewMessageRepository,
 
 		// in-memory session-state cache (volatile snapshot owned by container)
 		sessionstate.NewMemoryCache,
@@ -256,6 +258,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		usecase.NewPermissionUsecase,
 		usecase.NewGroupUsecase,
 		usecase.NewRoleUsecase,
+		usecase.NewMessageUsecase,
 		usecase.NewResoniteVersionUsecase,
 		async_job.NewUsecase,
 		wire.Bind(new(port.SessionStopper), new(*usecase.SessionUsecase)),
@@ -266,6 +269,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		rpc.NewNotificationService,
 		rpc.NewGroupService,
 		rpc.NewRoleService,
+		rpc.NewMessageService,
 
 		// resonite link bridge
 		resonitelink.NewBridge,

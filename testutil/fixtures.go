@@ -13,6 +13,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -493,6 +494,26 @@ func SetupUserWithExactSystemPermissions(t *testing.T, queries *db.Queries, user
 		AddedBy: pgtype.Text{Valid: false},
 	})
 	require.NoError(t, err, "failed to add user to personal group")
+}
+
+// CreateTestMessage はお知らせメッセージを 1 件作成する.
+// groupID が nil なら全員向け. createdBy は既存 user.id (last_updated_by も同値で入る).
+// updatedAt を明示指定して updated_at 降順テストの順序を決定的にする
+// (作成時は created_at = updated_at = updatedAt).
+func CreateTestMessage(t *testing.T, pool *pgxpool.Pool, id, title, body string, groupID *string, createdBy string, updatedAt time.Time) {
+	t.Helper()
+
+	gid := pgtype.Text{}
+	if groupID != nil {
+		gid = pgtype.Text{String: *groupID, Valid: true}
+	}
+
+	_, err := pool.Exec(t.Context(),
+		`INSERT INTO messages (id, title, body, group_id, created_by, last_updated_by, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $5, $6, $6)`,
+		id, title, body, gid, createdBy, updatedAt,
+	)
+	require.NoError(t, err, "failed to create test message")
 }
 
 // InsertTestContainerLog inserts a test container log entry into the database.
