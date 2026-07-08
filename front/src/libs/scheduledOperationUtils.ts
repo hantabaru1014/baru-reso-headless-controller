@@ -1,6 +1,7 @@
 import { Timestamp, timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { format } from "date-fns";
 import { ScheduledOperationStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
+import i18n from "@/libs/i18n";
 
 export type OperationKind =
   | "START_SESSION"
@@ -11,13 +12,15 @@ export type OperationKind =
 export const operationKindLabel = (k: OperationKind): string => {
   switch (k) {
     case "START_SESSION":
-      return "セッション開始";
+      return i18n.t("scheduledOperationUtils.operationKind.startSession");
     case "STOP_SESSION":
-      return "セッション終了";
+      return i18n.t("scheduledOperationUtils.operationKind.stopSession");
     case "UPDATE_PARAMETERS":
-      return "セッション設定変更";
+      return i18n.t("scheduledOperationUtils.operationKind.updateParameters");
     case "UPDATE_EXTRA_SETTINGS":
-      return "追加設定変更";
+      return i18n.t(
+        "scheduledOperationUtils.operationKind.updateExtraSettings",
+      );
   }
 };
 
@@ -26,9 +29,9 @@ export type TriggerKind = "TIME" | "SESSION_USER_COUNT";
 export const triggerKindLabel = (t: TriggerKind): string => {
   switch (t) {
     case "TIME":
-      return "指定日時";
+      return i18n.t("scheduledOperationUtils.triggerKind.time");
     case "SESSION_USER_COUNT":
-      return "セッションのユーザー数";
+      return i18n.t("scheduledOperationUtils.triggerKind.sessionUserCount");
   }
 };
 
@@ -37,9 +40,9 @@ export type UserCountComparator = "LESS_OR_EQUAL" | "GREATER_OR_EQUAL";
 export const userCountComparatorLabel = (c: UserCountComparator): string => {
   switch (c) {
     case "LESS_OR_EQUAL":
-      return "以下になった時";
+      return i18n.t("scheduledOperationUtils.comparator.lessOrEqual");
     case "GREATER_OR_EQUAL":
-      return "以上になった時";
+      return i18n.t("scheduledOperationUtils.comparator.greaterOrEqual");
   }
 };
 
@@ -48,17 +51,17 @@ export const scheduledOperationStatusToLabel = (
 ): string => {
   switch (s) {
     case ScheduledOperationStatus.PENDING:
-      return "予約済み";
+      return i18n.t("scheduledOperationUtils.status.pending");
     case ScheduledOperationStatus.RUNNING:
-      return "実行中";
+      return i18n.t("scheduledOperationUtils.status.running");
     case ScheduledOperationStatus.SUCCEEDED:
-      return "完了";
+      return i18n.t("scheduledOperationUtils.status.succeeded");
     case ScheduledOperationStatus.FAILED:
-      return "失敗";
+      return i18n.t("scheduledOperationUtils.status.failed");
     case ScheduledOperationStatus.CANCELED:
-      return "キャンセル";
+      return i18n.t("scheduledOperationUtils.status.canceled");
     default:
-      return "不明";
+      return i18n.t("scheduledOperationUtils.status.unknown");
   }
 };
 

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import { Controller, useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import type { TFunction } from "i18next";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import {
@@ -55,15 +57,16 @@ import { formatTimestamp } from "../libs/datetimeUtils";
 // Radix Select は空文字の value を許容しないため専用の値を使う.
 const ALL_USERS_VALUE = "__all__";
 
-const messageFormSchema = z.object({
-  title: z
-    .string()
-    .min(1, "タイトルは必須です")
-    .max(200, "タイトルは200文字以内で入力してください"),
-  body: z.string().min(1, "本文は必須です"),
-  groupId: z.string(),
-});
-type MessageFormData = z.infer<typeof messageFormSchema>;
+const makeMessageFormSchema = (t: TFunction) =>
+  z.object({
+    title: z
+      .string()
+      .min(1, t("dashboardPage.titleRequired"))
+      .max(200, t("dashboardPage.titleMaxLength")),
+    body: z.string().min(1, t("dashboardPage.bodyRequired")),
+    groupId: z.string(),
+  });
+type MessageFormData = z.infer<ReturnType<typeof makeMessageFormSchema>>;
 
 function MessageEditorDialog({
   message,
@@ -77,21 +80,24 @@ function MessageEditorDialog({
   onClose: () => void;
   onSaved: (saved: Message) => void;
 }) {
+  const { t } = useTranslation();
   const isEdit = !!message;
   const createMut = useMutation(createMessage);
   const updateMut = useMutation(updateMessage);
   const isPending = createMut.isPending || updateMut.isPending;
 
+  const messageFormSchema = useMemo(() => makeMessageFormSchema(t), [t]);
+
   // 対象グループ候補. システムグループは掲示板の対象にしないため除外する.
   const { data: groupsData } = useQuery(listGroups, {}, { enabled: open });
   const groupOptions = useMemo(
     () => [
-      { id: ALL_USERS_VALUE, label: "全員向け" },
+      { id: ALL_USERS_VALUE, label: t("dashboardPage.forEveryone") },
       ...(groupsData?.groups ?? [])
         .filter((g) => g.type !== GroupType.SYSTEM)
         .map((g) => ({ id: g.id, label: g.name })),
     ],
-    [groupsData?.groups],
+    [groupsData?.groups, t],
   );
 
   const {
@@ -126,7 +132,7 @@ function MessageEditorDialog({
           body: data.body,
           groupId,
         });
-        toast.success("お知らせを更新しました");
+        toast.success(t("dashboardPage.updateSuccess"));
         if (res.message) onSaved(res.message);
       } else {
         const res = await createMut.mutateAsync({
@@ -134,7 +140,7 @@ function MessageEditorDialog({
           body: data.body,
           groupId,
         });
-        toast.success("お知らせを作成しました");
+        toast.success(t("dashboardPage.createSuccess"));
         if (res.message) onSaved(res.message);
       }
       onClose();
@@ -143,8 +149,8 @@ function MessageEditorDialog({
         e instanceof Error
           ? e.message
           : isEdit
-            ? "お知らせの更新に失敗しました"
-            : "お知らせの作成に失敗しました",
+            ? t("dashboardPage.updateError")
+            : t("dashboardPage.createError"),
       );
     }
   };
@@ -159,7 +165,9 @@ function MessageEditorDialog({
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? "お知らせを編集" : "お知らせを作成"}
+            {isEdit
+              ? t("dashboardPage.editMessage")
+              : t("dashboardPage.createMessage")}
           </DialogTitle>
         </DialogHeader>
         <form
@@ -168,12 +176,12 @@ function MessageEditorDialog({
           className="space-y-4"
         >
           <TextField
-            label="タイトル"
+            label={t("dashboardPage.titleLabel")}
             {...register("title")}
             error={errors.title?.message}
           />
           <TextareaField
-            label="本文 (markdown)"
+            label={t("dashboardPage.bodyLabel")}
             rows={10}
             {...register("body")}
             error={errors.body?.message}
@@ -183,8 +191,8 @@ function MessageEditorDialog({
             control={control}
             render={({ field }) => (
               <SelectField
-                label="対象"
-                helperText="全員向け, または特定のグループのメンバー向けに公開します"
+                label={t("dashboardPage.targetLabel")}
+                helperText={t("dashboardPage.targetHelperText")}
                 options={groupOptions}
                 selectedId={field.value}
                 onChange={(o) => field.onChange(o.id)}
@@ -196,11 +204,11 @@ function MessageEditorDialog({
         <DialogFooter>
           <Button type="submit" form="message-form" disabled={isPending}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isEdit ? "更新" : "作成"}
+            {isEdit ? t("common.update") : t("common.create")}
           </Button>
           <DialogClose asChild>
             <Button variant="outline" type="button">
-              キャンセル
+              {t("common.cancel")}
             </Button>
           </DialogClose>
         </DialogFooter>
@@ -220,17 +228,20 @@ function DeleteMessageDialog({
   onClose: () => void;
   onDeleted: () => void;
 }) {
+  const { t } = useTranslation();
   const { mutateAsync, isPending } = useMutation(deleteMessage);
 
   const handleConfirm = async () => {
     if (!message) return;
     try {
       await mutateAsync({ messageId: message.id });
-      toast.success("お知らせを削除しました");
+      toast.success(t("dashboardPage.deleteSuccess"));
       onDeleted();
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "削除に失敗しました");
+      toast.error(
+        e instanceof Error ? e.message : t("dashboardPage.deleteError"),
+      );
     }
   };
 
@@ -243,13 +254,15 @@ function DeleteMessageDialog({
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>お知らせを削除しますか?</AlertDialogTitle>
+          <AlertDialogTitle>{t("dashboardPage.deleteTitle")}</AlertDialogTitle>
           <AlertDialogDescription>
-            「{message?.title}」を削除します。この操作は取り消せません。
+            {t("dashboardPage.deleteConfirm", { title: message?.title })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>キャンセル</AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending}>
+            {t("common.cancel")}
+          </AlertDialogCancel>
           <AlertDialogAction
             disabled={isPending}
             onClick={(e) => {
@@ -259,7 +272,7 @@ function DeleteMessageDialog({
             className="bg-destructive text-white hover:bg-destructive/90"
           >
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            削除
+            {t("common.delete")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -278,6 +291,7 @@ function MessageDetail({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <article className="space-y-4">
       <div className="flex items-start justify-between gap-4">
@@ -285,26 +299,32 @@ function MessageDetail({
         {canManage && (
           <div className="flex shrink-0 gap-2">
             <Button variant="outline" size="sm" onClick={onEdit}>
-              編集
+              {t("common.edit")}
             </Button>
             <Button variant="ghost" size="sm" onClick={onDelete}>
-              削除
+              {t("common.delete")}
             </Button>
           </div>
         )}
       </div>
       <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
         <span className="flex items-center gap-1">
-          対象:
+          {t("dashboardPage.target")}
           <Badge variant="secondary">
-            {message.groupId ? (message.groupName ?? message.groupId) : "全員"}
+            {message.groupId
+              ? (message.groupName ?? message.groupId)
+              : t("dashboardPage.everyone")}
           </Badge>
         </span>
-        <span>更新: {formatTimestamp(message.updatedAt)}</span>
-        <span>作成: {formatTimestamp(message.createdAt)}</span>
+        <span>
+          {t("dashboardPage.updatedAt")} {formatTimestamp(message.updatedAt)}
+        </span>
+        <span>
+          {t("dashboardPage.createdAt")} {formatTimestamp(message.createdAt)}
+        </span>
         {message.lastUpdatedBy && (
           <span className="flex items-center gap-1">
-            最終更新者:
+            {t("dashboardPage.lastUpdatedBy")}
             <UserCell userId={message.lastUpdatedBy} />
           </span>
         )}
@@ -317,6 +337,7 @@ function MessageDetail({
 }
 
 export default function HomePage() {
+  const { t } = useTranslation();
   const { hasSystemPermission, isPending: isPermPending } = usePermissions();
   const canManage = hasSystemPermission(PERMISSION_KEYS.SYSTEM_MESSAGE_MANAGE);
 
@@ -353,11 +374,13 @@ export default function HomePage() {
     <div className="flex h-[calc(100dvh-9rem)] min-h-[24rem] flex-col gap-4">
       <div className="flex items-center justify-between gap-2">
         <p className="text-muted-foreground text-sm">
-          管理者からのお知らせです。
+          {t("dashboardPage.description")}
         </p>
         <div className="flex gap-2">
           <RefetchButton refetch={refetch} />
-          {canManage && <Button onClick={openCreate}>新規作成</Button>}
+          {canManage && (
+            <Button onClick={openCreate}>{t("dashboardPage.createNew")}</Button>
+          )}
         </div>
       </div>
 
@@ -394,7 +417,7 @@ export default function HomePage() {
                 />
               ) : (
                 <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-                  お知らせはありません
+                  {t("dashboardPage.noMessages")}
                 </div>
               )}
             </div>

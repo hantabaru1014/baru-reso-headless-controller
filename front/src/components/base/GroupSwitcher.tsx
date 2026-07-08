@@ -1,6 +1,7 @@
 import { useQuery } from "@connectrpc/connect-query";
 import { useAtom } from "jotai";
 import { useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, ChevronDown, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
@@ -31,6 +32,7 @@ import { cn } from "../../libs/cssUtils";
  * よって追加のロール判定は不要で、返ってきたグループをそのまま並べれば良い.
  */
 export function GroupSwitcher() {
+  const { t } = useTranslation();
   const [currentGroupId, setCurrentGroupId] = useAtom(currentGroupIdAtom);
   const { data, isFetched } = useQuery(listGroups, {});
 
@@ -59,15 +61,13 @@ export function GroupSwitcher() {
     if (!isFetched || !currentGroupId) return;
     if (!groups.some((g) => g.id === currentGroupId)) {
       setCurrentGroupId(null);
-      toast.warning(
-        "選択中のグループが見つからないため、全グループ表示に戻しました",
-      );
+      toast.warning(t("groupSwitcher.selectedGroupNotFound"));
     }
-  }, [isFetched, currentGroupId, groups, setCurrentGroupId]);
+  }, [isFetched, currentGroupId, groups, setCurrentGroupId, t]);
 
   const triggerLabel = currentGroupId
-    ? (selectedGroup?.name ?? "(不明なグループ)")
-    : "全グループ";
+    ? (selectedGroup?.name ?? t("groupSwitcher.unknownGroup"))
+    : t("groupSwitcher.allGroups");
 
   return (
     <DropdownMenu>
@@ -76,18 +76,18 @@ export function GroupSwitcher() {
           variant="ghost"
           size="sm"
           className="max-w-[14rem] gap-1 px-2"
-          title={`表示対象グループ: ${triggerLabel}`}
+          title={t("groupSwitcher.targetGroupLabel", { name: triggerLabel })}
         >
           <Users className="h-4 w-4 shrink-0" />
           <span className="text-muted-foreground hidden md:inline">
-            グループ:
+            {t("groupSwitcher.groupPrefix")}
           </span>
           <span className="truncate">{triggerLabel}</span>
           <ChevronDown className="h-4 w-4 shrink-0 opacity-60" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[16rem]">
-        <DropdownMenuLabel>表示対象グループ</DropdownMenuLabel>
+        <DropdownMenuLabel>{t("groupSwitcher.targetGroup")}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => setCurrentGroupId(null)}>
           <Check
@@ -96,9 +96,9 @@ export function GroupSwitcher() {
               currentGroupId === null ? "opacity-100" : "opacity-0",
             )}
           />
-          <span>全グループ</span>
+          <span>{t("groupSwitcher.allGroups")}</span>
           <span className="text-muted-foreground ml-auto text-xs">
-            (アクセス可能な全て)
+            {t("groupSwitcher.allAccessible")}
           </span>
         </DropdownMenuItem>
         {groups.length > 0 && <DropdownMenuSeparator />}

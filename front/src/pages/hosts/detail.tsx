@@ -1,11 +1,13 @@
 import HostLogViewer from "../../components/HostLogViewer";
 import { useParams } from "react-router";
+import { useTranslation } from "react-i18next";
 import HostDetailPanel from "../../components/HostDetailPanel";
 import { useQuery } from "@connectrpc/connect-query";
 import { getHeadlessHost } from "../../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { HeadlessHostStatus } from "../../../pbgen/hdlctrl/v1/controller_pb";
 
 export default function HostDetail() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const { data: hostData } = useQuery(
     getHeadlessHost,
@@ -35,9 +37,7 @@ export default function HostDetail() {
         </>
       ) : (
         <div className="w-full">
-          <p className="text-destructive">
-            NotFound: ホストが見つかりませんでした
-          </p>
+          <p className="text-destructive">{t("hostDetailPage.notFound")}</p>
         </div>
       )}
     </div>

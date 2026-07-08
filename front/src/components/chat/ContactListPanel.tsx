@@ -3,6 +3,7 @@ import { callUnaryMethod, useTransport } from "@connectrpc/connect-query";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { listContacts } from "../../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/libs/cssUtils";
@@ -15,6 +16,7 @@ export function ContactListPanel({
   selectedContact,
   onSelectContact,
 }: ContactListPanelProps) {
+  const { t } = useTranslation();
   const transport = useTransport();
   const [contactSearch, setContactSearch] = useState("");
   const contactsScrollRef = useRef<HTMLDivElement>(null);
@@ -126,7 +128,7 @@ export function ContactListPanel({
         <Input
           value={contactSearch}
           onChange={(e) => setContactSearch(e.target.value)}
-          placeholder="名前またはIDで検索..."
+          placeholder={t("contactListPanel.searchPlaceholder")}
           className="h-8 text-sm"
         />
       </div>
@@ -134,11 +136,13 @@ export function ContactListPanel({
       <div ref={contactsScrollRef} className="flex-1 overflow-auto">
         {isContactsError ? (
           <div className="p-4 text-center text-destructive text-sm">
-            <p className="font-medium mb-1">エラーが発生しました</p>
+            <p className="font-medium mb-1">
+              {t("contactListPanel.errorOccurred")}
+            </p>
             <p className="text-xs text-muted-foreground">
               {contactsError instanceof Error
                 ? contactsError.message
-                : "このアカウントでホストが起動していない可能性があります"}
+                : t("contactListPanel.hostNotRunning")}
             </p>
           </div>
         ) : isLoadingContacts ? (
@@ -147,11 +151,11 @@ export function ContactListPanel({
           </div>
         ) : contacts.length === 0 ? (
           <div className="p-4 text-center text-muted-foreground text-sm">
-            コンタクトがありません
+            {t("contactListPanel.noContacts")}
           </div>
         ) : filteredContacts.length === 0 ? (
           <div className="p-4 text-center text-muted-foreground text-sm">
-            検索結果がありません
+            {t("contactListPanel.noSearchResults")}
           </div>
         ) : (
           <div

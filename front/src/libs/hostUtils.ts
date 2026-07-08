@@ -1,18 +1,19 @@
 import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
+import i18n from "@/libs/i18n";
 
 export const hostStatusToLabel = (status: HeadlessHostStatus) => {
   switch (status) {
     case HeadlessHostStatus.STARTING:
-      return "起動中...";
+      return i18n.t("hostUtils.starting");
     case HeadlessHostStatus.RUNNING:
-      return "実行中";
+      return i18n.t("hostUtils.running");
     case HeadlessHostStatus.STOPPING:
-      return "停止中...";
+      return i18n.t("hostUtils.stopping");
     case HeadlessHostStatus.EXITED:
-      return "停止済み";
+      return i18n.t("hostUtils.exited");
     case HeadlessHostStatus.CRASHED:
-      return "クラッシュ";
+      return i18n.t("hostUtils.crashed");
     default:
-      return "不明";
+      return i18n.t("hostUtils.unknown");
   }
 };

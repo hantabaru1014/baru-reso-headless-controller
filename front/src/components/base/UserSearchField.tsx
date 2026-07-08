@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation } from "@connectrpc/connect-query";
 import { searchUserInfo } from "../../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { Input } from "../ui/input";
@@ -21,11 +22,15 @@ interface UserSearchFieldProps {
 export function UserSearchField({
   hostId,
   onUserSelect,
-  placeholder = "ユーザーID/名",
+  placeholder,
   disabled = false,
   label,
-  noHostMessage = "(まずHostを選択してください)",
+  noHostMessage,
 }: UserSearchFieldProps) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t("userSearchField.placeholder");
+  const resolvedNoHostMessage =
+    noHostMessage ?? t("userSearchField.noHostMessage");
   const inputId = useId();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -74,7 +79,7 @@ export function UserSearchField({
       )}
       {!hostId ? (
         <div className="text-sm text-muted-foreground p-2 border rounded-md bg-muted/50">
-          {noHostMessage}
+          {resolvedNoHostMessage}
         </div>
       ) : (
         <Popover
@@ -86,7 +91,7 @@ export function UserSearchField({
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
                 id={inputId}
-                placeholder={placeholder}
+                placeholder={resolvedPlaceholder}
                 value={query}
                 onChange={handleQueryChange}
                 onFocus={() => setIsOpen(true)}

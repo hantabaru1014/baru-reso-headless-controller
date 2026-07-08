@@ -10,6 +10,7 @@ import {
   sendContactMessage,
 } from "../../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
@@ -35,6 +36,7 @@ export function ChatMessagesPanel({
   showPlaceholder = true,
   className,
 }: ChatMessagesPanelProps) {
+  const { t } = useTranslation();
   const transport = useTransport();
   const queryClient = useQueryClient();
 
@@ -368,7 +370,7 @@ export function ChatMessagesPanel({
     } catch (e) {
       setOptimisticMessages((prev) => prev.filter((m) => m.tempId !== tempId));
       toast.error(
-        e instanceof Error ? e.message : "メッセージの送信に失敗しました",
+        e instanceof Error ? e.message : t("chatMessagesPanel.sendFailed"),
       );
     }
   }, [
@@ -380,6 +382,7 @@ export function ChatMessagesPanel({
     transport,
     queryClient,
     scrollToBottom,
+    t,
   ]);
 
   const handleKeyDown = useCallback(
@@ -448,7 +451,7 @@ export function ChatMessagesPanel({
       <div ref={scrollContainerRef} className="flex-1 overflow-auto p-4">
         {!contact && showPlaceholder ? (
           <div className="h-full flex items-center justify-center text-muted-foreground">
-            コンタクトを選択してください
+            {t("chatMessagesPanel.selectContact")}
           </div>
         ) : isLoadingMessages ? (
           <div className="flex justify-center p-4">
@@ -456,7 +459,7 @@ export function ChatMessagesPanel({
           </div>
         ) : messages.length === 0 ? (
           <div className="h-full flex items-center justify-center text-muted-foreground">
-            メッセージがありません
+            {t("chatMessagesPanel.noMessages")}
           </div>
         ) : (
           <div
@@ -535,7 +538,7 @@ export function ChatMessagesPanel({
             value={messageInput}
             onChange={(e) => setMessageInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="メッセージを入力..."
+            placeholder={t("chatMessagesPanel.inputPlaceholder")}
             disabled={isSending}
             className="flex-1"
           />

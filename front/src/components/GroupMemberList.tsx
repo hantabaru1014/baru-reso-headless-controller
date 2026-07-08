@@ -34,6 +34,7 @@ import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
 import { usePermissions } from "../hooks/usePermissions";
 import { PERMISSION_KEYS } from "../libs/permissionUtils";
 import { useInvalidateMyPermissions } from "../hooks/useInvalidateMyPermissions";
+import { useTranslation } from "react-i18next";
 
 function AddMemberDialog({
   groupId,
@@ -47,6 +48,7 @@ function AddMemberDialog({
   open: boolean;
   onClose?: () => void;
 }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | undefined>(undefined);
   const [roleId, setRoleId] = useState("");
@@ -62,9 +64,9 @@ function AddMemberDialog({
     () =>
       (rolesData?.roles ?? []).map((r) => ({
         id: r.id,
-        label: `${r.name}${r.isBuiltin ? " (組込)" : ""}`,
+        label: `${r.name}${r.isBuiltin ? ` ${t("groupMemberList.builtinSuffix")}` : ""}`,
       })),
-    [rolesData?.roles],
+    [rolesData?.roles, t],
   );
 
   const reset = () => {
@@ -99,7 +101,7 @@ function AddMemberDialog({
     >
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>メンバーを追加</DialogTitle>
+          <DialogTitle>{t("groupMemberList.addMemberTitle")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           {selectedUser ? (
@@ -124,14 +126,14 @@ function AddMemberDialog({
                 size="sm"
                 onClick={() => setSelectedUser(undefined)}
               >
-                変更
+                {t("groupMemberList.change")}
               </Button>
             </div>
           ) : (
             <>
               <TextField
-                label="ユーザー検索"
-                placeholder="ユーザー ID または Resonite ID で検索"
+                label={t("groupMemberList.userSearch")}
+                placeholder={t("groupMemberList.userSearchPlaceholder")}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -139,12 +141,12 @@ function AddMemberDialog({
                 <div className="space-y-1">
                   {isUsersPending && (
                     <p className="p-2 text-sm text-muted-foreground">
-                      読み込み中...
+                      {t("common.loading")}
                     </p>
                   )}
                   {!isUsersPending && filteredUsers.length === 0 && (
                     <p className="p-2 text-sm text-muted-foreground">
-                      該当するユーザーが見つかりません
+                      {t("groupMemberList.noUsersFound")}
                     </p>
                   )}
                   {filteredUsers.map((u) => (
@@ -174,7 +176,7 @@ function AddMemberDialog({
             </>
           )}
           <SelectField
-            label="ロール"
+            label={t("groupMemberList.role")}
             options={roleOptions}
             selectedId={roleId}
             onChange={(o) => setRoleId(o.id)}
@@ -191,20 +193,22 @@ function AddMemberDialog({
                   userId: selectedUser.id,
                   roleId,
                 });
-                toast.success("メンバーを追加しました");
+                toast.success(t("groupMemberList.memberAdded"));
                 reset();
                 onClose?.();
               } catch (e) {
                 toast.error(
-                  e instanceof Error ? e.message : "追加に失敗しました",
+                  e instanceof Error
+                    ? e.message
+                    : t("groupMemberList.addFailed"),
                 );
               }
             }}
           >
-            追加
+            {t("common.add")}
           </Button>
           <DialogClose asChild>
-            <Button variant="outline">キャンセル</Button>
+            <Button variant="outline">{t("common.cancel")}</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -213,6 +217,7 @@ function AddMemberDialog({
 }
 
 export default function GroupMemberList({ groupId }: { groupId: string }) {
+  const { t } = useTranslation();
   const { data, isPending, refetch } = useQuery(listGroupMembers, { groupId });
   const { data: rolesData } = useQuery(listRoles, { groupId });
   const { hasPermission } = usePermissions();
@@ -239,12 +244,12 @@ export default function GroupMemberList({ groupId }: { groupId: string }) {
     () => [
       {
         accessorKey: "userId",
-        header: "ユーザー",
+        header: t("groupMemberList.user"),
         cell: ({ cell }) => <UserCell userId={cell.getValue<string>()} />,
       },
       {
         accessorKey: "roleId",
-        header: "ロール",
+        header: t("groupMemberList.role"),
         cell: ({ row }) => {
           const member = row.original;
           const currentRoleName = rolesById.get(member.roleId) ?? member.roleId;
@@ -253,7 +258,7 @@ export default function GroupMemberList({ groupId }: { groupId: string }) {
             <SelectField
               options={(rolesData?.roles ?? []).map((r) => ({
                 id: r.id,
-                label: `${r.name}${r.isBuiltin ? " (組込)" : ""}`,
+                label: `${r.name}${r.isBuiltin ? ` ${t("groupMemberList.builtinSuffix")}` : ""}`,
               }))}
               selectedId={member.roleId}
               onChange={async (o) => {
@@ -263,12 +268,14 @@ export default function GroupMemberList({ groupId }: { groupId: string }) {
                     userId: member.userId,
                     roleId: o.id,
                   });
-                  toast.success("ロールを更新しました");
+                  toast.success(t("groupMemberList.roleUpdated"));
                   refetch();
                   invalidateMyPermissions();
                 } catch (e) {
                   toast.error(
-                    e instanceof Error ? e.message : "ロール変更に失敗しました",
+                    e instanceof Error
+                      ? e.message
+                      : t("groupMemberList.roleUpdateFailed"),
                   );
                 }
               }}
@@ -278,19 +285,21 @@ export default function GroupMemberList({ groupId }: { groupId: string }) {
       },
       {
         accessorKey: "addedBy",
-        header: "招待者",
+        header: t("groupMemberList.invitedBy"),
         cell: ({ cell }) => {
           const v = cell.getValue<string | undefined>();
           return v ? (
             <UserCell userId={v} />
           ) : (
-            <span className="text-muted-foreground text-xs">システム</span>
+            <span className="text-muted-foreground text-xs">
+              {t("groupMemberList.system")}
+            </span>
           );
         },
       },
       {
         id: "actions",
-        header: "操作",
+        header: t("common.actions"),
         cell: ({ row }) => (
           <PermissionGuardedButton
             allowed={canManage}
@@ -299,22 +308,28 @@ export default function GroupMemberList({ groupId }: { groupId: string }) {
             disabled={isRemoving}
             onClick={async () => {
               if (
-                !confirm(`${row.original.userId} をグループから削除しますか?`)
+                !confirm(
+                  t("groupMemberList.confirmRemove", {
+                    userId: row.original.userId,
+                  }),
+                )
               )
                 return;
               try {
                 await mutateRemove({ groupId, userId: row.original.userId });
-                toast.success("メンバーを削除しました");
+                toast.success(t("groupMemberList.memberRemoved"));
                 refetch();
                 invalidateMyPermissions();
               } catch (e) {
                 toast.error(
-                  e instanceof Error ? e.message : "削除に失敗しました",
+                  e instanceof Error
+                    ? e.message
+                    : t("groupMemberList.removeFailed"),
                 );
               }
             }}
           >
-            削除
+            {t("common.delete")}
           </PermissionGuardedButton>
         ),
       },
@@ -329,6 +344,7 @@ export default function GroupMemberList({ groupId }: { groupId: string }) {
       groupId,
       refetch,
       invalidateMyPermissions,
+      t,
     ],
   );
 
@@ -340,7 +356,7 @@ export default function GroupMemberList({ groupId }: { groupId: string }) {
           allowed={canManage}
           onClick={() => setIsAddOpen(true)}
         >
-          メンバー追加
+          {t("groupMemberList.addMember")}
         </PermissionGuardedButton>
       </div>
       <DataTable

@@ -1,4 +1,5 @@
 import { useParams } from "react-router";
+import { useTranslation } from "react-i18next";
 import SessionForm from "../../components/SessionForm";
 import SessionUserList from "../../components/SessionUserList";
 import ScheduledOperationList from "../../components/ScheduledOperationList";
@@ -7,6 +8,7 @@ import { getSessionDetails } from "../../../pbgen/hdlctrl/v1/controller-Controll
 import { SessionStatus } from "../../../pbgen/hdlctrl/v1/controller_pb";
 
 export default function SessionDetail() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const { data } = useQuery(getSessionDetails, {
     sessionId: id,
@@ -30,9 +32,7 @@ export default function SessionDetail() {
         </>
       ) : (
         <div className="w-full">
-          <p className="text-destructive">
-            NotFound: セッションが見つかりませんでした
-          </p>
+          <p className="text-destructive">{t("sessionDetailPage.notFound")}</p>
         </div>
       )}
     </div>

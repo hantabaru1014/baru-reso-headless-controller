@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { ResoniteUserIcon } from "../ResoniteUserIcon";
 import { Skeleton } from "../ui";
 
@@ -18,6 +19,7 @@ export function UserList({
   renderActions?: (user: UserInfo) => React.ReactNode;
   onUserClick?: (user: UserInfo) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-2">
       {isLoading
@@ -36,7 +38,7 @@ export function UserList({
               <div className="flex items-center space-x-3">
                 <ResoniteUserIcon
                   iconUrl={user.iconUrl}
-                  alt={`${user.name}のアイコン`}
+                  alt={t("userList.iconAlt", { name: user.name })}
                 />
                 <span className="text-sm font-medium">{user.name}</span>
               </div>

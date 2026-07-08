@@ -35,12 +35,15 @@ import {
   roleScopeToLabel,
 } from "../libs/permissionUtils";
 import { useInvalidateMyPermissions } from "../hooks/useInvalidateMyPermissions";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
-const roleFormSchema = z.object({
-  name: z.string().min(1, "ロール名は必須です"),
-  permissionKeys: z.array(z.string()),
-});
-type RoleFormData = z.infer<typeof roleFormSchema>;
+const makeRoleFormSchema = (t: TFunction) =>
+  z.object({
+    name: z.string().min(1, t("roleList.nameRequired")),
+    permissionKeys: z.array(z.string()),
+  });
+type RoleFormData = z.infer<ReturnType<typeof makeRoleFormSchema>>;
 
 function RoleEditorDialog({
   groupId,
@@ -56,6 +59,7 @@ function RoleEditorDialog({
   open: boolean;
   onClose?: () => void;
 }) {
+  const { t } = useTranslation();
   const isEdit = !!initial;
   const invalidateMyPermissions = useInvalidateMyPermissions();
   const { data: permsData } = useQuery(listPermissions, { scope });
@@ -63,6 +67,7 @@ function RoleEditorDialog({
     useMutation(createRole);
   const { mutateAsync: mutateUpdate, isPending: isUpdating } =
     useMutation(updateRole);
+  const schema = useMemo(() => makeRoleFormSchema(t), [t]);
 
   const {
     control,
@@ -70,7 +75,7 @@ function RoleEditorDialog({
     reset,
     formState: { errors },
   } = useForm<RoleFormData>({
-    resolver: zodResolver(roleFormSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       name: initial?.name ?? "",
       permissionKeys: initial?.permissionKeys ?? [],
@@ -87,7 +92,7 @@ function RoleEditorDialog({
             keys: data.permissionKeys,
           }),
         });
-        toast.success("ロールを更新しました");
+        toast.success(t("roleList.roleUpdated"));
       } else {
         await mutateCreate({
           groupId,
@@ -95,7 +100,7 @@ function RoleEditorDialog({
           scope,
           permissionKeys: data.permissionKeys,
         });
-        toast.success("ロールを作成しました");
+        toast.success(t("roleList.roleCreated"));
       }
       // ロールの権限変更は自分自身の実効権限に影響しうるため getMyPermissions を invalidate.
       // ダイアログのクローズを再取得の完了で待たせないため await しない.
@@ -103,7 +108,7 @@ function RoleEditorDialog({
       reset();
       onClose?.();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "保存に失敗しました");
+      toast.error(e instanceof Error ? e.message : t("roleList.saveFailed"));
     }
   };
 
@@ -120,7 +125,7 @@ function RoleEditorDialog({
       <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? "ロールを編集" : "ロールを作成"} (
+            {isEdit ? t("roleList.editRole") : t("roleList.createRole")} (
             {roleScopeToLabel(scope)})
           </DialogTitle>
         </DialogHeader>
@@ -134,7 +139,7 @@ function RoleEditorDialog({
             control={control}
             render={({ field }) => (
               <TextField
-                label="ロール名"
+                label={t("roleList.roleName")}
                 {...field}
                 error={errors.name?.message}
               />
@@ -145,7 +150,9 @@ function RoleEditorDialog({
             control={control}
             render={({ field }) => (
               <div className="space-y-2">
-                <p className="text-sm font-medium">付与するパーミッション</p>
+                <p className="text-sm font-medium">
+                  {t("roleList.grantPermissions")}
+                </p>
                 {(permsData?.permissions ?? []).map((p) => {
                   const checked = field.value.includes(p.key);
                   return (
@@ -181,10 +188,10 @@ function RoleEditorDialog({
             form="role-form"
             disabled={isCreating || isUpdating}
           >
-            {isEdit ? "保存" : "作成"}
+            {isEdit ? t("common.save") : t("common.create")}
           </Button>
           <DialogClose asChild>
-            <Button variant="outline">キャンセル</Button>
+            <Button variant="outline">{t("common.cancel")}</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -209,6 +216,7 @@ export default function RoleList({
   canManage: boolean;
   scope?: RoleScope;
 }) {
+  const { t } = useTranslation();
   const { data, isPending, refetch } = useQuery(
     listRoles,
     groupId ? { groupId } : {},
@@ -232,31 +240,35 @@ export default function RoleList({
     () => [
       {
         accessorKey: "name",
-        header: "名前",
+        header: t("common.name"),
       },
       {
         accessorKey: "scope",
-        header: "スコープ",
+        header: t("roleList.scope"),
         cell: ({ cell }) => roleScopeToLabel(cell.getValue<RoleScope>()),
       },
       {
         accessorKey: "isBuiltin",
-        header: "種別",
+        header: t("roleList.type"),
         cell: ({ cell }) =>
-          cell.getValue<boolean>() ? "組込 (seed)" : "カスタム",
+          cell.getValue<boolean>()
+            ? t("roleList.builtin")
+            : t("roleList.custom"),
       },
       {
         accessorKey: "permissionKeys",
-        header: "パーミッション",
+        header: t("roleList.permission"),
         cell: ({ cell }) => (
           <span className="text-xs text-muted-foreground">
-            {cell.getValue<string[]>().length} 件
+            {t("roleList.countSuffix", {
+              count: cell.getValue<string[]>().length,
+            })}
           </span>
         ),
       },
       {
         id: "actions",
-        header: "操作",
+        header: t("common.actions"),
         cell: ({ row }) => {
           const role = row.original;
           const editable = canManage && !role.isBuiltin;
@@ -266,46 +278,51 @@ export default function RoleList({
                 allowed={editable}
                 disabledReason={
                   role.isBuiltin
-                    ? "組込ロールは編集できません"
-                    : "編集権限がありません"
+                    ? t("roleList.builtinNotEditable")
+                    : t("roleList.noEditPermission")
                 }
                 size="sm"
                 variant="ghost"
                 onClick={() => setEditingRole(role)}
               >
-                編集
+                {t("common.edit")}
               </PermissionGuardedButton>
               <PermissionGuardedButton
                 allowed={editable}
                 disabledReason={
                   role.isBuiltin
-                    ? "組込ロールは削除できません"
-                    : "削除権限がありません"
+                    ? t("roleList.builtinNotDeletable")
+                    : t("roleList.noDeletePermission")
                 }
                 size="sm"
                 variant="ghost"
                 onClick={async () => {
-                  if (!confirm(`ロール "${role.name}" を削除しますか?`)) return;
+                  if (
+                    !confirm(t("roleList.confirmDelete", { name: role.name }))
+                  )
+                    return;
                   try {
                     await mutateDelete({ roleId: role.id });
-                    toast.success("ロールを削除しました");
+                    toast.success(t("roleList.roleDeleted"));
                     refetch();
                     invalidateMyPermissions();
                   } catch (e) {
                     toast.error(
-                      e instanceof Error ? e.message : "削除に失敗しました",
+                      e instanceof Error
+                        ? e.message
+                        : t("roleList.deleteFailed"),
                     );
                   }
                 }}
               >
-                削除
+                {t("common.delete")}
               </PermissionGuardedButton>
             </div>
           );
         },
       },
     ],
-    [canManage, mutateDelete, refetch, invalidateMyPermissions],
+    [canManage, mutateDelete, refetch, invalidateMyPermissions, t],
   );
 
   return (
@@ -316,7 +333,7 @@ export default function RoleList({
           allowed={canManage}
           onClick={() => setIsCreating(true)}
         >
-          ロール作成
+          {t("roleList.createRoleButton")}
         </PermissionGuardedButton>
       </div>
       <DataTable columns={columns} data={filteredRoles} isLoading={isPending} />

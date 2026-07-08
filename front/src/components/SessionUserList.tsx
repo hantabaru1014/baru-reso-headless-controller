@@ -36,6 +36,7 @@ import { toast } from "sonner";
 import { useMemo } from "react";
 import { usePermissions } from "../hooks/usePermissions";
 import { PERMISSION_KEYS } from "../libs/permissionUtils";
+import { useTranslation } from "react-i18next";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 30];
 
@@ -50,6 +51,7 @@ function UserInviteDialog({
   hostId?: string;
   sessionId?: string;
 }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const {
@@ -89,11 +91,11 @@ function UserInviteDialog({
           value: userId,
         },
       });
-      toast.success("ユーザーを招待しました");
+      toast.success(t("sessionUserList.inviteSuccess"));
       setQuery("");
       inputRef.current?.focus();
     } catch (e) {
-      toast.error(`ユーザーの招待に失敗しました: ${e}`);
+      toast.error(t("sessionUserList.inviteFailed", { error: e }));
     } finally {
       setInvitingUserId(null);
     }
@@ -103,14 +105,14 @@ function UserInviteDialog({
     <Dialog open={open} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>ユーザーを招待</DialogTitle>
+          <DialogTitle>{t("sessionUserList.inviteTitle")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
               ref={inputRef}
-              placeholder="ユーザーID/名"
+              placeholder={t("sessionUserList.userIdOrNamePlaceholder")}
               value={query}
               onChange={handleQueryChange}
               className="pl-10"
@@ -127,7 +129,9 @@ function UserInviteDialog({
                     onClick={() => handleInviteUser(user.id)}
                     disabled={isLoading}
                   >
-                    {isLoading ? "招待中..." : "招待"}
+                    {isLoading
+                      ? t("sessionUserList.inviting")
+                      : t("sessionUserList.invite")}
                   </Button>
                 );
               }}
@@ -136,7 +140,7 @@ function UserInviteDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onClose()}>
-            閉じる
+            {t("sessionUserList.close")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -152,6 +156,7 @@ type UserInSession = Pick<
 };
 
 export default function SessionUserList({ sessionId }: { sessionId: string }) {
+  const { t } = useTranslation();
   const { data: sessionDetail } = useQuery(getSessionDetails, {
     sessionId,
   });
@@ -308,10 +313,10 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
           },
         },
       });
-      toast.success("ユーザーをリスポーンさせました");
+      toast.success(t("sessionUserList.respawnSuccess"));
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "ユーザーのリスポーンに失敗しました",
+        e instanceof Error ? e.message : t("sessionUserList.respawnFailed"),
       );
     } finally {
       setActionUserId(null);
@@ -321,11 +326,11 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
   const columns: ColumnDef<UserInSession>[] = [
     {
       accessorKey: "name",
-      header: "ユーザー名",
+      header: t("sessionUserList.columnName"),
     },
     {
       accessorKey: "role",
-      header: "権限",
+      header: t("sessionUserList.columnRole"),
       cell: ({ row }) => (
         <EditableSelectField<string>
           selectedId={row.original.role}
@@ -337,13 +342,13 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
     },
     {
       accessorKey: "isPresent",
-      header: "離席中",
+      header: t("sessionUserList.columnAway"),
       cell: ({ cell }) =>
         !cell.getValue<boolean>() ? <Check className="h-4 w-4" /> : null,
     },
     {
       id: "actions",
-      header: "操作",
+      header: t("sessionUserList.columnActions"),
       cell: ({ row }) => (
         <div className="space-x-2">
           <Button
@@ -352,7 +357,7 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
             disabled={!canUseAccount}
             onClick={() => setChatUserId(row.original.id)}
           >
-            チャット
+            {t("sessionUserList.chat")}
           </Button>
           {!row.original.isHost && (
             <>
@@ -400,11 +405,13 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
     <>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">ユーザー一覧</h2>
+          <h2 className="text-lg font-semibold">
+            {t("sessionUserList.userListTitle")}
+          </h2>
           <div className="flex items-center space-x-2">
             <RefetchButton refetch={refetch} />
             <Button onClick={() => setIsOpenInviteDialog(true)}>
-              ユーザー招待
+              {t("sessionUserList.inviteUser")}
             </Button>
           </div>
         </div>

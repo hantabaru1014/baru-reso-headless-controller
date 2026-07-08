@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 type PageParam = {
   direction: "before" | "after" | "init";
@@ -24,6 +25,7 @@ export default function HostLogViewer({
   tailing: boolean;
   height?: string;
 }) {
+  const { t } = useTranslation();
   const transport = useTransport();
   const queryClient = useQueryClient();
 
@@ -310,12 +312,12 @@ export default function HostLogViewer({
       toast.error(
         error instanceof Error
           ? error.message
-          : "ログのダウンロードに失敗しました",
+          : t("hostLogViewer.downloadFailed"),
       );
     } finally {
       setIsDownloading(false);
     }
-  }, [transport, hostId, instanceId]);
+  }, [transport, hostId, instanceId, t]);
 
   return (
     <Card>
@@ -332,7 +334,9 @@ export default function HostLogViewer({
           ) : (
             <Download className="h-4 w-4 mr-1" />
           )}
-          {isDownloading ? "Downloading..." : "Download"}
+          {isDownloading
+            ? t("hostLogViewer.downloading")
+            : t("hostLogViewer.download")}
         </Button>
       </CardHeader>
       <CardContent className="relative" style={{ height }}>
@@ -342,19 +346,19 @@ export default function HostLogViewer({
         >
           {isLoading && logs.length === 0 && (
             <div className="flex justify-center py-4 text-muted-foreground">
-              読み込み中...
+              {t("common.loading")}
             </div>
           )}
           {!isLoading && logs.length === 0 && (
             <div className="flex justify-center py-4 text-muted-foreground">
-              ログがありません
+              {t("hostLogViewer.noLogs")}
             </div>
           )}
           {logs.length > 0 && (
             <>
               {isFetchingPreviousPage && hasPreviousPage && (
                 <div className="flex justify-center py-2 text-muted-foreground text-sm">
-                  読み込み中...
+                  {t("common.loading")}
                 </div>
               )}
               <div

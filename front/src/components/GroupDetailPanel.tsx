@@ -13,8 +13,10 @@ import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
 import { usePermissions } from "../hooks/usePermissions";
 import { PERMISSION_KEYS, groupTypeToLabel } from "../libs/permissionUtils";
 import { formatTimestamp } from "../libs/datetimeUtils";
+import { useTranslation } from "react-i18next";
 
 export default function GroupDetailPanel({ groupId }: { groupId: string }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { data, isPending, refetch } = useQuery(getGroup, { groupId });
   const { mutateAsync: mutateUpdate } = useMutation(updateGroup);
@@ -25,7 +27,7 @@ export default function GroupDetailPanel({ groupId }: { groupId: string }) {
   if (isPending) return <Skeleton className="h-32 w-full" />;
   const group = data?.group;
   if (!group)
-    return <p className="text-destructive">グループが見つかりませんでした</p>;
+    return <p className="text-destructive">{t("groupDetailPanel.notFound")}</p>;
 
   const canEdit =
     group.type !== GroupType.PERSONAL &&
@@ -39,19 +41,22 @@ export default function GroupDetailPanel({ groupId }: { groupId: string }) {
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <EditableTextField
-          label="グループ名"
+          label={t("groupDetailPanel.groupName")}
           value={group.name}
           readonly={!canEdit}
           onSave={async (v) => {
             try {
               await mutateUpdate({ groupId: group.id, name: v });
-              toast.success("グループ名を更新しました");
+              toast.success(t("groupDetailPanel.nameUpdated"));
               refetch();
               return { ok: true };
             } catch (e) {
               return {
                 ok: false,
-                error: e instanceof Error ? e.message : "更新に失敗しました",
+                error:
+                  e instanceof Error
+                    ? e.message
+                    : t("groupDetailPanel.updateFailed"),
               };
             }
           }}
@@ -65,31 +70,34 @@ export default function GroupDetailPanel({ groupId }: { groupId: string }) {
               onClick={async () => {
                 if (
                   !confirm(
-                    `グループ "${group.name}" を削除します。よろしいですか?`,
+                    t("groupDetailPanel.confirmDelete", { name: group.name }),
                   )
                 )
                   return;
                 try {
                   await mutateDelete({ groupId: group.id });
-                  toast.success("グループを削除しました");
+                  toast.success(t("groupDetailPanel.deleted"));
                   navigate("/groups");
                 } catch (e) {
                   toast.error(
                     e instanceof Error
                       ? e.message
-                      : "グループの削除に失敗しました",
+                      : t("groupDetailPanel.deleteFailed"),
                   );
                 }
               }}
             >
-              グループを削除
+              {t("groupDetailPanel.deleteGroup")}
             </PermissionGuardedButton>
           )}
         </div>
-        <ReadOnlyField label="種別" value={groupTypeToLabel(group.type)} />
+        <ReadOnlyField
+          label={t("groupDetailPanel.type")}
+          value={groupTypeToLabel(group.type)}
+        />
         <ReadOnlyField label="ID" value={group.id} />
         <ReadOnlyField
-          label="作成日時"
+          label={t("groupDetailPanel.createdAt")}
           value={formatTimestamp(group.createdAt)}
         />
       </div>
@@ -97,12 +105,12 @@ export default function GroupDetailPanel({ groupId }: { groupId: string }) {
         group.type === GroupType.NORMAL &&
         hasPermission(group.id, PERMISSION_KEYS.GROUP_EDIT) === false && (
           <p className="text-muted-foreground text-sm">
-            このグループを削除する権限がありません
+            {t("groupDetailPanel.noDeletePermission")}
           </p>
         )}
       {group.type === GroupType.PERSONAL && (
         <p className="text-muted-foreground text-sm">
-          personal グループは削除・編集できません
+          {t("groupDetailPanel.personalReadonly")}
         </p>
       )}
     </div>

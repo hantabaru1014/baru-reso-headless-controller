@@ -4,83 +4,88 @@ import {
   WorldStartupParametersSchema,
 } from "../../pbgen/headless/v1/headless_pb";
 import { z } from "zod";
+import type { TFunction } from "i18next";
 
 /**
  * 新規セッション/予約フォーム共通の zod スキーマ。
+ * バリデーションメッセージを i18n 化するため、`t` を受け取るファクトリ関数にしている。
  */
-export const sessionFormSchema = z
-  .object({
-    hostId: z.string().min(1, "ホストを選択してください"),
-    worldSource: z.enum(["url", "template"]),
-    name: z.string().min(1, "セッション名を入力してください"),
-    customSessionId: z.string().optional(),
-    description: z.string().optional(),
-    tags: z.string().optional(),
-    maxUsers: z.number().int().min(1, "最低1人以上の設定が必要です"),
-    accessLevel: z.number().int().min(1).max(6),
-    worldUrl: z.string().optional(),
-    worldTemplate: z.enum(["grid", "platform", "blank"]),
-    autoInviteUsernames: z
-      .array(
-        z.object({
-          userName: z.string(),
-          userId: z.string(),
-          iconUrl: z.string().optional(),
-          joinAllowedOnly: z.boolean(),
-        }),
-      )
-      .optional(),
-    hideFromPublicListing: z.boolean(),
-    defaultUserRoles: z
-      .array(
-        z.object({
-          role: z.string(),
-          userName: z.string(),
-          iconUrl: z.string().optional(),
-        }),
-      )
-      .optional(),
-    awayKickMinutes: z.number(),
-    idleRestartIntervalSeconds: z.number().int(),
-    saveOnExit: z.boolean(),
-    autoSaveIntervalSeconds: z.number().int(),
-    autoSleep: z.boolean(),
-    inviteRequestHandlerUsernames: z.string().optional(),
-    forcePort: z.number().int().optional(),
-    parentSessionIds: z.string().optional(),
-    autoRecover: z.boolean().optional(),
-    forcedRestartIntervalSeconds: z.number().int().optional(),
-    useCustomJoinVerifier: z.boolean().optional(),
-    mobileFriendly: z.boolean().optional(),
-    overrideCorrespondingWorldId: z
-      .string()
-      .optional()
-      .refine(
-        (value) => {
-          if (!value) return true;
-          return /^[^/]+\/[^/]+$/.test(value);
-        },
-        { message: "ownerId/id の形式で入力してください" },
-      ),
-    keepOriginalRoles: z.boolean().optional(),
-    roleCloudVariable: z.string().optional(),
-    allowUserCloudVariable: z.string().optional(),
-    denyUserCloudVariable: z.string().optional(),
-    requiredUserJoinCloudVariable: z.string().optional(),
-    requiredUserJoinCloudVariableDenyMessage: z.string().optional(),
-    autoInviteMessage: z.string().optional(),
-  })
-  .refine(
-    (data) => {
-      if (data.worldSource === "url") {
-        return !!data.worldUrl;
-      }
-      return true;
-    },
-    { message: "URLを入力してください", path: ["worldUrl"] },
-  );
+export const makeSessionFormSchema = (t: TFunction) =>
+  z
+    .object({
+      hostId: z.string().min(1, t("sessionFormUtils.hostRequired")),
+      worldSource: z.enum(["url", "template"]),
+      name: z.string().min(1, t("sessionFormUtils.nameRequired")),
+      customSessionId: z.string().optional(),
+      description: z.string().optional(),
+      tags: z.string().optional(),
+      maxUsers: z.number().int().min(1, t("sessionFormUtils.maxUsersMin")),
+      accessLevel: z.number().int().min(1).max(6),
+      worldUrl: z.string().optional(),
+      worldTemplate: z.enum(["grid", "platform", "blank"]),
+      autoInviteUsernames: z
+        .array(
+          z.object({
+            userName: z.string(),
+            userId: z.string(),
+            iconUrl: z.string().optional(),
+            joinAllowedOnly: z.boolean(),
+          }),
+        )
+        .optional(),
+      hideFromPublicListing: z.boolean(),
+      defaultUserRoles: z
+        .array(
+          z.object({
+            role: z.string(),
+            userName: z.string(),
+            iconUrl: z.string().optional(),
+          }),
+        )
+        .optional(),
+      awayKickMinutes: z.number(),
+      idleRestartIntervalSeconds: z.number().int(),
+      saveOnExit: z.boolean(),
+      autoSaveIntervalSeconds: z.number().int(),
+      autoSleep: z.boolean(),
+      inviteRequestHandlerUsernames: z.string().optional(),
+      forcePort: z.number().int().optional(),
+      parentSessionIds: z.string().optional(),
+      autoRecover: z.boolean().optional(),
+      forcedRestartIntervalSeconds: z.number().int().optional(),
+      useCustomJoinVerifier: z.boolean().optional(),
+      mobileFriendly: z.boolean().optional(),
+      overrideCorrespondingWorldId: z
+        .string()
+        .optional()
+        .refine(
+          (value) => {
+            if (!value) return true;
+            return /^[^/]+\/[^/]+$/.test(value);
+          },
+          { message: t("sessionFormUtils.recordIdFormat") },
+        ),
+      keepOriginalRoles: z.boolean().optional(),
+      roleCloudVariable: z.string().optional(),
+      allowUserCloudVariable: z.string().optional(),
+      denyUserCloudVariable: z.string().optional(),
+      requiredUserJoinCloudVariable: z.string().optional(),
+      requiredUserJoinCloudVariableDenyMessage: z.string().optional(),
+      autoInviteMessage: z.string().optional(),
+    })
+    .refine(
+      (data) => {
+        if (data.worldSource === "url") {
+          return !!data.worldUrl;
+        }
+        return true;
+      },
+      { message: t("sessionFormUtils.worldUrlRequired"), path: ["worldUrl"] },
+    );
 
-export type SessionFormValues = z.infer<typeof sessionFormSchema>;
+export type SessionFormValues = z.infer<
+  ReturnType<typeof makeSessionFormSchema>
+>;
 
 const processCSV = (csv: string | undefined): string[] =>
   csv

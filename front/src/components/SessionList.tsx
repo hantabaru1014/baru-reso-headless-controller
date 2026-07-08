@@ -20,14 +20,16 @@ import { currentGroupIdAtom } from "../atoms/currentGroupAtom";
 import { usePermissions } from "../hooks/usePermissions";
 import { PERMISSION_KEYS } from "../libs/permissionUtils";
 import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
+import { useTranslation } from "react-i18next";
 
 export default function SessionList() {
+  const { t } = useTranslation();
   const [filterState, setFilterState] = useState<{
     label: ReactNode;
     id: string;
     value: SessionStatus | undefined;
   }>({
-    label: "全て",
+    label: t("sessionList.filterAll"),
     id: "ALL",
     value: undefined,
   });
@@ -69,39 +71,39 @@ export default function SessionList() {
     return [
       {
         accessorKey: "name",
-        header: "セッション名",
+        header: t("sessionList.columnName"),
         cell: ({ cell }) => (
           <RichText text={cell.getValue<string>()} ignoreLayoutTags />
         ),
       },
       {
         accessorKey: "hostId",
-        header: "ホスト名",
-        cell: ({ cell }) => hostNameMap[cell.getValue<string>()] || "不明",
+        header: t("sessionList.columnHost"),
+        cell: ({ cell }) =>
+          hostNameMap[cell.getValue<string>()] || t("sessionList.unknown"),
       },
       {
         accessorKey: "status",
-        header: "状態",
+        header: t("sessionList.columnStatus"),
         cell: ({ cell }) =>
           sessionStatusToLabel(cell.getValue<SessionStatus>()),
       },
       {
         accessorKey: "currentState.accessLevel",
-        header: "アクセスレベル",
+        header: t("sessionList.columnAccessLevel"),
         cell: ({ cell }) => {
           const accessLevel = cell.getValue<number>();
           const paramAccessLevel = cell.row.original.startupParameters
             ?.accessLevel as number;
-          return (
-            AccessLevels[accessLevel - 1]?.label ||
-            AccessLevels[paramAccessLevel - 1]?.label ||
-            "不明"
-          );
+          const labelKey =
+            AccessLevels[accessLevel - 1]?.labelKey ||
+            AccessLevels[paramAccessLevel - 1]?.labelKey;
+          return labelKey ? t(labelKey) : t("sessionList.unknown");
         },
       },
       {
         accessorKey: "currentState.usersCount",
-        header: "ユーザー数",
+        header: t("sessionList.columnUsersCount"),
         cell: ({ row }) => {
           const currentState = row.original.currentState;
           const paramMaxUsers = row.original.startupParameters?.maxUsers;
@@ -109,22 +111,34 @@ export default function SessionList() {
             ? `${currentState.usersCount}/${currentState.maxUsers}`
             : paramMaxUsers
               ? `0/${paramMaxUsers || 0}`
-              : "不明";
+              : t("sessionList.unknown");
         },
       },
     ];
-  }, [hosts?.hosts]);
+  }, [hosts?.hosts, t]);
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex gap-2">
           <SelectField
-            label="状態"
+            label={t("sessionList.columnStatus")}
             options={[
-              { label: "全て", id: "ALL", value: undefined },
-              { label: "実行中", id: "RUNNING", value: SessionStatus.RUNNING },
-              { label: "終了済み", id: "ENDED", value: SessionStatus.ENDED },
+              {
+                label: t("sessionList.filterAll"),
+                id: "ALL",
+                value: undefined,
+              },
+              {
+                label: t("sessionList.filterRunning"),
+                id: "RUNNING",
+                value: SessionStatus.RUNNING,
+              },
+              {
+                label: t("sessionList.filterEnded"),
+                id: "ENDED",
+                value: SessionStatus.ENDED,
+              },
             ]}
             onChange={(o) => {
               setFilterState({
@@ -137,8 +151,8 @@ export default function SessionList() {
             selectedId={filterState.id}
           />
           <SelectField
-            label="ホスト"
-            options={[{ label: "全て", id: "ALL" }].concat(
+            label={t("sessionList.hostLabel")}
+            options={[{ label: t("sessionList.filterAll"), id: "ALL" }].concat(
               hosts?.hosts.map((host) => ({
                 label: host.name,
                 id: host.id,
@@ -155,10 +169,10 @@ export default function SessionList() {
           <RefetchButton refetch={refetch} />
           <PermissionGuardedButton
             allowed={canCreate}
-            disabledReason="セッションを開始できる権限を持つグループがありません"
+            disabledReason={t("sessionList.noPermissionToCreate")}
             onClick={() => navigate("/sessions/new")}
           >
-            新規セッション
+            {t("sessionList.newSession")}
           </PermissionGuardedButton>
         </div>
       </div>

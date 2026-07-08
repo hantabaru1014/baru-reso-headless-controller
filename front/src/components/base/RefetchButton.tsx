@@ -1,4 +1,5 @@
 import { RefreshCw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../ui";
 import { ComponentProps, useState } from "react";
 import { cn } from "@/libs/cssUtils";
@@ -11,13 +12,14 @@ export function RefetchButton({
   refetch: () => Promise<unknown>;
   disabled?: boolean;
 } & Pick<ComponentProps<typeof Button>, "size">) {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
 
   return (
     <Button
       size={size}
       variant="ghost"
-      title="再読み込み"
+      title={t("refetchButton.reload")}
       onClick={async () => {
         setIsLoading(true);
         await refetch();

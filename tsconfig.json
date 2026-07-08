@@ -2,6 +2,7 @@
   "extends": "@tsconfig/vite-react/tsconfig.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "resolveJsonModule": true,
     "paths": {
       "@/*": ["./front/src/*"]
     }

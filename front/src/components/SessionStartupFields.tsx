@@ -27,6 +27,7 @@ import {
 import { AccessLevels, UserRoles } from "../constants";
 import { WorldSearchDialog } from "./WorldSearchDialog";
 import { ResoniteUserIcon } from "./ResoniteUserIcon";
+import { useTranslation } from "react-i18next";
 
 type Props = {
   control: Control<SessionFormValues>;
@@ -45,6 +46,7 @@ export default function SessionStartupFields({
   watch,
   setValue,
 }: Props) {
+  const { t } = useTranslation();
   const hostId = watch("hostId");
   const worldSource = watch("worldSource");
   const worldUrl = watch("worldUrl");
@@ -140,7 +142,9 @@ export default function SessionStartupFields({
       setValue("description", data.description || "");
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "ワールド情報の取得に失敗しました",
+        e instanceof Error
+          ? e.message
+          : t("sessionStartupFields.fetchWorldInfoError"),
       );
     }
   };
@@ -158,10 +162,13 @@ export default function SessionStartupFields({
         control={control}
         render={({ field }) => (
           <RadioGroupField
-            label="ワールド指定方法"
+            label={t("sessionStartupFields.worldSourceLabel")}
             options={[
-              { label: "レコードURLを指定", value: "url" },
-              { label: "テンプレートを指定", value: "template" },
+              { label: t("sessionStartupFields.worldSourceUrl"), value: "url" },
+              {
+                label: t("sessionStartupFields.worldSourceTemplate"),
+                value: "template",
+              },
             ]}
             value={field.value}
             onValueChange={field.onChange}
@@ -179,7 +186,7 @@ export default function SessionStartupFields({
                 control={control}
                 render={({ field }) => (
                   <TextField
-                    label="レコードURL"
+                    label={t("sessionStartupFields.recordUrl")}
                     error={errors.worldUrl?.message}
                     {...field}
                     onBlur={() => {
@@ -199,7 +206,9 @@ export default function SessionStartupFields({
               disabled={isPendingFetchInfo || !hostId || !worldUrl}
             >
               <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">情報取得</span>
+              <span className="hidden sm:inline">
+                {t("sessionStartupFields.fetchInfo")}
+              </span>
             </Button>
             <Button
               type="button"
@@ -209,7 +218,9 @@ export default function SessionStartupFields({
               onClick={() => setWorldSearchDialogOpen(true)}
             >
               <Search className="h-4 w-4" />
-              <span className="hidden sm:inline">ワールド検索</span>
+              <span className="hidden sm:inline">
+                {t("sessionStartupFields.worldSearch")}
+              </span>
             </Button>
           </div>
           <WorldSearchDialog
@@ -229,7 +240,7 @@ export default function SessionStartupFields({
           control={control}
           render={({ field }) => (
             <SelectField
-              label="ワールドテンプレート"
+              label={t("sessionStartupFields.worldTemplate")}
               options={[
                 { id: "grid", label: "Grid" },
                 { id: "platform", label: "Platform" },
@@ -247,7 +258,7 @@ export default function SessionStartupFields({
         control={control}
         render={({ field }) => (
           <TextField
-            label="セッション名"
+            label={t("sessionStartupFields.sessionName")}
             error={errors.name?.message}
             richTextMode="full"
             {...field}
@@ -259,7 +270,7 @@ export default function SessionStartupFields({
         control={control}
         render={({ field }) => (
           <TextareaField
-            label="説明"
+            label={t("common.description")}
             error={errors.description?.message}
             richTextMode="full"
             {...field}
@@ -271,10 +282,10 @@ export default function SessionStartupFields({
         control={control}
         render={({ field }) => (
           <TextField
-            label="タグ"
+            label={t("sessionStartupFields.tags")}
             error={errors.tags?.message}
             {...field}
-            helperText="カンマ区切りで入力してください"
+            helperText={t("sessionStartupFields.commaSeparated")}
           />
         )}
       />
@@ -284,7 +295,7 @@ export default function SessionStartupFields({
           control={control}
           render={({ field }) => (
             <TextField
-              label="最大ユーザー数"
+              label={t("sessionStartupFields.maxUsers")}
               type="number"
               error={errors.maxUsers?.message}
               {...field}
@@ -302,8 +313,12 @@ export default function SessionStartupFields({
           control={control}
           render={({ field }) => (
             <SelectField
-              label="アクセスレベル"
-              options={AccessLevels.map((l) => l)}
+              label={t("sessionStartupFields.accessLevel")}
+              options={AccessLevels.map((l) => ({
+                id: l.id,
+                value: l.value,
+                label: t(l.labelKey),
+              }))}
               selectedId={`${field.value}`}
               onChange={(option) => field.onChange(option.value as number)}
               error={errors.accessLevel?.message}
@@ -316,7 +331,7 @@ export default function SessionStartupFields({
           control={control}
           render={({ field }) => (
             <CheckboxField
-              label="セッションリストから隠す"
+              label={t("sessionStartupFields.hideFromPublicListing")}
               checked={field.value}
               onCheckedChange={field.onChange}
             />
@@ -328,7 +343,7 @@ export default function SessionStartupFields({
         control={control}
         render={({ field }) => (
           <TextField
-            label="カスタムセッションID"
+            label={t("sessionStartupFields.customSessionId")}
             error={errors.customSessionId?.message}
             {...field}
           />
@@ -342,7 +357,7 @@ export default function SessionStartupFields({
           <TextField
             label="parentSessionIds"
             error={errors.parentSessionIds?.message}
-            helperText="カンマ区切りで入力してください"
+            helperText={t("sessionStartupFields.commaSeparated")}
             {...field}
           />
         )}
@@ -355,7 +370,7 @@ export default function SessionStartupFields({
           <TextField
             label="overrideCorrespondingWorldId"
             error={errors.overrideCorrespondingWorldId?.message}
-            helperText="ownerId/id の形式で入力してください"
+            helperText={t("sessionStartupFields.recordIdFormat")}
             {...field}
           />
         )}
@@ -366,10 +381,10 @@ export default function SessionStartupFields({
         control={control}
         render={({ field }) => (
           <TextField
-            label="AFKキック時間(分)"
+            label={t("sessionStartupFields.awayKickMinutes")}
             type="number"
             error={errors.awayKickMinutes?.message}
-            helperText="-1で無効"
+            helperText={t("sessionStartupFields.disableWithMinusOne")}
             {...field}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               const value =
@@ -385,10 +400,10 @@ export default function SessionStartupFields({
           control={control}
           render={({ field }) => (
             <TextField
-              label="自動保存間隔(秒)"
+              label={t("sessionStartupFields.autoSaveIntervalSeconds")}
               type="number"
               error={errors.autoSaveIntervalSeconds?.message}
-              helperText="-1で無効"
+              helperText={t("sessionStartupFields.disableWithMinusOne")}
               {...field}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 const value =
@@ -404,7 +419,7 @@ export default function SessionStartupFields({
           control={control}
           render={({ field }) => (
             <CheckboxField
-              label="セッション終了時に保存"
+              label={t("sessionStartupFields.saveOnExit")}
               checked={field.value}
               onCheckedChange={field.onChange}
             />
@@ -417,10 +432,10 @@ export default function SessionStartupFields({
           control={control}
           render={({ field }) => (
             <TextField
-              label="アイドル時の自動再起動間隔(秒)"
+              label={t("sessionStartupFields.idleRestartIntervalSeconds")}
               type="number"
               error={errors.idleRestartIntervalSeconds?.message}
-              helperText="-1で無効"
+              helperText={t("sessionStartupFields.disableWithMinusOne")}
               {...field}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 const value =
@@ -435,10 +450,10 @@ export default function SessionStartupFields({
           control={control}
           render={({ field }) => (
             <TextField
-              label="forcedRestartInterval(秒)"
+              label={t("sessionStartupFields.forcedRestartIntervalSeconds")}
               type="number"
               error={errors.forcedRestartIntervalSeconds?.message}
-              helperText="-1で無効"
+              helperText={t("sessionStartupFields.disableWithMinusOne")}
               {...field}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 const value =
@@ -453,7 +468,7 @@ export default function SessionStartupFields({
           control={control}
           render={({ field }) => (
             <CheckboxField
-              label="自動スリープ"
+              label={t("sessionStartupFields.autoSleep")}
               checked={field.value}
               onCheckedChange={field.onChange}
             />
@@ -534,8 +549,8 @@ export default function SessionStartupFields({
           <UserSearchField
             hostId={hostId}
             onUserSelect={handleAutoInviteSelect}
-            placeholder="ユーザーを検索して追加"
-            label="自動招待ユーザ"
+            placeholder={t("sessionStartupFields.searchUserPlaceholder")}
+            label={t("sessionStartupFields.autoInviteUsers")}
           />
           {autoInviteFields.length > 0 && (
             <div className="space-y-2 rounded-md border p-2">
@@ -546,7 +561,9 @@ export default function SessionStartupFields({
                 >
                   <ResoniteUserIcon
                     iconUrl={field.iconUrl}
-                    alt={`${field.userName}のアイコン`}
+                    alt={t("sessionStartupFields.userIconAlt", {
+                      name: field.userName,
+                    })}
                     className="h-8 w-8"
                   />
                   <span className="flex-1 text-sm">{field.userName}</span>
@@ -564,7 +581,7 @@ export default function SessionStartupFields({
                           htmlFor={`joinAllowedOnly-${index}`}
                           className="text-sm"
                         >
-                          参加許可のみ
+                          {t("sessionStartupFields.joinAllowedOnly")}
                         </Label>
                       </div>
                     )}
@@ -574,7 +591,7 @@ export default function SessionStartupFields({
                     variant="ghost"
                     size="icon"
                     onClick={() => removeAutoInvite(index)}
-                    title="削除"
+                    title={t("common.delete")}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -589,7 +606,7 @@ export default function SessionStartupFields({
           control={control}
           render={({ field }) => (
             <TextareaField
-              label="招待メッセージ"
+              label={t("sessionStartupFields.inviteMessage")}
               error={errors.autoInviteMessage?.message}
               {...field}
             />
@@ -602,8 +619,8 @@ export default function SessionStartupFields({
           <UserSearchField
             hostId={hostId}
             onUserSelect={handleDefaultUserRoleSelect}
-            placeholder="ユーザーを検索して追加"
-            label="デフォルトユーザーロール"
+            placeholder={t("sessionStartupFields.searchUserPlaceholder")}
+            label={t("sessionStartupFields.defaultUserRoles")}
           />
           {defaultUserRoleFields.length > 0 && (
             <div className="space-y-2 rounded-md border p-2">
@@ -614,7 +631,9 @@ export default function SessionStartupFields({
                 >
                   <ResoniteUserIcon
                     iconUrl={field.iconUrl}
-                    alt={`${field.userName}のアイコン`}
+                    alt={t("sessionStartupFields.userIconAlt", {
+                      name: field.userName,
+                    })}
                     className="h-8 w-8"
                   />
                   <span className="flex-1 text-sm">{field.userName}</span>
@@ -635,7 +654,7 @@ export default function SessionStartupFields({
                     variant="ghost"
                     size="icon"
                     onClick={() => removeDefaultUserRole(index)}
-                    title="削除"
+                    title={t("common.delete")}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

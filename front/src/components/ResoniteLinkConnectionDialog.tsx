@@ -12,6 +12,7 @@ import {
 } from "./ui";
 import { issueResoniteLinkConnection } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { formatTimestamp } from "../libs/datetimeUtils";
+import { useTranslation } from "react-i18next";
 
 export function ResoniteLinkConnectionDialog({
   sessionId,
@@ -22,10 +23,14 @@ export function ResoniteLinkConnectionDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const { mutate, data, isPending, reset } = useMutation(
     issueResoniteLinkConnection,
     {
-      onError: (e) => toast.error(`接続URLの発行に失敗しました: ${e.message}`),
+      onError: (e) =>
+        toast.error(
+          t("resoniteLinkConnectionDialog.issueFailed", { error: e.message }),
+        ),
     },
   );
 
@@ -45,34 +50,37 @@ export function ResoniteLinkConnectionDialog({
   const handleCopy = () => {
     if (!wsUrl) return;
     navigator.clipboard.writeText(wsUrl);
-    toast.success("接続URLをコピーしました");
+    toast.success(t("resoniteLinkConnectionDialog.urlCopied"));
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>ResoniteLink 接続URL</DialogTitle>
+          <DialogTitle>{t("resoniteLinkConnectionDialog.title")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            ResoniteLink クライアントから接続するための一時 URL です。
-            トークンには有効期限があります。
+            {t("resoniteLinkConnectionDialog.description")}
           </p>
           <div className="flex space-x-2">
             <Input
               value={wsUrl}
               readOnly
-              placeholder={isPending ? "発行中..." : ""}
+              placeholder={
+                isPending ? t("resoniteLinkConnectionDialog.issuing") : ""
+              }
               className="font-mono text-xs"
             />
             <Button variant="outline" onClick={handleCopy} disabled={!wsUrl}>
-              コピー
+              {t("resoniteLinkConnectionDialog.copy")}
             </Button>
           </div>
           {data?.expiresAt && (
             <p className="text-xs text-muted-foreground">
-              有効期限: {formatTimestamp(data.expiresAt)}
+              {t("resoniteLinkConnectionDialog.expiresAt", {
+                time: formatTimestamp(data.expiresAt),
+              })}
             </p>
           )}
         </div>
@@ -82,10 +90,10 @@ export function ResoniteLinkConnectionDialog({
             onClick={() => mutate({ sessionId })}
             disabled={isPending}
           >
-            再発行
+            {t("resoniteLinkConnectionDialog.reissue")}
           </Button>
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
-            閉じる
+            {t("resoniteLinkConnectionDialog.close")}
           </Button>
         </DialogFooter>
       </DialogContent>

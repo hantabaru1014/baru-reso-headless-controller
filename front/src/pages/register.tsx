@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Navigate, useNavigate, useParams } from "react-router";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { useAtom } from "jotai";
 import { sessionAtom, sessionRefreshTokenAtom } from "../atoms/sessionAtom";
 import { createConnectTransport } from "@connectrpc/connect-web";
@@ -34,6 +35,7 @@ interface JwtPayload {
 }
 
 export default function Register() {
+  const { t } = useTranslation();
   const { token } = useParams<{ token: string }>();
   // personal_role_id は token と紐付けて DB に永続化されているので URL 経由では受け取らない.
   const [session, setSession] = useAtom(sessionAtom);
@@ -100,7 +102,7 @@ export default function Register() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin" />
-              <span className="ml-2">トークンを検証中...</span>
+              <span className="ml-2">{t("registerPage.validatingToken")}</span>
             </div>
           </CardContent>
         </Card>
@@ -114,14 +116,13 @@ export default function Register() {
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-center text-destructive">
-              無効なリンク
+              {t("registerPage.invalidLink")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Alert variant="destructive">
               <AlertDescription>
-                この登録リンクは無効か、有効期限が切れています。
-                管理者に新しいリンクを発行してもらってください。
+                {t("registerPage.invalidLinkDescription")}
               </AlertDescription>
             </Alert>
             <Button
@@ -129,7 +130,7 @@ export default function Register() {
               variant="outline"
               onClick={() => navigate("/sign-in")}
             >
-              サインインページへ
+              {t("registerPage.toSignInPage")}
             </Button>
           </CardContent>
         </Card>
@@ -167,9 +168,7 @@ export default function Register() {
       navigate("/", { replace: true });
     } catch (err) {
       console.error("Registration failed:", err);
-      setError(
-        "登録に失敗しました。IDが既に使用されているか、入力内容を確認してください。",
-      );
+      setError(t("registerPage.registrationFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -186,7 +185,9 @@ export default function Register() {
               className="size-16"
             />
             <CardTitle className="text-2xl font-bold text-center">
-              ようこそ {resoniteUserName || resoniteId}！
+              {t("registerPage.welcome", {
+                name: resoniteUserName || resoniteId,
+              })}
             </CardTitle>
             <CardDescription className="text-center text-muted-foreground text-xs">
               {resoniteId}
@@ -196,38 +197,38 @@ export default function Register() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <TextField
-              label="ユーザーID"
+              label={t("registerPage.userIdLabel")}
               type="text"
               {...register("userId", {
-                required: "ユーザーIDは必須です",
+                required: t("registerPage.userIdRequired"),
                 minLength: {
                   value: 3,
-                  message: "ユーザーIDは3文字以上で入力してください",
+                  message: t("registerPage.userIdMinLength"),
                 },
               })}
               disabled={isLoading}
               error={errors.userId?.message}
             />
             <TextField
-              label="パスワード"
+              label={t("registerPage.passwordLabel")}
               type="password"
               {...register("password", {
-                required: "パスワードは必須です",
+                required: t("registerPage.passwordRequired"),
                 minLength: {
                   value: 8,
-                  message: "パスワードは8文字以上で入力してください",
+                  message: t("registerPage.passwordMinLength"),
                 },
               })}
               disabled={isLoading}
               error={errors.password?.message}
             />
             <TextField
-              label="パスワード（確認）"
+              label={t("registerPage.confirmPasswordLabel")}
               type="password"
               {...register("confirmPassword", {
-                required: "パスワード（確認）は必須です",
+                required: t("registerPage.confirmPasswordRequired"),
                 validate: (value) =>
-                  value === password || "パスワードが一致しません",
+                  value === password || t("registerPage.passwordMismatch"),
               })}
               disabled={isLoading}
               error={errors.confirmPassword?.message}
@@ -241,10 +242,10 @@ export default function Register() {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  登録中...
+                  {t("registerPage.registering")}
                 </>
               ) : (
-                "登録"
+                t("registerPage.register")
               )}
             </Button>
           </form>

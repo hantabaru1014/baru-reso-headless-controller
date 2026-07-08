@@ -5,6 +5,7 @@ import {
   ResizablePanelGroup,
 } from "../ui/resizable";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import type { UserInfo } from "../../../pbgen/hdlctrl/v1/controller_pb";
 import type { ChatDialogProps } from "./types";
@@ -17,6 +18,7 @@ export function ChatDialog({
   accountId,
   accountName,
 }: ChatDialogProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [selectedContact, setSelectedContact] = useState<UserInfo | null>(null);
 
@@ -39,7 +41,9 @@ export function ChatDialog({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose?.()}>
       <DialogContent className="sm:max-w-[1000px] h-[80vh] max-h-[800px] flex flex-col">
         <DialogHeader>
-          <DialogTitle>チャット - {accountName}</DialogTitle>
+          <DialogTitle>
+            {t("chatDialog.title", { name: accountName })}
+          </DialogTitle>
         </DialogHeader>
 
         <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">

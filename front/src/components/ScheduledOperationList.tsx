@@ -27,6 +27,7 @@ import { SessionUserCountTrigger_Comparator } from "../../pbgen/hdlctrl/v1/contr
 import { usePaginationState } from "../hooks/usePaginationState";
 import SessionTip from "./SessionTip";
 import HostTip from "./HostTip";
+import { useTranslation } from "react-i18next";
 
 type Props = {
   /** session 詳細から開く場合は session_id でフィルタする */
@@ -56,6 +57,7 @@ const operationCaseToKind = (
 };
 
 export default function ScheduledOperationList({ sessionId }: Props) {
+  const { t } = useTranslation();
   const { pageIndex, pageSize, setPageIndex, setPageSize } = usePaginationState(
     {
       defaultPageSize: 20,
@@ -84,10 +86,14 @@ export default function ScheduledOperationList({ sessionId }: Props) {
   const handleCancel = async (id: string) => {
     try {
       await cancelMutate({ id });
-      toast.success("予約をキャンセルしました");
+      toast.success(t("scheduledOperationList.cancelSuccess"));
       refetch();
     } catch (e) {
-      toast.error(`キャンセル失敗: ${(e as Error).message}`);
+      toast.error(
+        t("scheduledOperationList.cancelFailed", {
+          error: (e as Error).message,
+        }),
+      );
     }
   };
 
@@ -95,7 +101,7 @@ export default function ScheduledOperationList({ sessionId }: Props) {
     () => [
       {
         id: "kind",
-        header: "種別",
+        header: t("scheduledOperationList.columnKind"),
         cell: ({ row }) => {
           const kind = operationCaseToKind(row.original.operation);
           return kind === "UNKNOWN" ? "(unknown)" : operationKindLabel(kind);
@@ -103,7 +109,7 @@ export default function ScheduledOperationList({ sessionId }: Props) {
       },
       {
         id: "target",
-        header: "対象",
+        header: t("scheduledOperationList.columnTarget"),
         cell: ({ row }) => {
           if (row.original.sessionId) {
             return <SessionTip sessionId={row.original.sessionId} />;
@@ -116,7 +122,7 @@ export default function ScheduledOperationList({ sessionId }: Props) {
       },
       {
         id: "trigger",
-        header: "実行条件",
+        header: t("scheduledOperationList.columnTrigger"),
         cell: ({ row }) => {
           const trig = row.original.trigger?.trigger;
           if (trig?.case === "time") {
@@ -132,7 +138,9 @@ export default function ScheduledOperationList({ sessionId }: Props) {
             return (
               <span className="inline-flex items-center gap-1">
                 <SessionTip sessionId={v.sessionId} />
-                <span className="text-muted-foreground">のユーザー数</span>
+                <span className="text-muted-foreground">
+                  {t("scheduledOperationList.userCountSuffix")}
+                </span>
                 <span>
                   {op} {v.threshold}
                 </span>
@@ -144,12 +152,12 @@ export default function ScheduledOperationList({ sessionId }: Props) {
       },
       {
         id: "status",
-        header: "状態",
+        header: t("scheduledOperationList.columnStatus"),
         cell: ({ row }) => scheduledOperationStatusToLabel(row.original.status),
       },
       {
         id: "lastError",
-        header: "エラー",
+        header: t("scheduledOperationList.columnError"),
         cell: ({ row }) => row.original.lastError ?? "",
       },
       {
@@ -163,12 +171,12 @@ export default function ScheduledOperationList({ sessionId }: Props) {
               disabled={isCancelPending}
               onClick={() => handleCancel(row.original.id)}
             >
-              キャンセル
+              {t("scheduledOperationList.cancel")}
             </Button>
           ) : null,
       },
     ],
-    [isCancelPending],
+    [isCancelPending, t],
   );
 
   const newHref = sessionId
@@ -178,11 +186,13 @@ export default function ScheduledOperationList({ sessionId }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">予約操作</h2>
+        <h2 className="text-lg font-semibold">
+          {t("scheduledOperationList.title")}
+        </h2>
         <div className="flex items-center gap-2">
           <RefetchButton refetch={refetch} />
           <Button asChild>
-            <Link to={newHref}>新規予約</Link>
+            <Link to={newHref}>{t("scheduledOperationList.newSchedule")}</Link>
           </Button>
         </div>
       </div>
