@@ -1,4 +1,5 @@
 import { ComponentProps, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from "../ui";
 
 /**
@@ -9,7 +10,7 @@ import { Button, Tooltip, TooltipContent, TooltipTrigger } from "../ui";
  */
 export function PermissionGuardedButton({
   allowed,
-  disabledReason = "この操作を行う権限がありません",
+  disabledReason,
   children,
   disabled,
   ...buttonProps
@@ -17,6 +18,9 @@ export function PermissionGuardedButton({
   allowed: boolean;
   disabledReason?: ReactNode;
 }) {
+  const { t } = useTranslation();
+  const resolvedDisabledReason =
+    disabledReason ?? t("permissionGuardedButton.noPermission");
   const isDisabled = disabled || !allowed;
   const button = (
     <Button {...buttonProps} disabled={isDisabled}>
@@ -32,7 +36,7 @@ export function PermissionGuardedButton({
         {/* span でラップしないと disabled なボタンは hover を拾わないため */}
         <span className="inline-block">{button}</span>
       </TooltipTrigger>
-      <TooltipContent>{disabledReason}</TooltipContent>
+      <TooltipContent>{resolvedDisabledReason}</TooltipContent>
     </Tooltip>
   );
 }

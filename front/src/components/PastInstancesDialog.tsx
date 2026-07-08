@@ -12,6 +12,7 @@ import {
 import { listHeadlessHostInstances } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { ScrollBase } from "./base/ScrollBase";
 import HostLogViewer from "./HostLogViewer";
+import { useTranslation } from "react-i18next";
 
 function InstanceLogDialog({
   hostId,
@@ -20,16 +21,19 @@ function InstanceLogDialog({
   hostId: string;
   instanceId: number;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        ログを見る
+        {t("pastInstancesDialog.viewLog")}
       </Button>
       <DialogContent className="sm:max-w-[900px]">
         <DialogHeader>
-          <DialogTitle>インスタンス #{instanceId} のログ</DialogTitle>
+          <DialogTitle>
+            {t("pastInstancesDialog.instanceLogTitle", { id: instanceId })}
+          </DialogTitle>
         </DialogHeader>
         {open && (
           <HostLogViewer
@@ -41,7 +45,7 @@ function InstanceLogDialog({
         )}
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">閉じる</Button>
+            <Button variant="outline">{t("pastInstancesDialog.close")}</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -58,6 +62,7 @@ export function PastInstancesDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const { data, isPending } = useQuery(
     listHeadlessHostInstances,
     { hostId },
@@ -68,16 +73,16 @@ export function PastInstancesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>過去のインスタンス一覧</DialogTitle>
+          <DialogTitle>{t("pastInstancesDialog.title")}</DialogTitle>
         </DialogHeader>
         <ScrollBase height="60vh">
           {isPending ? (
             <div className="py-4 text-center text-muted-foreground">
-              読み込み中...
+              {t("pastInstancesDialog.loading")}
             </div>
           ) : data?.instances.length === 0 ? (
             <div className="py-4 text-center text-muted-foreground">
-              インスタンスがありません
+              {t("pastInstancesDialog.noInstances")}
             </div>
           ) : (
             <div className="space-y-2">
@@ -88,15 +93,17 @@ export function PastInstancesDialog({
                 >
                   <div className="space-y-1">
                     <div className="font-medium">
-                      インスタンス #{inst.instanceId}
+                      {t("pastInstancesDialog.instanceLabel", {
+                        id: inst.instanceId,
+                      })}
                       {inst.isCurrent && (
                         <span className="ml-2 text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded">
-                          現在
+                          {t("pastInstancesDialog.current")}
                         </span>
                       )}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      開始:{" "}
+                      {t("pastInstancesDialog.startedAt")}{" "}
                       {inst.firstLogAt
                         ? new Date(
                             Number(inst.firstLogAt.seconds) * 1000,
@@ -104,7 +111,7 @@ export function PastInstancesDialog({
                         : "-"}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      終了:{" "}
+                      {t("pastInstancesDialog.endedAt")}{" "}
                       {inst.lastLogAt
                         ? new Date(
                             Number(inst.lastLogAt.seconds) * 1000,
@@ -112,7 +119,9 @@ export function PastInstancesDialog({
                         : "-"}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      ログ: {inst.logCount.toString()}件
+                      {t("pastInstancesDialog.logCount", {
+                        n: inst.logCount.toString(),
+                      })}
                     </div>
                   </div>
                   <InstanceLogDialog
@@ -126,7 +135,7 @@ export function PastInstancesDialog({
         </ScrollBase>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">閉じる</Button>
+            <Button variant="outline">{t("pastInstancesDialog.close")}</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>

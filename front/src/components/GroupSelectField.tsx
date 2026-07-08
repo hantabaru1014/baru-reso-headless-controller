@@ -6,6 +6,7 @@ import { SelectField } from "./base";
 import { usePermissions } from "../hooks/usePermissions";
 import { PermissionKey } from "../libs/permissionUtils";
 import { groupTypeToLabel } from "../libs/permissionUtils";
+import { useTranslation } from "react-i18next";
 
 /**
  * リソース作成フォーム用のグループ選択フィールド.
@@ -15,7 +16,7 @@ import { groupTypeToLabel } from "../libs/permissionUtils";
  * - `restrictToGroupId` を指定すると、そのグループのみに選択肢を絞る (同一グループ制約用)
  */
 export function GroupSelectField({
-  label = "所属グループ",
+  label,
   helperText,
   value,
   onChange,
@@ -33,6 +34,7 @@ export function GroupSelectField({
   error?: string;
   readOnly?: boolean;
 }) {
+  const { t } = useTranslation();
   const { data, isPending } = useQuery(listGroups, {});
   const { groupsWithPermission } = usePermissions();
 
@@ -65,7 +67,7 @@ export function GroupSelectField({
 
   return (
     <SelectField
-      label={label}
+      label={label ?? t("groupSelectField.belongingGroup")}
       helperText={helperText}
       options={options}
       selectedId={value}
@@ -73,7 +75,7 @@ export function GroupSelectField({
       error={
         error ??
         (!isPending && options.length === 0
-          ? "選択可能なグループがありません"
+          ? t("groupSelectField.noSelectableGroups")
           : undefined)
       }
       readOnly={readOnly || isPending}

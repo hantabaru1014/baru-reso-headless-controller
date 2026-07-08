@@ -20,6 +20,7 @@ import { useDebounce } from "../hooks/useDebounce";
 import { resolveUrl } from "@/libs/skyfrostUtils";
 import { RichText } from "./base/RichText";
 import type { SearchWorldsResponse_WorldRecord } from "../../pbgen/hdlctrl/v1/controller_pb";
+import { useTranslation } from "react-i18next";
 
 type TabType = "search" | "own";
 
@@ -36,6 +37,7 @@ export function WorldSearchDialog({
   onSelect,
   hostId,
 }: WorldSearchDialogProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>("search");
   const [query, setQuery] = useState("");
   const [featuredOnly, setFeaturedOnly] = useState(false);
@@ -146,7 +148,7 @@ export function WorldSearchDialog({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="sm:max-w-[1000px] max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>ワールド検索</DialogTitle>
+          <DialogTitle>{t("worldSearchDialog.title")}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 flex-1 flex flex-col min-h-0">
@@ -159,7 +161,7 @@ export function WorldSearchDialog({
                 size="sm"
                 onClick={() => handleTabChange("search")}
               >
-                ワールド検索
+                {t("worldSearchDialog.searchTab")}
               </Button>
               <Button
                 type="button"
@@ -167,7 +169,7 @@ export function WorldSearchDialog({
                 size="sm"
                 onClick={() => handleTabChange("own")}
               >
-                自分のワールド
+                {t("worldSearchDialog.ownTab")}
               </Button>
             </div>
           )}
@@ -178,7 +180,7 @@ export function WorldSearchDialog({
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="検索ワード..."
+                  placeholder={t("worldSearchDialog.searchPlaceholder")}
                   value={query}
                   onChange={(e) => {
                     setQuery(e.target.value);
@@ -197,7 +199,7 @@ export function WorldSearchDialog({
                   htmlFor="featuredOnly"
                   className="text-sm whitespace-nowrap"
                 >
-                  Featuredのみ
+                  {t("worldSearchDialog.featuredOnly")}
                 </Label>
               </div>
             </div>
@@ -207,7 +209,9 @@ export function WorldSearchDialog({
           <ScrollBase height="60vh">
             {isPending ? (
               <div className="flex items-center justify-center h-32 text-muted-foreground">
-                {activeTab === "search" ? "検索中..." : "読み込み中..."}
+                {activeTab === "search"
+                  ? t("worldSearchDialog.searching")
+                  : t("worldSearchDialog.loading")}
               </div>
             ) : records && records.length > 0 ? (
               <div className="space-y-2 p-1">
@@ -261,9 +265,9 @@ export function WorldSearchDialog({
               <div className="flex items-center justify-center h-32 text-muted-foreground">
                 {activeTab === "search"
                   ? query
-                    ? "検索結果がありません"
-                    : "検索ワードを入力してください"
-                  : "ワールドがありません"}
+                    ? t("worldSearchDialog.noResults")
+                    : t("worldSearchDialog.enterSearchWord")
+                  : t("worldSearchDialog.noWorlds")}
               </div>
             )}
           </ScrollBase>
@@ -277,10 +281,10 @@ export function WorldSearchDialog({
               disabled={currentPageIndex === 0 || isPending}
             >
               <ChevronLeft className="h-4 w-4" />
-              前へ
+              {t("worldSearchDialog.prev")}
             </Button>
             <span className="flex items-center px-3 text-sm text-muted-foreground">
-              ページ {currentPageIndex + 1}
+              {t("worldSearchDialog.page", { page: currentPageIndex + 1 })}
             </span>
             <Button
               variant="outline"
@@ -288,7 +292,7 @@ export function WorldSearchDialog({
               onClick={handleNextPage}
               disabled={!hasMore || isPending}
             >
-              次へ
+              {t("worldSearchDialog.next")}
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

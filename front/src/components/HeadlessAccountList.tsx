@@ -65,6 +65,7 @@ import { useDefaultGroupId } from "../hooks/useDefaultGroupId";
 import { useAtomValue } from "jotai";
 import { currentGroupIdAtom } from "../atoms/currentGroupAtom";
 import { PERMISSION_KEYS } from "../libs/permissionUtils";
+import { useTranslation } from "react-i18next";
 
 function FriendRequestsDialog({
   onClose,
@@ -73,6 +74,7 @@ function FriendRequestsDialog({
   onClose?: () => void;
   accountId: string;
 }) {
+  const { t } = useTranslation();
   const { data, isPending, refetch } = useQuery(getFriendRequests, {
     headlessAccountId: accountId,
   });
@@ -85,21 +87,23 @@ function FriendRequestsDialog({
   const columns: ColumnDef<UserInfo>[] = [
     {
       accessorKey: "iconUrl",
-      header: "アイコン",
+      header: t("headlessAccountList.icon"),
       cell: ({ row }) => (
         <ResoniteUserIcon
           iconUrl={row.original.iconUrl}
-          alt={`${row.original.name}のアイコン`}
+          alt={t("headlessAccountList.userIconAlt", {
+            name: row.original.name,
+          })}
         />
       ),
     },
     {
       accessorKey: "name",
-      header: "名前",
+      header: t("common.name"),
     },
     {
       id: "actions",
-      header: "アクション",
+      header: t("headlessAccountList.action"),
       cell: ({ row }) => {
         const isBusy =
           (isPendingAccept || isPendingRemove) &&
@@ -116,12 +120,12 @@ function FriendRequestsDialog({
                     targetUserId: row.original.id,
                   });
                   refetch();
-                  toast.success("フレンドリクエストを拒否しました");
+                  toast.success(t("headlessAccountList.friendRequestRejected"));
                 } catch (e) {
                   toast.error(
                     e instanceof Error
                       ? e.message
-                      : "フレンドリクエストの拒否に失敗しました",
+                      : t("headlessAccountList.friendRequestRejectFailed"),
                   );
                 } finally {
                   setActionUserId(null);
@@ -129,7 +133,7 @@ function FriendRequestsDialog({
               }}
               disabled={isBusy}
             >
-              拒否
+              {t("headlessAccountList.reject")}
             </Button>
             <Button
               onClick={async () => {
@@ -140,12 +144,12 @@ function FriendRequestsDialog({
                     targetUserId: row.original.id,
                   });
                   refetch();
-                  toast.success("フレンドリクエストを承認しました");
+                  toast.success(t("headlessAccountList.friendRequestAccepted"));
                 } catch (e) {
                   toast.error(
                     e instanceof Error
                       ? e.message
-                      : "フレンドリクエストの承認に失敗しました",
+                      : t("headlessAccountList.friendRequestAcceptFailed"),
                   );
                 } finally {
                   setActionUserId(null);
@@ -153,7 +157,7 @@ function FriendRequestsDialog({
               }}
               disabled={isBusy}
             >
-              承認
+              {t("headlessAccountList.accept")}
             </Button>
           </div>
         );
@@ -165,7 +169,10 @@ function FriendRequestsDialog({
     <Dialog onOpenChange={(open) => !open && onClose?.()}>
       {(data?.requestedContacts.length ?? 0) > 0 && (
         <DialogTrigger asChild>
-          <Button variant="ghost" title="フレンドリクエスト一覧を開く">
+          <Button
+            variant="ghost"
+            title={t("headlessAccountList.openFriendRequests")}
+          >
             <Badge variant="default">
               {data?.requestedContacts.length ?? 0}
             </Badge>
@@ -174,7 +181,7 @@ function FriendRequestsDialog({
       )}
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader className="flex justify-between">
-          <DialogTitle>フレンドリクエスト</DialogTitle>
+          <DialogTitle>{t("headlessAccountList.friendRequests")}</DialogTitle>
         </DialogHeader>
         <div>
           <div className="flex justify-end mb-2">
@@ -188,7 +195,7 @@ function FriendRequestsDialog({
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">閉じる</Button>
+            <Button variant="outline">{t("common.close")}</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -205,6 +212,7 @@ function SendFriendRequestDialog({
   open: boolean;
   onClose?: () => void;
 }) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const transport = useTransport();
@@ -330,7 +338,7 @@ function SendFriendRequestDialog({
         headlessAccountId: accountId,
         user: { case: "userId", value: userId },
       });
-      toast.success("フレンドリクエストを送信しました");
+      toast.success(t("headlessAccountList.friendRequestSent"));
       setQuery("");
       resetSearch();
       resetIdLookup();
@@ -339,7 +347,7 @@ function SendFriendRequestDialog({
       toast.error(
         e instanceof Error
           ? e.message
-          : "フレンドリクエストの送信に失敗しました",
+          : t("headlessAccountList.friendRequestSendFailed"),
       );
     } finally {
       setSendingUserId(null);
@@ -360,20 +368,19 @@ function SendFriendRequestDialog({
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>フレンド追加</DialogTitle>
+          <DialogTitle>{t("headlessAccountList.addFriend")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           {!hasRunningHost && (
             <p className="text-sm text-destructive">
-              このアカウントで起動中のホストが必要です
-              (申請送信・既存フレンド除外に使用)
+              {t("headlessAccountList.runningHostRequired")}
             </p>
           )}
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
               ref={inputRef}
-              placeholder="ユーザーID (U-...) または ユーザー名"
+              placeholder={t("headlessAccountList.searchPlaceholder")}
               value={query}
               onChange={handleQueryChange}
               className="pl-10"
@@ -390,7 +397,9 @@ function SendFriendRequestDialog({
                     onClick={() => handleSend(user.id)}
                     disabled={isLoading || !hasRunningHost}
                   >
-                    {isLoading ? "送信中..." : "申請"}
+                    {isLoading
+                      ? t("common.sending")
+                      : t("headlessAccountList.apply")}
                   </Button>
                 );
               }}
@@ -400,16 +409,16 @@ function SendFriendRequestDialog({
               query.trim() !== "" &&
               visibleUsers.length === 0 && (
                 <p className="text-center text-sm text-muted-foreground py-4">
-                  一致するユーザーがいません
+                  {t("headlessAccountList.noMatchingUsers")}
                   {rawResults.length > 0 &&
-                    " (既にフレンドのユーザーは除外されます)"}
+                    t("headlessAccountList.alreadyFriendExcluded")}
                 </p>
               )}
           </ScrollBase>
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">閉じる</Button>
+            <Button variant="outline">{t("common.close")}</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -424,6 +433,7 @@ function NewAccountDialog({
   open: boolean;
   onClose?: () => void;
 }) {
+  const { t } = useTranslation();
   const { mutateAsync: mutateCreateAccount, isPending } = useMutation(
     createHeadlessAccount,
   );
@@ -454,7 +464,7 @@ function NewAccountDialog({
     >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>ヘッドレスアカウントを追加</DialogTitle>
+          <DialogTitle>{t("headlessAccountList.addAccountTitle")}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <TextField
@@ -472,7 +482,7 @@ function NewAccountDialog({
             value={groupId}
             onChange={setGroupId}
             requiredPermission={PERMISSION_KEYS.ACCOUNT_WRITE}
-            helperText="アカウントを所属させるグループ"
+            helperText={t("headlessAccountList.accountGroupHelper")}
           />
         </div>
         <DialogFooter>
@@ -484,12 +494,12 @@ function NewAccountDialog({
                   password,
                   groupId: groupId || undefined,
                 });
-                toast.success("アカウントを追加しました");
+                toast.success(t("headlessAccountList.accountAdded"));
               } catch (e) {
                 toast.error(
                   e instanceof Error
                     ? e.message
-                    : "アカウントの追加に失敗しました",
+                    : t("headlessAccountList.accountAddFailed"),
                 );
                 return;
               }
@@ -497,10 +507,10 @@ function NewAccountDialog({
             }}
             disabled={isPending || !groupId}
           >
-            追加
+            {t("common.add")}
           </Button>
           <DialogClose asChild>
-            <Button variant="outline">キャンセル</Button>
+            <Button variant="outline">{t("common.cancel")}</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -517,6 +527,7 @@ function UpdateAccountCredentialsDialog({
   open: boolean;
   onClose?: () => void;
 }) {
+  const { t } = useTranslation();
   const { mutateAsync: mutateUpdateAccount, isPending } = useMutation(
     updateHeadlessAccountCredentials,
   );
@@ -537,7 +548,9 @@ function UpdateAccountCredentialsDialog({
     >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>アカウントのログイン情報を更新</DialogTitle>
+          <DialogTitle>
+            {t("headlessAccountList.updateCredentialsTitle")}
+          </DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <TextField
@@ -561,12 +574,12 @@ function UpdateAccountCredentialsDialog({
                   credential,
                   password,
                 });
-                toast.success("ログイン情報を更新しました");
+                toast.success(t("headlessAccountList.credentialsUpdated"));
               } catch (e) {
                 toast.error(
                   e instanceof Error
                     ? e.message
-                    : "ログイン情報の更新に失敗しました",
+                    : t("headlessAccountList.credentialsUpdateFailed"),
                 );
                 return;
               }
@@ -574,10 +587,10 @@ function UpdateAccountCredentialsDialog({
             }}
             disabled={isPending}
           >
-            更新
+            {t("common.update")}
           </Button>
           <DialogClose asChild>
-            <Button variant="outline">キャンセル</Button>
+            <Button variant="outline">{t("common.cancel")}</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -601,6 +614,7 @@ function StorageInfoTip({ accountId }: { accountId: string }) {
 }
 
 export default function HeadlessAccountList() {
+  const { t } = useTranslation();
   const { pageIndex, pageSize, setPageIndex, setPageSize } = usePaginationState(
     { defaultPageSize: 20 },
   );
@@ -648,10 +662,10 @@ export default function HeadlessAccountList() {
         accountId: iconChangeAccount.userId,
         iconData,
       });
-      toast.success("アイコンを更新しました");
+      toast.success(t("headlessAccountList.iconUpdated"));
       refetch();
     },
-    [iconChangeAccount, mutateUpdateIcon, refetch],
+    [iconChangeAccount, mutateUpdateIcon, refetch, t],
   );
 
   const handleRefetchInfo = useCallback(
@@ -659,19 +673,19 @@ export default function HeadlessAccountList() {
       setActionAccountId(accountId);
       try {
         await mutateRefetchAccountInfo({ accountId });
-        toast.success("アカウント情報を再取得しました");
+        toast.success(t("headlessAccountList.accountInfoRefetched"));
         refetch();
       } catch (e) {
         toast.error(
           e instanceof Error
             ? e.message
-            : "アカウント情報の再取得に失敗しました",
+            : t("headlessAccountList.accountInfoRefetchFailed"),
         );
       } finally {
         setActionAccountId(null);
       }
     },
-    [mutateRefetchAccountInfo, refetch],
+    [mutateRefetchAccountInfo, refetch, t],
   );
 
   const handleDeleteAccount = useCallback(
@@ -679,51 +693,55 @@ export default function HeadlessAccountList() {
       setActionAccountId(accountId);
       try {
         await mutateDeleteAccount({ accountId });
-        toast.success("アカウントを削除しました");
+        toast.success(t("headlessAccountList.accountDeleted"));
         refetch();
       } catch (e) {
         toast.error(
-          e instanceof Error ? e.message : "アカウントの削除に失敗しました",
+          e instanceof Error
+            ? e.message
+            : t("headlessAccountList.accountDeleteFailed"),
         );
       } finally {
         setActionAccountId(null);
       }
     },
-    [mutateDeleteAccount, refetch],
+    [mutateDeleteAccount, refetch, t],
   );
 
   const columns: ColumnDef<HeadlessAccount>[] = useMemo(
     () => [
       {
         accessorKey: "iconUrl",
-        header: "アイコン",
+        header: t("headlessAccountList.icon"),
         cell: ({ row }) => {
           return (
             <ResoniteUserIcon
               iconUrl={row.original.iconUrl}
-              alt={`${row.original.userName}のアイコン`}
+              alt={t("headlessAccountList.userIconAlt", {
+                name: row.original.userName,
+              })}
             />
           );
         },
       },
       {
         accessorKey: "userName",
-        header: "ユーザ名",
+        header: t("headlessAccountList.userName"),
       },
       {
-        header: "ストレージ",
+        header: t("headlessAccountList.storage"),
         cell: ({ row }) => <StorageInfoTip accountId={row.original.userId} />,
       },
       {
         id: "friendRequests",
-        header: "フレリク",
+        header: t("headlessAccountList.friendReq"),
         cell: ({ row }) => (
           <FriendRequestsDialog accountId={row.original.userId} />
         ),
       },
       {
         id: "actions",
-        header: "操作",
+        header: t("common.actions"),
         cell: ({ row }) => {
           const canWrite = hasPermission(
             row.original.groupId,
@@ -750,19 +768,19 @@ export default function HeadlessAccountList() {
                     })
                   }
                 >
-                  チャットを開く
+                  {t("headlessAccountList.openChat")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!canWrite}
                   onClick={() => setSendFriendReqAccountId(row.original.userId)}
                 >
-                  フレンド追加
+                  {t("headlessAccountList.addFriend")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!canWrite}
                   onClick={() => setUpdateDialogAccountId(row.original.userId)}
                 >
-                  ログイン情報の更新
+                  {t("headlessAccountList.updateCredentials")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!canWrite}
@@ -773,7 +791,7 @@ export default function HeadlessAccountList() {
                     )
                   }
                 >
-                  アイコンを変更
+                  {t("headlessAccountList.changeIcon")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={
@@ -783,7 +801,7 @@ export default function HeadlessAccountList() {
                   }
                   onClick={() => handleRefetchInfo(row.original.userId)}
                 >
-                  名前とアイコンの再取得
+                  {t("headlessAccountList.refetchNameIcon")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={
@@ -792,7 +810,7 @@ export default function HeadlessAccountList() {
                   }
                   onClick={() => handleDeleteAccount(row.original.userId)}
                 >
-                  削除
+                  {t("common.delete")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -809,6 +827,7 @@ export default function HeadlessAccountList() {
       isPendingDelete,
       actionAccountId,
       hasPermission,
+      t,
     ],
   );
 
@@ -818,10 +837,10 @@ export default function HeadlessAccountList() {
         <RefetchButton refetch={refetch} />
         <PermissionGuardedButton
           allowed={canCreate}
-          disabledReason="アカウントを作成できる権限を持つグループがありません"
+          disabledReason={t("headlessAccountList.noCreatePermission")}
           onClick={() => setIsOpenNewAccountDialog(true)}
         >
-          追加
+          {t("common.add")}
         </PermissionGuardedButton>
       </div>
       <DataTable

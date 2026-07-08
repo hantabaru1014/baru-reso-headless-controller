@@ -1,4 +1,5 @@
 import { useParams } from "react-router";
+import { useTranslation } from "react-i18next";
 import GroupDetailPanel from "../../components/GroupDetailPanel";
 import GroupMemberList from "../../components/GroupMemberList";
 import RoleList from "../../components/RoleList";
@@ -9,6 +10,7 @@ import { usePermissions } from "../../hooks/usePermissions";
 import { PERMISSION_KEYS } from "../../libs/permissionUtils";
 
 export default function GroupDetail() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const { data } = useQuery(getGroup, { groupId: id ?? "" }, { enabled: !!id });
   const { hasPermission } = usePermissions();
@@ -16,9 +18,7 @@ export default function GroupDetail() {
   if (!id) {
     return (
       <div className="container mx-auto p-4">
-        <p className="text-destructive">
-          NotFound: グループが見つかりませんでした
-        </p>
+        <p className="text-destructive">{t("groupDetailPage.notFound")}</p>
       </div>
     );
   }
@@ -38,12 +38,14 @@ export default function GroupDetail() {
       {!isPersonal && (
         <>
           <section className="border-t pt-4">
-            <h2 className="text-lg font-semibold mb-2">メンバー</h2>
+            <h2 className="text-lg font-semibold mb-2">
+              {t("groupDetailPage.members")}
+            </h2>
             <GroupMemberList groupId={id} />
           </section>
           <section className="border-t pt-4">
             <h2 className="text-lg font-semibold mb-2">
-              グループ内カスタムロール
+              {t("groupDetailPage.customRolesInGroup")}
             </h2>
             <RoleList groupId={id} canManage={canManageRoles} scope={scope} />
           </section>

@@ -22,13 +22,14 @@ import { EditableTextArea, SplitButton } from "./base";
 import { AspectRatio, DropdownMenuItem } from "./ui";
 import HostTip from "./HostTip";
 import { SessionOpsMenu } from "./SessionOpsMenu";
-
-const BOOL_SELECT_OPTIONS = [
-  { id: "true", label: "はい", value: true },
-  { id: "false", label: "いいえ", value: false },
-];
+import { useTranslation } from "react-i18next";
 
 export default function SessionForm({ sessionId }: { sessionId: string }) {
+  const { t } = useTranslation();
+  const BOOL_SELECT_OPTIONS = [
+    { id: "true", label: t("common.yes"), value: true },
+    { id: "false", label: t("common.no"), value: false },
+  ];
   const { data, refetch, isPending } = useQuery(getSessionDetails, {
     sessionId,
   });
@@ -102,7 +103,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
       return;
     }
     navigator.clipboard.writeText(url);
-    toast.success("セッションURLをコピーしました");
+    toast.success(t("sessionForm.sessionUrlCopied"));
   };
 
   const handleCopyWorldUrl = () => {
@@ -111,7 +112,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
       return;
     }
     navigator.clipboard.writeText(url);
-    toast.success("ワールドURLをコピーしました");
+    toast.success(t("sessionForm.worldUrlCopied"));
   };
 
   const handleOpenWithSameSettings = () => {
@@ -122,10 +123,10 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
   const handleDeleteSession = async () => {
     try {
       await mutateDelete({ sessionId });
-      toast.success("セッションを削除しました");
+      toast.success(t("sessionForm.sessionDeleted"));
       navigate("/sessions");
     } catch (e) {
-      toast.error(`セッションの削除に失敗しました: ${e}`);
+      toast.error(t("sessionForm.sessionDeleteError", { error: `${e}` }));
     }
   };
 
@@ -133,7 +134,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 col-span-12">
         <EditableTextField
-          label="セッション名"
+          label={t("sessionForm.sessionName")}
           value={sessionState?.name || startupParams?.name || ""}
           onSave={(v) => handleSave("name", v)}
           readonly={!isRunning}
@@ -157,11 +158,11 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                           onClick={handleCopyWorldUrl}
                           disabled={!sessionState?.worldUrl}
                         >
-                          ワールドURLをコピー
+                          {t("sessionForm.copyWorldUrl")}
                         </DropdownMenuItem>
                       }
                     >
-                      URLをコピー
+                      {t("sessionForm.copyUrl")}
                     </SplitButton>
                     {hostId && (
                       <SessionOpsMenu hostId={hostId} sessionId={sessionId} />
@@ -184,20 +185,22 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                         navigator.clipboard.writeText(
                           startupParams.loadWorld.value,
                         );
-                        toast.success("ワールドURLをコピーしました");
+                        toast.success(t("sessionForm.worldUrlCopied"));
                       }
                     }}
                   >
-                    ワールドURLをコピー
+                    {t("sessionForm.copyWorldUrl")}
                   </Button>
                 )}
-              <Button onClick={handleOpenWithSameSettings}>同設定で開始</Button>
+              <Button onClick={handleOpenWithSameSettings}>
+                {t("sessionForm.startWithSameSettings")}
+              </Button>
               <Button
                 variant="destructive"
                 onClick={handleDeleteSession}
                 disabled={isPendingDelete}
               >
-                削除
+                {t("common.delete")}
               </Button>
             </div>
           )}
@@ -208,7 +211,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
               {sessionState?.thumbnailUrl ? (
                 <img
                   src={sessionState?.thumbnailUrl}
-                  alt="セッションサムネイル"
+                  alt={t("sessionForm.thumbnailAlt")}
                   className="w-full h-auto"
                 />
               ) : (
@@ -221,34 +224,49 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
         </Card>
         <div className="flex flex-col space-y-1">
           <span>
-            ホスト: <HostTip hostId={data?.session?.hostId} />
+            {t("sessionForm.hostLabel")}:{" "}
+            <HostTip hostId={data?.session?.hostId} />
           </span>
-          <span>開始: {formatTimestamp(data?.session?.startedAt)}</span>
+          <span>
+            {t("sessionForm.startedAt")}:{" "}
+            {formatTimestamp(data?.session?.startedAt)}
+          </span>
           {data?.session?.groupId && (
-            <span>所属グループ: {data?.session?.groupId}</span>
+            <span>
+              {t("sessionForm.groupLabel")}: {data?.session?.groupId}
+            </span>
           )}
           {data?.session?.createdBy && (
-            <span>作成者: {data?.session?.createdBy}</span>
+            <span>
+              {t("sessionForm.createdBy")}: {data?.session?.createdBy}
+            </span>
           )}
           {data?.session?.endedAt && (
-            <span>終了: {formatTimestamp(data?.session?.endedAt)}</span>
+            <span>
+              {t("sessionForm.endedAt")}:{" "}
+              {formatTimestamp(data?.session?.endedAt)}
+            </span>
           )}
           {sessionState?.lastSavedAt && sessionState.canSave && (
-            <span>最終保存: {formatTimestamp(sessionState.lastSavedAt)}</span>
+            <span>
+              {t("sessionForm.lastSavedAt")}:{" "}
+              {formatTimestamp(sessionState.lastSavedAt)}
+            </span>
           )}
           {isRunning && (
             <span>
-              ResoniteLink接続中: {sessionState?.resoniteLinkClientsCount ?? 0}
+              {t("sessionForm.resoniteLinkConnected")}:{" "}
+              {sessionState?.resoniteLinkClientsCount ?? 0}
             </span>
           )}
           <EditableTextArea
-            label="管理者メモ"
+            label={t("sessionForm.adminMemo")}
             value={data?.session?.memo || ""}
             onSave={(v) => handleSaveExtra("memo", v)}
             isLoading={isPending}
           />
           <EditableTextArea
-            label="説明"
+            label={t("common.description")}
             value={
               sessionState?.description || startupParams?.description || ""
             }
@@ -258,7 +276,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
           />
         </div>
         <EditableTextField
-          label="タグ"
+          label={t("sessionForm.tags")}
           value={
             sessionState?.tags?.join(", ") ||
             startupParams?.tags?.join(", ") ||
@@ -267,10 +285,10 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
           onSave={handleSaveTags}
           readonly={!isRunning}
           isLoading={isPending}
-          helperText="カンマ区切りで入力してください"
+          helperText={t("sessionForm.commaSeparated")}
         />
         <EditableTextField
-          label="最大ユーザー数"
+          label={t("sessionForm.maxUsers")}
           type="number"
           value={
             sessionState?.maxUsers?.toString() ||
@@ -282,8 +300,12 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
           isLoading={isPending}
         />
         <EditableSelectField
-          label="アクセスレベル"
-          options={AccessLevels.map((l) => l)}
+          label={t("sessionForm.accessLevel")}
+          options={AccessLevels.map((l) => ({
+            id: l.id,
+            value: l.value,
+            label: t(l.labelKey),
+          }))}
           selectedId={
             `${sessionState?.accessLevel || startupParams?.accessLevel}` || "1"
           }
@@ -292,7 +314,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
           isLoading={isPending}
         />
         <EditableTextField
-          label="AFKキック時間(分)"
+          label={t("sessionForm.awayKickMinutes")}
           type="number"
           value={
             sessionState?.awayKickMinutes ||
@@ -300,12 +322,12 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
             -1
           }
           onSave={(v) => handleSave("awayKickMinutes", parseFloat(v))}
-          helperText="-1で無効"
+          helperText={t("sessionForm.disableWithMinusOne")}
           readonly={!isRunning}
           isLoading={isPending}
         />
         <EditableSelectField
-          label="セッションリストから隠す"
+          label={t("sessionForm.hideFromPublicListing")}
           options={BOOL_SELECT_OPTIONS}
           selectedId={
             `${sessionState?.hideFromPublicListing}` ||
@@ -317,7 +339,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
           isLoading={isPending}
         />
         <EditableSelectField
-          label="セッション終了時に保存"
+          label={t("sessionForm.saveOnExit")}
           options={BOOL_SELECT_OPTIONS}
           selectedId={
             `${sessionState?.saveOnExit}` ||
@@ -329,7 +351,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
           isLoading={isPending}
         />
         <EditableTextField
-          label="自動保存間隔(秒)"
+          label={t("sessionForm.autoSaveIntervalSeconds")}
           type="number"
           value={
             sessionState?.autoSaveIntervalSeconds ||
@@ -337,7 +359,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
             -1
           }
           onSave={(v) => handleSave("autoSaveIntervalSeconds", parseInt(v))}
-          helperText="-1で無効"
+          helperText={t("sessionForm.disableWithMinusOne")}
           readonly={!isRunning}
           isLoading={isPending}
         />
@@ -350,7 +372,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
           isLoading={isPending}
         /> */}
         <EditableTextField
-          label="アイドル時の自動再起動間隔(秒)"
+          label={t("sessionForm.idleRestartIntervalSeconds")}
           type="number"
           value={
             sessionState?.idleRestartIntervalSeconds ||
@@ -358,7 +380,7 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
             -1
           }
           onSave={(v) => handleSave("idleRestartIntervalSeconds", parseInt(v))}
-          helperText="-1で無効"
+          helperText={t("sessionForm.disableWithMinusOne")}
           readonly={!isRunning}
           isLoading={isPending}
         />

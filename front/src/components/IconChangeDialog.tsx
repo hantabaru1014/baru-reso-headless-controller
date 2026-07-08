@@ -13,6 +13,7 @@ import { cn } from "@/libs/cssUtils";
 import { processIconImage, createImageUrl } from "@/libs/imageUtils";
 import { ResoniteUserIcon } from "./ResoniteUserIcon";
 import Cropper, { type Area } from "react-easy-crop";
+import { useTranslation } from "react-i18next";
 
 interface IconChangeDialogProps {
   open: boolean;
@@ -29,6 +30,7 @@ export function IconChangeDialog({
   onUpload,
   isUploading = false,
 }: IconChangeDialogProps) {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -64,29 +66,32 @@ export function IconChangeDialog({
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
 
-  const loadFile = useCallback((file: File) => {
-    // Validate file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
-      setError("ファイルサイズは10MB以下にしてください");
-      return;
-    }
+  const loadFile = useCallback(
+    (file: File) => {
+      // Validate file size (10MB max)
+      if (file.size > 10 * 1024 * 1024) {
+        setError(t("iconChangeDialog.fileSizeError"));
+        return;
+      }
 
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      setError("画像ファイルを選択してください");
-      return;
-    }
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        setError(t("iconChangeDialog.selectImageError"));
+        return;
+      }
 
-    setError(null);
+      setError(null);
 
-    // Revoke old image URL
-    setImageUrl((oldUrl) => {
-      if (oldUrl) URL.revokeObjectURL(oldUrl);
-      return createImageUrl(file);
-    });
-    setCrop({ x: 0, y: 0 });
-    setZoom(1);
-  }, []);
+      // Revoke old image URL
+      setImageUrl((oldUrl) => {
+        if (oldUrl) URL.revokeObjectURL(oldUrl);
+        return createImageUrl(file);
+      });
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+    },
+    [t],
+  );
 
   const handleFileSelect = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,15 +140,17 @@ export function IconChangeDialog({
       await onUpload(new Uint8Array(arrayBuffer));
       onClose?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "アップロードに失敗しました");
+      setError(
+        e instanceof Error ? e.message : t("iconChangeDialog.uploadFailed"),
+      );
     }
-  }, [imageUrl, croppedAreaPixels, onUpload, onClose]);
+  }, [imageUrl, croppedAreaPixels, onUpload, onClose, t]);
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose?.()}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>アイコンを変更</DialogTitle>
+          <DialogTitle>{t("iconChangeDialog.changeIconTitle")}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -151,10 +158,12 @@ export function IconChangeDialog({
           {!imageUrl && (
             <div className="flex justify-center">
               <div className="text-center space-y-2">
-                <p className="text-sm text-muted-foreground">現在のアイコン</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("iconChangeDialog.currentIcon")}
+                </p>
                 <ResoniteUserIcon
                   iconUrl={currentIconUrl}
-                  alt="現在のアイコン"
+                  alt={t("iconChangeDialog.currentIcon")}
                   className="size-20 mx-auto"
                 />
               </div>
@@ -179,7 +188,9 @@ export function IconChangeDialog({
           {/* Zoom slider */}
           {imageUrl && (
             <div className="flex items-center gap-3 px-2">
-              <span className="text-sm text-muted-foreground">ズーム</span>
+              <span className="text-sm text-muted-foreground">
+                {t("iconChangeDialog.zoom")}
+              </span>
               <input
                 type="range"
                 min={1}
@@ -217,12 +228,12 @@ export function IconChangeDialog({
                 <ImageIcon className="size-8 text-muted-foreground" />
                 <div className="text-sm text-muted-foreground">
                   <span className="text-primary font-medium">
-                    ファイルを選択
+                    {t("iconChangeDialog.selectFile")}
                   </span>
-                  するか、ここにドラッグ&ドロップ
+                  {t("iconChangeDialog.orDragDrop")}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  PNG, JPG, GIF, WebP (最大10MB)
+                  {t("iconChangeDialog.fileFormats")}
                 </div>
               </div>
             </div>
@@ -233,7 +244,7 @@ export function IconChangeDialog({
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
               >
-                別の画像を選択
+                {t("iconChangeDialog.selectAnotherImage")}
               </Button>
               <input
                 type="file"
@@ -252,14 +263,14 @@ export function IconChangeDialog({
 
           {/* Info */}
           <div className="text-xs text-muted-foreground text-center">
-            ドラッグして切り抜き範囲を調整できます（256x256にリサイズされます）
+            {t("iconChangeDialog.cropHint")}
           </div>
         </div>
 
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="outline" disabled={isUploading}>
-              キャンセル
+              {t("common.cancel")}
             </Button>
           </DialogClose>
           <Button
@@ -269,10 +280,10 @@ export function IconChangeDialog({
             {isUploading ? (
               <>
                 <Upload className="size-4 mr-2 animate-bounce" />
-                アップロード中...
+                {t("iconChangeDialog.uploading")}
               </>
             ) : (
-              "変更"
+              t("iconChangeDialog.change")
             )}
           </Button>
         </DialogFooter>

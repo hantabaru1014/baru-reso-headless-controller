@@ -1,6 +1,7 @@
 import { Message } from "../../pbgen/hdlctrl/v1/message_pb";
 import { cn } from "@/libs/cssUtils";
 import { formatTimestamp } from "../libs/datetimeUtils";
+import { useTranslation } from "react-i18next";
 
 /**
  * お知らせ一覧. タイトル・更新日時・最終更新者を表示する選択可能なリスト.
@@ -15,10 +16,11 @@ export function MessageList({
   selectedId: string | undefined;
   onSelect: (message: Message) => void;
 }) {
+  const { t } = useTranslation();
   if (messages.length === 0) {
     return (
       <div className="text-muted-foreground p-4 text-center text-sm">
-        お知らせはありません
+        {t("messageList.empty")}
       </div>
     );
   }

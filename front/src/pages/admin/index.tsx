@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { useTranslation } from "react-i18next";
 import { usePermissions } from "../../hooks/usePermissions";
 import { PERMISSION_KEYS } from "../../libs/permissionUtils";
 import { Button } from "../../components/ui";
@@ -8,12 +9,13 @@ import { Button } from "../../components/ui";
  * 持っているシステム権限に応じてリンク先を表示する.
  */
 export default function AdminIndex() {
+  const { t } = useTranslation();
   const { hasSystemPermission } = usePermissions();
 
   // permissions のいずれかを持てばリンクを表示する.
   const sections: { label: string; to: string; permissions: string[] }[] = [
     {
-      label: "ユーザー管理",
+      label: t("adminIndexPage.userManagement"),
       to: "/admin/users",
       // ユーザー管理画面は list/create/delete のいずれかで開ける.
       permissions: [
@@ -23,12 +25,12 @@ export default function AdminIndex() {
       ],
     },
     {
-      label: "全グループ閲覧",
+      label: t("adminIndexPage.viewAllGroups"),
       to: "/admin/groups",
       permissions: [PERMISSION_KEYS.SYSTEM_GROUP_LIST],
     },
     {
-      label: "グローバルロール管理",
+      label: t("adminIndexPage.globalRoleManagement"),
       to: "/admin/roles",
       permissions: [PERMISSION_KEYS.SYSTEM_ROLE_MANAGE],
     },
@@ -41,11 +43,11 @@ export default function AdminIndex() {
   return (
     <div className="container mx-auto p-4 space-y-4">
       <p className="text-muted-foreground text-sm">
-        システム全体の管理機能です。表示される項目は保持しているシステム権限により変わります。
+        {t("adminIndexPage.description")}
       </p>
       {available.length === 0 ? (
         <p className="text-destructive text-sm">
-          利用可能なシステム管理機能がありません
+          {t("adminIndexPage.noAvailableFeatures")}
         </p>
       ) : (
         <div className="flex flex-col gap-2 max-w-sm">

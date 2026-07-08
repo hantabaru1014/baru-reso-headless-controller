@@ -9,6 +9,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAtom } from "jotai";
 import { sessionAtom, Session } from "../atoms/sessionAtom";
 import { useAuth } from "../hooks/useAuth";
@@ -33,7 +34,7 @@ import { UserMenuDropdown } from "@/components/UserMenuDropdown";
 import { GroupSwitcher } from "@/components/base/GroupSwitcher";
 
 type NavItem = {
-  title: string;
+  titleKey: string;
   href: string;
   icon: typeof Home;
   /** undefined のとき常時表示. 関数のとき true を返したものだけ表示する. */
@@ -42,12 +43,12 @@ type NavItem = {
 
 const navigation: NavItem[] = [
   {
-    title: "Dashboard",
+    titleKey: "routes.dashboard",
     href: "/",
     icon: Home,
   },
   {
-    title: "Headless Accounts",
+    titleKey: "routes.headlessAccounts",
     href: "/headlessAccounts",
     icon: Users,
     visible: (p) =>
@@ -55,7 +56,7 @@ const navigation: NavItem[] = [
       p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_GROUP_MANAGE),
   },
   {
-    title: "Hosts",
+    titleKey: "routes.hosts",
     href: "/hosts",
     icon: Server,
     visible: (p) =>
@@ -63,7 +64,7 @@ const navigation: NavItem[] = [
       p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_GROUP_MANAGE),
   },
   {
-    title: "Sessions",
+    titleKey: "routes.sessions",
     href: "/sessions",
     icon: Earth,
     visible: (p) =>
@@ -71,7 +72,7 @@ const navigation: NavItem[] = [
       p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_GROUP_MANAGE),
   },
   {
-    title: "Scheduled Ops",
+    titleKey: "routes.scheduledOps",
     href: "/sessions/scheduled",
     icon: Clock,
     visible: (p) =>
@@ -79,12 +80,12 @@ const navigation: NavItem[] = [
       p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_GROUP_MANAGE),
   },
   {
-    title: "Groups",
+    titleKey: "routes.groups",
     href: "/groups",
     icon: UsersRound,
   },
   {
-    title: "Admin",
+    titleKey: "routes.admin",
     href: "/admin",
     icon: ShieldCheck,
     visible: (p) =>
@@ -97,6 +98,7 @@ const navigation: NavItem[] = [
 ];
 
 function AppSidebar() {
+  const { t } = useTranslation();
   const location = useLocation();
   const perms = usePermissions();
   const visibleNavigation = useMemo(
@@ -135,7 +137,7 @@ function AppSidebar() {
                   >
                     <Link to={item.href}>
                       <item.icon />
-                      <span>{item.title}</span>
+                      <span>{t(item.titleKey)}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -176,13 +178,14 @@ function Header({
   );
 }
 
-type RouteHandle = { title?: string };
+type RouteHandle = { titleKey?: string };
 
 function usePageTitle(): string | undefined {
+  const { t } = useTranslation();
   const matches = useMatches();
   for (let i = matches.length - 1; i >= 0; i--) {
     const handle = matches[i].handle as RouteHandle | undefined;
-    if (handle?.title) return handle.title;
+    if (handle?.titleKey) return t(handle.titleKey);
   }
   return undefined;
 }

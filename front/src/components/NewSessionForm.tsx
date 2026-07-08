@@ -20,11 +20,12 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import {
   buildStartWorldParameters,
   DEFAULT_SESSION_FORM_VALUES,
+  makeSessionFormSchema,
   removeUndefined,
   searchParamsToFormValues,
-  sessionFormSchema,
   SessionFormValues,
 } from "../libs/sessionFormUtils";
+import { useTranslation } from "react-i18next";
 import { HeadlessHostStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,6 +49,7 @@ import {
 } from "../libs/scheduledOperationUtils";
 
 export default function NewSessionForm() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const prefillValues = searchParamsToFormValues(searchParams);
@@ -66,6 +68,7 @@ export default function NewSessionForm() {
     return m;
   }, [groupsList?.groups]);
   const { hasPermission } = usePermissions();
+  const sessionFormSchema = useMemo(() => makeSessionFormSchema(t), [t]);
 
   const {
     control,
@@ -99,17 +102,21 @@ export default function NewSessionForm() {
       });
       // 非同期 job として実行されるので「受け付けた」だけ通知し、
       // 完了は notificationDispatch 経由の JobCompletedEvent toast で出す.
-      toast.success("セッションの開始を受け付けました");
+      toast.success(t("newSessionForm.startAccepted"));
       navigate("/sessions");
     } catch (e) {
-      toast.error(`エラー: ${e instanceof Error ? e.message : e}`);
+      toast.error(
+        t("newSessionForm.startError", {
+          message: e instanceof Error ? e.message : e,
+        }),
+      );
     }
   };
 
   const openScheduleDialog = async () => {
     const ok = await validate();
     if (!ok) {
-      toast.error("入力内容を確認してください");
+      toast.error(t("newSessionForm.checkInput"));
       return;
     }
     setScheduleOpen(true);
@@ -119,7 +126,7 @@ export default function NewSessionForm() {
     const data = getValues();
     const at = localDateTimeStringToDate(scheduledAt);
     if (Number.isNaN(at.getTime())) {
-      toast.error("実行日時が不正です");
+      toast.error(t("newSessionForm.invalidDateTime"));
       return;
     }
     try {
@@ -141,11 +148,15 @@ export default function NewSessionForm() {
         },
       });
       await mutateSchedule({ operation, trigger });
-      toast.success("予約を作成しました");
+      toast.success(t("newSessionForm.scheduleCreated"));
       setScheduleOpen(false);
       navigate("/sessions/scheduled");
     } catch (e) {
-      toast.error(`予約失敗: ${e instanceof Error ? e.message : e}`);
+      toast.error(
+        t("newSessionForm.scheduleError", {
+          message: e instanceof Error ? e.message : e,
+        }),
+      );
     }
   };
 
@@ -166,14 +177,14 @@ export default function NewSessionForm() {
         .map((host) => {
           const groupName = host.groupId
             ? (groupNameById.get(host.groupId) ?? host.groupId)
-            : "(no group)";
+            : t("newSessionForm.noGroup");
           return {
             id: host.id,
             label: `${host.name} (${host.id.slice(0, 6)}) - ${host.accountName} - ${host.resoniteVersion} - [${groupName}]`,
             value: host,
           };
         }) ?? [],
-    [hostList?.hosts, hasPermission, currentGroupId, groupNameById],
+    [hostList?.hosts, hasPermission, currentGroupId, groupNameById, t],
   );
 
   return (
@@ -185,9 +196,9 @@ export default function NewSessionForm() {
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>ホストを選択</DialogTitle>
+            <DialogTitle>{t("newSessionForm.selectHostTitle")}</DialogTitle>
             <DialogDescription>
-              セッションを開始するホストを選択してください
+              {t("newSessionForm.selectHostDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 max-h-[70vh] overflow-y-auto">
@@ -204,10 +215,10 @@ export default function NewSessionForm() {
             {runningHosts.length === 0 && (
               <div className="text-center py-4 space-y-3">
                 <p className="text-muted-foreground">
-                  稼働中のホストがありません
+                  {t("newSessionForm.noRunningHosts")}
                 </p>
                 <Button variant="outline" asChild>
-                  <Link to="/hosts">ホスト一覧へ</Link>
+                  <Link to="/hosts">{t("newSessionForm.toHostList")}</Link>
                 </Button>
               </div>
             )}
@@ -243,7 +254,7 @@ export default function NewSessionForm() {
             type="submit"
             disabled={Object.keys(errors).length > 0 || isPendingStart}
           >
-            セッション開始
+            {t("newSessionForm.startSession")}
           </Button>
           <Button
             type="button"
@@ -251,7 +262,7 @@ export default function NewSessionForm() {
             onClick={openScheduleDialog}
             disabled={isPendingStart}
           >
-            セッション開始を予約
+            {t("newSessionForm.scheduleStart")}
           </Button>
         </div>
       </form>
@@ -259,13 +270,13 @@ export default function NewSessionForm() {
       <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>セッション開始を予約</DialogTitle>
+            <DialogTitle>{t("newSessionForm.scheduleStart")}</DialogTitle>
             <DialogDescription>
-              現在のフォームの設定でセッションを開始する日時を指定してください
+              {t("newSessionForm.scheduleDialogDescription")}
             </DialogDescription>
           </DialogHeader>
           <TextField
-            label="実行日時"
+            label={t("newSessionForm.scheduledAt")}
             type="datetime-local"
             value={scheduledAt}
             onChange={(e) => setScheduledAt(e.target.value)}
@@ -276,10 +287,10 @@ export default function NewSessionForm() {
               onClick={() => setScheduleOpen(false)}
               disabled={isPendingSchedule}
             >
-              キャンセル
+              {t("common.cancel")}
             </Button>
             <Button onClick={submitSchedule} disabled={isPendingSchedule}>
-              予約を作成
+              {t("newSessionForm.createSchedule")}
             </Button>
           </DialogFooter>
         </DialogContent>

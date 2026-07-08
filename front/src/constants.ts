@@ -1,10 +1,10 @@
 export const AccessLevels = [
-  { id: "1", label: "プライベート(招待のみ)", value: 1 },
-  { id: "2", label: "LAN内", value: 2 },
-  { id: "3", label: "フレンド", value: 3 },
-  { id: "4", label: "フレンド＋", value: 4 },
-  { id: "5", label: "ログインユーザー", value: 5 },
-  { id: "6", label: "誰でも", value: 6 },
+  { id: "1", labelKey: "constants.accessLevels.private", value: 1 },
+  { id: "2", labelKey: "constants.accessLevels.lan", value: 2 },
+  { id: "3", labelKey: "constants.accessLevels.contacts", value: 3 },
+  { id: "4", labelKey: "constants.accessLevels.contactsPlus", value: 4 },
+  { id: "5", labelKey: "constants.accessLevels.registeredUsers", value: 5 },
+  { id: "6", labelKey: "constants.accessLevels.anyone", value: 6 },
 ] as const;
 
 export const UserRoles = [

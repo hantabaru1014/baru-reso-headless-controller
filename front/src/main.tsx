@@ -2,6 +2,7 @@ import * as React from "react";
 import * as ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router";
 import "./index.css";
+import "./libs/i18n";
 import App from "./App";
 import Layout from "./layouts/dashboard";
 import DashboardPage from "./pages";
@@ -34,7 +35,7 @@ const router = createBrowserRouter([
           {
             index: true,
             Component: DashboardPage,
-            handle: { title: "ダッシュボード" },
+            handle: { titleKey: "routes.dashboard" },
           },
           {
             path: "sessions",
@@ -42,12 +43,12 @@ const router = createBrowserRouter([
               {
                 index: true,
                 Component: Sessions,
-                handle: { title: "セッション" },
+                handle: { titleKey: "routes.sessions" },
               },
               {
                 path: "new",
                 Component: SessionNew,
-                handle: { title: "新規セッション" },
+                handle: { titleKey: "routes.sessionNew" },
               },
               {
                 path: "scheduled",
@@ -55,19 +56,19 @@ const router = createBrowserRouter([
                   {
                     index: true,
                     Component: ScheduledOperationsIndex,
-                    handle: { title: "予約操作" },
+                    handle: { titleKey: "routes.scheduledOps" },
                   },
                   {
                     path: "new",
                     Component: ScheduledOperationNew,
-                    handle: { title: "新規予約" },
+                    handle: { titleKey: "routes.scheduledOpNew" },
                   },
                 ],
               },
               {
                 path: ":id",
                 Component: SessionDetail,
-                handle: { title: "セッション詳細" },
+                handle: { titleKey: "routes.sessionDetail" },
               },
             ],
           },
@@ -77,12 +78,12 @@ const router = createBrowserRouter([
               {
                 index: true,
                 Component: Hosts,
-                handle: { title: "ホスト" },
+                handle: { titleKey: "routes.hosts" },
               },
               {
                 path: ":id",
                 Component: HostDetail,
-                handle: { title: "ホスト詳細" },
+                handle: { titleKey: "routes.hostDetail" },
               },
             ],
           },
@@ -92,7 +93,7 @@ const router = createBrowserRouter([
               {
                 index: true,
                 Component: HeadlessAccounts,
-                handle: { title: "ヘッドレスアカウント" },
+                handle: { titleKey: "routes.headlessAccounts" },
               },
             ],
           },
@@ -102,12 +103,12 @@ const router = createBrowserRouter([
               {
                 index: true,
                 Component: Groups,
-                handle: { title: "グループ" },
+                handle: { titleKey: "routes.groups" },
               },
               {
                 path: ":id",
                 Component: GroupDetail,
-                handle: { title: "グループ詳細" },
+                handle: { titleKey: "routes.groupDetail" },
               },
             ],
           },
@@ -117,29 +118,29 @@ const router = createBrowserRouter([
               {
                 index: true,
                 Component: AdminIndex,
-                handle: { title: "システム管理" },
+                handle: { titleKey: "routes.admin" },
               },
               {
                 path: "groups",
                 Component: AdminGroupsPage,
-                handle: { title: "全グループ" },
+                handle: { titleKey: "routes.adminGroups" },
               },
               {
                 path: "roles",
                 Component: AdminRolesPage,
-                handle: { title: "グローバルロール" },
+                handle: { titleKey: "routes.adminRoles" },
               },
               {
                 path: "users",
                 Component: AdminUsersPage,
-                handle: { title: "ユーザー管理" },
+                handle: { titleKey: "routes.adminUsers" },
               },
             ],
           },
           {
             path: "user-settings",
             Component: UserSettings,
-            handle: { title: "ユーザー設定" },
+            handle: { titleKey: "routes.userSettings" },
           },
         ],
       },

@@ -46,10 +46,12 @@ import { AccessLevels } from "../constants";
 import {
   buildStartWorldParameters,
   DEFAULT_SESSION_FORM_VALUES,
-  sessionFormSchema,
+  makeSessionFormSchema,
   SessionFormValues,
 } from "../libs/sessionFormUtils";
 import SessionStartupFields from "./SessionStartupFields";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 type Props = {
   /** プリセレクト用: セッション詳細から開いたとき (トリガー監視/操作対象の両方の初期値になる) */
@@ -62,39 +64,25 @@ type Props = {
   defaultUserCountThreshold?: number;
 };
 
-const TRI_BOOL_OPTIONS = [
-  { id: "_", label: "変更しない" },
-  { id: "true", label: "はい" },
-  { id: "false", label: "いいえ" },
+const makeTriBoolOptions = (t: TFunction) => [
+  { id: "_", label: t("scheduledOperationForm.keepUnchanged") },
+  { id: "true", label: t("common.yes") },
+  { id: "false", label: t("common.no") },
 ];
 
-const TRIGGER_OPTIONS: { label: string; value: TriggerKind }[] = [
-  { label: triggerKindLabel("TIME"), value: "TIME" },
-  {
-    label: triggerKindLabel("SESSION_USER_COUNT"),
-    value: "SESSION_USER_COUNT",
-  },
+const TRIGGER_KINDS: TriggerKind[] = ["TIME", "SESSION_USER_COUNT"];
+
+const COMPARATOR_KINDS: UserCountComparator[] = [
+  "LESS_OR_EQUAL",
+  "GREATER_OR_EQUAL",
 ];
 
-const COMPARATOR_OPTIONS: { id: UserCountComparator; label: string }[] = [
-  {
-    id: "LESS_OR_EQUAL",
-    label: userCountComparatorLabel("LESS_OR_EQUAL"),
-  },
-  {
-    id: "GREATER_OR_EQUAL",
-    label: userCountComparatorLabel("GREATER_OR_EQUAL"),
-  },
+const ACTION_KINDS: OperationKind[] = [
+  "START_SESSION",
+  "STOP_SESSION",
+  "UPDATE_PARAMETERS",
+  "UPDATE_EXTRA_SETTINGS",
 ];
-
-const ACTION_OPTIONS: { label: string; value: OperationKind }[] = (
-  [
-    "START_SESSION",
-    "STOP_SESSION",
-    "UPDATE_PARAMETERS",
-    "UPDATE_EXTRA_SETTINGS",
-  ] as OperationKind[]
-).map((k) => ({ label: operationKindLabel(k), value: k }));
 
 type SessionOption = { id: string; label: string };
 
@@ -103,6 +91,7 @@ function useSessionOptions(defaultSessionId: string | undefined): {
   options: SessionOption[];
   hasRunningSessions: boolean;
 } {
+  const { t } = useTranslation();
   const { data: sessionsData } = useQuery(searchSessions, {
     parameters: { status: SessionStatus.RUNNING },
     page: { pageIndex: 0, pageSize: 100 },
@@ -117,14 +106,16 @@ function useSessionOptions(defaultSessionId: string | undefined): {
         name: defaultSessionId,
       } as (typeof list)[number]);
     }
-    const options: SessionOption[] = [{ id: "_", label: "選択..." }].concat(
+    const options: SessionOption[] = [
+      { id: "_", label: t("scheduledOperationForm.selectPlaceholder") },
+    ].concat(
       merged.map((s) => ({
         id: s.id,
-        label: `${s.name || "(no name)"} (${s.id.slice(0, 8)}…)`,
+        label: `${s.name || t("scheduledOperationForm.noName")} (${s.id.slice(0, 8)}…)`,
       })),
     );
     return { options, hasRunningSessions: merged.length > 0 };
-  }, [sessionsData, defaultSessionId]);
+  }, [sessionsData, defaultSessionId, t]);
 }
 
 export default function ScheduledOperationForm({
@@ -134,10 +125,26 @@ export default function ScheduledOperationForm({
   defaultUserCountComparator,
   defaultUserCountThreshold,
 }: Props) {
+  // useTranslation を購読しておくことで言語切替時に再レンダーされ、
+  // 下記の *Label 系 (i18n.t を内部で呼ぶ) が最新の言語で再評価される.
+  const { t } = useTranslation();
   const [trigger, setTrigger] = useState<TriggerKind>(defaultTrigger ?? "TIME");
   const [kind, setKind] = useState<OperationKind>(
     defaultOperation ?? (defaultSessionId ? "STOP_SESSION" : "START_SESSION"),
   );
+
+  const triggerOptions = TRIGGER_KINDS.map((k) => ({
+    label: triggerKindLabel(k),
+    value: k,
+  }));
+  const comparatorOptions = COMPARATOR_KINDS.map((c) => ({
+    id: c,
+    label: userCountComparatorLabel(c),
+  }));
+  const actionOptions = ACTION_KINDS.map((k) => ({
+    label: operationKindLabel(k),
+    value: k,
+  }));
 
   // ▼ Section ① のトリガー設定 (全 action から参照されるので parent owned)
   const [scheduledAt, setScheduledAt] = useState(
@@ -165,12 +172,12 @@ export default function ScheduledOperationForm({
   const buildTrigger = (): ScheduledTrigger | null => {
     if (trigger === "TIME") {
       if (!scheduledAt) {
-        toast.error("実行日時を指定してください");
+        toast.error(t("scheduledOperationForm.specifyDateTime"));
         return null;
       }
       const at = localDateTimeStringToDate(scheduledAt);
       if (Number.isNaN(at.getTime())) {
-        toast.error("実行日時が不正です");
+        toast.error(t("scheduledOperationForm.invalidDateTime"));
         return null;
       }
       return create(ScheduledTriggerSchema, {
@@ -183,12 +190,12 @@ export default function ScheduledOperationForm({
       });
     }
     if (!monitorSessionId) {
-      toast.error("監視対象セッションを選択してください");
+      toast.error(t("scheduledOperationForm.selectMonitorSession"));
       return null;
     }
     const parsed = parseIntOrUndef(threshold);
     if (parsed === undefined || parsed < 0) {
-      toast.error("ユーザー数のしきい値は 0 以上の整数で指定してください");
+      toast.error(t("scheduledOperationForm.invalidThreshold"));
       return null;
     }
     return create(ScheduledTriggerSchema, {
@@ -209,10 +216,12 @@ export default function ScheduledOperationForm({
   return (
     <div className="space-y-6">
       <section className="space-y-3 rounded-md border p-4">
-        <h3 className="text-sm font-semibold">1. トリガー条件</h3>
+        <h3 className="text-sm font-semibold">
+          {t("scheduledOperationForm.triggerSectionTitle")}
+        </h3>
         <RadioGroupField
-          label="どんな時に予約を発火させるか"
-          options={TRIGGER_OPTIONS}
+          label={t("scheduledOperationForm.triggerQuestion")}
+          options={triggerOptions}
           value={trigger}
           onValueChange={(v) => setTrigger(v as TriggerKind)}
           className="flex flex-row flex-wrap gap-4"
@@ -220,7 +229,7 @@ export default function ScheduledOperationForm({
 
         {trigger === "TIME" ? (
           <TextField
-            label="実行日時"
+            label={t("scheduledOperationForm.scheduledAt")}
             type="datetime-local"
             value={scheduledAt}
             onChange={(e) => setScheduledAt(e.target.value)}
@@ -228,27 +237,27 @@ export default function ScheduledOperationForm({
         ) : (
           <div className="space-y-3">
             <SelectField
-              label="監視対象セッション"
+              label={t("scheduledOperationForm.monitorSession")}
               options={sessionOptions}
               selectedId={monitorSessionId || "_"}
               onChange={(o) => setMonitorSessionId(o.id === "_" ? "" : o.id)}
               helperText={
                 hasRunningSessions
                   ? undefined
-                  : "実行中のセッションがありません. セッションIDが分かっている場合は URL の ?sessionId= から事前指定できます."
+                  : t("scheduledOperationForm.noRunningSessionsHelper")
               }
             />
             <div className="flex gap-2">
               <TextField
-                label="ユーザー数"
+                label={t("scheduledOperationForm.userCount")}
                 type="number"
                 className="w-32"
                 value={threshold}
                 onChange={(e) => setThreshold(e.target.value)}
               />
               <SelectField
-                label="条件"
-                options={COMPARATOR_OPTIONS}
+                label={t("scheduledOperationForm.condition")}
+                options={comparatorOptions}
                 selectedId={comparator}
                 onChange={(o) => setComparator(o.id as UserCountComparator)}
               />
@@ -258,10 +267,12 @@ export default function ScheduledOperationForm({
       </section>
 
       <section className="space-y-3 rounded-md border p-4">
-        <h3 className="text-sm font-semibold">2. その時に何が起こるか</h3>
+        <h3 className="text-sm font-semibold">
+          {t("scheduledOperationForm.actionSectionTitle")}
+        </h3>
         <RadioGroupField
-          label="操作種別"
-          options={ACTION_OPTIONS}
+          label={t("scheduledOperationForm.actionKind")}
+          options={actionOptions}
           value={kind}
           onValueChange={(v) => setKind(v as OperationKind)}
           className="flex flex-row flex-wrap gap-4"
@@ -293,10 +304,12 @@ function StartSessionActionForm({
 }: {
   buildTrigger: () => ScheduledTrigger | null;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { mutateAsync, isPending } = useMutation(
     createScheduledSessionOperation,
   );
+  const sessionFormSchema = useMemo(() => makeSessionFormSchema(t), [t]);
 
   const { data: hostList } = useQuery(listHeadlessHost);
   const runningHostOptions = useMemo(
@@ -338,10 +351,14 @@ function StartSessionActionForm({
         },
       });
       await mutateAsync({ operation, trigger: triggerMsg });
-      toast.success("予約を作成しました");
+      toast.success(t("scheduledOperationForm.scheduleCreated"));
       navigate("/sessions/scheduled");
     } catch (err) {
-      toast.error(`作成失敗: ${(err as Error).message}`);
+      toast.error(
+        t("scheduledOperationForm.createError", {
+          message: (err as Error).message,
+        }),
+      );
     }
   });
 
@@ -352,8 +369,10 @@ function StartSessionActionForm({
         control={control}
         render={({ field }) => (
           <SelectField
-            label="ホスト"
-            options={[{ id: "_", label: "選択..." }].concat(
+            label={t("scheduledOperationForm.host")}
+            options={[
+              { id: "_", label: t("scheduledOperationForm.selectPlaceholder") },
+            ].concat(
               runningHostOptions.map((h) => ({ id: h.id, label: h.label })),
             )}
             selectedId={field.value || "_"}
@@ -383,29 +402,32 @@ function StartSessionActionForm({
  * STOP / UPDATE_* action: target session + 任意の update params
  * ============================================================ */
 
-const otherFormSchema = z.object({
-  // action target
-  sessionId: z.string().min(1, "対象セッションを選択してください"),
+const makeOtherFormSchema = (t: TFunction) =>
+  z.object({
+    // action target
+    sessionId: z
+      .string()
+      .min(1, t("scheduledOperationForm.selectTargetSession")),
 
-  // UPDATE_PARAMETERS
-  updName: z.string().optional(),
-  updDescription: z.string().optional(),
-  updTags: z.string().optional(),
-  updMaxUsers: z.string().optional(),
-  updAccessLevel: z.string().optional(),
-  updHideFromPublicListing: z.string().optional(),
-  updAwayKickMinutes: z.string().optional(),
-  updIdleRestartIntervalSeconds: z.string().optional(),
-  updSaveOnExit: z.string().optional(),
-  updAutoSaveIntervalSeconds: z.string().optional(),
-  updAutoSleep: z.string().optional(),
+    // UPDATE_PARAMETERS
+    updName: z.string().optional(),
+    updDescription: z.string().optional(),
+    updTags: z.string().optional(),
+    updMaxUsers: z.string().optional(),
+    updAccessLevel: z.string().optional(),
+    updHideFromPublicListing: z.string().optional(),
+    updAwayKickMinutes: z.string().optional(),
+    updIdleRestartIntervalSeconds: z.string().optional(),
+    updSaveOnExit: z.string().optional(),
+    updAutoSaveIntervalSeconds: z.string().optional(),
+    updAutoSleep: z.string().optional(),
 
-  // UPDATE_EXTRA_SETTINGS
-  extraAutoUpgrade: z.string().optional(),
-  extraMemo: z.string().optional(),
-});
+    // UPDATE_EXTRA_SETTINGS
+    extraAutoUpgrade: z.string().optional(),
+    extraMemo: z.string().optional(),
+  });
 
-type OtherFormValues = z.infer<typeof otherFormSchema>;
+type OtherFormValues = z.infer<ReturnType<typeof makeOtherFormSchema>>;
 
 const parseIntOrUndef = (s?: string) => {
   if (!s) return undefined;
@@ -438,10 +460,13 @@ function OtherKindActionForm({
   defaultSessionId?: string;
   buildTrigger: () => ScheduledTrigger | null;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { mutateAsync, isPending } = useMutation(
     createScheduledSessionOperation,
   );
+  const otherFormSchema = useMemo(() => makeOtherFormSchema(t), [t]);
+  const triBoolOptions = useMemo(() => makeTriBoolOptions(t), [t]);
 
   const {
     control,
@@ -546,10 +571,14 @@ function OtherKindActionForm({
       }
 
       await mutateAsync({ operation, trigger: triggerMsg });
-      toast.success("予約を作成しました");
+      toast.success(t("scheduledOperationForm.scheduleCreated"));
       navigate("/sessions/scheduled");
     } catch (err) {
-      toast.error(`作成失敗: ${(err as Error).message}`);
+      toast.error(
+        t("scheduledOperationForm.createError", {
+          message: (err as Error).message,
+        }),
+      );
     }
   });
 
@@ -560,7 +589,7 @@ function OtherKindActionForm({
         control={control}
         render={({ field }) => (
           <SelectField
-            label="操作対象セッション"
+            label={t("scheduledOperationForm.targetSession")}
             options={sessionOptions}
             selectedId={field.value || "_"}
             onChange={(o) => field.onChange(o.id === "_" ? "" : o.id)}
@@ -568,7 +597,7 @@ function OtherKindActionForm({
             helperText={
               hasRunningSessions
                 ? undefined
-                : "実行中のセッションがありません. セッションIDが分かっている場合は URL の ?sessionId= から事前指定できます."
+                : t("scheduledOperationForm.noRunningSessionsHelper")
             }
           />
         )}
@@ -577,27 +606,32 @@ function OtherKindActionForm({
       {kind === "UPDATE_PARAMETERS" && (
         <div className="space-y-4 border-t pt-4">
           <p className="text-sm text-muted-foreground">
-            空欄/「変更しない」のフィールドはそのままです
+            {t("scheduledOperationForm.unchangedFieldsNote")}
           </p>
           <Controller
             name="updName"
             control={control}
             render={({ field }) => (
-              <TextField label="セッション名" {...field} />
+              <TextField
+                label={t("scheduledOperationForm.sessionName")}
+                {...field}
+              />
             )}
           />
           <Controller
             name="updDescription"
             control={control}
-            render={({ field }) => <TextareaField label="説明" {...field} />}
+            render={({ field }) => (
+              <TextareaField label={t("common.description")} {...field} />
+            )}
           />
           <Controller
             name="updTags"
             control={control}
             render={({ field }) => (
               <TextField
-                label="タグ"
-                helperText="カンマ区切り。空欄なら変更しない"
+                label={t("scheduledOperationForm.tags")}
+                helperText={t("scheduledOperationForm.commaSeparatedUnchanged")}
                 {...field}
               />
             )}
@@ -607,7 +641,7 @@ function OtherKindActionForm({
             control={control}
             render={({ field }) => (
               <TextField
-                label="最大ユーザー数"
+                label={t("scheduledOperationForm.maxUsers")}
                 type="number"
                 {...field}
                 value={field.value ?? ""}
@@ -619,11 +653,16 @@ function OtherKindActionForm({
             control={control}
             render={({ field }) => (
               <SelectField
-                label="アクセスレベル"
-                options={[{ id: "_", label: "変更しない" }].concat(
+                label={t("scheduledOperationForm.accessLevel")}
+                options={[
+                  {
+                    id: "_",
+                    label: t("scheduledOperationForm.keepUnchanged"),
+                  },
+                ].concat(
                   AccessLevels.map((l) => ({
                     id: String(l.value),
-                    label: l.label,
+                    label: t(l.labelKey),
                   })),
                 )}
                 selectedId={field.value || "_"}
@@ -636,8 +675,8 @@ function OtherKindActionForm({
             control={control}
             render={({ field }) => (
               <SelectField
-                label="セッションリストから隠す"
-                options={TRI_BOOL_OPTIONS}
+                label={t("scheduledOperationForm.hideFromPublicListing")}
+                options={triBoolOptions}
                 selectedId={field.value || "_"}
                 onChange={(o) => field.onChange(o.id === "_" ? "" : o.id)}
               />
@@ -648,9 +687,9 @@ function OtherKindActionForm({
             control={control}
             render={({ field }) => (
               <TextField
-                label="AFK キック時間 (分)"
+                label={t("scheduledOperationForm.awayKickMinutes")}
                 type="number"
-                helperText="-1 で無効"
+                helperText={t("scheduledOperationForm.disableWithMinusOne")}
                 {...field}
                 value={field.value ?? ""}
               />
@@ -661,9 +700,9 @@ function OtherKindActionForm({
             control={control}
             render={({ field }) => (
               <TextField
-                label="アイドル時の自動再起動間隔 (秒)"
+                label={t("scheduledOperationForm.idleRestartIntervalSeconds")}
                 type="number"
-                helperText="-1 で無効"
+                helperText={t("scheduledOperationForm.disableWithMinusOne")}
                 {...field}
                 value={field.value ?? ""}
               />
@@ -674,8 +713,8 @@ function OtherKindActionForm({
             control={control}
             render={({ field }) => (
               <SelectField
-                label="セッション終了時に保存"
-                options={TRI_BOOL_OPTIONS}
+                label={t("scheduledOperationForm.saveOnExit")}
+                options={triBoolOptions}
                 selectedId={field.value || "_"}
                 onChange={(o) => field.onChange(o.id === "_" ? "" : o.id)}
               />
@@ -686,9 +725,9 @@ function OtherKindActionForm({
             control={control}
             render={({ field }) => (
               <TextField
-                label="自動保存間隔 (秒)"
+                label={t("scheduledOperationForm.autoSaveIntervalSeconds")}
                 type="number"
-                helperText="-1 で無効"
+                helperText={t("scheduledOperationForm.disableWithMinusOne")}
                 {...field}
                 value={field.value ?? ""}
               />
@@ -699,8 +738,8 @@ function OtherKindActionForm({
             control={control}
             render={({ field }) => (
               <SelectField
-                label="オートスリープ"
-                options={TRI_BOOL_OPTIONS}
+                label={t("scheduledOperationForm.autoSleep")}
+                options={triBoolOptions}
                 selectedId={field.value || "_"}
                 onChange={(o) => field.onChange(o.id === "_" ? "" : o.id)}
               />
@@ -712,15 +751,15 @@ function OtherKindActionForm({
       {kind === "UPDATE_EXTRA_SETTINGS" && (
         <div className="space-y-4 border-t pt-4">
           <p className="text-sm text-muted-foreground">
-            空欄/「変更しない」のフィールドはそのままです
+            {t("scheduledOperationForm.unchangedFieldsNote")}
           </p>
           <Controller
             name="extraAutoUpgrade"
             control={control}
             render={({ field }) => (
               <SelectField
-                label="自動アップデート"
-                options={TRI_BOOL_OPTIONS}
+                label={t("scheduledOperationForm.autoUpgrade")}
+                options={triBoolOptions}
                 selectedId={field.value || "_"}
                 onChange={(o) => field.onChange(o.id === "_" ? "" : o.id)}
               />
@@ -730,7 +769,10 @@ function OtherKindActionForm({
             name="extraMemo"
             control={control}
             render={({ field }) => (
-              <TextareaField label="管理者メモ" {...field} />
+              <TextareaField
+                label={t("scheduledOperationForm.adminMemo")}
+                {...field}
+              />
             )}
           />
         </div>
@@ -754,10 +796,11 @@ function FormFooter({
   disabled: boolean;
   cancelDisabled: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="sticky bottom-0 border-t p-4 mt-8 bg-background flex gap-2">
       <Button type="submit" disabled={disabled}>
-        予約を作成
+        {t("scheduledOperationForm.createSchedule")}
       </Button>
       <Button
         type="button"
@@ -765,7 +808,7 @@ function FormFooter({
         onClick={() => navigate(-1)}
         disabled={cancelDisabled}
       >
-        キャンセル
+        {t("common.cancel")}
       </Button>
     </div>
   );

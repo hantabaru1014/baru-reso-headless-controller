@@ -1,16 +1,17 @@
 import { SessionStatus } from "../../pbgen/hdlctrl/v1/controller_pb";
+import i18n from "@/libs/i18n";
 
 export const sessionStatusToLabel = (status: SessionStatus) => {
   switch (status) {
     case SessionStatus.STARTING:
-      return "開始中";
+      return i18n.t("sessionUtils.starting");
     case SessionStatus.RUNNING:
-      return "実行中";
+      return i18n.t("sessionUtils.running");
     case SessionStatus.ENDED:
-      return "終了済み";
+      return i18n.t("sessionUtils.ended");
     case SessionStatus.CRASHED:
-      return "クラッシュ";
+      return i18n.t("sessionUtils.crashed");
     default:
-      return "不明";
+      return i18n.t("sessionUtils.unknown");
   }
 };

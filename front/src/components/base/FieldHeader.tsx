@@ -1,4 +1,5 @@
 import { CircleHelp } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button, Label, Tooltip, TooltipContent, TooltipTrigger } from "../ui";
 import { cn } from "@/libs/cssUtils";
 
@@ -17,10 +18,11 @@ export function FieldHeader({
   required,
   className,
 }: FieldHeaderProps) {
+  const { t } = useTranslation();
   return (
     <div className={cn("flex mb-1 gap-2", className)}>
       <Label htmlFor={formId}>{label}</Label>
-      {required && <span>必須</span>}
+      {required && <span>{t("common.required")}</span>}
       {helperText && (
         <Tooltip>
           <TooltipTrigger asChild>

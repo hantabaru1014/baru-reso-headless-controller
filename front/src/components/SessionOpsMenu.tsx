@@ -2,6 +2,7 @@ import { useMutation } from "@connectrpc/connect-query";
 import { MoreHorizontalIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import {
   sendDynamicImpulse,
   spawnItem,
@@ -32,6 +33,7 @@ function SpawnItemDialog({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [url, setUrl] = useState("");
   const [posX, setPosX] = useState("");
   const [posY, setPosY] = useState("");
@@ -58,7 +60,7 @@ function SpawnItemDialog({
           position: positionOrUndefined,
         },
       });
-      toast.success("アイテムをスポーンしました");
+      toast.success(t("sessionOpsMenu.spawnSuccess"));
       setUrl("");
       setPosX("");
       setPosY("");
@@ -66,7 +68,7 @@ function SpawnItemDialog({
       onClose();
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "アイテムのスポーンに失敗しました",
+        e instanceof Error ? e.message : t("sessionOpsMenu.spawnFailed"),
       );
     }
   };
@@ -75,18 +77,18 @@ function SpawnItemDialog({
     <Dialog open={open} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>アイテムをスポーン</DialogTitle>
+          <DialogTitle>{t("sessionOpsMenu.spawnItemTitle")}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-3 py-2">
           <TextField
-            label="Record URL (resrec:// または https://)"
+            label={t("sessionOpsMenu.recordUrlLabel")}
             placeholder="resrec:///U-Resonite/R-Public-Cube"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
           />
           <div>
             <p className="text-sm font-medium mb-1">
-              スポーン位置 (未指定なら world 原点)
+              {t("sessionOpsMenu.spawnPositionHint")}
             </p>
             <div className="grid grid-cols-3 gap-2">
               <TextField
@@ -112,10 +114,12 @@ function SpawnItemDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onClose()}>
-            キャンセル
+            {t("sessionOpsMenu.cancel")}
           </Button>
           <Button onClick={handleSpawn} disabled={isPending || !url.trim()}>
-            {isPending ? "スポーン中..." : "スポーン"}
+            {isPending
+              ? t("sessionOpsMenu.spawning")
+              : t("sessionOpsMenu.spawn")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -136,6 +140,7 @@ function SendDynamicImpulseDialog({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [tag, setTag] = useState("");
   const [valueType, setValueType] = useState<ImpulseValueType>("none");
   const [valueStr, setValueStr] = useState("");
@@ -172,14 +177,16 @@ function SendDynamicImpulseDialog({
         },
       });
       toast.success(
-        `送信しました (${res.triggeredReceivers} 個のレシーバに到達)`,
+        t("sessionOpsMenu.impulseSuccess", {
+          n: res.triggeredReceivers,
+        }),
       );
       setTag("");
       setValueStr("");
       onClose();
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "DynamicImpulseの送信に失敗しました",
+        e instanceof Error ? e.message : t("sessionOpsMenu.impulseFailed"),
       );
     }
   };
@@ -188,17 +195,19 @@ function SendDynamicImpulseDialog({
     <Dialog open={open} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>DynamicImpulse 送信</DialogTitle>
+          <DialogTitle>{t("sessionOpsMenu.impulseTitle")}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-3 py-2">
           <TextField
             label="Tag"
-            placeholder="例: OnStart"
+            placeholder={t("sessionOpsMenu.tagPlaceholder")}
             value={tag}
             onChange={(e) => setTag(e.target.value)}
           />
           <div>
-            <p className="text-sm font-medium mb-1">値の種類</p>
+            <p className="text-sm font-medium mb-1">
+              {t("sessionOpsMenu.valueTypeLabel")}
+            </p>
             <div className="flex gap-2 flex-wrap">
               {(["none", "string", "int", "float"] as const).map((t) => (
                 <Button
@@ -214,7 +223,7 @@ function SendDynamicImpulseDialog({
           </div>
           {valueType !== "none" && (
             <TextField
-              label={`値 (${valueType})`}
+              label={t("sessionOpsMenu.valueLabel", { type: valueType })}
               type={
                 valueType === "int" || valueType === "float" ? "number" : "text"
               }
@@ -225,10 +234,10 @@ function SendDynamicImpulseDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onClose()}>
-            キャンセル
+            {t("sessionOpsMenu.cancel")}
           </Button>
           <Button onClick={handleSend} disabled={isPending || !tag.trim()}>
-            {isPending ? "送信中..." : "送信"}
+            {isPending ? t("sessionOpsMenu.sending") : t("sessionOpsMenu.send")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -243,6 +252,7 @@ export function SessionOpsMenu({
   hostId: string;
   sessionId: string;
 }) {
+  const { t } = useTranslation();
   const [openSpawn, setOpenSpawn] = useState(false);
   const [openImpulse, setOpenImpulse] = useState(false);
   const [openResoLink, setOpenResoLink] = useState(false);
@@ -251,19 +261,23 @@ export function SessionOpsMenu({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="icon" title="その他の操作">
+          <Button
+            variant="outline"
+            size="icon"
+            title={t("sessionOpsMenu.menuTitle")}
+          >
             <MoreHorizontalIcon className="size-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setOpenResoLink(true)}>
-            ResoniteLink接続URL
+            {t("sessionOpsMenu.resoniteLinkUrl")}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setOpenSpawn(true)}>
-            アイテムスポーン
+            {t("sessionOpsMenu.spawnItem")}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setOpenImpulse(true)}>
-            DynamicImpulse 送信
+            {t("sessionOpsMenu.sendImpulse")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

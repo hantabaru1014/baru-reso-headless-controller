@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import { useAtomValue } from "jotai";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ColumnDef } from "@tanstack/react-table";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import type { TFunction } from "i18next";
 import { Copy, Loader2 } from "lucide-react";
 import {
   createRegistrationToken,
@@ -48,14 +50,15 @@ import { PERMISSION_KEYS } from "../../libs/permissionUtils";
 import { formatTimestamp } from "../../libs/datetimeUtils";
 import { sessionAtom } from "../../atoms/sessionAtom";
 
-const inviteFormSchema = z.object({
-  resoniteId: z
-    .string()
-    .min(1, "Resonite ID は必須です")
-    .regex(/^U-/, "Resonite ID は U- から始まる必要があります"),
-  personalRoleId: z.string().min(1, "ロールを選択してください"),
-});
-type InviteFormData = z.infer<typeof inviteFormSchema>;
+const makeInviteFormSchema = (t: TFunction) =>
+  z.object({
+    resoniteId: z
+      .string()
+      .min(1, t("adminUsersPage.resoniteIdRequired"))
+      .regex(/^U-/, t("adminUsersPage.resoniteIdFormat")),
+    personalRoleId: z.string().min(1, t("adminUsersPage.roleRequired")),
+  });
+type InviteFormData = z.infer<ReturnType<typeof makeInviteFormSchema>>;
 
 function InviteUserDialog({
   open,
@@ -64,10 +67,14 @@ function InviteUserDialog({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const { mutateAsync, isPending } = useMutation(createRegistrationToken);
   const [issued, setIssued] = useState<
     (CreateRegistrationTokenResponse & { personalRoleId: string }) | undefined
   >(undefined);
+
+  const inviteFormSchema = useMemo(() => makeInviteFormSchema(t), [t]);
+
   // 個人グループに付与するロール候補. group_id 未指定で ListRoles するとグローバル
   // (seed + グローバルカスタム) が返るので、NORMAL scope のものだけ採用する.
   const { data: rolesData } = useQuery(listRoles, {}, { enabled: open });
@@ -77,9 +84,9 @@ function InviteUserDialog({
         .filter((r) => r.scope === RoleScope.NORMAL)
         .map((r) => ({
           id: r.id,
-          label: `${r.name}${r.isBuiltin ? " (組込)" : ""}`,
+          label: `${r.name}${r.isBuiltin ? t("adminUsersPage.builtinSuffix") : ""}`,
         })),
-    [rolesData?.roles],
+    [rolesData?.roles, t],
   );
 
   const {
@@ -109,7 +116,7 @@ function InviteUserDialog({
       setIssued({ ...res, personalRoleId: data.personalRoleId });
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "招待トークンの発行に失敗しました",
+        e instanceof Error ? e.message : t("adminUsersPage.tokenIssueError"),
       );
     }
   };
@@ -122,9 +129,9 @@ function InviteUserDialog({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(inviteUrl);
-      toast.success("招待 URL をコピーしました");
+      toast.success(t("adminUsersPage.urlCopied"));
     } catch {
-      toast.error("クリップボードへのコピーに失敗しました");
+      toast.error(t("adminUsersPage.copyError"));
     }
   };
 
@@ -137,7 +144,7 @@ function InviteUserDialog({
     >
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>ユーザーを招待</DialogTitle>
+          <DialogTitle>{t("adminUsersPage.inviteUser")}</DialogTitle>
         </DialogHeader>
         {issued ? (
           <div className="space-y-4">
@@ -150,12 +157,14 @@ function InviteUserDialog({
               <div>
                 <div className="font-medium">{issued.resoniteUserName}</div>
                 <div className="text-muted-foreground text-xs">
-                  以下のリンクを本人に共有してください
+                  {t("adminUsersPage.shareLinkHint")}
                 </div>
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium">招待 URL</label>
+              <label className="text-sm font-medium">
+                {t("adminUsersPage.inviteUrl")}
+              </label>
               <div className="flex gap-2">
                 <input
                   readOnly
@@ -167,18 +176,19 @@ function InviteUserDialog({
                   variant="outline"
                   size="icon"
                   onClick={handleCopy}
-                  title="URL をコピー"
+                  title={t("adminUsersPage.copyUrl")}
                 >
                   <Copy />
                 </Button>
               </div>
             </div>
             <div className="text-muted-foreground text-xs">
-              有効期限: {formatTimestamp(issued.expiresAt)}
+              {t("adminUsersPage.expiresAt")}{" "}
+              {formatTimestamp(issued.expiresAt)}
             </div>
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="outline">閉じる</Button>
+                <Button variant="outline">{t("common.close")}</Button>
               </DialogClose>
             </DialogFooter>
           </div>
@@ -199,8 +209,8 @@ function InviteUserDialog({
               control={control}
               render={({ field }) => (
                 <SelectField
-                  label="個人グループに付与するロール"
-                  helperText="このユーザーの個人グループメンバーシップに割り当てるロール"
+                  label={t("adminUsersPage.personalRoleLabel")}
+                  helperText={t("adminUsersPage.personalRoleHelperText")}
                   options={personalRoleOptions}
                   selectedId={field.value}
                   onChange={(o) => field.onChange(o.id)}
@@ -209,17 +219,16 @@ function InviteUserDialog({
               )}
             />
             <p className="text-muted-foreground text-xs">
-              指定された Resonite ユーザー宛の登録リンクを発行します。
-              リンクを開いたユーザーが ID とパスワードを設定して登録します。
+              {t("adminUsersPage.inviteHint")}
             </p>
             <DialogFooter>
               <Button type="submit" form="invite-form" disabled={isPending}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                招待リンク発行
+                {t("adminUsersPage.issueInviteLink")}
               </Button>
               <DialogClose asChild>
                 <Button variant="outline" type="button">
-                  キャンセル
+                  {t("common.cancel")}
                 </Button>
               </DialogClose>
             </DialogFooter>
@@ -241,17 +250,20 @@ function DeleteUserDialog({
   onClose: () => void;
   onDeleted: () => void;
 }) {
+  const { t } = useTranslation();
   const { mutateAsync, isPending } = useMutation(deleteUser);
 
   const handleConfirm = async () => {
     if (!user) return;
     try {
       await mutateAsync({ userId: user.id });
-      toast.success("ユーザーを削除しました");
+      toast.success(t("adminUsersPage.deleteUserSuccess"));
       onDeleted();
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "削除に失敗しました");
+      toast.error(
+        e instanceof Error ? e.message : t("adminUsersPage.deleteError"),
+      );
     }
   };
 
@@ -264,15 +276,20 @@ function DeleteUserDialog({
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>ユーザーを削除しますか?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {t("adminUsersPage.deleteUserTitle")}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            ユーザー <span className="font-mono">{user?.id}</span> (Resonite ID:{" "}
+            {t("adminUsersPage.deleteUserPrefix")}{" "}
+            <span className="font-mono">{user?.id}</span> (Resonite ID:{" "}
             <span className="font-mono">{user?.resoniteId}</span>)
-            を削除します。この操作は取り消せません。
+            {t("adminUsersPage.deleteUserSuffix")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>キャンセル</AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending}>
+            {t("common.cancel")}
+          </AlertDialogCancel>
           <AlertDialogAction
             disabled={isPending}
             onClick={(e) => {
@@ -282,7 +299,7 @@ function DeleteUserDialog({
             className="bg-destructive text-white hover:bg-destructive/90"
           >
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            削除
+            {t("common.delete")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -291,6 +308,7 @@ function DeleteUserDialog({
 }
 
 export default function AdminUsersPage() {
+  const { t } = useTranslation();
   const { hasSystemPermission, isPending: isPermPending } = usePermissions();
   const session = useAtomValue(sessionAtom);
   const canCreate = hasSystemPermission(PERMISSION_KEYS.SYSTEM_USER_CREATE);
@@ -315,7 +333,7 @@ export default function AdminUsersPage() {
   const columns: ColumnDef<User>[] = [
     {
       id: "icon",
-      header: "アイコン",
+      header: t("adminUsersPage.iconColumn"),
       cell: ({ row }) => (
         <ResoniteUserIcon
           iconUrl={row.original.iconUrl}
@@ -327,7 +345,7 @@ export default function AdminUsersPage() {
     },
     {
       accessorKey: "id",
-      header: "ユーザーID",
+      header: t("adminUsersPage.userIdColumn"),
       cell: ({ cell }) => (
         <span className="font-mono text-xs">{cell.getValue<string>()}</span>
       ),
@@ -341,7 +359,7 @@ export default function AdminUsersPage() {
     },
     {
       accessorKey: "createdAt",
-      header: "作成日時",
+      header: t("adminUsersPage.createdAtColumn"),
       cell: ({ row }) => (
         <span className="text-xs">
           {formatTimestamp(row.original.createdAt)}
@@ -350,16 +368,16 @@ export default function AdminUsersPage() {
     },
     {
       id: "actions",
-      header: "操作",
+      header: t("common.actions"),
       cell: ({ row }) => {
         const isSelf = row.original.id === currentUserId;
         const isSystem = row.original.id === "system";
         const disabledReason = isSelf
-          ? "自分自身は削除できません"
+          ? t("adminUsersPage.cannotDeleteSelf")
           : isSystem
-            ? "system ユーザーは削除できません"
+            ? t("adminUsersPage.cannotDeleteSystem")
             : !canDelete
-              ? "削除権限がありません"
+              ? t("adminUsersPage.noDeletePermission")
               : undefined;
         return (
           <PermissionGuardedButton
@@ -369,7 +387,7 @@ export default function AdminUsersPage() {
             size="sm"
             onClick={() => setDeleteTarget(row.original)}
           >
-            削除
+            {t("common.delete")}
           </PermissionGuardedButton>
         );
       },
@@ -381,7 +399,9 @@ export default function AdminUsersPage() {
   if (!canAccess) {
     return (
       <div className="container mx-auto p-4">
-        <p className="text-destructive text-sm">権限がありません</p>
+        <p className="text-destructive text-sm">
+          {t("adminUsersPage.noPermission")}
+        </p>
       </div>
     );
   }
@@ -389,16 +409,16 @@ export default function AdminUsersPage() {
   return (
     <div className="container mx-auto p-4 space-y-4">
       <p className="text-muted-foreground text-sm">
-        システム上の全ユーザーを表示しています。
+        {t("adminUsersPage.description")}
       </p>
       <div className="flex justify-end gap-2">
         <RefetchButton refetch={refetch} />
         <PermissionGuardedButton
           allowed={canCreate}
-          disabledReason="ユーザー作成権限がありません"
+          disabledReason={t("adminUsersPage.noCreatePermission")}
           onClick={() => setInviteOpen(true)}
         >
-          ユーザーを招待
+          {t("adminUsersPage.inviteUser")}
         </PermissionGuardedButton>
       </div>
       <DataTable

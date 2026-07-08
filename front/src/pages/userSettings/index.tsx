@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import type { TFunction } from "i18next";
 import { useMutation } from "@connectrpc/connect-query";
 import { changePassword } from "../../../pbgen/hdlctrl/v1/user-UserService_connectquery";
 import {
@@ -17,21 +19,29 @@ import {
 import { TextField } from "@/components/base";
 import { Loader2, CheckCircle } from "lucide-react";
 
-const passwordSchema = z
-  .object({
-    currentPassword: z.string().min(1, "現在のパスワードを入力してください"),
-    newPassword: z.string().min(8, "パスワードは8文字以上である必要があります"),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "パスワードが一致しません",
-    path: ["confirmPassword"],
-  });
+const makePasswordSchema = (t: TFunction) =>
+  z
+    .object({
+      currentPassword: z
+        .string()
+        .min(1, t("userSettingsPage.currentPasswordRequired")),
+      newPassword: z
+        .string()
+        .min(8, t("userSettingsPage.newPasswordMinLength")),
+      confirmPassword: z.string(),
+    })
+    .refine((data) => data.newPassword === data.confirmPassword, {
+      message: t("userSettingsPage.passwordMismatch"),
+      path: ["confirmPassword"],
+    });
 
-type PasswordFormData = z.infer<typeof passwordSchema>;
+type PasswordFormData = z.infer<ReturnType<typeof makePasswordSchema>>;
 
 export default function UserSettings() {
+  const { t } = useTranslation();
   const [success, setSuccess] = useState(false);
+
+  const passwordSchema = useMemo(() => makePasswordSchema(t), [t]);
 
   const {
     register,
@@ -63,29 +73,29 @@ export default function UserSettings() {
     <div className="container max-w-2xl mx-auto py-6">
       <Card>
         <CardHeader>
-          <CardTitle>パスワード変更</CardTitle>
+          <CardTitle>{t("userSettingsPage.changePassword")}</CardTitle>
           <CardDescription>
-            新しいパスワードを入力してください。
+            {t("userSettingsPage.changePasswordDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <TextField
-              label="現在のパスワード"
+              label={t("userSettingsPage.currentPasswordLabel")}
               type="password"
               {...register("currentPassword")}
               disabled={isPending}
               error={errors.currentPassword?.message}
             />
             <TextField
-              label="新しいパスワード"
+              label={t("userSettingsPage.newPasswordLabel")}
               type="password"
               {...register("newPassword")}
               disabled={isPending}
               error={errors.newPassword?.message}
             />
             <TextField
-              label="新しいパスワード（確認）"
+              label={t("userSettingsPage.confirmPasswordLabel")}
               type="password"
               {...register("confirmPassword")}
               disabled={isPending}
@@ -101,7 +111,9 @@ export default function UserSettings() {
             {success && (
               <Alert>
                 <CheckCircle className="h-4 w-4" />
-                <AlertDescription>パスワードを変更しました。</AlertDescription>
+                <AlertDescription>
+                  {t("userSettingsPage.passwordChanged")}
+                </AlertDescription>
               </Alert>
             )}
 
@@ -109,10 +121,10 @@ export default function UserSettings() {
               {isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  変更中...
+                  {t("userSettingsPage.changing")}
                 </>
               ) : (
-                "パスワードを変更"
+                t("userSettingsPage.changePasswordButton")
               )}
             </Button>
           </form>

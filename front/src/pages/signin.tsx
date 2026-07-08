@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { useAtom } from "jotai";
 import { sessionAtom } from "../atoms/sessionAtom";
 import { useAuth } from "../hooks/useAuth";
@@ -23,6 +24,7 @@ interface SignInForm {
 }
 
 export default function SignIn() {
+  const { t } = useTranslation();
   const [session] = useAtom(sessionAtom);
   const navigate = useNavigate();
   const { signIn } = useAuth("/");
@@ -60,21 +62,23 @@ export default function SignIn() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            サインイン
+            {t("signinPage.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <TextField
-              label="ID"
-              {...register("email", { required: "IDは必須です" })}
+              label={t("signinPage.idLabel")}
+              {...register("email", { required: t("signinPage.idRequired") })}
               disabled={isLoading}
               error={errors.email?.message}
             />
             <TextField
-              label="パスワード"
+              label={t("signinPage.passwordLabel")}
               type="password"
-              {...register("password", { required: "パスワードは必須です" })}
+              {...register("password", {
+                required: t("signinPage.passwordRequired"),
+              })}
               disabled={isLoading}
               error={errors.password?.message}
             />
@@ -87,10 +91,10 @@ export default function SignIn() {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  サインイン中...
+                  {t("signinPage.signingIn")}
                 </>
               ) : (
-                "サインイン"
+                t("signinPage.signIn")
               )}
             </Button>
           </form>

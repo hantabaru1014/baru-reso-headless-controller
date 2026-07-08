@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Pagination,
@@ -82,6 +83,7 @@ export function DataTablePaginationBar({
   onPageIndexChange,
   onPageSizeChange,
 }: DataTablePaginationBarProps) {
+  const { t } = useTranslation();
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const currentPage = pageIndex + 1; // 1-based for display
   const pageItems = useMemo(
@@ -91,7 +93,9 @@ export function DataTablePaginationBar({
 
   if (totalCount === 0) {
     return (
-      <div className="flex justify-end text-sm text-muted-foreground">0 件</div>
+      <div className="flex justify-end text-sm text-muted-foreground">
+        {t("dataTablePaginationBar.count", { total: 0 })}
+      </div>
     );
   }
 
@@ -122,7 +126,11 @@ export function DataTablePaginationBar({
   return (
     <div className="flex flex-wrap items-center justify-end gap-4">
       <div className="text-sm text-muted-foreground">
-        全 {totalCount} 件中 {rangeStart}-{rangeEnd} 件目
+        {t("dataTablePaginationBar.range", {
+          total: totalCount,
+          start: rangeStart,
+          end: rangeEnd,
+        })}
       </div>
 
       <Pagination className="mx-0 w-auto justify-end">
@@ -132,7 +140,7 @@ export function DataTablePaginationBar({
               href="#"
               size="default"
               onClick={handlePrev}
-              aria-label="前へ"
+              aria-label={t("dataTablePaginationBar.previous")}
               aria-disabled={isPrevDisabled}
               tabIndex={isPrevDisabled ? -1 : undefined}
               className={cn(
@@ -143,7 +151,7 @@ export function DataTablePaginationBar({
               )}
             >
               <ChevronLeft className="h-4 w-4" />
-              <span>前へ</span>
+              <span>{t("dataTablePaginationBar.previous")}</span>
             </PaginationLink>
           </PaginationItem>
           {pageItems.map((item) =>
@@ -169,7 +177,7 @@ export function DataTablePaginationBar({
               href="#"
               size="default"
               onClick={handleNext}
-              aria-label="次へ"
+              aria-label={t("dataTablePaginationBar.next")}
               aria-disabled={isNextDisabled}
               tabIndex={isNextDisabled ? -1 : undefined}
               className={cn(
@@ -179,7 +187,7 @@ export function DataTablePaginationBar({
                   : "cursor-pointer",
               )}
             >
-              <span>次へ</span>
+              <span>{t("dataTablePaginationBar.next")}</span>
               <ChevronRight className="h-4 w-4" />
             </PaginationLink>
           </PaginationItem>
@@ -187,7 +195,9 @@ export function DataTablePaginationBar({
       </Pagination>
 
       <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">表示件数:</span>
+        <span className="text-sm text-muted-foreground">
+          {t("dataTablePaginationBar.rowsPerPage")}
+        </span>
         <Select
           value={String(pageSize)}
           onValueChange={(value) => onPageSizeChange(Number(value))}

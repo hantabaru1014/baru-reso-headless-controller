@@ -42,6 +42,7 @@ import { toast } from "sonner";
 import { RefetchButton, SplitButton, TextField } from "./base";
 import { MoreHorizontalIcon } from "lucide-react";
 import { PastInstancesDialog } from "./PastInstancesDialog";
+import { useTranslation } from "react-i18next";
 
 type AllowedAccessEntryType = {
   host: string;
@@ -58,6 +59,7 @@ function AllowedUrlHostsDialog({
   hosts: AllowedAccessEntryType[];
   onClose?: () => void;
 }) {
+  const { t } = useTranslation();
   const { mutateAsync: allow, isPending: isPendingAllow } =
     useMutation(allowHostAccess);
   const { mutateAsync: deny, isPending: isPendingDeny } =
@@ -160,7 +162,7 @@ function AllowedUrlHostsDialog({
                     toast.error(
                       e instanceof Error
                         ? e.message
-                        : "ホストの追加に失敗しました",
+                        : t("hostDetailPanel.hostAddFailed"),
                     );
                   }
                 }}
@@ -199,7 +201,7 @@ function AllowedUrlHostsDialog({
                         toast.error(
                           e instanceof Error
                             ? e.message
-                            : "ホストの削除に失敗しました",
+                            : t("hostDetailPanel.hostRemoveFailed"),
                         );
                       } finally {
                         setActionHost(null);
@@ -221,7 +223,7 @@ function AllowedUrlHostsDialog({
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="outline" onClick={() => onClose?.()}>
-              閉じる
+              {t("common.close")}
             </Button>
           </DialogClose>
         </DialogFooter>
@@ -231,6 +233,7 @@ function AllowedUrlHostsDialog({
 }
 
 function BanManagementDialog({ hostId }: { hostId: string }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const { data, isPending, refetch } = useQuery(
     listBans,
@@ -252,10 +255,12 @@ function BanManagementDialog({ hostId }: { hostId: string }) {
             : { case: "userName", value: userName },
         },
       });
-      toast.success("Banを解除しました");
+      toast.success(t("hostDetailPanel.banRemoved"));
       refetch();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Ban解除に失敗しました");
+      toast.error(
+        e instanceof Error ? e.message : t("hostDetailPanel.unbanFailed"),
+      );
     } finally {
       setActionUserId(null);
     }
@@ -264,11 +269,11 @@ function BanManagementDialog({ hostId }: { hostId: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">Ban管理</Button>
+        <Button variant="outline">{t("hostDetailPanel.banManagement")}</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Ban管理</DialogTitle>
+          <DialogTitle>{t("hostDetailPanel.banManagement")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-2">
           <div className="flex justify-end">
@@ -277,11 +282,11 @@ function BanManagementDialog({ hostId }: { hostId: string }) {
           <ScrollBase height="60vh">
             {isPending ? (
               <p className="text-center text-sm text-muted-foreground py-4">
-                読み込み中...
+                {t("common.loading")}
               </p>
             ) : (data?.bans?.length ?? 0) === 0 ? (
               <p className="text-center text-sm text-muted-foreground py-4">
-                Banされているユーザーはいません
+                {t("hostDetailPanel.noBannedUsers")}
               </p>
             ) : (
               <div className="space-y-2">
@@ -292,10 +297,10 @@ function BanManagementDialog({ hostId }: { hostId: string }) {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">
-                        {b.userName || "(不明)"}
+                        {b.userName || t("hostDetailPanel.unknownParen")}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {b.userId || "(ID不明 / name only ban)"}
+                        {b.userId || t("hostDetailPanel.idUnknownNameOnly")}
                       </p>
                       {b.machineIds.length > 0 && (
                         <p className="text-xs text-muted-foreground truncate">
@@ -312,7 +317,7 @@ function BanManagementDialog({ hostId }: { hostId: string }) {
                         actionUserId === (b.userId || b.userName)
                       }
                     >
-                      解除
+                      {t("hostDetailPanel.unban")}
                     </Button>
                   </div>
                 ))}
@@ -322,7 +327,7 @@ function BanManagementDialog({ hostId }: { hostId: string }) {
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">閉じる</Button>
+            <Button variant="outline">{t("common.close")}</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -339,6 +344,7 @@ function AutoSpawnItemsDialog({
   items: string[];
   onClose?: () => void;
 }) {
+  const { t } = useTranslation();
   const { mutateAsync: updateHost, isPending: isPendingUpdate } = useMutation(
     updateHeadlessHostSettings,
   );
@@ -379,7 +385,7 @@ function AutoSpawnItemsDialog({
                     toast.error(
                       e instanceof Error
                         ? e.message
-                        : "アイテムの追加に失敗しました",
+                        : t("hostDetailPanel.itemAddFailed"),
                     );
                   }
                 }}
@@ -412,7 +418,7 @@ function AutoSpawnItemsDialog({
                         toast.error(
                           e instanceof Error
                             ? e.message
-                            : "アイテムの削除に失敗しました",
+                            : t("hostDetailPanel.itemRemoveFailed"),
                         );
                       } finally {
                         setActionItem(null);
@@ -429,7 +435,7 @@ function AutoSpawnItemsDialog({
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">閉じる</Button>
+            <Button variant="outline">{t("common.close")}</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -438,6 +444,7 @@ function AutoSpawnItemsDialog({
 }
 
 export default function HostDetailPanel({ hostId }: { hostId: string }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { data, isPending, refetch } = useQuery(getHeadlessHost, { hostId });
 
@@ -464,10 +471,10 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
       });
       // 非同期 job として実行されるので「受け付けた」だけ通知し、完了は
       // notificationDispatch 経由の JobCompletedEvent toast に任せる.
-      toast.success("ホストの再起動を開始しました");
+      toast.success(t("hostDetailPanel.restartStarted"));
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "ホストの再起動に失敗しました",
+        e instanceof Error ? e.message : t("hostDetailPanel.restartFailed"),
       );
     }
   };
@@ -475,10 +482,10 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
   const handleShutdown = async () => {
     try {
       await shutdownHost({ hostId });
-      toast.success("ホストのシャットダウンを開始しました");
+      toast.success(t("hostDetailPanel.shutdownStarted"));
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "ホストのシャットダウンに失敗しました",
+        e instanceof Error ? e.message : t("hostDetailPanel.shutdownFailed"),
       );
     }
   };
@@ -489,10 +496,10 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
       setTimeout(() => {
         refetch();
       }, 1000);
-      toast.success("ホストを強制終了しました");
+      toast.success(t("hostDetailPanel.killed"));
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "ホストの強制終了に失敗しました",
+        e instanceof Error ? e.message : t("hostDetailPanel.killFailed"),
       );
     }
   };
@@ -514,11 +521,11 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
   const handleDelete = async () => {
     try {
       await deleteHost({ hostId });
-      toast.success("ホストを削除しました");
+      toast.success(t("hostDetailPanel.deleted"));
       navigate("/hosts");
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "ホストの削除に失敗しました",
+        e instanceof Error ? e.message : t("hostDetailPanel.deleteFailed"),
       );
     }
   };
@@ -535,10 +542,10 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
           />
           <div className="flex items-center gap-2 justify-end flex-col md:flex-row">
             <span className="text-sm">
-              ステータス:{" "}
+              {t("common.status")}:{" "}
               {data?.host?.status
                 ? hostStatusToLabel(data?.host?.status)
-                : "不明"}
+                : t("common.unknown")}
             </span>
             <RefetchButton refetch={refetch} />
             <SplitButton
@@ -556,7 +563,7 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
                     onClick={handleRestart}
                     disabled={isPending || isPendingRestart}
                   >
-                    再起動
+                    {t("common.restart")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleKill}
@@ -568,12 +575,12 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
                       data?.host?.status === HeadlessHostStatus.EXITED
                     }
                   >
-                    強制停止
+                    {t("hostDetailPanel.forceStop")}
                   </DropdownMenuItem>
                 </>
               }
             >
-              シャットダウン
+              {t("hostDetailPanel.shutdown")}
             </SplitButton>
             {data?.host?.status !== HeadlessHostStatus.RUNNING && (
               <Button
@@ -582,7 +589,7 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
                 disabled={isPendingDelete}
                 className="w-full md:w-auto"
               >
-                削除
+                {t("common.delete")}
               </Button>
             )}
             <DropdownMenu>
@@ -595,7 +602,7 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
                 <DropdownMenuItem
                   onClick={() => setIsInstancesDialogOpen(true)}
                 >
-                  過去のインスタンス一覧
+                  {t("hostDetailPanel.pastInstances")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -606,16 +613,16 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
             />
           </div>
           <ReadOnlyField
-            label="アカウント"
+            label={t("hostDetailPanel.account")}
             value={`${data?.host?.accountName} (${data?.host?.accountId})`}
             isLoading={isPending}
           />
           <ReadOnlyField
-            label="バージョン"
+            label={t("hostDetailPanel.version")}
             value={
               data?.host?.resoniteVersion
                 ? `${data?.host?.resoniteVersion} (v${data?.host?.appVersion})`
-                : "不明"
+                : t("common.unknown")
             }
             isLoading={isPending}
           />
@@ -627,27 +634,27 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
             isLoading={isPending}
           />
           <ReadOnlyField
-            label="所属グループ"
+            label={t("hostDetailPanel.belongingGroup")}
             value={data?.host?.groupId}
             isLoading={isPending}
           />
           <ReadOnlyField
-            label="作成者"
-            value={data?.host?.createdBy ?? "不明"}
+            label={t("hostDetailPanel.createdBy")}
+            value={data?.host?.createdBy ?? t("common.unknown")}
             isLoading={isPending}
           />
           <EditableSelectField
-            label="自動アップグレード"
-            helperText="新しいバージョンがリリースされたら、セッション参加者が 0 人になった瞬間に自動で最新バージョンへ再起動します"
+            label={t("hostDetailPanel.autoUpgrade")}
+            helperText={t("hostDetailPanel.autoUpgradeHelper")}
             options={[
               {
                 id: "users-empty",
-                label: "有効 (ユーザが 0 人のとき)",
+                label: t("hostDetailPanel.autoUpgradeEnabled"),
                 value: HeadlessHostAutoUpdatePolicy.USERS_EMPTY,
               },
               {
                 id: "never",
-                label: "無効",
+                label: t("common.disabled"),
                 value: HeadlessHostAutoUpdatePolicy.NEVER,
               },
             ]}

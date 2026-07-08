@@ -31,7 +31,7 @@ import { ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router";
 import { hostStatusToLabel } from "../libs/hostUtils";
 import { RefetchButton } from "./base/RefetchButton";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,17 +48,20 @@ import { GroupSelectField } from "./GroupSelectField";
 import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
 import { usePermissions } from "../hooks/usePermissions";
 import { PERMISSION_KEYS } from "../libs/permissionUtils";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
-const newHostFormSchema = z.object({
-  name: z.string().min(1, "ホスト名は必須です"),
-  universeId: z.string().optional(),
-  usernameOverride: z.string().optional(),
-  tag: z.string().min(1, "バージョンは必須です"),
-  accountId: z.string().min(1, "ホストユーザは必須です"),
-  groupId: z.string().min(1, "所属グループは必須です"),
-  autoUpdate: z.boolean(),
-});
-type NewHostFormData = z.infer<typeof newHostFormSchema>;
+const makeNewHostFormSchema = (t: TFunction) =>
+  z.object({
+    name: z.string().min(1, t("hostList.nameRequired")),
+    universeId: z.string().optional(),
+    usernameOverride: z.string().optional(),
+    tag: z.string().min(1, t("hostList.versionRequired")),
+    accountId: z.string().min(1, t("hostList.hostUserRequired")),
+    groupId: z.string().min(1, t("hostList.groupRequired")),
+    autoUpdate: z.boolean(),
+  });
+type NewHostFormData = z.infer<ReturnType<typeof makeNewHostFormSchema>>;
 
 function NewHostDialog({
   open,
@@ -67,6 +70,7 @@ function NewHostDialog({
   open: boolean;
   onClose?: () => void;
 }) {
+  const { t } = useTranslation();
   const { data: accounts } = useQuery(listHeadlessAccounts);
   const { data: resoVersions } = useQuery(listResoniteVersions, {});
   const { mutateAsync: mutateStartHost, isPending } =
@@ -74,6 +78,7 @@ function NewHostDialog({
   const { mutateAsync: mutateBuildImage } = useMutation(buildResoniteImage);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const defaultGroupId = useDefaultGroupId(PERMISSION_KEYS.HOST_WRITE);
+  const schema = useMemo(() => makeNewHostFormSchema(t), [t]);
 
   const {
     control,
@@ -84,7 +89,7 @@ function NewHostDialog({
     getValues,
     formState: { errors },
   } = useForm<NewHostFormData>({
-    resolver: zodResolver(newHostFormSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       name: "",
       universeId: "",
@@ -131,16 +136,14 @@ function NewHostDialog({
           branch,
           thenStartHost: { ...startReq, imageTag: undefined },
         });
-        toast.success("イメージビルド + ホスト起動を受け付けました");
+        toast.success(t("hostList.buildAndStartAccepted"));
       } else {
         await mutateStartHost(startReq);
-        toast.success("ホストの起動を受け付けました");
+        toast.success(t("hostList.startAccepted"));
       }
       onClose?.();
     } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "ホストの開始に失敗しました",
-      );
+      toast.error(e instanceof Error ? e.message : t("hostList.startFailed"));
     }
   };
 
@@ -156,7 +159,7 @@ function NewHostDialog({
     >
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>ヘッドレスを開始</DialogTitle>
+          <DialogTitle>{t("hostList.startHeadless")}</DialogTitle>
         </DialogHeader>
         <form
           id="new-host-form"
@@ -168,7 +171,7 @@ function NewHostDialog({
             control={control}
             render={({ field }) => (
               <TextField
-                label="ホスト名"
+                label={t("hostList.hostName")}
                 {...field}
                 error={errors.name?.message}
               />
@@ -204,7 +207,7 @@ function NewHostDialog({
                     ? ` [#${v.manifestId.slice(0, 8)}]`
                     : "";
                 const label = `${v.gameVersion} (${v.branch})${disambig}${
-                  built ? "" : " [要ビルド]"
+                  built ? "" : ` ${t("hostList.needsBuild")}`
                 }`;
                 return {
                   id: built
@@ -217,10 +220,10 @@ function NewHostDialog({
                 };
               });
               const options = [
-                { id: "latestRelease", label: "最新リリース (自動選択)" },
+                { id: "latestRelease", label: t("hostList.latestRelease") },
                 {
                   id: "latestPreRelease",
-                  label: "最新プレリリース (自動選択)",
+                  label: t("hostList.latestPreRelease"),
                 },
                 ...dynamicVersionOptions.map((o) => ({
                   id: o.id,
@@ -229,12 +232,12 @@ function NewHostDialog({
               ];
               return (
                 <SelectField
-                  label="バージョン"
+                  label={t("hostList.version")}
                   options={options}
                   selectedId={field.value}
                   onChange={(option) => field.onChange(option.id)}
                   error={errors.tag?.message}
-                  helperText="未 built のバージョンを選ぶと、ホスト起動前に自動でビルドが走ります"
+                  helperText={t("hostList.versionHelper")}
                 />
               );
             }}
@@ -247,7 +250,7 @@ function NewHostDialog({
                 value={field.value}
                 onChange={field.onChange}
                 requiredPermission={PERMISSION_KEYS.HOST_WRITE}
-                helperText="ホストを所属させるグループ。アカウントは同じグループのものから選びます"
+                helperText={t("hostList.groupHelper")}
                 error={errors.groupId?.message}
               />
             )}
@@ -257,8 +260,8 @@ function NewHostDialog({
             control={control}
             render={({ field }) => (
               <SelectField
-                label="ホストユーザ"
-                helperText="選択中のグループに所属するアカウントのみ表示されます"
+                label={t("hostList.hostUser")}
+                helperText={t("hostList.hostUserHelper")}
                 options={
                   accounts?.accounts
                     .filter(
@@ -271,7 +274,9 @@ function NewHostDialog({
                         <span className="flex items-center gap-2">
                           <ResoniteUserIcon
                             iconUrl={account.iconUrl}
-                            alt={`${account.userName}のアイコン`}
+                            alt={t("hostList.userIconAlt", {
+                              name: account.userName,
+                            })}
                           />
                           <span className="text-sm font-medium">
                             {account.userName}
@@ -291,8 +296,8 @@ function NewHostDialog({
             control={control}
             render={({ field }) => (
               <CheckboxField
-                label="自動アップグレード"
-                helperText="新しいバージョンがリリースされたら、セッション参加者が 0 人になった瞬間に自動で最新バージョンへ再起動します"
+                label={t("hostList.autoUpdate")}
+                helperText={t("hostList.autoUpdateHelper")}
                 checked={field.value}
                 onCheckedChange={(checked) => field.onChange(checked === true)}
               />
@@ -300,7 +305,9 @@ function NewHostDialog({
           />
           <Collapsible open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
             <CollapsibleTrigger className="flex w-full items-center justify-between py-2">
-              <span className="text-sm font-medium">詳細設定(任意)</span>
+              <span className="text-sm font-medium">
+                {t("hostList.advancedSettings")}
+              </span>
               <ChevronDown className="h-4 w-4" />
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-2">
@@ -331,10 +338,10 @@ function NewHostDialog({
         </form>
         <DialogFooter>
           <Button type="submit" form="new-host-form" disabled={isPending}>
-            開始
+            {t("common.start")}
           </Button>
           <DialogClose asChild>
-            <Button variant="outline">キャンセル</Button>
+            <Button variant="outline">{t("common.cancel")}</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -342,42 +349,8 @@ function NewHostDialog({
   );
 }
 
-const columns: ColumnDef<HeadlessHost>[] = [
-  {
-    accessorKey: "id",
-    header: "ID",
-    cell: ({ cell }) => cell.getValue<string>().slice(0, 16),
-  },
-  {
-    accessorKey: "name",
-    header: "名前",
-  },
-  {
-    accessorKey: "accountName",
-    header: "アカウント名",
-  },
-  {
-    accessorKey: "status",
-    header: "ステータス",
-    cell: ({ row }) => hostStatusToLabel(row.original.status),
-  },
-  {
-    accessorKey: "resoniteVersion",
-    header: "バージョン",
-    cell: ({ row }) =>
-      row.original.resoniteVersion
-        ? `${row.original.resoniteVersion} (v${row.original.appVersion})`
-        : "不明",
-  },
-  {
-    accessorKey: "fps",
-    header: "fps",
-    cell: ({ row }) =>
-      row.original.fps ? Math.floor(row.original.fps * 10) / 10 : "N/A",
-  },
-];
-
 export default function HostList() {
+  const { t } = useTranslation();
   const { pageIndex, pageSize, setPageIndex, setPageSize } = usePaginationState(
     { defaultPageSize: 20 },
   );
@@ -396,16 +369,54 @@ export default function HostList() {
   const canStartHost =
     groupsWithPermission(PERMISSION_KEYS.HOST_WRITE).length > 0;
 
+  const columns: ColumnDef<HeadlessHost>[] = useMemo(
+    () => [
+      {
+        accessorKey: "id",
+        header: "ID",
+        cell: ({ cell }) => cell.getValue<string>().slice(0, 16),
+      },
+      {
+        accessorKey: "name",
+        header: t("common.name"),
+      },
+      {
+        accessorKey: "accountName",
+        header: t("hostList.accountName"),
+      },
+      {
+        accessorKey: "status",
+        header: t("common.status"),
+        cell: ({ row }) => hostStatusToLabel(row.original.status),
+      },
+      {
+        accessorKey: "resoniteVersion",
+        header: t("hostList.version"),
+        cell: ({ row }) =>
+          row.original.resoniteVersion
+            ? `${row.original.resoniteVersion} (v${row.original.appVersion})`
+            : t("common.unknown"),
+      },
+      {
+        accessorKey: "fps",
+        header: "fps",
+        cell: ({ row }) =>
+          row.original.fps ? Math.floor(row.original.fps * 10) / 10 : "N/A",
+      },
+    ],
+    [t],
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end gap-2">
         <RefetchButton refetch={refetch} />
         <PermissionGuardedButton
           allowed={canStartHost}
-          disabledReason="ホストを起動できる権限を持つグループがありません"
+          disabledReason={t("hostList.noStartPermission")}
           onClick={() => setIsNewHostDialogOpen(true)}
         >
-          ヘッドレスを開始
+          {t("hostList.startHeadless")}
         </PermissionGuardedButton>
       </div>
       <DataTable

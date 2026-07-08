@@ -1,10 +1,12 @@
 import { Navigate } from "react-router";
+import { useTranslation } from "react-i18next";
 import RoleList from "../../components/RoleList";
 import { usePermissions } from "../../hooks/usePermissions";
 import { PERMISSION_KEYS } from "../../libs/permissionUtils";
 import { RoleScope } from "../../../pbgen/hdlctrl/v1/permission_pb";
 
 export default function AdminRolesPage() {
+  const { t } = useTranslation();
   const { hasSystemPermission, isPending } = usePermissions();
 
   if (isPending) return null;
@@ -15,8 +17,7 @@ export default function AdminRolesPage() {
   return (
     <div className="container mx-auto p-4 space-y-4">
       <p className="text-muted-foreground text-sm">
-        グローバルカスタムロール (全グループで割り当て可能なロール)
-        を管理します。
+        {t("adminRolesPage.description")}
       </p>
       <RoleList canManage scope={RoleScope.NORMAL} />
     </div>

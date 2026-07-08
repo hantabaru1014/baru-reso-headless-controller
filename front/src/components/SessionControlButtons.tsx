@@ -19,6 +19,7 @@ import {
 import { WorldBinaryFormat } from "../../pbgen/headless/v1/headless_pb";
 import { SplitButton } from "./base/SplitButton";
 import { create } from "@bufbuild/protobuf";
+import { useTranslation } from "react-i18next";
 
 export default function SessionControlButtons({
   sessionId,
@@ -34,6 +35,7 @@ export default function SessionControlButtons({
   additionalButtons?: React.ReactNode;
 }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { mutateAsync: mutateSave, isPending: isPendingSave } =
     useMutation(saveSessionWorld);
   const { mutateAsync: mutateStop, isPending: isPendingStop } =
@@ -52,9 +54,9 @@ export default function SessionControlButtons({
         saveMode,
       });
 
-      toast.success("ワールドを保存しました");
+      toast.success(t("sessionControlButtons.worldSaved"));
     } catch (e) {
-      toast.error(`セッションの保存に失敗しました: ${e}`);
+      toast.error(t("sessionControlButtons.worldSaveFailed", { error: e }));
     }
   };
 
@@ -65,10 +67,10 @@ export default function SessionControlButtons({
       });
       // 非同期 job として実行されるので「受け付けた」だけ通知し、
       // 完了は notificationDispatch 経由の JobCompletedEvent toast で出す.
-      toast.success("セッションの停止を受け付けました");
+      toast.success(t("sessionControlButtons.stopAccepted"));
       navigate("/sessions");
     } catch (e) {
-      toast.error(`セッションの停止に失敗しました: ${e}`);
+      toast.error(t("sessionControlButtons.stopFailed", { error: e }));
     }
   };
 
@@ -91,9 +93,11 @@ export default function SessionControlButtons({
         },
       });
       await mutateScheduleStopWhenEmpty({ operation, trigger });
-      toast.success("ユーザーが0人になったら停止する予約を作成しました");
+      toast.success(t("sessionControlButtons.scheduleStopWhenEmptyCreated"));
     } catch (e) {
-      toast.error(`予約の作成に失敗しました: ${e}`);
+      toast.error(
+        t("sessionControlButtons.scheduleCreateFailed", { error: e }),
+      );
     }
   };
 
@@ -106,9 +110,11 @@ export default function SessionControlButtons({
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      toast.success("ワールドのダウンロードを開始しました");
+      toast.success(t("sessionControlButtons.downloadStarted"));
     } catch (e) {
-      toast.error(`ワールドのダウンロード準備に失敗しました: ${e}`);
+      toast.error(
+        t("sessionControlButtons.downloadPrepareFailed", { error: e }),
+      );
     }
   };
 
@@ -127,13 +133,13 @@ export default function SessionControlButtons({
               }
               disabled={isPendingSave || !canSaveAs}
             >
-              名前を付けて保存
+              {t("sessionControlButtons.saveAs")}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleSave(SaveSessionWorldRequest_SaveMode.COPY)}
               disabled={isPendingSave || !canSaveAs}
             >
-              コピーして保存
+              {t("sessionControlButtons.saveCopy")}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -142,7 +148,7 @@ export default function SessionControlButtons({
               }
               disabled={isPendingDownload || !canSaveOverride}
             >
-              ダウンロード (7zbson)
+              {t("sessionControlButtons.download", { format: "7zbson" })}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>
@@ -150,7 +156,7 @@ export default function SessionControlButtons({
               }
               disabled={isPendingDownload || !canSaveOverride}
             >
-              ダウンロード (brson)
+              {t("sessionControlButtons.download", { format: "brson" })}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>
@@ -160,12 +166,14 @@ export default function SessionControlButtons({
               }
               disabled={isPendingDownload || !canSaveOverride}
             >
-              ダウンロード (resonitepackage)
+              {t("sessionControlButtons.download", {
+                format: "resonitepackage",
+              })}
             </DropdownMenuItem>
           </>
         }
       >
-        ワールド保存
+        {t("sessionControlButtons.saveWorld")}
       </SplitButton>
       <SplitButton
         variant="destructive"
@@ -177,17 +185,17 @@ export default function SessionControlButtons({
               onClick={handleScheduleStopWhenEmpty}
               disabled={isPendingScheduleStop}
             >
-              ユーザー0人でセッションを停止
+              {t("sessionControlButtons.stopWhenEmpty")}
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link to={`/sessions/scheduled/new?sessionId=${sessionId}`}>
-                その他の予約を作成...
+                {t("sessionControlButtons.createOtherSchedule")}
               </Link>
             </DropdownMenuItem>
           </>
         }
       >
-        停止
+        {t("sessionControlButtons.stop")}
       </SplitButton>
       {additionalButtons}
     </div>

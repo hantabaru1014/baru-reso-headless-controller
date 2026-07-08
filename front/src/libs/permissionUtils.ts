@@ -1,4 +1,5 @@
 import { GroupType, RoleScope } from "../../pbgen/hdlctrl/v1/permission_pb";
+import i18n from "@/libs/i18n";
 
 /**
  * 既知のパーミッションキー一覧.
@@ -30,24 +31,24 @@ export type PermissionKey =
 export function groupTypeToLabel(type: GroupType): string {
   switch (type) {
     case GroupType.PERSONAL:
-      return "個人";
+      return i18n.t("permissionUtils.groupType.personal");
     case GroupType.NORMAL:
-      return "共有";
+      return i18n.t("permissionUtils.groupType.normal");
     case GroupType.SYSTEM:
-      return "システム";
+      return i18n.t("permissionUtils.groupType.system");
     default:
-      return "不明";
+      return i18n.t("common.unknown");
   }
 }
 
 export function roleScopeToLabel(scope: RoleScope): string {
   switch (scope) {
     case RoleScope.NORMAL:
-      return "通常";
+      return i18n.t("permissionUtils.roleScope.normal");
     case RoleScope.SYSTEM:
-      return "システム";
+      return i18n.t("permissionUtils.roleScope.system");
     default:
-      return "不明";
+      return i18n.t("common.unknown");
   }
 }
 
@@ -58,39 +59,39 @@ export function roleScopeToLabel(scope: RoleScope): string {
 export function permissionKeyToLabel(key: string): string {
   switch (key) {
     case PERMISSION_KEYS.HOST_READ:
-      return "ホスト閲覧";
+      return i18n.t("permissionUtils.permissionKey.hostRead");
     case PERMISSION_KEYS.HOST_WRITE:
-      return "ホスト管理";
+      return i18n.t("permissionUtils.permissionKey.hostWrite");
     case PERMISSION_KEYS.HOST_USE:
-      return "ホスト利用 (セッション開始)";
+      return i18n.t("permissionUtils.permissionKey.hostUse");
     case PERMISSION_KEYS.SESSION_READ:
-      return "セッション閲覧";
+      return i18n.t("permissionUtils.permissionKey.sessionRead");
     case PERMISSION_KEYS.SESSION_WRITE:
-      return "セッション管理";
+      return i18n.t("permissionUtils.permissionKey.sessionWrite");
     case PERMISSION_KEYS.ACCOUNT_READ:
-      return "アカウント閲覧";
+      return i18n.t("permissionUtils.permissionKey.accountRead");
     case PERMISSION_KEYS.ACCOUNT_WRITE:
-      return "アカウント管理";
+      return i18n.t("permissionUtils.permissionKey.accountWrite");
     case PERMISSION_KEYS.ACCOUNT_USE:
-      return "アカウント利用 (セッション開始)";
+      return i18n.t("permissionUtils.permissionKey.accountUse");
     case PERMISSION_KEYS.GROUP_MEMBERS_MANAGE:
-      return "グループメンバー管理";
+      return i18n.t("permissionUtils.permissionKey.groupMembersManage");
     case PERMISSION_KEYS.GROUP_EDIT:
-      return "グループ編集";
+      return i18n.t("permissionUtils.permissionKey.groupEdit");
     case PERMISSION_KEYS.SYSTEM_USER_CREATE:
-      return "ユーザー作成";
+      return i18n.t("permissionUtils.permissionKey.systemUserCreate");
     case PERMISSION_KEYS.SYSTEM_USER_DELETE:
-      return "ユーザー削除";
+      return i18n.t("permissionUtils.permissionKey.systemUserDelete");
     case PERMISSION_KEYS.SYSTEM_USER_LIST:
-      return "全ユーザー閲覧";
+      return i18n.t("permissionUtils.permissionKey.systemUserList");
     case PERMISSION_KEYS.SYSTEM_GROUP_LIST:
-      return "全グループ閲覧";
+      return i18n.t("permissionUtils.permissionKey.systemGroupList");
     case PERMISSION_KEYS.SYSTEM_GROUP_MANAGE:
-      return "全グループ管理";
+      return i18n.t("permissionUtils.permissionKey.systemGroupManage");
     case PERMISSION_KEYS.SYSTEM_ROLE_MANAGE:
-      return "グローバルロール管理";
+      return i18n.t("permissionUtils.permissionKey.systemRoleManage");
     case PERMISSION_KEYS.SYSTEM_MESSAGE_MANAGE:
-      return "お知らせ管理";
+      return i18n.t("permissionUtils.permissionKey.systemMessageManage");
     default:
       return key;
   }

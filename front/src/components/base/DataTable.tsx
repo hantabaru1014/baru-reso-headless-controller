@@ -7,6 +7,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Skeleton,
   Table,
@@ -185,6 +186,7 @@ export function DataTable<TData, TValue>({
   pagination,
   enableColumnResizing = true,
 }: DataTableProps<TData, TValue>) {
+  const { t } = useTranslation();
   const table = useReactTable({
     data,
     columns,
@@ -309,7 +311,7 @@ export function DataTable<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  {t("dataTable.noResults")}
                 </TableCell>
               </TableRow>
             )}

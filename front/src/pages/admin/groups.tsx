@@ -1,4 +1,5 @@
 import { Navigate } from "react-router";
+import { useTranslation } from "react-i18next";
 import GroupList from "../../components/GroupList";
 import { usePermissions } from "../../hooks/usePermissions";
 import { PERMISSION_KEYS } from "../../libs/permissionUtils";
@@ -9,6 +10,7 @@ import { PERMISSION_KEYS } from "../../libs/permissionUtils";
  * 通常の GroupList をそのまま再利用する.
  */
 export default function AdminGroupsPage() {
+  const { t } = useTranslation();
   const { hasSystemPermission, isPending } = usePermissions();
 
   if (isPending) return null;
@@ -19,7 +21,7 @@ export default function AdminGroupsPage() {
   return (
     <div className="container mx-auto p-4 space-y-4">
       <p className="text-muted-foreground text-sm">
-        システム上の全グループを表示しています。
+        {t("adminGroupsPage.description")}
       </p>
       <GroupList />
     </div>

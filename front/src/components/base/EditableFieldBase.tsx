@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Skeleton } from "../ui";
 import { Edit, Check, X } from "lucide-react";
 import { cn } from "@/libs/cssUtils";
@@ -38,6 +39,7 @@ export function EditableFieldBase({
   children,
   className,
 }: EditableFieldBaseProps) {
+  const { t } = useTranslation();
   return (
     <div className={className}>
       {label && (
@@ -64,7 +66,7 @@ export function EditableFieldBase({
                       size="icon"
                       variant="ghost"
                       onClick={onSave}
-                      title="保存"
+                      title={t("common.save")}
                       data-testid="editable-field-save-button"
                       disabled={isSaving}
                     >
@@ -74,7 +76,7 @@ export function EditableFieldBase({
                       size="icon"
                       variant="ghost"
                       onClick={onCancel}
-                      title="キャンセル"
+                      title={t("common.cancel")}
                       disabled={isSaving}
                     >
                       <X className="h-4 w-4" />
@@ -85,7 +87,7 @@ export function EditableFieldBase({
                     size="icon"
                     variant="ghost"
                     onClick={onEditStart}
-                    title="編集"
+                    title={t("common.edit")}
                     disabled={disabled}
                   >
                     <Edit className="h-4 w-4" />
