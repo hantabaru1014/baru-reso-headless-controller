@@ -44,6 +44,7 @@
     "sessionDetail": "Session Details",
     "scheduledOps": "Scheduled Ops",
     "scheduledOpNew": "New Scheduled Op",
+    "asyncJobs": "Job History",
     "hosts": "Hosts",
     "hostDetail": "Host Details",
     "headlessAccounts": "Headless Accounts",
@@ -564,6 +565,24 @@
     "title": "Scheduled Operations",
     "newSchedule": "New Schedule"
   },
+  "asyncJobList": {
+    "columnJob": "Job",
+    "columnTarget": "Target",
+    "columnCreatedBy": "Queued by",
+    "columnStatus": "Status",
+    "columnCreatedAt": "Queued at",
+    "columnExecutedAt": "Executed at",
+    "columnError": "Error",
+    "filterStatus": "Status",
+    "filterType": "Kind",
+    "filterAll": "All",
+    "includeAllUsers": "Show all users",
+    "showErrorDetail": "Click to show the full error",
+    "errorDialogTitle": "Error Details",
+    "copy": "Copy",
+    "copied": "Copied the error message",
+    "close": "Close"
+  },
   "pastInstancesDialog": {
     "viewLog": "View Log",
     "instanceLogTitle": "Instance #{{id}} Log",
@@ -631,6 +650,24 @@
       "succeeded": "Completed",
       "failed": "Failed",
       "canceled": "Canceled",
+      "unknown": "Unknown"
+    }
+  },
+  "asyncJobUtils": {
+    "jobType": {
+      "startHost": "Start Host",
+      "shutdownHost": "Stop Host",
+      "restartHost": "Restart Host",
+      "startSession": "Start Session",
+      "stopSession": "Stop Session",
+      "buildImage": "Build Image",
+      "unknown": "Unknown"
+    },
+    "status": {
+      "pending": "Pending",
+      "running": "Running",
+      "succeeded": "Completed",
+      "failed": "Failed",
       "unknown": "Unknown"
     }
   },

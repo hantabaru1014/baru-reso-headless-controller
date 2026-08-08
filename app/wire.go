@@ -261,6 +261,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		usecase.NewMessageUsecase,
 		usecase.NewResoniteVersionUsecase,
 		async_job.NewUsecase,
+		wire.Bind(new(async_job.PermissionChecker), new(*usecase.PermissionUsecase)),
 		wire.Bind(new(port.SessionStopper), new(*usecase.SessionUsecase)),
 
 		// controller

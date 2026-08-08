@@ -12,6 +12,18 @@ INSERT INTO async_jobs (
 -- name: GetAsyncJob :one
 SELECT * FROM async_jobs WHERE id = $1 LIMIT 1;
 
+-- name: ListAsyncJobs :many
+-- status / job_type / created_by は nullable パラメータ。NULL なら未指定として扱う。
+-- created_by は「誰の job を見せるか」の認可結果が入る (usecase 層が決める)。
+-- total_count は全行同じ値が入る (COUNT(*) OVER())。
+SELECT sqlc.embed(async_jobs), COUNT(*) OVER() AS total_count
+FROM async_jobs
+WHERE (sqlc.narg('status')::int      IS NULL OR status     = sqlc.narg('status')::int)
+  AND (sqlc.narg('job_type')::int    IS NULL OR job_type   = sqlc.narg('job_type')::int)
+  AND (sqlc.narg('created_by')::text IS NULL OR created_by = sqlc.narg('created_by')::text)
+ORDER BY created_at DESC, id DESC
+LIMIT @page_size::int OFFSET @page_offset::int;
+
 -- name: ClaimDueAsyncJobs :many
 -- 1つのtxで原子的にclaim。FOR UPDATE SKIP LOCKED で他インスタンスとの競合を回避。
 -- 古い PENDING ジョブから順に最大 batch_size 件を RUNNING に遷移して返す。

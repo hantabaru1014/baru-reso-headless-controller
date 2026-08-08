@@ -13,6 +13,7 @@ import SessionDetail from "./pages/sessions/detail";
 import SessionNew from "./pages/sessions/new";
 import ScheduledOperationsIndex from "./pages/sessions/scheduled";
 import ScheduledOperationNew from "./pages/sessions/scheduled/new";
+import AsyncJobsIndex from "./pages/asyncJobs";
 import Hosts from "./pages/hosts";
 import HostDetail from "./pages/hosts/detail";
 import HeadlessAccounts from "./pages/headlessAccounts";
@@ -71,6 +72,11 @@ const router = createBrowserRouter([
                 handle: { titleKey: "routes.sessionDetail" },
               },
             ],
+          },
+          {
+            path: "async-jobs",
+            Component: AsyncJobsIndex,
+            handle: { titleKey: "routes.asyncJobs" },
           },
           {
             path: "hosts",

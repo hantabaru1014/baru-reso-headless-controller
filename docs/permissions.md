@@ -113,6 +113,7 @@ scope が合致しないロールは作成・割り当てできません。
 | アカウントを追加・更新 | 対象グループに `account:write` |
 | グループにメンバーを招待・削除 | 対象グループに `group:members.manage` |
 | グループ名を変更 | 対象グループに `group:edit` |
+| 全ユーザーのジョブ履歴を閲覧 | `system:group.manage` (自分が実行したジョブの履歴は権限不要) |
 | 新しいグループを作る | `system:group.manage` |
 | 新しいユーザーを招待 (登録URL発行) | `system:user.create` |
 

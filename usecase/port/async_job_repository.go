@@ -16,12 +16,30 @@ type AsyncJobCreateParams struct {
 	CreatedBy *string
 }
 
+type AsyncJobListFilter struct {
+	Status  *entity.AsyncJobStatus
+	JobType *entity.AsyncJobType
+	// CreatedBy が nil なら全ユーザーの job が対象。誰の job を見せてよいかの
+	// 判断は usecase 層の責務で、ここには決定済みの値だけが渡る。
+	CreatedBy *string
+	PageIndex int32
+	PageSize  int32
+}
+
+type AsyncJobListResult struct {
+	Items      entity.AsyncJobList
+	TotalCount int32
+}
+
 // AsyncJobRepository は非同期 job (ホスト/セッションの起動・停止等) の永続化を担う。
 // ScheduledSessionOperationRepository と同様、ClaimDue / ReleaseStaleClaims で
 // マルチインスタンス安全な claim を提供する。
 type AsyncJobRepository interface {
 	Create(ctx context.Context, params AsyncJobCreateParams) (*entity.AsyncJob, error)
 	Get(ctx context.Context, id string) (*entity.AsyncJob, error)
+	// List は job 履歴を created_at 降順で返す。認可 (誰の job を見せるか) は usecase 層の責務で、
+	// ここでは filter をそのまま SQL の絞り込みに落とすだけ。
+	List(ctx context.Context, filter AsyncJobListFilter) (*AsyncJobListResult, error)
 
 	// ClaimDue は FOR UPDATE SKIP LOCKED で PENDING な行を最大 batchSize 件、
 	// 古い順に原子的に RUNNING へ遷移しながら取得する。

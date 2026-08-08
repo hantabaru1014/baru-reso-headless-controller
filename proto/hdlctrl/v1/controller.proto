@@ -75,6 +75,9 @@ service ControllerService {
   rpc CreateScheduledSessionOperation(CreateScheduledSessionOperationRequest) returns (CreateScheduledSessionOperationResponse);
   rpc ListScheduledSessionOperations(ListScheduledSessionOperationsRequest) returns (ListScheduledSessionOperationsResponse);
   rpc CancelScheduledSessionOperation(CancelScheduledSessionOperationRequest) returns (CancelScheduledSessionOperationResponse);
+
+  // 非同期job系
+  rpc ListAsyncJobs(ListAsyncJobsRequest) returns (ListAsyncJobsResponse);
 }
 
 message RefetchHeadlessAccountInfoRequest {
@@ -890,3 +893,59 @@ message CancelScheduledSessionOperationRequest {
 }
 
 message CancelScheduledSessionOperationResponse {}
+
+// 非同期job系
+
+// domain/entity/async_job.go の AsyncJobType と対応する.
+enum AsyncJobType {
+  ASYNC_JOB_TYPE_UNSPECIFIED = 0;
+  ASYNC_JOB_TYPE_START_HOST = 1;
+  ASYNC_JOB_TYPE_SHUTDOWN_HOST = 2;
+  ASYNC_JOB_TYPE_RESTART_HOST = 3;
+  ASYNC_JOB_TYPE_START_SESSION = 4;
+  ASYNC_JOB_TYPE_STOP_SESSION = 5;
+  ASYNC_JOB_TYPE_BUILD_IMAGE = 6;
+}
+
+// domain/entity/async_job.go の AsyncJobStatus と対応する.
+enum AsyncJobStatus {
+  ASYNC_JOB_STATUS_UNSPECIFIED = 0;
+  ASYNC_JOB_STATUS_PENDING = 1;
+  ASYNC_JOB_STATUS_RUNNING = 2;
+  ASYNC_JOB_STATUS_SUCCEEDED = 3;
+  ASYNC_JOB_STATUS_FAILED = 4;
+}
+
+message AsyncJob {
+  string id = 1;
+  AsyncJobType job_type = 2;
+  AsyncJobStatus status = 3;
+  // 一覧フィルタ・表示用の対象. START_HOST / BUILD_IMAGE では未設定.
+  optional string host_id = 4;
+  optional string session_id = 5;
+  // 失敗時のエラーメッセージ.
+  optional string last_error = 6;
+  // 完了時の戻り値 (host_id / session_id 等) の JSON 文字列.
+  // START_HOST / START_SESSION の成功後に発番された ID を辿るために使う.
+  optional string result_payload = 7;
+  // job を投入した users.id.
+  optional string created_by = 8;
+  // 実行が完了した時刻 (成功・失敗どちらでも入る). 未完了なら未設定.
+  optional google.protobuf.Timestamp executed_at = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message ListAsyncJobsRequest {
+  optional AsyncJobStatus status = 1;
+  optional AsyncJobType job_type = 2;
+  // 既定 (false) では caller 自身が投入した job のみを返す.
+  // true にして全ユーザーの job を得るには system 権限が必要.
+  optional bool include_all_users = 3;
+  PageRequest page = 4;
+}
+
+message ListAsyncJobsResponse {
+  repeated AsyncJob jobs = 1;
+  PageResponse page = 2;
+}

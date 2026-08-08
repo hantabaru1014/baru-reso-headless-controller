@@ -516,6 +516,55 @@ func CreateTestMessage(t *testing.T, pool *pgxpool.Pool, id, title, body string,
 	require.NoError(t, err, "failed to create test message")
 }
 
+// AsyncJobFixture は CreateTestAsyncJob に渡す非同期 job の内容.
+// 任意項目が多く positional 引数だと取り違えやすいので struct で受ける.
+type AsyncJobFixture struct {
+	JobType   entity.AsyncJobType
+	Status    entity.AsyncJobStatus
+	CreatedBy *string
+	HostID    *string
+	SessionID *string
+	// ResultPayload / LastError は完了済み job の表示内容を検証したいときだけ指定する.
+	ResultPayload *string
+	LastError     *string
+	// CreatedAt は created_at 降順テストの順序を決定的にするため明示指定する.
+	CreatedAt time.Time
+}
+
+// CreateTestAsyncJob は非同期 job を 1 件作成して id を返す.
+// status が SUCCEEDED / FAILED の場合は executed_at も CreatedAt で埋める
+// (worker が完了時に埋める列なので、履歴一覧の表示テストで NULL だと不自然なため).
+func CreateTestAsyncJob(t *testing.T, pool *pgxpool.Pool, f AsyncJobFixture) string {
+	t.Helper()
+
+	executedAt := pgtype.Timestamptz{}
+	if f.Status == entity.AsyncJobStatus_SUCCEEDED || f.Status == entity.AsyncJobStatus_FAILED {
+		executedAt = pgtype.Timestamptz{Time: f.CreatedAt, Valid: true}
+	}
+
+	var id string
+
+	err := pool.QueryRow(t.Context(),
+		`INSERT INTO async_jobs
+		   (job_type, payload, status, result_payload, last_error, host_id, session_id, created_by, executed_at, created_at, updated_at)
+		 VALUES ($1, '{}'::jsonb, $2, $3::jsonb, $4, $5, $6, $7, $8, $9, $9)
+		 RETURNING id::text`,
+		int32(f.JobType), int32(f.Status), textOrNull(f.ResultPayload), textOrNull(f.LastError),
+		textOrNull(f.HostID), textOrNull(f.SessionID), textOrNull(f.CreatedBy), executedAt, f.CreatedAt,
+	).Scan(&id)
+	require.NoError(t, err, "failed to create test async job")
+
+	return id
+}
+
+func textOrNull(v *string) pgtype.Text {
+	if v == nil {
+		return pgtype.Text{}
+	}
+
+	return pgtype.Text{String: *v, Valid: true}
+}
+
 // InsertTestContainerLog inserts a test container log entry into the database.
 func InsertTestContainerLog(t *testing.T, queries *db.Queries, hostID string, instanceID int32, ts time.Time, stream, logMsg string) {
 	t.Helper()
