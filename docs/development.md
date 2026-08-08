@@ -114,6 +114,13 @@ go tool migrate create -ext sql -dir db/migrations <file_name>
 
 適用は `make migrate.up` (開発用 DB とテスト用 DB の両方に適用)、または app 起動時の自動実行で行われます。
 
+> [!NOTE]
+> golang-migrate の CLI は DB ドライバを build tag で選ぶため、`go tool migrate` は
+> DB に接続できません (`unknown driver postgres`)。`make migrate.up` / `make test.setup` は
+> `make build.migrate` で `./bin/migrate` を postgres タグ付きでビルドして使います。
+> 手動で `up` / `down` を叩くときも `./bin/migrate` を使ってください
+> (ファイル作成は DB に繋がないので `go tool migrate create` で問題ありません)。
+
 ## テスト
 
 ### 初回セットアップ
@@ -135,6 +142,9 @@ make test
 ### テストの構造
 
 - **テストデータベース**: 実際の PostgreSQL データベースを使用しますが、データベース名に `_test` サフィックスが付きます
+  - 全パッケージがこの 1 つの DB を共有し、各テストの開始時に `testutil.CleanupTables` が TRUNCATE でクリアします
+  - そのため `make test` はパッケージを直列実行します (`-p 1`)。`go test ./...` を直に叩くとパッケージが並列に走り、互いのデータを消し合って不安定になります
+  - 同じ理由で、テストの実行中に別のシェルでテストを走らせないでください
 - **モック**: `mockgen` を使用して、外部依存 (`HostConnector`、skyfrost、blobstore など) のモックを生成します
   - Docker コンテナを実行せずにテストできるよう、外部依存のみをモック化
   - Repository 層は実際の実装を使用し、データベース操作も含めてテスト
