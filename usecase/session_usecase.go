@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"net"
 	"sync"
 	"time"
@@ -33,6 +34,7 @@ type SessionUsecase struct {
 	permUC          *PermissionUsecase
 	forcePortMin    int
 	forcePortMax    int
+	publicIP        string
 	resoniteLinkTTL time.Duration
 	portMutex       sync.Mutex
 }
@@ -54,6 +56,7 @@ func NewSessionUsecase(
 		permUC:          permUC,
 		forcePortMin:    serverCfg.SessionPortMin,
 		forcePortMax:    serverCfg.SessionPortMax,
+		publicIP:        serverCfg.PublicIP,
 		resoniteLinkTTL: linkCfg.TokenTTL,
 	}
 }
@@ -112,26 +115,10 @@ func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, groupI
 		return nil, errors.Wrap(err, 0)
 	}
 
-	// forcePortが指定されていない場合、環境変数が設定されていれば自動割り当て
-	paramsForContainer := params
-
-	if params.GetForcePort() == 0 {
-		autoPort, err := u.getFreeSessionPort(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, 0)
-		}
-
-		if autoPort != 0 {
-			// コンテナに渡すパラメータのコピーを作成してforcePortを設定
-			cloned, ok := proto.Clone(params).(*headlessv1.WorldStartupParameters)
-			if !ok {
-				return nil, errors.New("failed to clone WorldStartupParameters")
-			}
-
-			paramsForContainer = cloned
-			paramsForContainer.ForcePort = uint32(autoPort)
-			slog.Info("Auto-assigned forcePort", "port", autoPort)
-		}
+	// 指定されていないプロトコルのポートを、環境変数が設定されていれば自動割り当て
+	paramsForContainer, err := u.withAutoAssignedForcePorts(ctx, params)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
 	}
 
 	resp, err := client.StartWorld(ctx, &headlessv1.StartWorldRequest{
@@ -580,28 +567,138 @@ func (u *SessionUsecase) hydrateCurrentState(sessions entity.SessionList) {
 	}
 }
 
-// getFreeSessionPort は環境変数で指定されたポート範囲から空きポートを探して返す
-// 環境変数が設定されていない場合は0を返す.
-func (u *SessionUsecase) getFreeSessionPort(ctx context.Context) (int, error) {
-	if u.forcePortMin == 0 && u.forcePortMax == 0 {
-		return 0, nil
+// allNetworkProtocols はポートを指定できるプロトコル (enum 値の昇順).
+var allNetworkProtocols = []headlessv1.NetworkProtocol{
+	headlessv1.NetworkProtocol_NETWORK_PROTOCOL_LNL,
+	headlessv1.NetworkProtocol_NETWORK_PROTOCOL_QUIC,
+	headlessv1.NetworkProtocol_NETWORK_PROTOCOL_TCP,
+}
+
+// autoAssignTargetProtocols は自動割り当ての対象プロトコルを返す.
+// QUIC はセッション URL の announce に公開アドレスが要るため、PublicIP が
+// 設定されている時だけポートを固定する (固定しないとポート転送できない).
+func (u *SessionUsecase) autoAssignTargetProtocols() []headlessv1.NetworkProtocol {
+	protocols := []headlessv1.NetworkProtocol{headlessv1.NetworkProtocol_NETWORK_PROTOCOL_LNL}
+	if u.publicIP != "" {
+		protocols = append(protocols, headlessv1.NetworkProtocol_NETWORK_PROTOCOL_QUIC)
 	}
 
-	u.portMutex.Lock()
-	defer u.portMutex.Unlock()
+	return protocols
+}
 
-	// ランダムな開始位置から探索（同じポートに偏らないように）
-	offset := time.Now().UnixNano() % int64(u.forcePortMax-u.forcePortMin+1)
-	for i := 0; i <= u.forcePortMax-u.forcePortMin; i++ {
-		candidatePort := u.forcePortMin + int((offset+int64(i))%int64(u.forcePortMax-u.forcePortMin+1))
-		if isPortAvailable(ctx, candidatePort) {
-			return candidatePort, nil
+// withAutoAssignedForcePorts は未指定プロトコルのポートを設定範囲から埋めた
+// パラメータを返す. ポートを 1 つも使わない場合は params をそのまま返す.
+func (u *SessionUsecase) withAutoAssignedForcePorts(ctx context.Context, params *headlessv1.WorldStartupParameters) (*headlessv1.WorldStartupParameters, error) {
+	ports := normalizeForcePorts(params)
+
+	// 範囲が設定されていない場合は自動割り当てしない (指定されたポートの正規化のみ行う)
+	if u.forcePortMin != 0 || u.forcePortMax != 0 {
+		missing := make([]headlessv1.NetworkProtocol, 0, len(allNetworkProtocols))
+
+		for _, protocol := range u.autoAssignTargetProtocols() {
+			if _, ok := ports[protocol]; !ok {
+				missing = append(missing, protocol)
+			}
+		}
+
+		if len(missing) > 0 {
+			autoPorts, err := u.getFreeSessionPorts(ctx, len(missing), ports)
+			if err != nil {
+				return nil, err
+			}
+
+			for i, protocol := range missing {
+				ports[protocol] = uint32(autoPorts[i]) //nolint:gosec // G115: SESSION_PORT_MIN/MAX は 1-65535 に検証済み
+				slog.Info("Auto-assigned forcePort", "protocol", protocol.String(), "port", autoPorts[i])
+			}
 		}
 	}
 
-	return 0, errors.Errorf("no free port found in range %d-%d", u.forcePortMin, u.forcePortMax)
+	if len(ports) == 0 {
+		return params, nil
+	}
+
+	// コンテナに渡すパラメータのコピーを作成してポートを設定
+	cloned, ok := proto.Clone(params).(*headlessv1.WorldStartupParameters)
+	if !ok {
+		return nil, errors.New("failed to clone WorldStartupParameters")
+	}
+
+	cloned.ForcePorts = make([]*headlessv1.ForcePort, 0, len(ports))
+	// 同じ指定なら同じリクエストになるように enum 値の昇順で並べる
+	for _, protocol := range allNetworkProtocols {
+		if port, ok := ports[protocol]; ok {
+			cloned.ForcePorts = append(cloned.ForcePorts, &headlessv1.ForcePort{Protocol: protocol, Port: port})
+		}
+	}
+
+	// force_ports を解釈しない古いコンテナ向けに legacy フィールドも埋める
+	cloned.ForcePort = ports[headlessv1.NetworkProtocol_NETWORK_PROTOCOL_LNL] //nolint:staticcheck // 後方互換
+
+	return cloned, nil
 }
 
+// normalizeForcePorts はリクエストで指定されたポートをプロトコルごとに解決する.
+// 範囲外のポートと未知のプロトコルは無視し、同じプロトコルが複数ある場合は
+// 最後のものを採用する (コンテナ側の解釈と揃えている).
+func normalizeForcePorts(params *headlessv1.WorldStartupParameters) map[headlessv1.NetworkProtocol]uint32 {
+	ports := make(map[headlessv1.NetworkProtocol]uint32, len(params.GetForcePorts()))
+
+	for _, forcePort := range params.GetForcePorts() {
+		if forcePort.GetProtocol() == headlessv1.NetworkProtocol_NETWORK_PROTOCOL_UNSPECIFIED || !isValidPort(forcePort.GetPort()) {
+			continue
+		}
+
+		ports[forcePort.GetProtocol()] = forcePort.GetPort()
+	}
+
+	// force_ports が空の時のみ legacy な force_port を LNL のポートとして解釈する
+	if len(ports) == 0 && isValidPort(params.GetForcePort()) { //nolint:staticcheck // 後方互換
+		ports[headlessv1.NetworkProtocol_NETWORK_PROTOCOL_LNL] = params.GetForcePort() //nolint:staticcheck // 後方互換
+	}
+
+	return ports
+}
+
+func isValidPort(port uint32) bool {
+	return port > 0 && port <= math.MaxUint16
+}
+
+// getFreeSessionPorts は環境変数で指定されたポート範囲を 1 度だけ走査して、
+// taken に含まれない空きポートを count 個返す.
+func (u *SessionUsecase) getFreeSessionPorts(ctx context.Context, count int, taken map[headlessv1.NetworkProtocol]uint32) ([]int, error) {
+	u.portMutex.Lock()
+	defer u.portMutex.Unlock()
+
+	// 同一セッション内で同じポートを複数プロトコルに割り当てないための除外集合
+	used := make(map[int]bool, len(taken))
+	for _, port := range taken {
+		used[int(port)] = true
+	}
+
+	found := make([]int, 0, count)
+	rangeSize := u.forcePortMax - u.forcePortMin + 1
+
+	// ランダムな開始位置から探索（同じポートに偏らないように）
+	offset := time.Now().UnixNano() % int64(rangeSize)
+	for i := range rangeSize {
+		candidatePort := u.forcePortMin + int((offset+int64(i))%int64(rangeSize))
+		if used[candidatePort] || !isPortAvailable(ctx, candidatePort) {
+			continue
+		}
+
+		found = append(found, candidatePort)
+		if len(found) == count {
+			return found, nil
+		}
+	}
+
+	return nil, errors.Errorf("could not find %d free ports in range %d-%d", count, u.forcePortMin, u.forcePortMax)
+}
+
+// isPortAvailable は TCP / UDP の両方で指定ポートが空いているかを返す.
+// LNL と QUIC は UDP を使う (コンテナは host network なのでホストのポートを掴む) ため、
+// TCP だけを見ると使用中のポートを空きと誤判定する.
 func isPortAvailable(ctx context.Context, port int) bool {
 	address := fmt.Sprintf(":%d", port)
 
@@ -614,6 +711,15 @@ func isPortAvailable(ctx context.Context, port int) bool {
 
 	if err := listener.Close(); err != nil {
 		slog.Warn("failed to close listener when checking port availability", "port", port, "error", err)
+	}
+
+	packetConn, err := lc.ListenPacket(ctx, "udp", address)
+	if err != nil {
+		return false
+	}
+
+	if err := packetConn.Close(); err != nil {
+		slog.Warn("failed to close packet conn when checking port availability", "port", port, "error", err)
 	}
 
 	return true

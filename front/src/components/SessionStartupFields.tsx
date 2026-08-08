@@ -6,7 +6,7 @@ import {
   UseFormSetValue,
   UseFormWatch,
 } from "react-hook-form";
-import { SessionFormValues } from "../libs/sessionFormUtils";
+import { FORCE_PORT_FIELDS, SessionFormValues } from "../libs/sessionFormUtils";
 import { useMutation } from "@connectrpc/connect-query";
 import { fetchWorldInfo } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { useEffect, useRef, useState } from "react";
@@ -487,25 +487,31 @@ export default function SessionStartupFields({
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Controller
-          name="forcePort"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              label="forcePort"
-              type="number"
-              error={errors.forcePort?.message}
-              {...field}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const value =
-                  e.target.value === "" ? "" : parseInt(e.target.value);
-                field.onChange(value);
-              }}
-            />
-          )}
-        />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {FORCE_PORT_FIELDS.map(({ name, label, helperTextKey }) => (
+          <Controller
+            key={name}
+            name={name}
+            control={control}
+            render={({ field }) => (
+              <TextField
+                label={label}
+                helperText={helperTextKey ? t(helperTextKey) : undefined}
+                type="number"
+                error={errors[name]?.message}
+                {...field}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value =
+                    e.target.value === "" ? "" : parseInt(e.target.value);
+                  field.onChange(value);
+                }}
+              />
+            )}
+          />
+        ))}
+      </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Controller
           name="mobileFriendly"
           control={control}
@@ -517,9 +523,7 @@ export default function SessionStartupFields({
             />
           )}
         />
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Controller
           name="keepOriginalRoles"
           control={control}

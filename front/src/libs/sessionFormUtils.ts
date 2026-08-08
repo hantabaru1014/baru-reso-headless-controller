@@ -1,10 +1,48 @@
 import { create } from "@bufbuild/protobuf";
 import {
+  NetworkProtocol,
   WorldStartupParameters,
   WorldStartupParametersSchema,
 } from "../../pbgen/headless/v1/headless_pb";
 import { z } from "zod";
 import type { TFunction } from "i18next";
+
+/**
+ * プロトコルごとのポート指定 (force_ports) のフィールド定義。
+ * フォームのフィールド名・クエリパラメータ名・proto の NetworkProtocol の
+ * 対応をここ 1 箇所で定義し、変換と描画はこれを回して行う。
+ */
+export const FORCE_PORT_FIELDS = [
+  {
+    name: "forcePortLnl",
+    protocol: NetworkProtocol.LNL,
+    label: "forcePorts (LNL)",
+    helperTextKey: undefined,
+  },
+  {
+    name: "forcePortQuic",
+    protocol: NetworkProtocol.QUIC,
+    label: "forcePorts (QUIC)",
+    helperTextKey: "sessionStartupFields.forcePortQuicHelp",
+  },
+  {
+    name: "forcePortTcp",
+    protocol: NetworkProtocol.TCP,
+    label: "forcePorts (TCP)",
+    helperTextKey: undefined,
+  },
+] as const;
+
+type ForcePortFieldName = (typeof FORCE_PORT_FIELDS)[number]["name"];
+
+/** ポート番号の入力。範囲外はヘッドレス側で無視されるのでここで弾く。 */
+const portSchema = (t: TFunction) =>
+  z
+    .number()
+    .int()
+    .min(1, t("sessionFormUtils.portRange"))
+    .max(65535, t("sessionFormUtils.portRange"))
+    .optional();
 
 /**
  * 新規セッション/予約フォーム共通の zod スキーマ。
@@ -49,7 +87,9 @@ export const makeSessionFormSchema = (t: TFunction) =>
       autoSaveIntervalSeconds: z.number().int(),
       autoSleep: z.boolean(),
       inviteRequestHandlerUsernames: z.string().optional(),
-      forcePort: z.number().int().optional(),
+      forcePortLnl: portSchema(t),
+      forcePortQuic: portSchema(t),
+      forcePortTcp: portSchema(t),
       parentSessionIds: z.string().optional(),
       autoRecover: z.boolean().optional(),
       forcedRestartIntervalSeconds: z.number().int().optional(),
@@ -92,6 +132,15 @@ const processCSV = (csv: string | undefined): string[] =>
     ?.split(",")
     .map((n) => n.trim())
     .filter((n) => n) || [];
+
+/**
+ * プロトコルごとのポート入力を force_ports に変換する。
+ * 未入力 (undefined / 0) のプロトコルはヘッドレス側でランダムなポートが使われる。
+ */
+const processForcePorts = (data: Partial<Record<ForcePortFieldName, number>>) =>
+  FORCE_PORT_FIELDS.filter(({ name }) => !!data[name]).map(
+    ({ name, protocol }) => ({ protocol, port: data[name] }),
+  );
 
 const processRecordId = (
   recordId: string | undefined,
@@ -138,7 +187,7 @@ export function buildStartWorldParameters(
     inviteRequestHandlerUsernames: processCSV(
       data.inviteRequestHandlerUsernames,
     ),
-    forcePort: data.forcePort,
+    forcePorts: processForcePorts(data),
     parentSessionIds: processCSV(data.parentSessionIds),
     autoRecover: data.autoRecover,
     forcedRestartIntervalSeconds: data.forcedRestartIntervalSeconds,
@@ -205,7 +254,9 @@ export interface SessionFormPrefillValues {
   denyUserCloudVariable?: string;
   requiredUserJoinCloudVariable?: string;
   requiredUserJoinCloudVariableDenyMessage?: string;
-  forcePort?: number;
+  forcePortLnl?: number;
+  forcePortQuic?: number;
+  forcePortTcp?: number;
   mobileFriendly?: boolean;
   useCustomJoinVerifier?: boolean;
   inviteRequestHandlerUsernames?: string;
@@ -250,7 +301,9 @@ export const DEFAULT_SESSION_FORM_VALUES = {
   useCustomJoinVerifier: false,
   mobileFriendly: false,
   keepOriginalRoles: false,
-  forcePort: undefined as number | undefined,
+  forcePortLnl: undefined as number | undefined,
+  forcePortQuic: undefined as number | undefined,
+  forcePortTcp: undefined as number | undefined,
   overrideCorrespondingWorldId: "",
   roleCloudVariable: "",
   allowUserCloudVariable: "",
@@ -320,7 +373,19 @@ export function startupParamsToSearchParams(
       "forcedRestartIntervalSeconds",
       String(params.forcedRestartIntervalSeconds),
     );
-  if (params.forcePort) searchParams.set("forcePort", String(params.forcePort));
+  // force_ports が空の場合のみ、旧フィールドの forcePort を LNL のポートとして扱う
+  // (ヘッドレス側の解釈と揃えている)
+  const forcePorts = params.forcePorts.length
+    ? params.forcePorts
+    : [{ protocol: NetworkProtocol.LNL, port: params.forcePort }];
+  const forcePortKeys = new Map<NetworkProtocol, string>(
+    FORCE_PORT_FIELDS.map(({ protocol, name }) => [protocol, name]),
+  );
+  // 同じプロトコルが複数ある場合は後勝ち (set が上書きする)
+  for (const { protocol, port } of forcePorts) {
+    const key = forcePortKeys.get(protocol);
+    if (key && port) searchParams.set(key, String(port));
+  }
 
   // 真偽値フィールド（デフォルトと異なる場合のみ）
   if (params.hideFromPublicListing !== defaults.hideFromPublicListing)
@@ -517,8 +582,15 @@ export function searchParamsToFormValues(
       10,
     );
 
-  const forcePort = params.get("forcePort");
-  if (forcePort) result.forcePort = parseInt(forcePort, 10);
+  for (const { name } of FORCE_PORT_FIELDS) {
+    const forcePort = params.get(name);
+    if (forcePort) result[name] = parseInt(forcePort, 10);
+  }
+
+  // forcePort は旧形式のリンク互換 (LNL のポートとして扱う)
+  const legacyForcePort = params.get("forcePort");
+  if (legacyForcePort && result.forcePortLnl === undefined)
+    result.forcePortLnl = parseInt(legacyForcePort, 10);
 
   // 真偽値フィールド
   const hideFromPublicListing = params.get("hideFromPublicListing");

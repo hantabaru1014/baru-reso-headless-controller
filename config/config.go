@@ -89,6 +89,10 @@ type ServerConfig struct {
 	ShutdownTimeout time.Duration
 	SessionPortMin  int
 	SessionPortMax  int
+	// PublicIP は headless container を動かしているホストのグローバル IP (またはホスト名).
+	// container に PublicIp として渡され、QUIC のセッション URL の announce に使われる.
+	// 設定されている場合のみ QUIC 用のポートも自動割り当てする.
+	PublicIP string
 }
 
 // ResoniteLinkConfig は ResoniteLink WebSocket ブリッジ用の設定.
@@ -155,6 +159,7 @@ func LoadEnvConfig() (*EnvConfig, error) {
 
 	cfg.Server.SessionPortMin = portMin
 	cfg.Server.SessionPortMax = portMax
+	cfg.Server.PublicIP = strings.TrimSpace(os.Getenv("HEADLESS_PUBLIC_IP"))
 
 	cfg.ResoniteLink.TokenTTL = getEnvDuration("RESONITE_LINK_TOKEN_TTL", 5*time.Hour)    //nolint:mnd // default
 	cfg.ResoniteLink.ReadyTimeout = getEnvDuration("RESONITE_LINK_READY_TIMEOUT", 5*time.Second) //nolint:mnd // default

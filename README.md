@@ -51,6 +51,12 @@ If you want to run on k8s or connect to an existing PostgreSQL, run setup.sh fir
    - The port can be changed via the `HOST` variable in `.env`
    - If you expose it to the internet, protect the endpoint with a reverse proxy, Cloudflare Zero Trust, or similar
 
+### Session ports and QUIC
+
+Sessions listen on random ports by default. Set `SESSION_PORT_MIN` / `SESSION_PORT_MAX` in `.env` to pick them from a fixed range, and forward that range so users can connect directly.
+
+To make QUIC usable, also set `HEADLESS_PUBLIC_IP` to the global IP (or hostname) of the machine running the containers: QUIC listeners only announce a session URL when the public address is known. Once it is set, a QUIC port is auto-assigned from the same range as well, so forward the range over UDP.
+
 ## Upgrading
 
 To upgrade a running deployment to the latest version, run the following in the directory you used for setup:

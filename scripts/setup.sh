@@ -60,6 +60,13 @@ HEADLESS_PASSWORD="${HEADLESS_PASSWORD}"
 # builder image の AppVersion 更新時に自動再ビルドするか (デフォルト: true)
 #AUTO_BUILD_ON_APP_VERSION_BUMP=true
 
+# セッションが使うポートの範囲 (未設定なら固定せずランダムなポートを使う)
+#SESSION_PORT_MIN=40000
+#SESSION_PORT_MAX=50000
+# headless container を動かしているホストのグローバル IP (またはホスト名)
+# QUIC で外部から接続させるために必要。設定すると QUIC のポートも上記範囲から自動割り当てする
+#HEADLESS_PUBLIC_IP=
+
 # RustFS (S3互換ストレージ)
 RUSTFS_ACCESS_KEY="${RUSTFS_ACCESS_KEY}"
 RUSTFS_SECRET_KEY="${RUSTFS_SECRET_KEY}"

@@ -676,7 +676,8 @@
     "nameRequired": "セッション名を入力してください",
     "maxUsersMin": "最低1人以上の設定が必要です",
     "recordIdFormat": "ownerId/id の形式で入力してください",
-    "worldUrlRequired": "URLを入力してください"
+    "worldUrlRequired": "URLを入力してください",
+    "portRange": "1 - 65535 の範囲で入力してください"
   },
   "newSessionForm": {
     "startAccepted": "セッションの開始を受け付けました",
@@ -725,7 +726,8 @@
     "userIconAlt": "{{name}}のアイコン",
     "joinAllowedOnly": "参加許可のみ",
     "inviteMessage": "招待メッセージ",
-    "defaultUserRoles": "デフォルトユーザーロール"
+    "defaultUserRoles": "デフォルトユーザーロール",
+    "forcePortQuicHelp": "QUIC で外部から接続するには、controller に HEADLESS_PUBLIC_IP の設定が必要です"
   },
   "sessionForm": {
     "sessionUrlCopied": "セッションURLをコピーしました",
