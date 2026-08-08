@@ -305,3 +305,10 @@ export const listScheduledSessionOperations = ControllerService.method.listSched
  * @generated from rpc hdlctrl.v1.ControllerService.CancelScheduledSessionOperation
  */
 export const cancelScheduledSessionOperation = ControllerService.method.cancelScheduledSessionOperation;
+
+/**
+ * 非同期job系
+ *
+ * @generated from rpc hdlctrl.v1.ControllerService.ListAsyncJobs
+ */
+export const listAsyncJobs = ControllerService.method.listAsyncJobs;

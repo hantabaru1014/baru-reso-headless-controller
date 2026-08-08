@@ -44,6 +44,7 @@
     "sessionDetail": "セッション詳細",
     "scheduledOps": "予約操作",
     "scheduledOpNew": "新規予約",
+    "asyncJobs": "ジョブ履歴",
     "hosts": "ホスト",
     "hostDetail": "ホスト詳細",
     "headlessAccounts": "ヘッドレスアカウント",
@@ -564,6 +565,24 @@
     "title": "予約操作",
     "newSchedule": "新規予約"
   },
+  "asyncJobList": {
+    "columnJob": "ジョブ",
+    "columnTarget": "対象",
+    "columnCreatedBy": "キューしたユーザー",
+    "columnStatus": "状態",
+    "columnCreatedAt": "投入日時",
+    "columnExecutedAt": "実行日時",
+    "columnError": "エラー",
+    "filterStatus": "状態",
+    "filterType": "種別",
+    "filterAll": "全て",
+    "includeAllUsers": "全ユーザー分を表示",
+    "showErrorDetail": "クリックでエラー全文を表示",
+    "errorDialogTitle": "エラー詳細",
+    "copy": "コピー",
+    "copied": "エラー内容をコピーしました",
+    "close": "閉じる"
+  },
   "pastInstancesDialog": {
     "viewLog": "ログを見る",
     "instanceLogTitle": "インスタンス #{{id}} のログ",
@@ -631,6 +650,24 @@
       "succeeded": "完了",
       "failed": "失敗",
       "canceled": "キャンセル",
+      "unknown": "不明"
+    }
+  },
+  "asyncJobUtils": {
+    "jobType": {
+      "startHost": "ホスト起動",
+      "shutdownHost": "ホスト停止",
+      "restartHost": "ホスト再起動",
+      "startSession": "セッション開始",
+      "stopSession": "セッション終了",
+      "buildImage": "イメージビルド",
+      "unknown": "不明"
+    },
+    "status": {
+      "pending": "待機中",
+      "running": "実行中",
+      "succeeded": "完了",
+      "failed": "失敗",
       "unknown": "不明"
     }
   },

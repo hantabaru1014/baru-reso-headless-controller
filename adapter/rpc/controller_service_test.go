@@ -91,7 +91,7 @@ func setupControllerServiceTest(t *testing.T) *controllerServiceTestSetup {
 	sorepo := adapter.NewScheduledSessionOperationRepository(queries)
 	souc := usecase.NewScheduledSessionOperationUsecase(sorepo, hhrepo, srepo, permUC)
 	ajrepo := adapter.NewAsyncJobRepository(queries)
-	ajuc := async_job.NewUsecase(ajrepo)
+	ajuc := async_job.NewUsecase(ajrepo, permUC)
 
 	// Setup service with real repositories
 	service := NewControllerService(hhrepo, srepo, hhuc, hauc, suc, buc, souc, ajuc, rvuc, permUC, groupRepo, roleRepo, mockSkyfrost, notification.NewBus())

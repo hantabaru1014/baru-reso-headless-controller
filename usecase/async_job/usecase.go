@@ -15,17 +15,75 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
-type Usecase struct {
-	repo port.AsyncJobRepository
+// PermissionChecker は「他ユーザーの job 履歴も見てよいか」だけを判定する narrow interface.
+// handler.go の HostOperator 等と同様、usecase パッケージ全体への依存を避けるためのもの.
+type PermissionChecker interface {
+	RequireSystemPermission(ctx context.Context, permKey string) error
 }
 
-func NewUsecase(repo port.AsyncJobRepository) *Usecase {
-	return &Usecase{repo: repo}
+// ListFilter は job 履歴一覧の絞り込み条件.
+// port.AsyncJobListFilter を埋め込まずフィールドを並べているのは、あちらの
+// CreatedBy が「認可の結果」を表す出力用フィールドで、呼び出し側に指定させては
+// いけないため (埋め込むと RPC handler から任意のユーザーを指定できてしまう).
+type ListFilter struct {
+	Status  *entity.AsyncJobStatus
+	JobType *entity.AsyncJobType
+	// IncludeAllUsers は全ユーザーの job を返す指定. system 権限を要求する.
+	IncludeAllUsers bool
+	PageIndex       int32
+	PageSize        int32
+}
+
+type ListResult = port.AsyncJobListResult
+
+type Usecase struct {
+	repo port.AsyncJobRepository
+	perm PermissionChecker
+}
+
+func NewUsecase(repo port.AsyncJobRepository, perm PermissionChecker) *Usecase {
+	return &Usecase{repo: repo, perm: perm}
+}
+
+// List は job 履歴を返す. 既定では caller 自身が投入した job のみに絞り、
+// 全ユーザー分の閲覧には system:group.manage を要求する — 他ユーザーの job の
+// last_error には他グループのホスト設定等が現れうるため.
+func (u *Usecase) List(ctx context.Context, filter ListFilter) (*ListResult, error) {
+	repoFilter := port.AsyncJobListFilter{
+		Status:    filter.Status,
+		JobType:   filter.JobType,
+		PageIndex: filter.PageIndex,
+		PageSize:  filter.PageSize,
+	}
+
+	if filter.IncludeAllUsers {
+		// CreatedBy は nil のまま = 全ユーザーが対象.
+		if err := u.perm.RequireSystemPermission(ctx, entity.PermKey_SystemGroupManage); err != nil {
+			return nil, err
+		}
+	} else {
+		// CurrentUserID は ctx から claims を取り出すだけの純関数なので、
+		// narrow interface にはせず usecase パッケージのものを直接使う.
+		callerID, err := usecase.CurrentUserID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		repoFilter.CreatedBy = &callerID
+	}
+
+	result, err := u.repo.List(ctx, repoFilter)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	return result, nil
 }
 
 // EnqueueStartHost はホスト起動 job を登録する. createdBy は完了通知の宛先 user.

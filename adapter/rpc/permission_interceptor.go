@@ -155,6 +155,9 @@ func allKnownProcedures() []string {
 		hdlctrlv1connect.ControllerServiceListScheduledSessionOperationsProcedure,
 		hdlctrlv1connect.ControllerServiceCancelScheduledSessionOperationProcedure,
 
+		// ===== ControllerService: 非同期job系 =====
+		hdlctrlv1connect.ControllerServiceListAsyncJobsProcedure,
+
 		// ===== GroupService =====
 		hdlctrlv1connect.GroupServiceCreateGroupProcedure,
 		hdlctrlv1connect.GroupServiceGetGroupProcedure,

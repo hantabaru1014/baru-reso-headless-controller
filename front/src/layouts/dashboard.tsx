@@ -5,6 +5,7 @@ import {
   Server,
   Earth,
   Clock,
+  History,
   UsersRound,
   ShieldCheck,
 } from "lucide-react";
@@ -78,6 +79,11 @@ const navigation: NavItem[] = [
     visible: (p) =>
       p.groupsWithPermission(PERMISSION_KEYS.SESSION_WRITE).length > 0 ||
       p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_GROUP_MANAGE),
+  },
+  {
+    titleKey: "routes.asyncJobs",
+    href: "/async-jobs",
+    icon: History,
   },
   {
     titleKey: "routes.groups",

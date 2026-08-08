@@ -9,6 +9,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var _ port.AsyncJobRepository = (*AsyncJobRepository)(nil)
@@ -48,6 +49,49 @@ func (r *AsyncJobRepository) Get(ctx context.Context, id string) (*entity.AsyncJ
 	}
 
 	return asyncJobToEntity(row)
+}
+
+func (r *AsyncJobRepository) List(ctx context.Context, filter port.AsyncJobListFilter) (*port.AsyncJobListResult, error) {
+	pageSize := filter.PageSize
+	if pageSize <= 0 {
+		pageSize = 100
+	}
+
+	params := db.ListAsyncJobsParams{
+		CreatedBy:  textFromPtr(filter.CreatedBy),
+		PageSize:   pageSize,
+		PageOffset: filter.PageIndex * pageSize,
+	}
+	if filter.Status != nil {
+		params.Status = pgtype.Int4{Int32: int32(*filter.Status), Valid: true}
+	}
+
+	if filter.JobType != nil {
+		params.JobType = pgtype.Int4{Int32: int32(*filter.JobType), Valid: true}
+	}
+
+	rows, err := r.q.ListAsyncJobs(ctx, params)
+	if err != nil {
+		return nil, errors.WrapPrefix(convertDBErr(err), "async_job", 0)
+	}
+
+	result := &port.AsyncJobListResult{
+		Items: make(entity.AsyncJobList, 0, len(rows)),
+	}
+	if len(rows) > 0 {
+		result.TotalCount = int32(rows[0].TotalCount) //nolint:gosec // G115: テーブル件数なので int32 範囲を超えない
+	}
+
+	for _, row := range rows {
+		e, err := asyncJobToEntity(row.AsyncJob)
+		if err != nil {
+			return nil, errors.Wrap(err, 0)
+		}
+
+		result.Items = append(result.Items, e)
+	}
+
+	return result, nil
 }
 
 func (r *AsyncJobRepository) ClaimDue(ctx context.Context, instanceID string, batchSize int32) (entity.AsyncJobList, error) {

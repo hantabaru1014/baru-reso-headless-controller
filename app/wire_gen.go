@@ -66,7 +66,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	scheduledSessionOperationRepository := adapter.NewScheduledSessionOperationRepository(queries)
 	scheduledSessionOperationUsecase := usecase.NewScheduledSessionOperationUsecase(scheduledSessionOperationRepository, headlessHostRepository, sessionRepository, permissionUsecase)
 	asyncJobRepository := adapter.NewAsyncJobRepository(queries)
-	async_jobUsecase := async_job.NewUsecase(asyncJobRepository)
+	async_jobUsecase := async_job.NewUsecase(asyncJobRepository, permissionUsecase)
 	memoryBus := notification.NewBus()
 	controllerService := rpc.NewControllerService(headlessHostRepository, sessionRepository, headlessHostUsecase, headlessAccountUsecase, sessionUsecase, blobUsecase, scheduledSessionOperationUsecase, async_jobUsecase, resoniteVersionUsecase, permissionUsecase, groupRepository, roleRepository, defaultClient, memoryBus)
 	notificationService := rpc.NewNotificationService(memoryBus, headlessHostRepository, permissionUsecase)

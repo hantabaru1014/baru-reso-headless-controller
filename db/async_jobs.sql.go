@@ -140,6 +140,74 @@ func (q *Queries) GetAsyncJob(ctx context.Context, id pgtype.UUID) (AsyncJob, er
 	return i, err
 }
 
+const listAsyncJobs = `-- name: ListAsyncJobs :many
+SELECT async_jobs.id, async_jobs.job_type, async_jobs.payload, async_jobs.status, async_jobs.result_payload, async_jobs.last_error, async_jobs.claimed_by, async_jobs.claimed_at, async_jobs.executed_at, async_jobs.host_id, async_jobs.session_id, async_jobs.created_by, async_jobs.created_at, async_jobs.updated_at, COUNT(*) OVER() AS total_count
+FROM async_jobs
+WHERE ($1::int      IS NULL OR status     = $1::int)
+  AND ($2::int    IS NULL OR job_type   = $2::int)
+  AND ($3::text IS NULL OR created_by = $3::text)
+ORDER BY created_at DESC, id DESC
+LIMIT $5::int OFFSET $4::int
+`
+
+type ListAsyncJobsParams struct {
+	Status     pgtype.Int4
+	JobType    pgtype.Int4
+	CreatedBy  pgtype.Text
+	PageOffset int32
+	PageSize   int32
+}
+
+type ListAsyncJobsRow struct {
+	AsyncJob   AsyncJob
+	TotalCount int64
+}
+
+// status / job_type / created_by は nullable パラメータ。NULL なら未指定として扱う。
+// created_by は「誰の job を見せるか」の認可結果が入る (usecase 層が決める)。
+// total_count は全行同じ値が入る (COUNT(*) OVER())。
+func (q *Queries) ListAsyncJobs(ctx context.Context, arg ListAsyncJobsParams) ([]ListAsyncJobsRow, error) {
+	rows, err := q.db.Query(ctx, listAsyncJobs,
+		arg.Status,
+		arg.JobType,
+		arg.CreatedBy,
+		arg.PageOffset,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAsyncJobsRow
+	for rows.Next() {
+		var i ListAsyncJobsRow
+		if err := rows.Scan(
+			&i.AsyncJob.ID,
+			&i.AsyncJob.JobType,
+			&i.AsyncJob.Payload,
+			&i.AsyncJob.Status,
+			&i.AsyncJob.ResultPayload,
+			&i.AsyncJob.LastError,
+			&i.AsyncJob.ClaimedBy,
+			&i.AsyncJob.ClaimedAt,
+			&i.AsyncJob.ExecutedAt,
+			&i.AsyncJob.HostID,
+			&i.AsyncJob.SessionID,
+			&i.AsyncJob.CreatedBy,
+			&i.AsyncJob.CreatedAt,
+			&i.AsyncJob.UpdatedAt,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markAsyncJobFailed = `-- name: MarkAsyncJobFailed :execrows
 UPDATE async_jobs
 SET status = 3, executed_at = NOW(), last_error = $2::text, claimed_by = NULL, claimed_at = NULL

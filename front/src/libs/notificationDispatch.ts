@@ -10,6 +10,7 @@ import { JobCompletedEvent_Level } from "../../pbgen/hdlctrl/v1/notification_pb"
 import {
   getHeadlessHost,
   getSessionDetails,
+  listAsyncJobs,
   listHeadlessHost,
   listUsersInSession,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
@@ -79,9 +80,11 @@ export function dispatchNotification(
     }
 
     case "jobCompleted": {
-      // クエリ invalidate は対応する hostListChanged / sessionLifecycle / hostUpdated
-      // 経由で別途行われる (docker event watcher や container HostEvent stream 由来).
-      // ここでは toast 表示のみ.
+      // host / session 側のクエリ invalidate は対応する hostListChanged /
+      // sessionLifecycle / hostUpdated 経由で別途行われる (docker event watcher や
+      // container HostEvent stream 由来). ここでは job 履歴の更新と toast 表示のみ.
+      invalidate(queryClient, listAsyncJobs);
+
       const { message, level } = payload.value;
 
       if (level === JobCompletedEvent_Level.ERROR) {
