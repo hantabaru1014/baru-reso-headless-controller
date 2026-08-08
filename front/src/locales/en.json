@@ -676,7 +676,8 @@
     "nameRequired": "Please enter a session name",
     "maxUsersMin": "At least 1 user is required",
     "recordIdFormat": "Enter in the format ownerId/id",
-    "worldUrlRequired": "Please enter a URL"
+    "worldUrlRequired": "Please enter a URL",
+    "portRange": "Enter a value between 1 and 65535"
   },
   "newSessionForm": {
     "startAccepted": "Session start request accepted",
@@ -725,7 +726,8 @@
     "userIconAlt": "{{name}}'s icon",
     "joinAllowedOnly": "Allow join only",
     "inviteMessage": "Invite message",
-    "defaultUserRoles": "Default user roles"
+    "defaultUserRoles": "Default user roles",
+    "forcePortQuicHelp": "Connecting over QUIC from outside also requires HEADLESS_PUBLIC_IP on the controller"
   },
   "sessionForm": {
     "sessionUrlCopied": "Session URL copied",

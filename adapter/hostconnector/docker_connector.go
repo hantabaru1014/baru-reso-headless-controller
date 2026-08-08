@@ -27,12 +27,14 @@ var _ HostConnector = (*DockerHostConnector)(nil)
 type DockerHostConnector struct {
 	dockerCfg *config.DockerConfig
 	grpcCfg   *config.GRPCConfig
+	serverCfg *config.ServerConfig
 }
 
-func NewDockerHostConnector(dockerCfg *config.DockerConfig, grpcCfg *config.GRPCConfig) *DockerHostConnector {
+func NewDockerHostConnector(dockerCfg *config.DockerConfig, grpcCfg *config.GRPCConfig, serverCfg *config.ServerConfig) *DockerHostConnector {
 	return &DockerHostConnector{
 		dockerCfg: dockerCfg,
 		grpcCfg:   grpcCfg,
+		serverCfg: serverCfg,
 	}
 }
 
@@ -122,6 +124,10 @@ func (d *DockerHostConnector) Start(ctx context.Context, params HostStartParams)
 	}
 	if startupConfig != nil {
 		envs = append(envs, "StartupConfig="+*startupConfig)
+	}
+	// QUIC のリスナーは公開アドレスを知っている場合のみセッション URL を announce する
+	if d.serverCfg.PublicIP != "" {
+		envs = append(envs, "PublicIp="+d.serverCfg.PublicIP)
 	}
 
 	config := container.Config{

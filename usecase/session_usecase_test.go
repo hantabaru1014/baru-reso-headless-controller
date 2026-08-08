@@ -60,13 +60,17 @@ func (allowAllGroupMemberRepo) GetUserPermissionsForGroup(_ context.Context, _, 
 }
 
 func newUsecaseUnderTest(drainer stubHostDrainer, hostRepo port.HeadlessHostRepository) *SessionUsecase {
+	return newUsecaseWithServerConfig(drainer, hostRepo, &config.ServerConfig{})
+}
+
+func newUsecaseWithServerConfig(drainer stubHostDrainer, hostRepo port.HeadlessHostRepository, serverCfg *config.ServerConfig) *SessionUsecase {
 	permUC := NewPermissionUsecase(nil, allowAllGroupMemberRepo{}, nil)
 
 	return NewSessionUsecase(
 		nil, hostRepo,
 		drainer,
 		sessionstate.NewMemoryCache(),
-		&config.ServerConfig{},
+		serverCfg,
 		&config.ResoniteLinkConfig{TokenTTL: time.Minute},
 		permUC,
 	)
@@ -135,3 +139,115 @@ func TestStartSession_BypassesDrainCheckForUnrelatedHost(t *testing.T) {
 		"StartSession should have progressed past the drain guard to the host repo")
 }
 
+
+func newUsecaseWithPortConfig(portMin, portMax int, publicIP string) *SessionUsecase {
+	return newUsecaseWithServerConfig(stubHostDrainer{}, &stubHostRepo{},
+		&config.ServerConfig{SessionPortMin: portMin, SessionPortMax: portMax, PublicIP: publicIP})
+}
+
+func forcePortMap(params *headlessv1.WorldStartupParameters) map[headlessv1.NetworkProtocol]uint32 {
+	ports := make(map[headlessv1.NetworkProtocol]uint32, len(params.GetForcePorts()))
+	for _, forcePort := range params.GetForcePorts() {
+		ports[forcePort.GetProtocol()] = forcePort.GetPort()
+	}
+
+	return ports
+}
+
+// TestWithAutoAssignedForcePorts は、プロトコルごとのポート指定 (force_ports) の
+// 解決を検証する. QUIC は PublicIP が設定されている時だけ自動割り当てされる.
+func TestWithAutoAssignedForcePorts(t *testing.T) {
+	t.Parallel()
+
+	const (
+		portMin = 45000
+		portMax = 45100
+	)
+
+	inRange := func(t *testing.T, port uint32) {
+		t.Helper()
+		assert.GreaterOrEqual(t, port, uint32(portMin))
+		assert.LessOrEqual(t, port, uint32(portMax))
+	}
+
+	t.Run("ポート範囲未設定: 何も割り当てず params をそのまま返す", func(t *testing.T) {
+		t.Parallel()
+
+		suc := newUsecaseWithPortConfig(0, 0, "")
+		params := &headlessv1.WorldStartupParameters{}
+
+		got, err := suc.withAutoAssignedForcePorts(t.Context(), params)
+		require.NoError(t, err)
+		assert.Same(t, params, got)
+	})
+
+	t.Run("ポート範囲未設定: legacy な force_port は force_ports に変換される", func(t *testing.T) {
+		t.Parallel()
+
+		suc := newUsecaseWithPortConfig(0, 0, "")
+
+		got, err := suc.withAutoAssignedForcePorts(t.Context(), &headlessv1.WorldStartupParameters{
+			ForcePort: 12345,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, map[headlessv1.NetworkProtocol]uint32{
+			headlessv1.NetworkProtocol_NETWORK_PROTOCOL_LNL: 12345,
+		}, forcePortMap(got))
+	})
+
+	t.Run("PublicIP 未設定: LNL のみ自動割り当てされる", func(t *testing.T) {
+		t.Parallel()
+
+		suc := newUsecaseWithPortConfig(portMin, portMax, "")
+
+		got, err := suc.withAutoAssignedForcePorts(t.Context(), &headlessv1.WorldStartupParameters{})
+		require.NoError(t, err)
+
+		ports := forcePortMap(got)
+		require.Len(t, ports, 1)
+		inRange(t, ports[headlessv1.NetworkProtocol_NETWORK_PROTOCOL_LNL])
+		// force_ports を解釈しない古いコンテナ向けに legacy フィールドも埋まる
+		assert.Equal(t, ports[headlessv1.NetworkProtocol_NETWORK_PROTOCOL_LNL], got.GetForcePort()) //nolint:staticcheck // 後方互換の確認
+	})
+
+	t.Run("PublicIP 設定済み: LNL と QUIC に別々のポートが割り当てられる", func(t *testing.T) {
+		t.Parallel()
+
+		suc := newUsecaseWithPortConfig(portMin, portMax, "203.0.113.10")
+
+		got, err := suc.withAutoAssignedForcePorts(t.Context(), &headlessv1.WorldStartupParameters{})
+		require.NoError(t, err)
+
+		ports := forcePortMap(got)
+		require.Len(t, ports, 2)
+		inRange(t, ports[headlessv1.NetworkProtocol_NETWORK_PROTOCOL_LNL])
+		inRange(t, ports[headlessv1.NetworkProtocol_NETWORK_PROTOCOL_QUIC])
+		assert.NotEqual(t,
+			ports[headlessv1.NetworkProtocol_NETWORK_PROTOCOL_LNL],
+			ports[headlessv1.NetworkProtocol_NETWORK_PROTOCOL_QUIC],
+			"同じセッションの LNL と QUIC に同じポートを割り当ててはいけない")
+	})
+
+	t.Run("指定済みのポートは上書きされない", func(t *testing.T) {
+		t.Parallel()
+
+		suc := newUsecaseWithPortConfig(portMin, portMax, "203.0.113.10")
+
+		got, err := suc.withAutoAssignedForcePorts(t.Context(), &headlessv1.WorldStartupParameters{
+			ForcePorts: []*headlessv1.ForcePort{
+				{Protocol: headlessv1.NetworkProtocol_NETWORK_PROTOCOL_LNL, Port: 12345},
+				{Protocol: headlessv1.NetworkProtocol_NETWORK_PROTOCOL_TCP, Port: 12346},
+				// 範囲外のポートと未知のプロトコルは無視する
+				{Protocol: headlessv1.NetworkProtocol_NETWORK_PROTOCOL_UNSPECIFIED, Port: 12347},
+				{Protocol: headlessv1.NetworkProtocol_NETWORK_PROTOCOL_QUIC, Port: 70000},
+			},
+		})
+		require.NoError(t, err)
+
+		ports := forcePortMap(got)
+		require.Len(t, ports, 3)
+		assert.Equal(t, uint32(12345), ports[headlessv1.NetworkProtocol_NETWORK_PROTOCOL_LNL])
+		assert.Equal(t, uint32(12346), ports[headlessv1.NetworkProtocol_NETWORK_PROTOCOL_TCP])
+		inRange(t, ports[headlessv1.NetworkProtocol_NETWORK_PROTOCOL_QUIC])
+	})
+}
