@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -115,11 +116,15 @@ func CleanupTables(t *testing.T, pool *pgxpool.Pool) {
 		t.Fatalf("error iterating tables: %v", err)
 	}
 
-	// Truncate all tables in a single transaction for better performance
-	for _, table := range tables {
-		truncateQuery := fmt.Sprintf("TRUNCATE TABLE %s CASCADE", table)
+	// テーブルごとに TRUNCATE を発行するとロックの取得順がテスト間で食い違い、
+	// 同じテスト DB を共有する別テストと deadlock しやすい。1 文にまとめれば
+	// PostgreSQL 側が全テーブルのロックをまとめて取るのでこの競合は起きない。
+	if len(tables) > 0 {
+		truncateQuery := fmt.Sprintf("TRUNCATE TABLE %s CASCADE", strings.Join(tables, ", "))
+		// ここを warning で握りつぶすと行が残ったまま次のテストが走り、無関係な
+		// duplicate key / FK violation として現れて原因が追えなくなる。即座に落とす。
 		if _, err := pool.Exec(t.Context(), truncateQuery); err != nil {
-			t.Logf("warning: failed to truncate table %s: %v", table, err)
+			t.Fatalf("failed to truncate tables: %v", err)
 		}
 	}
 
@@ -128,6 +133,6 @@ func CleanupTables(t *testing.T, pool *pgxpool.Pool) {
 	// は seed なので残す). CASCADE で group_members / roles も連動削除される.
 	if _, err := pool.Exec(t.Context(),
 		"DELETE FROM groups WHERE id NOT IN ('system', 'migrated-pre-permission')"); err != nil {
-		t.Logf("warning: failed to delete per-test groups: %v", err)
+		t.Fatalf("failed to delete per-test groups: %v", err)
 	}
 }

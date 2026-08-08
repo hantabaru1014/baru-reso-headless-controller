@@ -44,16 +44,26 @@ gen.mock:
 	go tool mockgen -source=lib/blobstore/blobstore.go -destination=lib/blobstore/mock/mock_client.go -package=mock
 	@echo "Mock generation complete!"
 
+# golang-migrate の CLI は DB ドライバを build tag で選ぶ作りで、タグ無しでビルドすると
+# 1 つも登録されない。そのため `go tool migrate ... up` は "unknown driver postgres" で
+# 失敗する。DB に接続するサブコマンド用に postgres タグ付きのバイナリを用意する。
+# (migration ファイルの新規作成は DB に繋がないので `go tool migrate create` のままでよい)
+BIN_MIGRATE := ./bin/migrate
+
+.PHONY: build.migrate
+build.migrate:
+	@go build -tags postgres -o $(BIN_MIGRATE) github.com/golang-migrate/migrate/v4/cmd/migrate
+
 .PHONY: migrate.up
-migrate.up:
-	@go tool migrate -path db/migrations -database "$(DB_URL)" up
+migrate.up: build.migrate
+	@$(BIN_MIGRATE) -path db/migrations -database "$(DB_URL)" up
 	@DB_NAME=$$(echo "$(DB_URL)" | sed 's/.*\/\([^?]*\).*/\1/'); \
 	TEST_DB_NAME=$${DB_NAME}_test; \
 	TEST_DB_URL=$$(echo "$(DB_URL)" | sed "s/$$DB_NAME/$$TEST_DB_NAME/"); \
-	go tool migrate -path db/migrations -database "$$TEST_DB_URL" up
+	$(BIN_MIGRATE) -path db/migrations -database "$$TEST_DB_URL" up
 
 .PHONY: test.setup
-test.setup:
+test.setup: build.migrate
 	@echo "Creating test database..."
 	@DB_NAME=$$(echo "$(DB_URL)" | sed 's/.*\/\([^?]*\).*/\1/'); \
 	TEST_DB_NAME=$${DB_NAME}_test; \
@@ -64,11 +74,14 @@ test.setup:
 	(echo "Creating test database $$TEST_DB_NAME..." && \
 	docker compose -f docker-compose.db.yml exec -T db psql -U postgres -d postgres -c "CREATE DATABASE $$TEST_DB_NAME"); \
 	echo "Running migrations..."; \
-	go tool migrate -path db/migrations -database "$$TEST_DB_URL" up
+	$(BIN_MIGRATE) -path db/migrations -database "$$TEST_DB_URL" up
 
+# 全パッケージのテストが 1 つのテスト DB を共有し、各テストの開始時に TRUNCATE で
+# クリアする。パッケージを並列実行すると互いの TRUNCATE と行の投入が競合して
+# deadlock / duplicate key で落ちるため、パッケージ単位では直列に実行する (-p 1)。
 .PHONY: test
 test:
-	go tool gotestsum --format dots -- ./...
+	go tool gotestsum --format dots -- -p 1 ./...
 
 .PHONY: lint
 lint:
