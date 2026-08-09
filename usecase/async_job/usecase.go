@@ -139,24 +139,24 @@ func (u *Usecase) EnqueueStartHost(ctx context.Context, req *hdlctrlv1.StartHead
 }
 
 // EnqueueBuildImage は 1 バージョンのローカルビルド job を投入する.
-// thenStart が非 nil の場合、build 成功後に自動で START_HOST job が enqueue される (chain).
-func (u *Usecase) EnqueueBuildImage(
-	ctx context.Context,
-	manifestID string,
-	branch entity.ResoniteVersionBranch,
-	thenStart *hdlctrlv1.StartHeadlessHostRequest,
-	createdBy *string,
-) (string, error) {
-	payload, err := marshalPayload(&hdlctrlv1.BuildResoniteImageRequest{
-		ManifestId:    manifestID,
-		Branch:        string(branch),
-		ThenStartHost: thenStart,
-	})
+// req.follow_up が指定されていれば、build 成功後にその job (START_HOST / RESTART_HOST) が
+// 自動で enqueue される (chain).
+func (u *Usecase) EnqueueBuildImage(ctx context.Context, req *hdlctrlv1.BuildResoniteImageRequest, createdBy *string) (string, error) {
+	payload, err := marshalPayload(req)
 	if err != nil {
 		return "", err
 	}
 
-	return u.enqueue(ctx, entity.AsyncJobType_BUILD_IMAGE, payload, nil, nil, createdBy)
+	// 既存ホストの再起動 chain なら、job 履歴でホストに紐付けられるよう host_id を持たせる
+	// (起動 chain のホストはまだ発番されていないので付けられない).
+	var hostID *string
+
+	if r := req.GetThenRestartHost(); r != nil && r.GetHostId() != "" {
+		id := r.GetHostId()
+		hostID = &id
+	}
+
+	return u.enqueue(ctx, entity.AsyncJobType_BUILD_IMAGE, payload, hostID, nil, createdBy)
 }
 
 func (u *Usecase) EnqueueShutdownHost(ctx context.Context, req *hdlctrlv1.ShutdownHeadlessHostRequest, createdBy *string) (string, error) {

@@ -26,11 +26,12 @@ type ResoniteVersionRepository interface {
 	// GetByImageTag は built 済みイメージタグから逆引きする. 未 built のタグは nil を返さない (ErrNotFound).
 	GetByImageTag(ctx context.Context, imageTag string) (*entity.ResoniteVersion, error)
 
+	// GetLatestByBranch はブランチの最新版を返す (build 状態は問わない).
+	// game_version が null の行は除外.
+	GetLatestByBranch(ctx context.Context, branch entity.ResoniteVersionBranch) (*entity.ResoniteVersion, error)
+
 	// List は branch を指定して (nil なら全件) 新しい順に返す.
 	List(ctx context.Context, branch *entity.ResoniteVersionBranch) (entity.ResoniteVersionList, error)
-
-	// GetLatestBuiltByBranch はブランチの built 済み最新版を返す. game_version が null の行は除外.
-	GetLatestBuiltByBranch(ctx context.Context, branch entity.ResoniteVersionBranch) (*entity.ResoniteVersion, error)
 
 	// ListStaleBuilt は branches の各ブランチの最新 built 行のうち、built_with_app_version が
 	// currentAppVersion と一致しないものを返す (最大 len(branches) 件).

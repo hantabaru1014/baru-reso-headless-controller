@@ -18,18 +18,19 @@ WHERE manifest_id = $1 AND branch = $2 LIMIT 1;
 SELECT * FROM resonite_versions
 WHERE image_tag = $1 LIMIT 1;
 
+-- name: GetLatestResoniteVersionByBranch :one
+-- ブランチの最新版 (build 状態は問わない)。latestRelease / latestPreRelease の解決に使う。
+-- game_version が無い行は versions.json 側の情報が欠けているので対象外。
+SELECT * FROM resonite_versions
+WHERE branch = $1
+  AND game_version IS NOT NULL
+ORDER BY released_at DESC
+LIMIT 1;
+
 -- name: ListResoniteVersions :many
 SELECT * FROM resonite_versions
 WHERE (sqlc.narg('branch')::text IS NULL OR branch = sqlc.narg('branch')::text)
 ORDER BY released_at DESC;
-
--- name: GetLatestBuiltResoniteVersionByBranch :one
-SELECT * FROM resonite_versions
-WHERE branch = $1
-  AND build_status = 'built'
-  AND game_version IS NOT NULL
-ORDER BY released_at DESC
-LIMIT 1;
 
 -- name: ListStaleBuiltResoniteVersions :many
 -- 各ブランチの「最新のビルド済みバージョン」のうち container repo の AppVersion と

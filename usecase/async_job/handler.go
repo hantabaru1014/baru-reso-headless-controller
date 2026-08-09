@@ -117,21 +117,45 @@ func (d *Dispatcher) startHost(ctx context.Context, job *entity.AsyncJob) (JobRe
 
 	hostID, err := d.host.HeadlessHostStart(ctx, params, job.CreatedBy)
 	if err != nil {
-		// 未 built なら BUILD_IMAGE を chain し、この job は「build enqueue」で成功終了.
-		var nbe *usecase.NotBuiltError
-		if errors.As(err, &nbe) {
-			buildJobID, chainErr := d.uc.EnqueueBuildImage(ctx, nbe.ManifestID, nbe.Branch, req, job.CreatedBy)
-			if chainErr != nil {
-				return JobResult{}, "", errors.WrapPrefix(chainErr, "enqueue chained build", 0)
-			}
-
-			return JobResult{}, fmt.Sprintf("イメージ未ビルドのためビルドキューに追加しました (build_job=%s)", buildJobID), nil
+		if nbe := asNotBuilt(err); nbe != nil {
+			return d.chainBuild(ctx, job, &hdlctrlv1.BuildResoniteImageRequest{
+				ManifestId: nbe.ManifestID,
+				Branch:     string(nbe.Branch),
+				FollowUp:   &hdlctrlv1.BuildResoniteImageRequest_ThenStartHost{ThenStartHost: req},
+			}, JobResult{})
 		}
 
 		return JobResult{}, "", err
 	}
 
 	return JobResult{HostID: hostID}, fmt.Sprintf("ホスト %q を起動しました", req.GetName()), nil
+}
+
+// asNotBuilt は err が「対象バージョンが未 built」なら詳細を返す (それ以外は nil).
+func asNotBuilt(err error) *usecase.NotBuiltError {
+	var nbe *usecase.NotBuiltError
+	if errors.As(err, &nbe) {
+		return nbe
+	}
+
+	return nil
+}
+
+// chainBuild は未 built で起動できなかった job を BUILD_IMAGE に積み替える.
+// buildReq.follow_up にこの job 自身の再実行を載せておくことで、ビルド成功後に
+// 続きが走る. この job 自体は「ビルドを積んだ」ものとして成功終了させる.
+func (d *Dispatcher) chainBuild(
+	ctx context.Context,
+	job *entity.AsyncJob,
+	buildReq *hdlctrlv1.BuildResoniteImageRequest,
+	result JobResult,
+) (JobResult, string, error) {
+	buildJobID, err := d.uc.EnqueueBuildImage(ctx, buildReq, job.CreatedBy)
+	if err != nil {
+		return JobResult{}, "", errors.WrapPrefix(err, "enqueue chained build", 0)
+	}
+
+	return result, fmt.Sprintf("イメージ未ビルドのためビルドキューに追加しました (build_job=%s)", buildJobID), nil
 }
 
 func (d *Dispatcher) buildImage(ctx context.Context, job *entity.AsyncJob) (JobResult, string, error) {
@@ -149,17 +173,30 @@ func (d *Dispatcher) buildImage(ctx context.Context, job *entity.AsyncJob) (JobR
 
 	msg := fmt.Sprintf("イメージ %s をビルドしました", tag)
 
-	if start := req.GetThenStartHost(); start != nil {
-		// build 成功後の chained host start.
-		// 解決済みタグを埋め込んで再度 resolveTagToUse を通さないようにする.
-		start.ImageTag = &tag
+	// build 成功後の chain. 解決済みタグを埋め込んで、後続 job で latestRelease を
+	// 再解決させない (ビルド直後に更に新しい版が現れると、今ビルドしたイメージでは
+	// 起動しなくなるため). このタグ固定は後続 job の payload 限りで、hosts 側には
+	// イメージタグを持たないので次回の再起動はまた latestRelease を解決する.
+	switch f := req.GetFollowUp().(type) {
+	case *hdlctrlv1.BuildResoniteImageRequest_ThenStartHost:
+		f.ThenStartHost.ImageTag = &tag
 
-		startJobID, chainErr := d.uc.EnqueueStartHost(ctx, start, job.CreatedBy)
+		startJobID, chainErr := d.uc.EnqueueStartHost(ctx, f.ThenStartHost, job.CreatedBy)
 		if chainErr != nil {
 			return JobResult{}, "", errors.WrapPrefix(chainErr, "enqueue chained start_host", 0)
 		}
 
 		msg = fmt.Sprintf("%s (host_start_job=%s)", msg, startJobID)
+	case *hdlctrlv1.BuildResoniteImageRequest_ThenRestartHost:
+		f.ThenRestartHost.WithUpdate = false
+		f.ThenRestartHost.WithImageTag = &tag
+
+		restartJobID, chainErr := d.uc.EnqueueRestartHost(ctx, f.ThenRestartHost, job.CreatedBy)
+		if chainErr != nil {
+			return JobResult{}, "", errors.WrapPrefix(chainErr, "enqueue chained restart_host", 0)
+		}
+
+		msg = fmt.Sprintf("%s (host_restart_job=%s)", msg, restartJobID)
 	}
 
 	return JobResult{}, msg, nil
@@ -202,6 +239,17 @@ func (d *Dispatcher) restartHost(ctx context.Context, job *entity.AsyncJob) (Job
 	}
 
 	if err := d.host.HeadlessHostRestart(ctx, req.GetHostId(), newTag, req.GetWithWorldRestart(), timeout); err != nil {
+		// start_host と同様、未 built なら BUILD_IMAGE を chain してこの job は成功終了.
+		// 停止済みホストを最新版で再起動する際、その最新版がまだビルドされていない
+		// ケース (versions.json 検知直後など) がここに来る.
+		if nbe := asNotBuilt(err); nbe != nil {
+			return d.chainBuild(ctx, job, &hdlctrlv1.BuildResoniteImageRequest{
+				ManifestId: nbe.ManifestID,
+				Branch:     string(nbe.Branch),
+				FollowUp:   &hdlctrlv1.BuildResoniteImageRequest_ThenRestartHost{ThenRestartHost: req},
+			}, JobResult{HostID: req.GetHostId()})
+		}
+
 		return JobResult{}, "", err
 	}
 

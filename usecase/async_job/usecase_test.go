@@ -19,6 +19,15 @@ type stubAsyncJobRepo struct {
 
 	called    bool
 	gotFilter port.AsyncJobListFilter
+
+	// created は Create された job の記録 (chain の検証に使う).
+	created []port.AsyncJobCreateParams
+}
+
+func (s *stubAsyncJobRepo) Create(_ context.Context, params port.AsyncJobCreateParams) (*entity.AsyncJob, error) {
+	s.created = append(s.created, params)
+
+	return &entity.AsyncJob{ID: "job-chained", JobType: params.JobType}, nil
 }
 
 func (s *stubAsyncJobRepo) List(_ context.Context, filter port.AsyncJobListFilter) (*port.AsyncJobListResult, error) {

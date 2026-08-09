@@ -89,7 +89,7 @@ func (c *ControllerService) BuildResoniteImage(ctx context.Context, req *connect
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	jobID, err := c.ajuc.EnqueueBuildImage(ctx, req.Msg.GetManifestId(), entity.ResoniteVersionBranch(req.Msg.GetBranch()), req.Msg.GetThenStartHost(), &claims.UserID)
+	jobID, err := c.ajuc.EnqueueBuildImage(ctx, req.Msg, &claims.UserID)
 	if err != nil {
 		return nil, convertErr(err)
 	}

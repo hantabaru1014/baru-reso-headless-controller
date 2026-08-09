@@ -11,17 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const getLatestBuiltResoniteVersionByBranch = `-- name: GetLatestBuiltResoniteVersionByBranch :one
+const getLatestResoniteVersionByBranch = `-- name: GetLatestResoniteVersionByBranch :one
 SELECT manifest_id, branch, game_version, released_at, build_status, image_tag, built_with_app_version, built_at, build_error, created_at, updated_at FROM resonite_versions
 WHERE branch = $1
-  AND build_status = 'built'
   AND game_version IS NOT NULL
 ORDER BY released_at DESC
 LIMIT 1
 `
 
-func (q *Queries) GetLatestBuiltResoniteVersionByBranch(ctx context.Context, branch string) (ResoniteVersion, error) {
-	row := q.db.QueryRow(ctx, getLatestBuiltResoniteVersionByBranch, branch)
+// ブランチの最新版 (build 状態は問わない)。latestRelease / latestPreRelease の解決に使う。
+// game_version が無い行は versions.json 側の情報が欠けているので対象外。
+func (q *Queries) GetLatestResoniteVersionByBranch(ctx context.Context, branch string) (ResoniteVersion, error) {
+	row := q.db.QueryRow(ctx, getLatestResoniteVersionByBranch, branch)
 	var i ResoniteVersion
 	err := row.Scan(
 		&i.ManifestID,

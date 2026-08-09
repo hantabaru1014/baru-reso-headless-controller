@@ -244,8 +244,11 @@ message ListResoniteVersionsResponse {
 message BuildResoniteImageRequest {
   string manifest_id = 1;
   string branch = 2;
-  // ビルド完了後に自動 enqueue するホスト起動 job (chain 用).
-  optional StartHeadlessHostRequest then_start_host = 3;
+  // ビルド完了後に自動 enqueue する後続 job (chain 用).
+  oneof follow_up {
+    StartHeadlessHostRequest then_start_host = 3;
+    RestartHeadlessHostRequest then_restart_host = 4;
+  }
 }
 
 message BuildResoniteImageResponse {

@@ -74,8 +74,8 @@ func (r *ResoniteVersionRepository) List(ctx context.Context, branch *entity.Res
 	return result, nil
 }
 
-func (r *ResoniteVersionRepository) GetLatestBuiltByBranch(ctx context.Context, branch entity.ResoniteVersionBranch) (*entity.ResoniteVersion, error) {
-	row, err := r.q.GetLatestBuiltResoniteVersionByBranch(ctx, string(branch))
+func (r *ResoniteVersionRepository) GetLatestByBranch(ctx context.Context, branch entity.ResoniteVersionBranch) (*entity.ResoniteVersion, error) {
+	row, err := r.q.GetLatestResoniteVersionByBranch(ctx, string(branch))
 	if err != nil {
 		return nil, errors.WrapPrefix(convertDBErr(err), "resonite_version", 0)
 	}
