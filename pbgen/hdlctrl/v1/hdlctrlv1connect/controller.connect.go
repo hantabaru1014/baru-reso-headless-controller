@@ -211,6 +211,9 @@ const (
 	// ControllerServiceListAsyncJobsProcedure is the fully-qualified name of the ControllerService's
 	// ListAsyncJobs RPC.
 	ControllerServiceListAsyncJobsProcedure = "/hdlctrl.v1.ControllerService/ListAsyncJobs"
+	// ControllerServiceGetAsyncJobProcedure is the fully-qualified name of the ControllerService's
+	// GetAsyncJob RPC.
+	ControllerServiceGetAsyncJobProcedure = "/hdlctrl.v1.ControllerService/GetAsyncJob"
 )
 
 // ControllerServiceClient is a client for the hdlctrl.v1.ControllerService service.
@@ -281,6 +284,7 @@ type ControllerServiceClient interface {
 	CancelScheduledSessionOperation(context.Context, *connect.Request[v1.CancelScheduledSessionOperationRequest]) (*connect.Response[v1.CancelScheduledSessionOperationResponse], error)
 	// 非同期job系
 	ListAsyncJobs(context.Context, *connect.Request[v1.ListAsyncJobsRequest]) (*connect.Response[v1.ListAsyncJobsResponse], error)
+	GetAsyncJob(context.Context, *connect.Request[v1.GetAsyncJobRequest]) (*connect.Response[v1.GetAsyncJobResponse], error)
 }
 
 // NewControllerServiceClient constructs a client for the hdlctrl.v1.ControllerService service. By
@@ -648,6 +652,12 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(controllerServiceMethods.ByName("ListAsyncJobs")),
 			connect.WithClientOptions(opts...),
 		),
+		getAsyncJob: connect.NewClient[v1.GetAsyncJobRequest, v1.GetAsyncJobResponse](
+			httpClient,
+			baseURL+ControllerServiceGetAsyncJobProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("GetAsyncJob")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -712,6 +722,7 @@ type controllerServiceClient struct {
 	listScheduledSessionOperations   *connect.Client[v1.ListScheduledSessionOperationsRequest, v1.ListScheduledSessionOperationsResponse]
 	cancelScheduledSessionOperation  *connect.Client[v1.CancelScheduledSessionOperationRequest, v1.CancelScheduledSessionOperationResponse]
 	listAsyncJobs                    *connect.Client[v1.ListAsyncJobsRequest, v1.ListAsyncJobsResponse]
+	getAsyncJob                      *connect.Client[v1.GetAsyncJobRequest, v1.GetAsyncJobResponse]
 }
 
 // ListHeadlessHost calls hdlctrl.v1.ControllerService.ListHeadlessHost.
@@ -1012,6 +1023,11 @@ func (c *controllerServiceClient) ListAsyncJobs(ctx context.Context, req *connec
 	return c.listAsyncJobs.CallUnary(ctx, req)
 }
 
+// GetAsyncJob calls hdlctrl.v1.ControllerService.GetAsyncJob.
+func (c *controllerServiceClient) GetAsyncJob(ctx context.Context, req *connect.Request[v1.GetAsyncJobRequest]) (*connect.Response[v1.GetAsyncJobResponse], error) {
+	return c.getAsyncJob.CallUnary(ctx, req)
+}
+
 // ControllerServiceHandler is an implementation of the hdlctrl.v1.ControllerService service.
 type ControllerServiceHandler interface {
 	// ホスト系
@@ -1080,6 +1096,7 @@ type ControllerServiceHandler interface {
 	CancelScheduledSessionOperation(context.Context, *connect.Request[v1.CancelScheduledSessionOperationRequest]) (*connect.Response[v1.CancelScheduledSessionOperationResponse], error)
 	// 非同期job系
 	ListAsyncJobs(context.Context, *connect.Request[v1.ListAsyncJobsRequest]) (*connect.Response[v1.ListAsyncJobsResponse], error)
+	GetAsyncJob(context.Context, *connect.Request[v1.GetAsyncJobRequest]) (*connect.Response[v1.GetAsyncJobResponse], error)
 }
 
 // NewControllerServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -1443,6 +1460,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		connect.WithSchema(controllerServiceMethods.ByName("ListAsyncJobs")),
 		connect.WithHandlerOptions(opts...),
 	)
+	controllerServiceGetAsyncJobHandler := connect.NewUnaryHandler(
+		ControllerServiceGetAsyncJobProcedure,
+		svc.GetAsyncJob,
+		connect.WithSchema(controllerServiceMethods.ByName("GetAsyncJob")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/hdlctrl.v1.ControllerService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ControllerServiceListHeadlessHostProcedure:
@@ -1563,6 +1586,8 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceCancelScheduledSessionOperationHandler.ServeHTTP(w, r)
 		case ControllerServiceListAsyncJobsProcedure:
 			controllerServiceListAsyncJobsHandler.ServeHTTP(w, r)
+		case ControllerServiceGetAsyncJobProcedure:
+			controllerServiceGetAsyncJobHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1806,4 +1831,8 @@ func (UnimplementedControllerServiceHandler) CancelScheduledSessionOperation(con
 
 func (UnimplementedControllerServiceHandler) ListAsyncJobs(context.Context, *connect.Request[v1.ListAsyncJobsRequest]) (*connect.Response[v1.ListAsyncJobsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.ListAsyncJobs is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) GetAsyncJob(context.Context, *connect.Request[v1.GetAsyncJobRequest]) (*connect.Response[v1.GetAsyncJobResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.GetAsyncJob is not implemented"))
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/testutil"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
@@ -185,7 +186,9 @@ func TestAsyncJobRepository_MarkSucceededAndFailed(t *testing.T) {
 			t.Skip("row was truncated by a parallel test before claim; skipping")
 		}
 
-		err = repo.MarkFailed(t.Context(), created.ID, "boom")
+		detail := "line1\nline2\nfull builder log"
+
+		err = repo.MarkFailed(t.Context(), created.ID, "boom", &detail)
 		require.NoError(t, err)
 
 		got, err := repo.Get(t.Context(), created.ID)
@@ -196,5 +199,27 @@ func TestAsyncJobRepository_MarkSucceededAndFailed(t *testing.T) {
 		assert.Equal(t, entity.AsyncJobStatus_FAILED, got.Status)
 		require.NotNil(t, got.LastError)
 		assert.Equal(t, "boom", *got.LastError)
+
+		// エラー詳細は async_job_logs に分離して保存され、GetLog でのみ引ける.
+		log, err := repo.GetLog(t.Context(), created.ID)
+		require.NoError(t, err)
+		assert.Equal(t, detail, log)
+	})
+
+	t.Run("MarkFailed without detail", func(t *testing.T) {
+		created, err := repo.Create(t.Context(), port.AsyncJobCreateParams{
+			JobType: entity.AsyncJobType_STOP_SESSION,
+			Payload: json.RawMessage(`{"session_id":"S2"}`),
+		})
+		require.NoError(t, err)
+
+		if !claimByID(t, created.ID) {
+			t.Skip("row was truncated by a parallel test before claim; skipping")
+		}
+
+		require.NoError(t, repo.MarkFailed(t.Context(), created.ID, "boom", nil))
+
+		_, err = repo.GetLog(t.Context(), created.ID)
+		assert.ErrorIs(t, err, domain.ErrNotFound, "詳細が無い job の GetLog は ErrNotFound")
 	})
 }

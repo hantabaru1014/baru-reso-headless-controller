@@ -50,5 +50,10 @@ type AsyncJobRepository interface {
 	// MarkSucceeded は RUNNING の行を SUCCEEDED に更新する。resultPayload は完了時の
 	// 戻り値 (host_id / session_id 等) の protojson 表現。
 	MarkSucceeded(ctx context.Context, id string, resultPayload json.RawMessage) error
-	MarkFailed(ctx context.Context, id string, errMessage string) error
+	// MarkFailed は job を FAILED にする。errDetail が非 nil かつ非空ならエラー詳細
+	// (builder のフルログ等) を async_job_logs に保存する。errMessage は一覧に出る一行サマリ。
+	MarkFailed(ctx context.Context, id string, errMessage string, errDetail *string) error
+
+	// GetLog は job のエラー詳細を返す。無ければ domain.ErrNotFound。
+	GetLog(ctx context.Context, id string) (string, error)
 }

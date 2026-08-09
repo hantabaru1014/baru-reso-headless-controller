@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
@@ -17,6 +18,28 @@ var _ = registerRPCPermission(
 	hdlctrlv1connect.ControllerServiceListAsyncJobsProcedure,
 	requireAuthOnly,
 )
+
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceGetAsyncJobProcedure,
+	requireAuthOnly,
+)
+
+// GetAsyncJob implements hdlctrlv1connect.ControllerServiceHandler.
+func (c *ControllerService) GetAsyncJob(ctx context.Context, req *connect.Request[hdlctrlv1.GetAsyncJobRequest]) (*connect.Response[hdlctrlv1.GetAsyncJobResponse], error) {
+	if req.Msg.GetId() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id is required"))
+	}
+
+	detail, err := c.ajuc.Get(ctx, req.Msg.GetId())
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.GetAsyncJobResponse{
+		Job:         asyncJobToProto(detail.Job),
+		ErrorDetail: detail.ErrorDetail,
+	}), nil
+}
 
 // ListAsyncJobs implements hdlctrlv1connect.ControllerServiceHandler.
 func (c *ControllerService) ListAsyncJobs(ctx context.Context, req *connect.Request[hdlctrlv1.ListAsyncJobsRequest]) (*connect.Response[hdlctrlv1.ListAsyncJobsResponse], error) {

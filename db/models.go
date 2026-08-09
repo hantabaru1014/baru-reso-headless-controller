@@ -25,6 +25,12 @@ type AsyncJob struct {
 	UpdatedAt     pgtype.Timestamptz
 }
 
+type AsyncJobLog struct {
+	JobID     pgtype.UUID
+	Content   string
+	CreatedAt pgtype.Timestamptz
+}
+
 type ContainerLog struct {
 	Tag  pgtype.Text
 	Ts   pgtype.Timestamp

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-errors/errors"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
@@ -284,11 +285,24 @@ func (e *AsyncJobExecutor) markFailed(ctx context.Context, job *entity.AsyncJob,
 	persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), persistTimeout)
 	defer cancel()
 
-	if err := e.repo.MarkFailed(persistCtx, job.ID, msg); err != nil {
+	if err := e.repo.MarkFailed(persistCtx, job.ID, msg, errorDetailOf(runErr)); err != nil {
 		slog.Error("async-job-executor: mark failed errored", "job_id", job.ID, "error", err)
 	}
 
 	e.publishCompletion(job, msg, hdlctrlv1.JobCompletedEvent_LEVEL_ERROR)
+}
+
+// errorDetailOf は runErr が domain.DetailedError を内包していればその詳細
+// (builder のフルログ等) を返す. 一行サマリでは足りない失敗の追跡に使う.
+func errorDetailOf(runErr error) *string {
+	var detailed domain.DetailedError
+	if !errors.As(runErr, &detailed) {
+		return nil
+	}
+
+	detail := detailed.ErrorDetail()
+
+	return &detail
 }
 
 func (e *AsyncJobExecutor) publishCompletion(job *entity.AsyncJob, message string, level hdlctrlv1.JobCompletedEvent_Level) {

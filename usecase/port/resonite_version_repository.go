@@ -32,7 +32,8 @@ type ResoniteVersionRepository interface {
 	// GetLatestBuiltByBranch はブランチの built 済み最新版を返す. game_version が null の行は除外.
 	GetLatestBuiltByBranch(ctx context.Context, branch entity.ResoniteVersionBranch) (*entity.ResoniteVersion, error)
 
-	// ListStaleBuilt は built 済みかつ built_with_app_version が currentAppVersion と一致しない行を返す.
+	// ListStaleBuilt は branches の各ブランチの最新 built 行のうち、built_with_app_version が
+	// currentAppVersion と一致しないものを返す (最大 len(branches) 件).
 	// branches は絞り込み対象 (通常 headless + prerelease).
 	ListStaleBuilt(ctx context.Context, branches []entity.ResoniteVersionBranch, currentAppVersion string) (entity.ResoniteVersionList, error)
 

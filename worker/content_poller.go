@@ -9,9 +9,9 @@
 //  1. NEW versions detected on the `headless` or `prerelease` branch of
 //     versions.json → enqueue BUILD_IMAGE for each.
 //  2. `Headless/AppVersion` incremented in the builder image → enqueue
-//     BUILD_IMAGE for every currently-built version on `headless` or
+//     BUILD_IMAGE for the LATEST built version of `headless` /
 //     `prerelease` whose `built_with_app_version` differs from the new
-//     value.
+//     value. 古い版は対象にしない (ListStaleBuiltResoniteVersions 参照).
 //
 // Successful builds fire ResoniteVersionUsecase's Subscribe observers so
 // HostUpgradeOrchestrator can enroll RUNNING auto-update hosts.
@@ -30,14 +30,7 @@ import (
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 )
 
-const (
-	contentCheckTimeout = 10 * time.Minute
-	// staleBuildEnqueueLimit は AppVersion bump 検知時に 1 tick で enqueue する
-	// 再ビルド job の上限. 溜まっている built 版が多い場合でも async_job キューを
-	// 埋め尽くさないようキャップする. `stale` は released_at DESC で並んでいるので
-	// 新しいものから優先的に再ビルドされる. 残りは次 tick で処理される.
-	staleBuildEnqueueLimit = 5
-)
+const contentCheckTimeout = 10 * time.Minute
 
 // ContentPollerVersionAPI narrows ResoniteVersionUsecase to the surface
 // this worker needs so tests can substitute a fake.
@@ -180,19 +173,11 @@ func (c *ContentPoller) checkAppVersion(ctx context.Context) {
 		return
 	}
 
+	// stale は「auto-build 対象ブランチごとの最新 built 1 件」なので高々ブランチ数.
 	slog.Info("content-poller: builder image AppVersion changed",
-		"appVersion", appVersion, "staleCount", len(stale), "enqueueLimit", staleBuildEnqueueLimit)
-
-	enqueuedCount := 0
+		"appVersion", appVersion, "staleCount", len(stale))
 
 	for _, v := range stale {
-		if enqueuedCount >= staleBuildEnqueueLimit {
-			slog.Info("content-poller: stale-build enqueue limit reached; remaining will be picked up on next tick",
-				"remaining", len(stale)-enqueuedCount)
-
-			break
-		}
-
 		systemUser := domain.SystemUserID
 
 		jobID, err := c.jobs.EnqueueBuildImage(ctx, v.ManifestID, v.Branch, nil, &systemUser)
@@ -202,8 +187,6 @@ func (c *ContentPoller) checkAppVersion(ctx context.Context) {
 
 			continue
 		}
-
-		enqueuedCount++
 
 		slog.Info("content-poller: enqueued rebuild for stale version",
 			"manifest", v.ManifestID, "branch", v.Branch, "job", jobID)

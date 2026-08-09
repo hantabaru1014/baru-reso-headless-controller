@@ -4,7 +4,10 @@ import { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { listAsyncJobs } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
+import {
+  getAsyncJob,
+  listAsyncJobs,
+} from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import {
   AsyncJob,
   AsyncJobStatus,
@@ -122,7 +125,12 @@ export default function AsyncJobList() {
   const [statusFilter, setStatusFilter] = useState<AsyncJobStatus>();
   const [typeFilter, setTypeFilter] = useState<AsyncJobType>();
   const [includeAllUsers, setIncludeAllUsers] = useState(false);
-  const [errorDetail, setErrorDetail] = useState<string | undefined>();
+  // エラー詳細ダイアログの対象. 一覧に載る last_error を summary として先に見せ、
+  // ビルドログ等のフルテキストは開いてから GetAsyncJob で取りに行く
+  // (一覧レスポンスに数百KB のログを載せないため).
+  const [errorTarget, setErrorTarget] = useState<
+    { id: string; summary: string } | undefined
+  >();
 
   const { data, isPending, refetch } = useQuery(
     listAsyncJobs,
@@ -143,6 +151,20 @@ export default function AsyncJobList() {
           : false,
     },
   );
+
+  const { data: errorDetailData, isPending: isErrorDetailPending } = useQuery(
+    getAsyncJob,
+    { id: errorTarget?.id ?? "" },
+    {
+      enabled: errorTarget !== undefined,
+      // FAILED は終端状態でログも不変なので、開き直しやフォーカス復帰で
+      // 数MB のログを取り直さない.
+      staleTime: Infinity,
+    },
+  );
+
+  // 詳細ログを持たない job (ホスト起動失敗など) は summary をそのまま全文として見せる.
+  const errorDetailText = errorDetailData?.errorDetail ?? errorTarget?.summary;
 
   const handleCopyError = async (message: string) => {
     await navigator.clipboard.writeText(message);
@@ -203,7 +225,7 @@ export default function AsyncJobList() {
         id: "lastError",
         header: t("asyncJobList.columnError"),
         cell: ({ row }) => {
-          const { status, lastError } = row.original;
+          const { id, status, lastError } = row.original;
           if (status !== AsyncJobStatus.FAILED || !lastError) {
             return "-";
           }
@@ -212,7 +234,7 @@ export default function AsyncJobList() {
               type="button"
               className="block w-full truncate text-left text-destructive hover:underline"
               title={t("asyncJobList.showErrorDetail")}
-              onClick={() => setErrorDetail(lastError)}
+              onClick={() => setErrorTarget({ id, summary: lastError })}
             >
               {lastError}
             </button>
@@ -278,26 +300,31 @@ export default function AsyncJobList() {
         }}
       />
       <Dialog
-        open={errorDetail !== undefined}
-        onOpenChange={(open) => !open && setErrorDetail(undefined)}
+        open={errorTarget !== undefined}
+        onOpenChange={(open) => !open && setErrorTarget(undefined)}
       >
         <DialogContent className="sm:max-w-[720px]">
           <DialogHeader>
             <DialogTitle>{t("asyncJobList.errorDialogTitle")}</DialogTitle>
           </DialogHeader>
           <pre className="max-h-[50vh] overflow-auto rounded-md border bg-muted p-3 text-xs whitespace-pre-wrap break-all">
-            {errorDetail}
+            {errorDetailText}
           </pre>
+          {isErrorDetailPending && (
+            <p className="text-xs text-muted-foreground">
+              {t("asyncJobList.loadingErrorDetail")}
+            </p>
+          )}
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => handleCopyError(errorDetail ?? "")}
+              onClick={() => handleCopyError(errorDetailText ?? "")}
             >
               {t("asyncJobList.copy")}
             </Button>
             <Button
               variant="secondary"
-              onClick={() => setErrorDetail(undefined)}
+              onClick={() => setErrorTarget(undefined)}
             >
               {t("asyncJobList.close")}
             </Button>

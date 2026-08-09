@@ -131,29 +131,62 @@ func (q *Queries) ListResoniteVersions(ctx context.Context, branch pgtype.Text) 
 }
 
 const listStaleBuiltResoniteVersions = `-- name: ListStaleBuiltResoniteVersions :many
-SELECT manifest_id, branch, game_version, released_at, build_status, image_tag, built_with_app_version, built_at, build_error, created_at, updated_at FROM resonite_versions
+WITH latest_ever_built AS (
+    SELECT DISTINCT ON (branch) manifest_id, branch, game_version, released_at, build_status, image_tag, built_with_app_version, built_at, build_error, created_at, updated_at
+    FROM resonite_versions
+    WHERE built_at IS NOT NULL
+      AND branch = ANY ($2::text[])
+    ORDER BY branch, released_at DESC
+)
+SELECT manifest_id, branch, game_version, released_at, build_status, image_tag, built_with_app_version, built_at, build_error, created_at, updated_at FROM latest_ever_built
 WHERE build_status = 'built'
-  AND branch = ANY ($1::text[])
-  AND (built_with_app_version IS NULL OR built_with_app_version <> $2::text)
+  AND (built_with_app_version IS NULL OR built_with_app_version <> $1::text)
 ORDER BY released_at DESC
 `
 
 type ListStaleBuiltResoniteVersionsParams struct {
-	Branches          []string
 	CurrentAppVersion string
+	Branches          []string
 }
 
-// built 済みだが container repo の AppVersion と食い違う (再ビルド対象) 行.
+type ListStaleBuiltResoniteVersionsRow struct {
+	ManifestID          string
+	Branch              string
+	GameVersion         pgtype.Text
+	ReleasedAt          pgtype.Timestamptz
+	BuildStatus         string
+	ImageTag            pgtype.Text
+	BuiltWithAppVersion pgtype.Text
+	BuiltAt             pgtype.Timestamptz
+	BuildError          pgtype.Text
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+}
+
+// 各ブランチの「最新のビルド済みバージョン」のうち container repo の AppVersion と
+// 食い違うもの (= AppVersion bump 時の再ビルド対象).
+//
+// 古いバージョンは対象にしない: container のコードは常に最新 Resonite の API に追従して
+// いるため、数世代前の Resonite を新しい AppVersion でビルドしてもコンパイルが通らない.
+// ホストの auto-update が乗り換える先も各ブランチの最新タグだけなので、最新1件で足りる.
+//
+// 候補の選択は `build_status = 'built'` ではなく `built_at IS NOT NULL`
+// (= 一度でもビルドされた) で行う. 再ビルドが失敗すると SetFailed でその行は
+// 'built' でなくなるため、'built' で選ぶと次 tick で1つ前の版が繰り上がり、
+// 「1 tick に1本ずつ過去に遡って必ず失敗する」連鎖になる (かつ過去の行の
+// build_status を軒並み failed に潰してしまう). 最新版で選び続ければ、
+// 失敗した時点でその branch の再ビルドは止まる.
+//
 // 対象ブランチは呼び出し側で絞る (`ANY (@branches)` で渡す).
-func (q *Queries) ListStaleBuiltResoniteVersions(ctx context.Context, arg ListStaleBuiltResoniteVersionsParams) ([]ResoniteVersion, error) {
-	rows, err := q.db.Query(ctx, listStaleBuiltResoniteVersions, arg.Branches, arg.CurrentAppVersion)
+func (q *Queries) ListStaleBuiltResoniteVersions(ctx context.Context, arg ListStaleBuiltResoniteVersionsParams) ([]ListStaleBuiltResoniteVersionsRow, error) {
+	rows, err := q.db.Query(ctx, listStaleBuiltResoniteVersions, arg.CurrentAppVersion, arg.Branches)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ResoniteVersion
+	var items []ListStaleBuiltResoniteVersionsRow
 	for rows.Next() {
-		var i ResoniteVersion
+		var i ListStaleBuiltResoniteVersionsRow
 		if err := rows.Scan(
 			&i.ManifestID,
 			&i.Branch,

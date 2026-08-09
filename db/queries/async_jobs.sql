@@ -56,3 +56,12 @@ WHERE id = $1 AND status = 1;
 UPDATE async_jobs
 SET status = 3, executed_at = NOW(), last_error = @last_error::text, claimed_by = NULL, claimed_at = NULL
 WHERE id = $1 AND status = 1;
+
+-- name: UpsertAsyncJobLog :exec
+-- 失敗時の詳細ログ (builder のフルログ等)。job あたり1本。
+INSERT INTO async_job_logs (job_id, content)
+VALUES ($1, @content::text)
+ON CONFLICT (job_id) DO UPDATE SET content = EXCLUDED.content;
+
+-- name: GetAsyncJobLog :one
+SELECT content FROM async_job_logs WHERE job_id = $1;

@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 
 	"github.com/go-errors/errors"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
@@ -84,6 +85,46 @@ func (u *Usecase) List(ctx context.Context, filter ListFilter) (*ListResult, err
 	}
 
 	return result, nil
+}
+
+// JobDetail は 1 件の job とそのエラー詳細 (builder のフルログ等).
+type JobDetail struct {
+	Job *entity.AsyncJob
+	// ErrorDetail は詳細ログが無ければ nil.
+	ErrorDetail *string
+}
+
+// Get は job 1 件をエラー詳細付きで返す. 認可は List と同じ規則:
+// 自分が投入した job は誰でも、他ユーザーの job は system:group.manage が要る.
+func (u *Usecase) Get(ctx context.Context, id string) (*JobDetail, error) {
+	job, err := u.repo.Get(ctx, id)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	callerID, err := usecase.CurrentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if job.CreatedBy == nil || *job.CreatedBy != callerID {
+		if err := u.perm.RequireSystemPermission(ctx, entity.PermKey_SystemGroupManage); err != nil {
+			return nil, err
+		}
+	}
+
+	// 詳細ログを持たない job のほうが多数なので、無いことは正常系.
+	log, err := u.repo.GetLog(ctx, id)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	detail := &JobDetail{Job: job}
+	if log != "" {
+		detail.ErrorDetail = &log
+	}
+
+	return detail, nil
 }
 
 // EnqueueStartHost はホスト起動 job を登録する. createdBy は完了通知の宛先 user.

@@ -149,20 +149,50 @@ func (r *AsyncJobRepository) MarkSucceeded(ctx context.Context, id string, resul
 	return nil
 }
 
-func (r *AsyncJobRepository) MarkFailed(ctx context.Context, id string, errMessage string) error {
+func (r *AsyncJobRepository) MarkFailed(ctx context.Context, id string, errMessage string, errDetail *string) error {
 	uid, err := parseUUID(id)
 	if err != nil {
 		return err
 	}
 
-	if _, err := r.q.MarkAsyncJobFailed(ctx, db.MarkAsyncJobFailedParams{
+	rows, err := r.q.MarkAsyncJobFailed(ctx, db.MarkAsyncJobFailedParams{
 		ID:        uid,
 		LastError: errMessage,
-	}); err != nil {
+	})
+	if err != nil {
 		return errors.WrapPrefix(convertDBErr(err), "async_job", 0)
 	}
 
+	// RUNNING 以外なら UPDATE は空振りしている (stale claim を他インスタンスが
+	// 拾い直して既に完了させた等). その job に詳細ログだけ付くのは不整合なので書かない.
+	if rows == 0 || errDetail == nil || *errDetail == "" {
+		return nil
+	}
+
+	// 詳細の保存に失敗しても job の FAILED 化自体は済んでいるので、ここは best-effort に
+	// せずエラーを返す (呼び出し側が warn ログに落とす).
+	if err := r.q.UpsertAsyncJobLog(ctx, db.UpsertAsyncJobLogParams{
+		JobID:   uid,
+		Content: *errDetail,
+	}); err != nil {
+		return errors.WrapPrefix(convertDBErr(err), "async_job_log", 0)
+	}
+
 	return nil
+}
+
+func (r *AsyncJobRepository) GetLog(ctx context.Context, id string) (string, error) {
+	uid, err := parseUUID(id)
+	if err != nil {
+		return "", err
+	}
+
+	content, err := r.q.GetAsyncJobLog(ctx, uid)
+	if err != nil {
+		return "", errors.WrapPrefix(convertDBErr(err), "async_job_log", 0)
+	}
+
+	return content, nil
 }
 
 func asyncJobToEntity(s db.AsyncJob) (*entity.AsyncJob, error) {

@@ -79,6 +79,7 @@ const (
 	ControllerService_ListScheduledSessionOperations_FullMethodName   = "/hdlctrl.v1.ControllerService/ListScheduledSessionOperations"
 	ControllerService_CancelScheduledSessionOperation_FullMethodName  = "/hdlctrl.v1.ControllerService/CancelScheduledSessionOperation"
 	ControllerService_ListAsyncJobs_FullMethodName                    = "/hdlctrl.v1.ControllerService/ListAsyncJobs"
+	ControllerService_GetAsyncJob_FullMethodName                      = "/hdlctrl.v1.ControllerService/GetAsyncJob"
 )
 
 // ControllerServiceClient is the client API for ControllerService service.
@@ -151,6 +152,7 @@ type ControllerServiceClient interface {
 	CancelScheduledSessionOperation(ctx context.Context, in *CancelScheduledSessionOperationRequest, opts ...grpc.CallOption) (*CancelScheduledSessionOperationResponse, error)
 	// 非同期job系
 	ListAsyncJobs(ctx context.Context, in *ListAsyncJobsRequest, opts ...grpc.CallOption) (*ListAsyncJobsResponse, error)
+	GetAsyncJob(ctx context.Context, in *GetAsyncJobRequest, opts ...grpc.CallOption) (*GetAsyncJobResponse, error)
 }
 
 type controllerServiceClient struct {
@@ -751,6 +753,16 @@ func (c *controllerServiceClient) ListAsyncJobs(ctx context.Context, in *ListAsy
 	return out, nil
 }
 
+func (c *controllerServiceClient) GetAsyncJob(ctx context.Context, in *GetAsyncJobRequest, opts ...grpc.CallOption) (*GetAsyncJobResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAsyncJobResponse)
+	err := c.cc.Invoke(ctx, ControllerService_GetAsyncJob_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ControllerServiceServer is the server API for ControllerService service.
 // All implementations must embed UnimplementedControllerServiceServer
 // for forward compatibility.
@@ -821,6 +833,7 @@ type ControllerServiceServer interface {
 	CancelScheduledSessionOperation(context.Context, *CancelScheduledSessionOperationRequest) (*CancelScheduledSessionOperationResponse, error)
 	// 非同期job系
 	ListAsyncJobs(context.Context, *ListAsyncJobsRequest) (*ListAsyncJobsResponse, error)
+	GetAsyncJob(context.Context, *GetAsyncJobRequest) (*GetAsyncJobResponse, error)
 	mustEmbedUnimplementedControllerServiceServer()
 }
 
@@ -1007,6 +1020,9 @@ func (UnimplementedControllerServiceServer) CancelScheduledSessionOperation(cont
 }
 func (UnimplementedControllerServiceServer) ListAsyncJobs(context.Context, *ListAsyncJobsRequest) (*ListAsyncJobsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListAsyncJobs not implemented")
+}
+func (UnimplementedControllerServiceServer) GetAsyncJob(context.Context, *GetAsyncJobRequest) (*GetAsyncJobResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAsyncJob not implemented")
 }
 func (UnimplementedControllerServiceServer) mustEmbedUnimplementedControllerServiceServer() {}
 func (UnimplementedControllerServiceServer) testEmbeddedByValue()                           {}
@@ -2091,6 +2107,24 @@ func _ControllerService_ListAsyncJobs_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_GetAsyncJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAsyncJobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).GetAsyncJob(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_GetAsyncJob_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).GetAsyncJob(ctx, req.(*GetAsyncJobRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ControllerService_ServiceDesc is the grpc.ServiceDesc for ControllerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2333,6 +2367,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListAsyncJobs",
 			Handler:    _ControllerService_ListAsyncJobs_Handler,
+		},
+		{
+			MethodName: "GetAsyncJob",
+			Handler:    _ControllerService_GetAsyncJob_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
