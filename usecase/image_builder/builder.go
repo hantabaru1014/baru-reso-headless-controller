@@ -9,16 +9,19 @@
 package image_builder
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/go-errors/errors"
 	"github.com/google/uuid"
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
@@ -37,7 +40,34 @@ const (
 
 	// builderSocketPath は builder container 内から見た docker.sock のマウント先 (契約で固定).
 	builderSocketPath = "/var/run/docker.sock"
+
+	// maxCapturedLogBytes は失敗時に保存する builder ログの上限. 超過分は先頭から
+	// 捨てて末尾 (= 失敗箇所) を残す. DepotDownloader の進捗出力で膨らむため上限は必要.
+	maxCapturedLogBytes = 2 << 20 // 2 MiB
+
+	logTruncationNotice = "... (先頭を切り詰めました)\n"
+
+	// minRedactableSecretLen 未満の credential はマスクしない. 短い値だと
+	// 無関係な部分文字列まで壊してログが読めなくなるほうが害が大きい.
+	minRedactableSecretLen = 4
+
+	// logCaptureBufferFactor は capture バッファを limit の何倍確保するか.
+	// 大きいほど詰め直しの頻度が下がる代わりにメモリを食う (ビルドは直列なので 1 本だけ).
+	logCaptureBufferFactor = 2
 )
+
+// BuildError は builder container が非 0 で終了したことを表すエラー.
+// 失敗時の builder ログ全文 (secrets はマスク済み) を詳細として持つ.
+type BuildError struct {
+	msg string
+	log string
+}
+
+var _ domain.DetailedError = (*BuildError)(nil)
+
+func (e *BuildError) Error() string { return e.msg }
+
+func (e *BuildError) ErrorDetail() string { return e.log }
 
 // Builder は builder image を起動して headless container image をビルドするサービス.
 type Builder struct {
@@ -110,7 +140,9 @@ func (b *Builder) Build(ctx context.Context, p BuildParams) (*BuildResult, error
 		}
 	}()
 
-	if err := b.relayLogs(ctx, cli, containerID); err != nil {
+	captured := newLogCapture(maxCapturedLogBytes)
+
+	if err := b.relayLogs(ctx, cli, containerID, captured); err != nil {
 		slog.Warn("image_builder: failed to relay builder logs", "container", containerID, "err", err)
 	}
 
@@ -120,9 +152,13 @@ func (b *Builder) Build(ctx context.Context, p BuildParams) (*BuildResult, error
 	}
 
 	if exitCode != 0 {
-		// エラー文字列には builder のログを一切含めない. RunBuild の SetFailed 経由で
-		// DB の build_error に保存されるため, credentials を含みうるログの混入を防ぐ.
-		return nil, errors.Errorf("builder container %s exited with code %d", containerID, exitCode)
+		// 一行サマリ (async_jobs.last_error / resonite_versions.build_error に載る) には
+		// ログを含めない. ログ全文は BuildError の詳細として別途保存され、job 履歴の
+		// エラー詳細からのみ参照される.
+		return nil, &BuildError{
+			msg: fmt.Sprintf("builder container %s exited with code %d", containerID, exitCode),
+			log: sanitizeForStorage(b.redactSecrets(captured.String())),
+		}
 	}
 
 	res, err := b.resultFromLabels(ctx, cli, buildID)
@@ -241,8 +277,9 @@ func (b *Builder) startBuilder(ctx context.Context, cli *client.Client, p BuildP
 }
 
 // relayLogs は builder container のログ (stdout+stderr) を controller の
-// os.Stdout / os.Stderr に転送する. Follow するため container 終了までブロックする.
-func (b *Builder) relayLogs(ctx context.Context, cli *client.Client, containerID string) error {
+// os.Stdout / os.Stderr に転送しつつ, capture にも書き出す.
+// Follow するため container 終了までブロックする.
+func (b *Builder) relayLogs(ctx context.Context, cli *client.Client, containerID string, capture io.Writer) error {
 	logs, err := cli.ContainerLogs(ctx, containerID, client.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
@@ -254,11 +291,97 @@ func (b *Builder) relayLogs(ctx context.Context, cli *client.Client, containerID
 
 	defer func() { _ = logs.Close() }()
 
-	if _, err := stdcopy.StdCopy(os.Stdout, os.Stderr, logs); err != nil {
+	// stdout / stderr は capture 上では 1 本に混ぜる. 失敗箇所の前後関係が
+	// そのまま読めるほうがログとして有用なため.
+	out := io.MultiWriter(os.Stdout, capture)
+	errOut := io.MultiWriter(os.Stderr, capture)
+
+	if _, err := stdcopy.StdCopy(out, errOut, logs); err != nil {
 		return errors.WrapPrefix(err, "copy builder logs", 0)
 	}
 
 	return nil
+}
+
+// redactSecrets は builder に渡した credentials がログに現れていた場合に伏せる.
+// entrypoint 側でも echo しない運用だが, ログを永続化する以上ここでも防御する.
+func (b *Builder) redactSecrets(log string) string {
+	secrets := []string{b.cfg.SteamPassword, b.cfg.HeadlessPassword, b.cfg.SteamUsername}
+
+	for _, s := range secrets {
+		if len(s) < minRedactableSecretLen {
+			continue
+		}
+
+		log = strings.ReplaceAll(log, s, "***")
+	}
+
+	return log
+}
+
+// logCapture は「末尾 limit バイトだけ残す」Writer.
+// builder ログは DepotDownloader の進捗等で数十 MB になりうる一方, 原因が出るのは
+// 末尾なので, 溢れた分は先頭から捨てる.
+//
+// バッファは limit の 2 倍を最初に確保し, 溢れたときだけ末尾 limit バイトを先頭へ
+// 詰め直す. 毎回 reslice で頭を捨てる素朴な実装だと backing array の容量が書き込む
+// たびに減り, 数十 MB のログで growslice と limit バイトの memmove を繰り返す.
+type logCapture struct {
+	buf   []byte
+	limit int
+	// truncated は一度でも上限を超えたか (= 先頭を捨てたか).
+	truncated bool
+}
+
+var _ io.Writer = (*logCapture)(nil)
+
+func newLogCapture(limit int) *logCapture {
+	return &logCapture{buf: make([]byte, 0, limit*logCaptureBufferFactor), limit: limit}
+}
+
+func (c *logCapture) Write(p []byte) (int, error) {
+	c.buf = append(c.buf, p...)
+
+	if len(c.buf) > c.limit {
+		c.truncated = true
+	}
+
+	// 詰め直しは limit バイト書くごとに 1 回で済む.
+	if len(c.buf) > c.limit*logCaptureBufferFactor {
+		c.buf = c.buf[:copy(c.buf, c.buf[len(c.buf)-c.limit:])]
+	}
+
+	return len(p), nil
+}
+
+func (c *logCapture) String() string {
+	if !c.truncated {
+		return string(c.buf)
+	}
+
+	// 詰め直し直後を除き buf には limit を超える分が残っているので, ここで切る.
+	cut := max(len(c.buf)-c.limit, 0)
+
+	// 切断位置が行の途中 (= 直前が改行でない) なら, 欠けた先頭行ごと落とす.
+	// 行どころか UTF-8 の途中で切れていることもあるので断片を持ち込まずに済み,
+	// 万一 credential が境界を跨いで出力されていた場合に後段の redactSecrets が
+	// その残骸を取りこぼすのも防げる.
+	if cut > 0 && c.buf[cut-1] != '\n' {
+		if nl := bytes.IndexByte(c.buf[cut:], '\n'); nl >= 0 {
+			cut += nl + 1
+		}
+	}
+
+	return logTruncationNotice + string(c.buf[cut:])
+}
+
+// sanitizeForStorage は Postgres の text 列に入らないバイトを落とす.
+// builder のログは docker build 経由でバイナリを含みうるため, そのまま保存すると
+// invalid byte sequence で書き込みごと失敗し, 肝心の失敗ログが残らなくなる.
+func sanitizeForStorage(s string) string {
+	s = strings.ToValidUTF8(s, "")
+
+	return strings.ReplaceAll(s, "\x00", "")
 }
 
 // waitBuilder は container の終了を待ち exit code を返す.

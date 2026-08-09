@@ -78,6 +78,7 @@ service ControllerService {
 
   // 非同期job系
   rpc ListAsyncJobs(ListAsyncJobsRequest) returns (ListAsyncJobsResponse);
+  rpc GetAsyncJob(GetAsyncJobRequest) returns (GetAsyncJobResponse);
 }
 
 message RefetchHeadlessAccountInfoRequest {
@@ -948,4 +949,15 @@ message ListAsyncJobsRequest {
 message ListAsyncJobsResponse {
   repeated AsyncJob jobs = 1;
   PageResponse page = 2;
+}
+
+message GetAsyncJobRequest {
+  string id = 1;
+}
+
+message GetAsyncJobResponse {
+  AsyncJob job = 1;
+  // 失敗時の詳細ログ (image build なら builder のフルログ). 一覧レスポンスを
+  // 膨らませないため、この RPC でのみ返す.
+  optional string error_detail = 2;
 }

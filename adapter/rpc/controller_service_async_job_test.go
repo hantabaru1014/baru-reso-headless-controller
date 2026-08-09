@@ -261,3 +261,126 @@ func TestControllerService_ListAsyncJobs(t *testing.T) {
 		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }
+
+func TestControllerService_GetAsyncJob(t *testing.T) {
+	baseTime := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+
+	lastError := "build: builder container abc exited with code 1"
+	errorDetail := "==> Downloading Resonite\n#25 ERROR: process did not complete successfully"
+
+	t.Run("成功: 自分の job はエラー詳細付きで取得できる", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		normalUserID := "normal-user@example.test"
+		testutil.SetupNormalUserWithPersonalGroup(t, setup.queries, normalUserID)
+
+		jobID := testutil.CreateTestAsyncJob(t, setup.pool, testutil.AsyncJobFixture{
+			JobType:     entity.AsyncJobType_BUILD_IMAGE,
+			Status:      entity.AsyncJobStatus_FAILED,
+			CreatedBy:   &normalUserID,
+			LastError:   &lastError,
+			ErrorDetail: &errorDetail,
+			CreatedAt:   baseTime,
+		})
+
+		req := testutil.CreateAuthenticatedRequest(t, &hdlctrlv1.GetAsyncJobRequest{Id: jobID}, normalUserID, "U-normal", "")
+
+		res, err := client.GetAsyncJob(t.Context(), req)
+		require.NoError(t, err)
+
+		assert.Equal(t, jobID, res.Msg.GetJob().GetId())
+		assert.Equal(t, hdlctrlv1.AsyncJobType_ASYNC_JOB_TYPE_BUILD_IMAGE, res.Msg.GetJob().GetJobType())
+		// 一覧に載る一行サマリと、詳細ログの全文は別々に返る.
+		assert.Equal(t, lastError, res.Msg.GetJob().GetLastError())
+		assert.Equal(t, errorDetail, res.Msg.GetErrorDetail())
+	})
+
+	t.Run("成功: 詳細ログを持たない job は error_detail が空", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		adminID := defaultAdminUserID
+		jobID := testutil.CreateTestAsyncJob(t, setup.pool, testutil.AsyncJobFixture{
+			JobType:   entity.AsyncJobType_START_HOST,
+			Status:    entity.AsyncJobStatus_FAILED,
+			CreatedBy: &adminID,
+			LastError: &lastError,
+			CreatedAt: baseTime,
+		})
+
+		res, err := client.GetAsyncJob(t.Context(),
+			testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetAsyncJobRequest{Id: jobID}))
+		require.NoError(t, err)
+
+		assert.Equal(t, jobID, res.Msg.GetJob().GetId())
+		assert.Empty(t, res.Msg.GetErrorDetail())
+	})
+
+	t.Run("失敗: 他ユーザーの job は system 権限が要る", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		normalUserID := "normal-user@example.test"
+		testutil.SetupNormalUserWithPersonalGroup(t, setup.queries, normalUserID)
+
+		adminID := defaultAdminUserID
+		jobID := testutil.CreateTestAsyncJob(t, setup.pool, testutil.AsyncJobFixture{
+			JobType:     entity.AsyncJobType_BUILD_IMAGE,
+			Status:      entity.AsyncJobStatus_FAILED,
+			CreatedBy:   &adminID,
+			LastError:   &lastError,
+			ErrorDetail: &errorDetail,
+			CreatedAt:   baseTime,
+		})
+
+		_, err := client.GetAsyncJob(t.Context(),
+			testutil.CreateAuthenticatedRequest(t, &hdlctrlv1.GetAsyncJobRequest{Id: jobID}, normalUserID, "U-normal", ""))
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+
+		// system 権限保持者 (= 投入者本人でもある admin) なら取得できる.
+		okRes, err := client.GetAsyncJob(t.Context(),
+			testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetAsyncJobRequest{Id: jobID}))
+		require.NoError(t, err)
+		assert.Equal(t, errorDetail, okRes.Msg.GetErrorDetail())
+	})
+
+	t.Run("失敗: 存在しない id は NotFound", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		_, err := client.GetAsyncJob(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t,
+			&hdlctrlv1.GetAsyncJobRequest{Id: "00000000-0000-0000-0000-000000000000"}))
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
+	})
+
+	t.Run("失敗: 未認証なら Unauthenticated", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		_, err := client.GetAsyncJob(t.Context(), connect.NewRequest(&hdlctrlv1.GetAsyncJobRequest{Id: "x"}))
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+	})
+}

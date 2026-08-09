@@ -157,6 +157,7 @@ func allKnownProcedures() []string {
 
 		// ===== ControllerService: 非同期job系 =====
 		hdlctrlv1connect.ControllerServiceListAsyncJobsProcedure,
+		hdlctrlv1connect.ControllerServiceGetAsyncJobProcedure,
 
 		// ===== GroupService =====
 		hdlctrlv1connect.GroupServiceCreateGroupProcedure,

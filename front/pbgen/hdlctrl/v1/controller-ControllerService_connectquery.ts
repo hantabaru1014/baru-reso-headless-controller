@@ -312,3 +312,8 @@ export const cancelScheduledSessionOperation = ControllerService.method.cancelSc
  * @generated from rpc hdlctrl.v1.ControllerService.ListAsyncJobs
  */
 export const listAsyncJobs = ControllerService.method.listAsyncJobs;
+
+/**
+ * @generated from rpc hdlctrl.v1.ControllerService.GetAsyncJob
+ */
+export const getAsyncJob = ControllerService.method.getAsyncJob;

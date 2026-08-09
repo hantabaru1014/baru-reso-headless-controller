@@ -6,6 +6,7 @@ import (
 	"errors"
 	"testing"
 
+	goerrors "github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
@@ -14,6 +15,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/async_job"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // stubAsyncJobRepo は AsyncJobExecutor.executeOne の unit テスト用. MarkSucceeded /
@@ -21,14 +23,16 @@ import (
 type stubAsyncJobRepo struct {
 	port.AsyncJobRepository
 
-	failedID  string
-	failedMsg string
-	succeeded bool
+	failedID     string
+	failedMsg    string
+	failedDetail *string
+	succeeded    bool
 }
 
-func (r *stubAsyncJobRepo) MarkFailed(_ context.Context, id, msg string) error {
+func (r *stubAsyncJobRepo) MarkFailed(_ context.Context, id, msg string, detail *string) error {
 	r.failedID = id
 	r.failedMsg = msg
+	r.failedDetail = detail
 
 	return nil
 }
@@ -150,6 +154,34 @@ func TestAsyncJobExecutor_ExecuteOne_PermissionDenied_MarksFailed(t *testing.T) 
 	assert.Contains(t, repo.failedMsg, domain.ErrPermissionDenied.Error(),
 		"last_error should surface PermissionDenied from the underlying usecase")
 	assert.False(t, repo.succeeded)
+	assert.Nil(t, repo.failedDetail, "詳細を持たないエラーでは error detail を保存しない")
+}
+
+// detailedTestError は domain.DetailedError を満たすテスト用エラー
+// (実物は image_builder.BuildError = builder のフルログを持つ).
+type detailedTestError struct{ detail string }
+
+func (e *detailedTestError) Error() string { return "boom" }
+
+func (e *detailedTestError) ErrorDetail() string { return e.detail }
+
+func TestAsyncJobExecutor_ExecuteOne_DetailedError_PersistsDetail(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubAsyncJobRepo{}
+	// errors.WrapPrefix で包まれても errors.As で拾えることを併せて確認する
+	// (実際に RunBuild が包んでから返すため).
+	sessOp := &stubSessionOperator{
+		stopErr: goerrors.WrapPrefix(&detailedTestError{detail: "full builder log"}, "build", 0),
+	}
+	exe := newTestAsyncJobExecutor(repo, &stubUserChecker{exists: true}, sessOp)
+
+	exe.executeOne(context.Background(), newTestJob(strPtr("user-A")))
+
+	assert.Equal(t, "job-1", repo.failedID)
+	assert.Equal(t, "build: boom", repo.failedMsg, "一行サマリにはログ本文を含めない")
+	require.NotNil(t, repo.failedDetail)
+	assert.Equal(t, "full builder log", *repo.failedDetail)
 }
 
 func TestAsyncJobExecutor_ExecuteOne_SetsActAsUserCtx(t *testing.T) {

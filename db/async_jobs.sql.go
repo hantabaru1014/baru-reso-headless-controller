@@ -140,6 +140,17 @@ func (q *Queries) GetAsyncJob(ctx context.Context, id pgtype.UUID) (AsyncJob, er
 	return i, err
 }
 
+const getAsyncJobLog = `-- name: GetAsyncJobLog :one
+SELECT content FROM async_job_logs WHERE job_id = $1
+`
+
+func (q *Queries) GetAsyncJobLog(ctx context.Context, jobID pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getAsyncJobLog, jobID)
+	var content string
+	err := row.Scan(&content)
+	return content, err
+}
+
 const listAsyncJobs = `-- name: ListAsyncJobs :many
 SELECT async_jobs.id, async_jobs.job_type, async_jobs.payload, async_jobs.status, async_jobs.result_payload, async_jobs.last_error, async_jobs.claimed_by, async_jobs.claimed_at, async_jobs.executed_at, async_jobs.host_id, async_jobs.session_id, async_jobs.created_by, async_jobs.created_at, async_jobs.updated_at, COUNT(*) OVER() AS total_count
 FROM async_jobs
@@ -262,4 +273,21 @@ func (q *Queries) ReleaseStaleAsyncJobClaims(ctx context.Context, staleAfterSeco
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const upsertAsyncJobLog = `-- name: UpsertAsyncJobLog :exec
+INSERT INTO async_job_logs (job_id, content)
+VALUES ($1, $2::text)
+ON CONFLICT (job_id) DO UPDATE SET content = EXCLUDED.content
+`
+
+type UpsertAsyncJobLogParams struct {
+	JobID   pgtype.UUID
+	Content string
+}
+
+// 失敗時の詳細ログ (builder のフルログ等)。job あたり1本。
+func (q *Queries) UpsertAsyncJobLog(ctx context.Context, arg UpsertAsyncJobLogParams) error {
+	_, err := q.db.Exec(ctx, upsertAsyncJobLog, arg.JobID, arg.Content)
+	return err
 }

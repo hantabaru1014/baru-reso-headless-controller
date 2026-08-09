@@ -527,6 +527,8 @@ type AsyncJobFixture struct {
 	// ResultPayload / LastError は完了済み job の表示内容を検証したいときだけ指定する.
 	ResultPayload *string
 	LastError     *string
+	// ErrorDetail は失敗 job の詳細ログ (async_job_logs). 指定時のみ行を作る.
+	ErrorDetail *string
 	// CreatedAt は created_at 降順テストの順序を決定的にするため明示指定する.
 	CreatedAt time.Time
 }
@@ -553,6 +555,12 @@ func CreateTestAsyncJob(t *testing.T, pool *pgxpool.Pool, f AsyncJobFixture) str
 		textOrNull(f.HostID), textOrNull(f.SessionID), textOrNull(f.CreatedBy), executedAt, f.CreatedAt,
 	).Scan(&id)
 	require.NoError(t, err, "failed to create test async job")
+
+	if f.ErrorDetail != nil {
+		_, err := pool.Exec(t.Context(),
+			`INSERT INTO async_job_logs (job_id, content) VALUES ($1::uuid, $2)`, id, *f.ErrorDetail)
+		require.NoError(t, err, "failed to create test async job log")
+	}
 
 	return id
 }

@@ -317,8 +317,9 @@ func (u *ResoniteVersionUsecase) CurrentAppVersion(ctx context.Context) (string,
 	return u.builder.CurrentAppVersion(ctx)
 }
 
-// ListStaleBuilt は built_with_app_version が currentAppVersion と一致しない built 行を返す.
-// AppVersion bump 時の再ビルド対象特定に使う (auto-build 対象ブランチのみ).
+// ListStaleBuilt は auto-build 対象ブランチごとの最新 built 行のうち、
+// built_with_app_version が currentAppVersion と一致しないものを返す.
+// AppVersion bump 時の再ビルド対象特定に使う.
 func (u *ResoniteVersionUsecase) ListStaleBuilt(ctx context.Context, currentAppVersion string) (entity.ResoniteVersionList, error) {
 	return u.repo.ListStaleBuilt(ctx, entity.AutoBuildBranches, currentAppVersion)
 }

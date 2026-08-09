@@ -98,8 +98,10 @@ func (r *ResoniteVersionRepository) ListStaleBuilt(ctx context.Context, branches
 	}
 
 	result := make(entity.ResoniteVersionList, 0, len(rows))
+	// CTE 経由なので sqlc は db.ResoniteVersion ではなく専用 Row 型を生成する.
+	// カラムは同一なので詰め替えて共通の変換に渡す.
 	for _, row := range rows {
-		result = append(result, resoniteVersionToEntity(row))
+		result = append(result, resoniteVersionToEntity(db.ResoniteVersion(row)))
 	}
 
 	return result, nil
