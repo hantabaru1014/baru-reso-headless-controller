@@ -16,6 +16,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/image_builder"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
+	"golang.org/x/sync/singleflight"
 )
 
 // NotBuiltError は resolveTagToUse で「対象のバージョンは DB にあるが未 built」
@@ -33,6 +34,13 @@ func (e *NotBuiltError) Error() string {
 // HostUpgradeOrchestrator は built タグでの roll を判断するためこれを購読する.
 type BuildSuccessObserver func(ctx context.Context, image *port.ContainerImage)
 
+// imageBuilder は RunBuild / CurrentAppVersion が使う builder の操作だけを切り出した
+// interface. 実体は *image_builder.Builder で、テストでの差し替えのために挟んでいる.
+type imageBuilder interface {
+	Build(ctx context.Context, p image_builder.BuildParams) (*image_builder.BuildResult, error)
+	CurrentAppVersion(ctx context.Context) (string, error)
+}
+
 // ResoniteVersionUsecase は versions.json 由来のバージョン管理 + ローカルビルドの
 // 中枢. HeadlessHostUsecase / Dispatcher / ContentPoller / RPC handler / Orchestrator
 // はここ経由でバージョン情報にアクセスする.
@@ -43,17 +51,22 @@ type BuildSuccessObserver func(ctx context.Context, image *port.ContainerImage)
 // 時点でローカル image の実在を connector 経由で確認する.
 type ResoniteVersionUsecase struct {
 	repo      port.ResoniteVersionRepository
-	builder   *image_builder.Builder
+	builder   imageBuilder
 	connector hostconnector.HostConnector
 	cfg       *config.ResoniteBuildConfig
 
 	mu        sync.Mutex
 	observers []BuildSuccessObserver
+
+	// buildGroup は同一 (manifest, branch) の RunBuild をまとめる. image_builder 側の
+	// mutex はビルド本体しか守らないため、「既にビルド済みか」の判定込みで重複を潰すには
+	// ここで束ねる必要がある.
+	buildGroup singleflight.Group
 }
 
 func NewResoniteVersionUsecase(
 	repo port.ResoniteVersionRepository,
-	builder *image_builder.Builder,
+	builder imageBuilder,
 	connector hostconnector.HostConnector,
 	cfg *config.ResoniteBuildConfig,
 ) *ResoniteVersionUsecase {
@@ -149,8 +162,8 @@ func (u *ResoniteVersionUsecase) ListBuiltAsContainerImages(ctx context.Context)
 }
 
 // ResolveForStart は tagInput を実イメージタグに解決する.
-// - "" / "latestRelease" → branch=headless の built 済み最新
-// - "latestPreRelease" → branch=prerelease の built 済み最新
+// - "" / "latestRelease" → branch=headless の最新版
+// - "latestPreRelease" → branch=prerelease の最新版
 // - 明示タグ → image_tag で逆引き
 // 対象行が DB にあるが未 built の場合、*NotBuiltError を返す (chain 用).
 func (u *ResoniteVersionUsecase) ResolveForStart(ctx context.Context, tagInput string) (string, error) {
@@ -171,63 +184,43 @@ func (u *ResoniteVersionUsecase) ResolveForStart(ctx context.Context, tagInput s
 		return "", errors.Wrap(err, 0)
 	}
 
-	if row.BuildStatus != entity.ResoniteVersionBuildStatus_Built || row.ImageTag == nil {
-		return "", &NotBuiltError{ManifestID: row.ManifestID, Branch: row.Branch}
-	}
-
-	// DB 上 built でも image が prune 等で消えていたら再ビルドを chain する.
-	exists, err := u.imageExists(ctx, *row.ImageTag)
-	if err != nil {
-		return "", err
-	}
-
-	if !exists {
-		return "", &NotBuiltError{ManifestID: row.ManifestID, Branch: row.Branch}
-	}
-
-	return *row.ImageTag, nil
+	return u.builtTagOrNotBuilt(ctx, row)
 }
 
 // RunBuild は BUILD_IMAGE async job の handler 本体.
 // build 前に status=building へ遷移し、成功時 status=built + image_tag / built_with_app_version 更新、
 // 失敗時 status=failed + build_error 記録.
 // 成功時は Subscribe した observer 群に built タグを push (Orchestrator が roll 判定).
+//
+// 同一バージョンに対する BUILD_IMAGE job は複数経路から並行して投入されうる
+// (ContentPoller の新版検知 / AppVersion bump 検知、ホスト起動・再起動時の chain).
+// singleflight で同一 (manifest, branch) の実行を 1 本にまとめ、さらに実行前に
+// 「もうビルド済みか」を見て無駄な再ビルドを避ける. どちらもプロセス内の best-effort
+// (複数インスタンス構成では両方が走りうるが、結果は同じイメージになる).
+//
+// 相乗りした側は自分の ctx が先に切れたらそこで諦める (job の実行時間上限は
+// worker 側で job ごとに与えられるため、先行ビルドの残り時間に引きずられない).
+// 先行ビルド自体はそのまま走り続けるので、次の job は built 済みとして拾える.
 func (u *ResoniteVersionUsecase) RunBuild(ctx context.Context, manifestID string, branch entity.ResoniteVersionBranch) (string, error) {
-	row, err := u.repo.Get(ctx, manifestID, branch)
-	if err != nil {
-		return "", errors.WrapPrefix(err, "get resonite_version row", 0)
-	}
-
-	if err := u.repo.SetBuilding(ctx, manifestID, branch); err != nil {
-		return "", errors.WrapPrefix(err, "mark building", 0)
-	}
-
-	res, err := u.builder.Build(ctx, image_builder.BuildParams{
-		ManifestID:  manifestID,
-		Branch:      branch,
-		GameVersion: row.GameVersion,
+	ch := u.buildGroup.DoChan(manifestID+"\x00"+string(branch), func() (any, error) {
+		return u.runBuild(ctx, manifestID, branch)
 	})
-	if err != nil {
-		msg := err.Error()
-		if setErr := u.repo.SetFailed(ctx, manifestID, branch, msg); setErr != nil {
-			slog.Error("failed to mark version failed", "err", setErr, "manifest", manifestID)
+
+	select {
+	case <-ctx.Done():
+		return "", errors.Wrap(ctx.Err(), 0)
+	case res := <-ch:
+		if res.Err != nil {
+			return "", res.Err
 		}
 
-		return "", errors.WrapPrefix(err, "build", 0)
+		built, ok := res.Val.(string)
+		if !ok {
+			return "", errors.Errorf("unexpected build result type %T", res.Val)
+		}
+
+		return built, nil
 	}
-
-	if err := u.repo.SetBuilt(ctx, manifestID, branch, res.ImageTag, res.AppVersion); err != nil {
-		return "", errors.WrapPrefix(err, "mark built", 0)
-	}
-
-	u.notify(ctx, &port.ContainerImage{
-		Tag:             res.ImageTag,
-		ResoniteVersion: res.ResoniteVersion,
-		IsPreRelease:    branch == entity.ResoniteVersionBranch_Prerelease,
-		AppVersion:      res.AppVersion,
-	})
-
-	return res.ImageTag, nil
 }
 
 // versionsJSONShape は resonite-love/resonite-version-monitor の JSON 形状.
@@ -324,6 +317,112 @@ func (u *ResoniteVersionUsecase) ListStaleBuilt(ctx context.Context, currentAppV
 	return u.repo.ListStaleBuilt(ctx, entity.AutoBuildBranches, currentAppVersion)
 }
 
+// builtTagOrNotBuilt は row が「今すぐ起動に使えるイメージ」を持っていればそのタグを、
+// 持っていなければ *NotBuiltError を返す (呼び出し元が BUILD_IMAGE を chain する).
+// DB 上 built でも image が prune 等で消えていれば未 built 扱い.
+func (u *ResoniteVersionUsecase) builtTagOrNotBuilt(ctx context.Context, row *entity.ResoniteVersion) (string, error) {
+	if row.BuildStatus == entity.ResoniteVersionBuildStatus_Built && row.ImageTag != nil {
+		exists, err := u.imageExists(ctx, *row.ImageTag)
+		if err != nil {
+			return "", err
+		}
+
+		if exists {
+			return *row.ImageTag, nil
+		}
+	}
+
+	return "", &NotBuiltError{ManifestID: row.ManifestID, Branch: row.Branch}
+}
+
+func (u *ResoniteVersionUsecase) runBuild(ctx context.Context, manifestID string, branch entity.ResoniteVersionBranch) (string, error) {
+	row, err := u.repo.Get(ctx, manifestID, branch)
+	if err != nil {
+		return "", errors.WrapPrefix(err, "get resonite_version row", 0)
+	}
+
+	upToDateTag, err := u.upToDateTag(ctx, row)
+	if err != nil {
+		return "", err
+	}
+
+	if upToDateTag != "" {
+		slog.Info("resonite versions: build skipped; already up to date",
+			"manifest", manifestID, "branch", branch, "tag", upToDateTag)
+
+		return upToDateTag, nil
+	}
+
+	if err := u.repo.SetBuilding(ctx, manifestID, branch); err != nil {
+		return "", errors.WrapPrefix(err, "mark building", 0)
+	}
+
+	res, err := u.builder.Build(ctx, image_builder.BuildParams{
+		ManifestID:  manifestID,
+		Branch:      branch,
+		GameVersion: row.GameVersion,
+	})
+	if err != nil {
+		msg := err.Error()
+		if setErr := u.repo.SetFailed(ctx, manifestID, branch, msg); setErr != nil {
+			slog.Error("failed to mark version failed", "err", setErr, "manifest", manifestID)
+		}
+
+		return "", errors.WrapPrefix(err, "build", 0)
+	}
+
+	if err := u.repo.SetBuilt(ctx, manifestID, branch, res.ImageTag, res.AppVersion); err != nil {
+		return "", errors.WrapPrefix(err, "mark built", 0)
+	}
+
+	u.notify(ctx, &port.ContainerImage{
+		Tag:             res.ImageTag,
+		ResoniteVersion: res.ResoniteVersion,
+		IsPreRelease:    branch == entity.ResoniteVersionBranch_Prerelease,
+		AppVersion:      res.AppVersion,
+	})
+
+	return res.ImageTag, nil
+}
+
+// upToDateTag は row が「今ビルドし直しても同じ結果になる」状態なら既存の image tag を、
+// ビルドが要るなら "" を返す.
+//
+// 判定材料は build_status ではなく実体: DB 上 built でもローカル image が prune 等で
+// 消えていればビルドが要る. また built_with_app_version が builder image の
+// AppVersion と違えば、ContentPoller が投入する AppVersion bump 後の再ビルド対象
+// なので skip してはいけない.
+func (u *ResoniteVersionUsecase) upToDateTag(ctx context.Context, row *entity.ResoniteVersion) (string, error) {
+	if row.BuiltWithAppVersion == nil {
+		return "", nil
+	}
+
+	tag, err := u.builtTagOrNotBuilt(ctx, row)
+	if err != nil {
+		var nbe *NotBuiltError
+		if errors.As(err, &nbe) {
+			return "", nil
+		}
+
+		return "", err
+	}
+
+	appVersion, err := u.CurrentAppVersion(ctx)
+	if err != nil {
+		// 判定できないときはビルドする. 冗長なビルドのほうが、古いイメージのまま
+		// 起動させてしまうより害が小さい.
+		slog.Warn("resonite versions: failed to read builder AppVersion; building anyway", "err", err)
+
+		return "", nil
+	}
+
+	if *row.BuiltWithAppVersion != appVersion {
+		return "", nil
+	}
+
+	return tag, nil
+}
+
 // localTagSet はローカルに存在する headless image のタグ集合を返す.
 func (u *ResoniteVersionUsecase) localTagSet(ctx context.Context) (map[string]struct{}, error) {
 	tags, err := u.connector.ListLocalImageTags(ctx)
@@ -351,41 +450,22 @@ func (u *ResoniteVersionUsecase) imageExists(ctx context.Context, tag string) (b
 	return ok, nil
 }
 
+// resolveLatest は branch の最新版 (versions.json 上の最新) を解決する.
+// 「built 済みの中の最新」ではなく常に最新版が対象なので、それが未 built なら
+// *NotBuiltError を返し、呼び出し元 (job handler) が BUILD_IMAGE を chain する.
+// 古い built 済みタグへのフォールバックはしない: latestRelease / latestPreRelease は
+// 「最新版で動かす」指定であり、勝手に数世代前で起動すると気付けないため.
 func (u *ResoniteVersionUsecase) resolveLatest(ctx context.Context, branch entity.ResoniteVersionBranch) (string, error) {
-	built, err := u.repo.GetLatestBuiltByBranch(ctx, branch)
-	if err == nil {
-		if built.ImageTag != nil {
-			// DB 上 built でも image が prune 等で消えていたら再ビルドを chain する.
-			exists, err := u.imageExists(ctx, *built.ImageTag)
-			if err != nil {
-				return "", err
-			}
-
-			if exists {
-				return *built.ImageTag, nil
-			}
-
-			return "", &NotBuiltError{ManifestID: built.ManifestID, Branch: built.Branch}
-		}
-	} else if !errors.Is(err, domain.ErrNotFound) {
-		return "", errors.Wrap(err, 0)
-	}
-
-	// built が無ければ、未 built の中で最新のものを chain 対象として返す.
-	all, err := u.repo.List(ctx, &branch)
+	latest, err := u.repo.GetLatestByBranch(ctx, branch)
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return "", errors.Errorf("no resonite_versions found for branch=%s (versions.json fetched?)", branch)
+		}
+
 		return "", errors.Wrap(err, 0)
 	}
 
-	for _, r := range all {
-		if r.GameVersion == nil {
-			continue
-		}
-
-		return "", &NotBuiltError{ManifestID: r.ManifestID, Branch: r.Branch}
-	}
-
-	return "", errors.Errorf("no resonite_versions found for branch=%s (versions.json fetched?)", branch)
+	return u.builtTagOrNotBuilt(ctx, latest)
 }
 
 func (u *ResoniteVersionUsecase) notify(ctx context.Context, image *port.ContainerImage) {

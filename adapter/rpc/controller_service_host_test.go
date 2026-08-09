@@ -326,9 +326,11 @@ func TestControllerService_BuildResoniteImage(t *testing.T) {
 		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.BuildResoniteImageRequest{
 			ManifestId: "MANIFEST-1",
 			Branch:     "headless",
-			ThenStartHost: &hdlctrlv1.StartHeadlessHostRequest{
-				HeadlessAccountId: "U-mp-acc",
-				Name:              "TestHost",
+			FollowUp: &hdlctrlv1.BuildResoniteImageRequest_ThenStartHost{
+				ThenStartHost: &hdlctrlv1.StartHeadlessHostRequest{
+					HeadlessAccountId: "U-mp-acc",
+					Name:              "TestHost",
+				},
 			},
 		}, "U-mp-build-chain", groupID, []string{
 			entity.PermKey_HostWrite,
@@ -352,9 +354,11 @@ func TestControllerService_BuildResoniteImage(t *testing.T) {
 		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.BuildResoniteImageRequest{
 			ManifestId: "MANIFEST-1",
 			Branch:     "headless",
-			ThenStartHost: &hdlctrlv1.StartHeadlessHostRequest{
-				HeadlessAccountId: "U-mp-acc",
-				Name:              "TestHost",
+			FollowUp: &hdlctrlv1.BuildResoniteImageRequest_ThenStartHost{
+				ThenStartHost: &hdlctrlv1.StartHeadlessHostRequest{
+					HeadlessAccountId: "U-mp-acc",
+					Name:              "TestHost",
+				},
 			},
 		}, "U-mp-build-chain-noaccuse", groupID, []string{entity.PermKey_HostWrite})
 
@@ -365,6 +369,60 @@ func TestControllerService_BuildResoniteImage(t *testing.T) {
 		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 		assert.Contains(t, connectErr.Message(), entity.PermKey_AccountUse)
+	})
+
+	t.Run("成功: then_restart_host 付きは対象ホストの host:write で実行できる", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-build-restart-chain"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-acc", "TestHost", entity.HeadlessHostStatus_EXITED, groupID)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.BuildResoniteImageRequest{
+			ManifestId: "MANIFEST-1",
+			Branch:     "headless",
+			FollowUp: &hdlctrlv1.BuildResoniteImageRequest_ThenRestartHost{
+				ThenRestartHost: &hdlctrlv1.RestartHeadlessHostRequest{HostId: host.ID},
+			},
+		}, "U-mp-build-restart-chain", groupID, []string{entity.PermKey_HostWrite})
+
+		res, err := client.BuildResoniteImage(t.Context(), req)
+		require.NoError(t, err)
+		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_BUILD_IMAGE))
+	})
+
+	// build 単体を実行できる権限では、他グループのホストを再起動させる chain までは通せない.
+	t.Run("失敗: then_restart_host 付きで対象ホストの host:write が無いと PermissionDenied", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const callerGroupID = "g-mp-build-restart-caller"
+
+		const hostGroupID = "g-mp-build-restart-other"
+
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-other-acc", "other@example.test", "password", hostGroupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-other-acc", "OtherHost", entity.HeadlessHostStatus_EXITED, hostGroupID)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.BuildResoniteImageRequest{
+			ManifestId: "MANIFEST-1",
+			Branch:     "headless",
+			FollowUp: &hdlctrlv1.BuildResoniteImageRequest_ThenRestartHost{
+				ThenRestartHost: &hdlctrlv1.RestartHeadlessHostRequest{HostId: host.ID},
+			},
+		}, "U-mp-build-restart-caller", callerGroupID, []string{entity.PermKey_HostWrite})
+
+		_, err := client.BuildResoniteImage(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+		assert.Contains(t, connectErr.Message(), entity.PermKey_HostWrite)
 	})
 }
 

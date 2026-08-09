@@ -134,7 +134,10 @@ function NewHostDialog({
         await mutateBuildImage({
           manifestId,
           branch,
-          thenStartHost: { ...startReq, imageTag: undefined },
+          followUp: {
+            case: "thenStartHost",
+            value: { ...startReq, imageTag: undefined },
+          },
         });
         toast.success(t("hostList.buildAndStartAccepted"));
       } else {

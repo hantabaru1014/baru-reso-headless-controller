@@ -43,13 +43,7 @@ type ContentPollerVersionAPI interface {
 // ContentPollerJobEnqueuer は BUILD_IMAGE job を投入するインタフェース.
 // async_job.Usecase.EnqueueBuildImage を裏で叩く.
 type ContentPollerJobEnqueuer interface {
-	EnqueueBuildImage(
-		ctx context.Context,
-		manifestID string,
-		branch entity.ResoniteVersionBranch,
-		thenStart *hdlctrlv1.StartHeadlessHostRequest,
-		createdBy *string,
-	) (string, error)
+	EnqueueBuildImage(ctx context.Context, req *hdlctrlv1.BuildResoniteImageRequest, createdBy *string) (string, error)
 }
 
 type ContentPoller struct {
@@ -135,7 +129,10 @@ func (c *ContentPoller) checkVersions(ctx context.Context) {
 
 		systemUser := domain.SystemUserID
 
-		jobID, err := c.jobs.EnqueueBuildImage(ctx, v.ManifestID, v.Branch, nil, &systemUser)
+		jobID, err := c.jobs.EnqueueBuildImage(ctx, &hdlctrlv1.BuildResoniteImageRequest{
+			ManifestId: v.ManifestID,
+			Branch:     string(v.Branch),
+		}, &systemUser)
 		if err != nil {
 			slog.Warn("content-poller: enqueue build for new version failed",
 				"manifest", v.ManifestID, "branch", v.Branch, "err", err)
@@ -180,7 +177,10 @@ func (c *ContentPoller) checkAppVersion(ctx context.Context) {
 	for _, v := range stale {
 		systemUser := domain.SystemUserID
 
-		jobID, err := c.jobs.EnqueueBuildImage(ctx, v.ManifestID, v.Branch, nil, &systemUser)
+		jobID, err := c.jobs.EnqueueBuildImage(ctx, &hdlctrlv1.BuildResoniteImageRequest{
+			ManifestId: v.ManifestID,
+			Branch:     string(v.Branch),
+		}, &systemUser)
 		if err != nil {
 			slog.Warn("content-poller: enqueue rebuild failed",
 				"manifest", v.ManifestID, "branch", v.Branch, "err", err)

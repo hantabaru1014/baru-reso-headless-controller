@@ -519,8 +519,9 @@ func checkStartHeadlessHostMsg(ctx context.Context, userID string, msg *hdlctrlv
 // checkBuildResoniteImage: イメージビルドは host 単体に閉じない共有リソース
 // (Steam 認証情報 / docker daemon / disk) を消費するが、いずれかのグループで
 // ホストを起動できる (host:write を持つ) ユーザーには許可する.
-// then_start_host 付きの場合は chain される起動要求に対して StartHeadlessHost と
-// 同一のチェック (対象グループへの host:write + account:use) を行う.
+// follow_up 付きの場合は chain される job に対して、その job を直接呼んだ場合と同一の
+// チェックを行う (then_start_host: 対象グループへの host:write + account:use /
+// then_restart_host: 対象ホストのグループへの host:write).
 func checkBuildResoniteImage(ctx context.Context, req connect.AnyRequest, deps *PermissionDeps, permUC *usecase.PermissionUsecase) error {
 	msg, ok := req.Any().(*hdlctrlv1.BuildResoniteImageRequest)
 	if !ok {
@@ -532,8 +533,16 @@ func checkBuildResoniteImage(ctx context.Context, req connect.AnyRequest, deps *
 		return err
 	}
 
-	if ts := msg.GetThenStartHost(); ts != nil {
-		return checkStartHeadlessHostMsg(ctx, claims.UserID, ts, deps, permUC)
+	switch f := msg.GetFollowUp().(type) {
+	case *hdlctrlv1.BuildResoniteImageRequest_ThenStartHost:
+		return checkStartHeadlessHostMsg(ctx, claims.UserID, f.ThenStartHost, deps, permUC)
+	case *hdlctrlv1.BuildResoniteImageRequest_ThenRestartHost:
+		groupID, err := deps.HostRepo.GetGroupID(ctx, f.ThenRestartHost.GetHostId())
+		if err != nil {
+			return convertErr(err)
+		}
+
+		return requirePerm(ctx, permUC, claims.UserID, groupID, entity.PermKey_HostWrite)
 	}
 
 	// 無所属の system 管理者でも通せるよう、先に system:group.manage を確認する
