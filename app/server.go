@@ -122,7 +122,7 @@ func spaFileHandler(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		_ = f.Close()
 
-		http.ServeFileFS(w, r, front.FrontAssets, filePath)
+		http.ServeFileFS(w, r, front.FrontAssets, filePath) //nolint:gosec // embed.FS は親ディレクトリ参照を拒否するため path traversal は発生しない
 	} else {
 		http.ServeFileFS(w, r, front.FrontAssets, "index.html")
 	}

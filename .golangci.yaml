@@ -33,6 +33,7 @@ linters:
     - wrapcheck # エラーラッピング必須 - 内部パッケージ間では不要
     - nestif # ネスト複雑度 - 既存コードの大幅なリファクタリングが必要
     - nilnil # nil戻り値チェック - テストモック等で必要な場合がある
+    - gomodguard # v2.12 で非推奨 - 後継の gomodguard_v2 が default: all で有効
   settings:
     cyclop:
       max-complexity: 30
