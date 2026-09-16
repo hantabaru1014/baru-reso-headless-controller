@@ -389,9 +389,12 @@ export default function HomePage() {
           <div className="h-64" />
         </Loading>
       ) : (
-        <ResizablePanelGroup direction="horizontal" className="min-h-0 flex-1">
+        <ResizablePanelGroup
+          orientation="horizontal"
+          className="min-h-0 flex-1"
+        >
           {/* 左パネル: お知らせ一覧 */}
-          <ResizablePanel defaultSize={30} minSize={20}>
+          <ResizablePanel defaultSize="30%" minSize="20%">
             <div className="flex h-full flex-col rounded-l-md border">
               <div className="flex-1 overflow-auto">
                 <MessageList
@@ -406,7 +409,7 @@ export default function HomePage() {
           <ResizableHandle withHandle />
 
           {/* 右パネル: 内容表示 */}
-          <ResizablePanel defaultSize={70} minSize={40}>
+          <ResizablePanel defaultSize="70%" minSize="40%">
             <div className="h-full overflow-auto rounded-r-md border p-4">
               {selectedMessage ? (
                 <MessageDetail

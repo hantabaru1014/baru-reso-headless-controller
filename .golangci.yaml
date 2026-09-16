@@ -7,6 +7,7 @@ linters:
     - wsl # deprecated
     - depguard # インポート制限 - 設定なしでは全インポートがブロックされる
     - exhaustruct # 全フィールド初期化必須 - 外部ライブラリの構造体にも適用される
+    - exhaustruct_v5 # 同上 (v2.13 で追加された後継)
     - varnamelen # 変数名の長さ - i, ctx 等の慣用的な短い名前も対象
     - funlen # 関数の長さ - 既存コードの大幅な分割が必要
     - revive # export-loop-ref等の誤検知が多い
@@ -33,6 +34,7 @@ linters:
     - wrapcheck # エラーラッピング必須 - 内部パッケージ間では不要
     - nestif # ネスト複雑度 - 既存コードの大幅なリファクタリングが必要
     - nilnil # nil戻り値チェック - テストモック等で必要な場合がある
+    - gomodguard # v2.12 で非推奨 - 後継の gomodguard_v2 が default: all で有効
   settings:
     cyclop:
       max-complexity: 30

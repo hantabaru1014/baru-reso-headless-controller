@@ -10,8 +10,8 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
-	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
+	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/async_job"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/stretchr/testify/assert"
@@ -46,8 +46,8 @@ func (r *stubAsyncJobRepo) MarkSucceeded(_ context.Context, _ string, _ json.Raw
 // noopBus は notification.Bus を満たす最小実装. PublishTo / Publish / Subscribe を全て no-op.
 type noopBus struct{}
 
-func (noopBus) Publish(*hdlctrlv1.NotificationEvent)                  {}
-func (noopBus) PublishTo(string, *hdlctrlv1.NotificationEvent)        {}
+func (noopBus) Publish(*hdlctrlv1.NotificationEvent)           {}
+func (noopBus) PublishTo(string, *hdlctrlv1.NotificationEvent) {}
 func (noopBus) Subscribe(context.Context, string) (<-chan *hdlctrlv1.NotificationEvent, func()) {
 	ch := make(chan *hdlctrlv1.NotificationEvent)
 	return ch, func() { close(ch) }
@@ -104,7 +104,7 @@ func TestAsyncJobExecutor_ExecuteOne_NoCreatedBy_MarksFailed(t *testing.T) {
 		createdBy *string
 	}{
 		{"nil createdBy", nil},
-		{"empty createdBy", strPtr("")},
+		{"empty createdBy", new("")},
 	}
 
 	for _, tc := range cases {
@@ -132,7 +132,7 @@ func TestAsyncJobExecutor_ExecuteOne_UserNotFound_MarksFailed(t *testing.T) {
 	sessOp := &stubSessionOperator{}
 	exe := newTestAsyncJobExecutor(repo, &stubUserChecker{exists: false}, sessOp)
 
-	exe.executeOne(context.Background(), newTestJob(strPtr("ghost-user")))
+	exe.executeOne(context.Background(), newTestJob(new("ghost-user")))
 
 	assert.Equal(t, "job-1", repo.failedID)
 	assert.Contains(t, repo.failedMsg, "ghost-user", "last_error should include the missing user ID")
@@ -148,7 +148,7 @@ func TestAsyncJobExecutor_ExecuteOne_PermissionDenied_MarksFailed(t *testing.T) 
 	sessOp := &stubSessionOperator{stopErr: domain.ErrPermissionDenied}
 	exe := newTestAsyncJobExecutor(repo, &stubUserChecker{exists: true}, sessOp)
 
-	exe.executeOne(context.Background(), newTestJob(strPtr("user-A")))
+	exe.executeOne(context.Background(), newTestJob(new("user-A")))
 
 	assert.Equal(t, "job-1", repo.failedID)
 	assert.Contains(t, repo.failedMsg, domain.ErrPermissionDenied.Error(),
@@ -176,7 +176,7 @@ func TestAsyncJobExecutor_ExecuteOne_DetailedError_PersistsDetail(t *testing.T) 
 	}
 	exe := newTestAsyncJobExecutor(repo, &stubUserChecker{exists: true}, sessOp)
 
-	exe.executeOne(context.Background(), newTestJob(strPtr("user-A")))
+	exe.executeOne(context.Background(), newTestJob(new("user-A")))
 
 	assert.Equal(t, "job-1", repo.failedID)
 	assert.Equal(t, "build: boom", repo.failedMsg, "一行サマリにはログ本文を含めない")
@@ -191,7 +191,7 @@ func TestAsyncJobExecutor_ExecuteOne_SetsActAsUserCtx(t *testing.T) {
 	sessOp := &stubSessionOperator{}
 	exe := newTestAsyncJobExecutor(repo, &stubUserChecker{exists: true}, sessOp)
 
-	exe.executeOne(context.Background(), newTestJob(strPtr("user-A")))
+	exe.executeOne(context.Background(), newTestJob(new("user-A")))
 
 	// dispatcher 経由で session operator が呼ばれた ctx に、created_by の AuthClaims が
 	// 入っていることを確認 (usecase 層の Require* が CurrentUserID で参照する).
@@ -225,5 +225,3 @@ func TestAsyncJobExecutor_MarkFailed_OnCanceledCtx(t *testing.T) {
 
 	assert.Equal(t, "job-1", repo.failedID, "MarkFailed should run even when parent ctx is canceled")
 }
-
-func strPtr(s string) *string { return &s }

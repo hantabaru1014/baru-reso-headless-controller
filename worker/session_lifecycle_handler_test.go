@@ -222,8 +222,6 @@ func sessionEndedEvent(t time.Time, sessionID string) *headlessv1.HostEvent {
 	}
 }
 
-func ptr[T any](v T) *T { return &v }
-
 func TestSessionLifecycleHandler_SessionStarted(t *testing.T) {
 	t.Parallel()
 
@@ -244,7 +242,7 @@ func TestSessionLifecycleHandler_SessionStarted(t *testing.T) {
 			HostID:            "host-1",
 			StartedAt:         &oldStart,
 			EndedAt:           &endedAt,
-			CreatedBy:         ptr("owner-1"),
+			CreatedBy:         new("owner-1"),
 			Memo:              "important note",
 			AutoUpgrade:       true,
 			StartupParameters: &headlessv1.WorldStartupParameters{},
@@ -261,7 +259,7 @@ func TestSessionLifecycleHandler_SessionStarted(t *testing.T) {
 		assert.True(t, got.StartedAt.Equal(newStart))
 		assert.Nil(t, got.EndedAt)
 		// 部分更新により他フィールドは保持される
-		assert.Equal(t, ptr("owner-1"), got.CreatedBy)
+		assert.Equal(t, new("owner-1"), got.CreatedBy)
 		assert.Equal(t, "important note", got.Memo)
 		assert.True(t, got.AutoUpgrade)
 	})
@@ -412,7 +410,7 @@ func TestSessionLifecycleHandler_SessionEnded(t *testing.T) {
 			Status:            entity.SessionStatus_RUNNING,
 			HostID:            "host-1",
 			StartedAt:         &startedAt,
-			CreatedBy:         ptr("owner-1"),
+			CreatedBy:         new("owner-1"),
 			Memo:              "important note",
 			AutoUpgrade:       true,
 			StartupParameters: &headlessv1.WorldStartupParameters{},
@@ -427,7 +425,7 @@ func TestSessionLifecycleHandler_SessionEnded(t *testing.T) {
 		require.NotNil(t, got.EndedAt)
 		assert.True(t, got.EndedAt.Equal(endedAt))
 		assert.Equal(t, "name", got.Name)
-		assert.Equal(t, ptr("owner-1"), got.CreatedBy)
+		assert.Equal(t, new("owner-1"), got.CreatedBy)
 		assert.Equal(t, "important note", got.Memo)
 		assert.True(t, got.AutoUpgrade)
 	})

@@ -139,7 +139,6 @@ func TestStartSession_BypassesDrainCheckForUnrelatedHost(t *testing.T) {
 		"StartSession should have progressed past the drain guard to the host repo")
 }
 
-
 func newUsecaseWithPortConfig(portMin, portMax int, publicIP string) *SessionUsecase {
 	return newUsecaseWithServerConfig(stubHostDrainer{}, &stubHostRepo{},
 		&config.ServerConfig{SessionPortMin: portMin, SessionPortMax: portMax, PublicIP: publicIP})
@@ -187,7 +186,7 @@ func TestWithAutoAssignedForcePorts(t *testing.T) {
 		suc := newUsecaseWithPortConfig(0, 0, "")
 
 		got, err := suc.withAutoAssignedForcePorts(t.Context(), &headlessv1.WorldStartupParameters{
-			ForcePort: 12345,
+			ForcePort: 12345, //nolint:staticcheck // 旧フィールドからの移行を検証するテスト
 		})
 		require.NoError(t, err)
 		assert.Equal(t, map[headlessv1.NetworkProtocol]uint32{

@@ -16,7 +16,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 )
 
 type messageServiceTestSetup struct {
@@ -165,7 +164,7 @@ func TestMessageService_CreateMessage(t *testing.T) {
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateMessageRequest{
 			Title:   "グループ向け",
 			Body:    "body",
-			GroupId: proto.String("group-a"),
+			GroupId: new("group-a"),
 		})
 		res, err := client.CreateMessage(t.Context(), req)
 		require.NoError(t, err)
@@ -198,7 +197,7 @@ func TestMessageService_CreateMessage(t *testing.T) {
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateMessageRequest{
 			Title:   "t",
 			Body:    "body",
-			GroupId: proto.String("ghost-group"),
+			GroupId: new("ghost-group"),
 		})
 		_, err := client.CreateMessage(t.Context(), req)
 		require.Error(t, err)
@@ -257,7 +256,7 @@ func TestMessageService_UpdateMessage(t *testing.T) {
 			MessageId: "msg-1",
 			Title:     "更新後",
 			Body:      "更新本文",
-			GroupId:   proto.String("group-a"),
+			GroupId:   new("group-a"),
 		})
 		res, err := client.UpdateMessage(t.Context(), toGroup)
 		require.NoError(t, err)

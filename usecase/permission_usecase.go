@@ -337,4 +337,3 @@ func (u *PermissionUsecase) CanReadGroupAny(ctx context.Context, userID, groupID
 
 	return false, nil
 }
-

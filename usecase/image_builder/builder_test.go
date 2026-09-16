@@ -90,6 +90,7 @@ func TestLogCapture(t *testing.T) {
 func TestBuilderRedactSecrets(t *testing.T) {
 	t.Parallel()
 
+	//nolint:gosec // テスト用のダミー認証情報
 	b := NewBuilder(&config.ResoniteBuildConfig{
 		SteamUsername:    "steamuser",
 		SteamPassword:    "sup3r-secret",

@@ -418,7 +418,7 @@ func TestOrchestrator_EnrollSnapshotsStartupConfigBeforeStop(t *testing.T) {
 	// with the start_worlds we expect to survive the upgrade.
 	env.client.setStartupConfig(&headlessv1.StartupConfig{
 		StartWorlds: []*headlessv1.WorldStartupParameters{
-			{Name: stringPtr("preserved-world")},
+			{Name: new("preserved-world")},
 		},
 	})
 
@@ -763,5 +763,3 @@ func TestOrchestrator_NoopHostDrainer(t *testing.T) {
 }
 
 // --- helpers ------------------------------------------------------------
-
-func stringPtr(s string) *string { return &s }

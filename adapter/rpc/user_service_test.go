@@ -502,7 +502,7 @@ func TestUserService_CreateRegistrationToken(t *testing.T) {
 		// 存在しないロール.
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateRegistrationTokenRequest{
 			ResoniteId:     "U-badrole",
-			PersonalRoleId: proto.String("role-does-not-exist"),
+			PersonalRoleId: new("role-does-not-exist"),
 		})
 
 		_, err := client.CreateRegistrationToken(t.Context(), req)
