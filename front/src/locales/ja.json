@@ -206,7 +206,10 @@
     "confirmDelete": "ロール \"{{name}}\" を削除しますか?",
     "roleDeleted": "ロールを削除しました",
     "deleteFailed": "削除に失敗しました",
-    "createRoleButton": "ロール作成"
+    "createRoleButton": "ロール作成",
+    "viewRole": "詳細",
+    "roleDetail": "ロールの詳細",
+    "grantedPermissions": "付与されているパーミッション"
   },
   "iconChangeDialog": {
     "fileSizeError": "ファイルサイズは10MB以下にしてください",

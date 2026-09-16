@@ -28,6 +28,12 @@ export const PERMISSION_KEYS = {
 export type PermissionKey =
   (typeof PERMISSION_KEYS)[keyof typeof PERMISSION_KEYS];
 
+/**
+ * ListPermissions のキャッシュ有効期間.
+ * サーバー側の定義は静的なので、ダイアログを開くたびに再取得しない.
+ */
+export const PERMISSIONS_STALE_TIME = 5 * 60 * 1000;
+
 export function groupTypeToLabel(type: GroupType): string {
   switch (type) {
     case GroupType.PERSONAL:

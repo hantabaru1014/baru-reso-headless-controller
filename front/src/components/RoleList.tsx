@@ -20,7 +20,6 @@ import {
 } from "../../pbgen/hdlctrl/v1/permission_pb";
 import {
   Button,
-  Checkbox,
   Dialog,
   DialogClose,
   DialogContent,
@@ -30,8 +29,10 @@ import {
 } from "./ui";
 import { DataTable, RefetchButton, TextField } from "./base";
 import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
+import { PermissionKeyCheckList } from "./PermissionKeyCheckList";
+import { RoleDetailDialog } from "./RoleDetailDialog";
 import {
-  permissionKeyToLabel,
+  PERMISSIONS_STALE_TIME,
   roleScopeToLabel,
 } from "../libs/permissionUtils";
 import { useInvalidateMyPermissions } from "../hooks/useInvalidateMyPermissions";
@@ -62,7 +63,11 @@ function RoleEditorDialog({
   const { t } = useTranslation();
   const isEdit = !!initial;
   const invalidateMyPermissions = useInvalidateMyPermissions();
-  const { data: permsData } = useQuery(listPermissions, { scope });
+  const { data: permsData } = useQuery(
+    listPermissions,
+    { scope },
+    { staleTime: PERMISSIONS_STALE_TIME },
+  );
   const { mutateAsync: mutateCreate, isPending: isCreating } =
     useMutation(createRole);
   const { mutateAsync: mutateUpdate, isPending: isUpdating } =
@@ -153,31 +158,11 @@ function RoleEditorDialog({
                 <p className="text-sm font-medium">
                   {t("roleList.grantPermissions")}
                 </p>
-                {(permsData?.permissions ?? []).map((p) => {
-                  const checked = field.value.includes(p.key);
-                  return (
-                    <label
-                      key={p.key}
-                      className="flex items-center gap-2 cursor-pointer"
-                    >
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={(c) => {
-                          const next = c
-                            ? [...field.value, p.key]
-                            : field.value.filter((k) => k !== p.key);
-                          field.onChange(next);
-                        }}
-                      />
-                      <span className="text-sm">
-                        {permissionKeyToLabel(p.key)}{" "}
-                        <span className="text-muted-foreground font-mono text-xs">
-                          ({p.key})
-                        </span>
-                      </span>
-                    </label>
-                  );
-                })}
+                <PermissionKeyCheckList
+                  permissions={permsData?.permissions ?? []}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
               </div>
             )}
           />
@@ -231,6 +216,7 @@ export default function RoleList({
   }, [data?.roles, groupId]);
   const { mutateAsync: mutateDelete } = useMutation(deleteRole);
   const [editingRole, setEditingRole] = useState<Role | undefined>(undefined);
+  const [viewingRole, setViewingRole] = useState<Role | undefined>(undefined);
   const [isCreating, setIsCreating] = useState(false);
 
   // ロール削除は自分自身の実効権限に影響しうるため getMyPermissions を invalidate.
@@ -274,6 +260,16 @@ export default function RoleList({
           const editable = canManage && !role.isBuiltin;
           return (
             <div className="flex gap-1">
+              {/* 編集できるロールは編集ダイアログで内容を確認できるため、閲覧専用の入口は編集不可のときだけ出す */}
+              {!editable && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setViewingRole(role)}
+                >
+                  {t("roleList.viewRole")}
+                </Button>
+              )}
               <PermissionGuardedButton
                 allowed={editable}
                 disabledReason={
@@ -346,6 +342,13 @@ export default function RoleList({
             setIsCreating(false);
             refetch();
           }}
+        />
+      )}
+      {viewingRole && (
+        <RoleDetailDialog
+          role={viewingRole}
+          open
+          onClose={() => setViewingRole(undefined)}
         />
       )}
       {editingRole && (

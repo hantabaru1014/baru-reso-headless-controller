@@ -206,7 +206,10 @@
     "confirmDelete": "Delete role \"{{name}}\"?",
     "roleDeleted": "Role deleted",
     "deleteFailed": "Failed to delete",
-    "createRoleButton": "Create role"
+    "createRoleButton": "Create role",
+    "viewRole": "Details",
+    "roleDetail": "Role details",
+    "grantedPermissions": "Granted permissions"
   },
   "iconChangeDialog": {
     "fileSizeError": "File size must be 10MB or less",
