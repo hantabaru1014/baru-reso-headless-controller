@@ -1,6 +1,7 @@
 services:
   app:
     image: ghcr.io/hantabaru1014/baru-reso-headless-controller:latest
+    restart: unless-stopped
     env_file: .env
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

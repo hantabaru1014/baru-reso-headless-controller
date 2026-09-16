@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:17
+    restart: unless-stopped
     shm_size: 128mb
     ports:
       - 5432:5432
@@ -9,12 +10,20 @@ services:
     environment:
       - POSTGRES_DB=brhcdb
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d brhcdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
 
   fluentd:
     image: fluent/fluent-bit:latest
+    restart: unless-stopped
     command: ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.yaml"]
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
       - "24224:24224"
     environment:
@@ -27,6 +36,7 @@ services:
 
   rustfs:
     image: rustfs/rustfs:latest
+    restart: unless-stopped
     ports:
       - "9000:9000"
     environment:
