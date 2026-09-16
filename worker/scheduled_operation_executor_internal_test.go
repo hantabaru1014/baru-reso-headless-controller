@@ -74,7 +74,7 @@ func newScheduledExecutor(repo port.ScheduledSessionOperationRepository, checker
 
 // newStopSessionOp は STOP_SESSION + TIME trigger (期日 1 時間前) の op を作る.
 func newStopSessionOp(createdBy *string) *entity.ScheduledSessionOperation {
-	payload, _ := json.Marshal(map[string]string{"session_id": "S-1"})                                                            //nolint:errchkjson // test fixture
+	payload, _ := json.Marshal(map[string]string{"session_id": "S-1"})                                                       //nolint:errchkjson // test fixture
 	trigCfg, _ := json.Marshal(map[string]string{"scheduled_at": time.Now().Add(-time.Hour).UTC().Format(time.RFC3339Nano)}) //nolint:errchkjson // test fixture
 
 	return &entity.ScheduledSessionOperation{
@@ -89,8 +89,6 @@ func newStopSessionOp(createdBy *string) *entity.ScheduledSessionOperation {
 	}
 }
 
-func strPtrSched(s string) *string { return &s }
-
 func TestScheduledOperationExecutor_ExecuteOne_NoCreatedBy_MarksFailed(t *testing.T) {
 	t.Parallel()
 
@@ -99,7 +97,7 @@ func TestScheduledOperationExecutor_ExecuteOne_NoCreatedBy_MarksFailed(t *testin
 		createdBy *string
 	}{
 		{"nil createdBy", nil},
-		{"empty createdBy", strPtrSched("")},
+		{"empty createdBy", new("")},
 	}
 
 	for _, tc := range cases {
@@ -127,7 +125,7 @@ func TestScheduledOperationExecutor_ExecuteOne_UserNotFound_MarksFailed(t *testi
 	sessOp := &scheduledSessionOpStub{}
 	exe := newScheduledExecutor(repo, &stubUserChecker{exists: false}, sessOp)
 
-	exe.executeOne(context.Background(), newStopSessionOp(strPtrSched("ghost-user")))
+	exe.executeOne(context.Background(), newStopSessionOp(new("ghost-user")))
 
 	assert.Equal(t, "op-1", repo.failedID)
 	assert.Contains(t, repo.failedMsg, "ghost-user")
@@ -143,7 +141,7 @@ func TestScheduledOperationExecutor_ExecuteOne_PermissionDenied_MarksFailed(t *t
 	sessOp := &scheduledSessionOpStub{stopErr: domain.ErrPermissionDenied}
 	exe := newScheduledExecutor(repo, &stubUserChecker{exists: true}, sessOp)
 
-	exe.executeOne(context.Background(), newStopSessionOp(strPtrSched("user-A")))
+	exe.executeOne(context.Background(), newStopSessionOp(new("user-A")))
 
 	assert.Equal(t, "op-1", repo.failedID)
 	assert.Contains(t, repo.failedMsg, domain.ErrPermissionDenied.Error())
@@ -157,7 +155,7 @@ func TestScheduledOperationExecutor_ExecuteOne_SetsActAsUserCtx(t *testing.T) {
 	sessOp := &scheduledSessionOpStub{}
 	exe := newScheduledExecutor(repo, &stubUserChecker{exists: true}, sessOp)
 
-	exe.executeOne(context.Background(), newStopSessionOp(strPtrSched("user-A")))
+	exe.executeOne(context.Background(), newStopSessionOp(new("user-A")))
 
 	if sessOp.gotCtx == nil {
 		t.Fatalf("session operator was not invoked")

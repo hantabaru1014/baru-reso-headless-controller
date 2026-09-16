@@ -87,8 +87,6 @@ func (s *stubImageBuilder) CurrentAppVersion(_ context.Context) (string, error) 
 	return s.appVersion, nil
 }
 
-func ptr[T any](v T) *T { return &v }
-
 func newResoniteVersionUsecaseUnderTest(
 	repo port.ResoniteVersionRepository,
 	builder imageBuilder,
@@ -101,7 +99,7 @@ func newResoniteVersionUsecaseUnderTest(
 func builtHeadlessVersion(manifestID, gameVersion, imageTag string, released time.Time) *entity.ResoniteVersion {
 	v := headlessVersion(manifestID, gameVersion, released)
 	v.BuildStatus = entity.ResoniteVersionBuildStatus_Built
-	v.ImageTag = ptr(imageTag)
+	v.ImageTag = new(imageTag)
 
 	return v
 }
@@ -190,7 +188,7 @@ func TestResoniteVersionUsecase_RunBuild_SkipsRedundantBuild(t *testing.T) {
 		t.Parallel()
 
 		row := builtHeadlessVersion("m-new", "2026.8.1", "2026.8.1-headless", time.Now())
-		row.BuiltWithAppVersion = ptr("1.2.3")
+		row.BuiltWithAppVersion = new("1.2.3")
 
 		repo := &stubResoniteVersionRepo{rows: entity.ResoniteVersionList{row}}
 		builder := &stubImageBuilder{appVersion: "1.2.3"}
@@ -209,7 +207,7 @@ func TestResoniteVersionUsecase_RunBuild_SkipsRedundantBuild(t *testing.T) {
 		t.Parallel()
 
 		row := builtHeadlessVersion("m-new", "2026.8.1", "2026.8.1-headless", time.Now())
-		row.BuiltWithAppVersion = ptr("1.2.3")
+		row.BuiltWithAppVersion = new("1.2.3")
 
 		repo := &stubResoniteVersionRepo{rows: entity.ResoniteVersionList{row}}
 		builder := &stubImageBuilder{

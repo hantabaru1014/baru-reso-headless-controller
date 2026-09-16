@@ -47,11 +47,11 @@ type AsyncJobExecutor struct {
 
 const (
 	// 起動直後の job をなるべく早く拾うが、idle 時の DB 負荷も気にして 5 秒.
-	defaultAsyncJobTickInterval  = 5 * time.Second
-	defaultAsyncJobStaleAfter    = 30 * time.Minute
-	defaultAsyncJobStaleSweep    = 1 * time.Minute
-	defaultAsyncJobBatchSize     = 8
-	defaultAsyncJobConcurrency   = 4
+	defaultAsyncJobTickInterval = 5 * time.Second
+	defaultAsyncJobStaleAfter   = 30 * time.Minute
+	defaultAsyncJobStaleSweep   = 1 * time.Minute
+	defaultAsyncJobBatchSize    = 8
+	defaultAsyncJobConcurrency  = 4
 	// 個別 job の最大実行時間. StartHost は docker pull + container 起動 + RPC ハンドシェイクで
 	// 数分かかりうるため長めに取る. ShutdownHost / StopSession はもっと短いが、
 	// per-job-type timeout を入れる程の差分は今のところない.

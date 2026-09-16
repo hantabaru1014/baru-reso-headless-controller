@@ -98,9 +98,9 @@ func sessionIDFromIssueLink(r *hdlctrlv1.IssueResoniteLinkConnectionRequest) str
 
 // ===== Group ID extractors =====
 
-func groupIDFromGet(r *hdlctrlv1.GetGroupRequest) string         { return r.GetGroupId() }
-func groupIDFromUpdate(r *hdlctrlv1.UpdateGroupRequest) string   { return r.GetGroupId() }
-func groupIDFromDelete(r *hdlctrlv1.DeleteGroupRequest) string   { return r.GetGroupId() }
+func groupIDFromGet(r *hdlctrlv1.GetGroupRequest) string       { return r.GetGroupId() }
+func groupIDFromUpdate(r *hdlctrlv1.UpdateGroupRequest) string { return r.GetGroupId() }
+func groupIDFromDelete(r *hdlctrlv1.DeleteGroupRequest) string { return r.GetGroupId() }
 func groupIDFromListMembers(r *hdlctrlv1.ListGroupMembersRequest) string {
 	return r.GetGroupId()
 }

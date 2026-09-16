@@ -124,7 +124,7 @@ func SessionEntityToProto(e *entity.Session) *hdlctrlv1.Session {
 		CurrentState:      e.CurrentState,
 		// owner_id は deprecated だが migration 期間中の互換のため CreatedBy と
 		// 同値を返す.
-		OwnerId:   e.CreatedBy,
+		OwnerId:   e.CreatedBy, //nolint:staticcheck // 互換のため deprecated フィールドも埋める
 		CreatedBy: e.CreatedBy,
 		GroupId:   e.GroupID,
 

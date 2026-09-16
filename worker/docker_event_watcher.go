@@ -215,4 +215,3 @@ func (w *DockerEventWatcher) eventToStatus(event hostconnector.ContainerEvent) e
 		return entity.HeadlessHostStatus_UNKNOWN
 	}
 }
-

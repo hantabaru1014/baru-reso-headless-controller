@@ -10,15 +10,15 @@ import (
 )
 
 type EnvConfig struct {
-	Database        DatabaseConfig
-	Auth            AuthConfig
-	Docker          DockerConfig
-	GRPC            GRPCConfig
-	Worker          WorkerConfig
-	Server          ServerConfig
-	RustFS          RustFSConfig
-	ResoniteLink    ResoniteLinkConfig
-	ResoniteBuild   ResoniteBuildConfig
+	Database      DatabaseConfig
+	Auth          AuthConfig
+	Docker        DockerConfig
+	GRPC          GRPCConfig
+	Worker        WorkerConfig
+	Server        ServerConfig
+	RustFS        RustFSConfig
+	ResoniteLink  ResoniteLinkConfig
+	ResoniteBuild ResoniteBuildConfig
 }
 
 type DatabaseConfig struct {
@@ -70,7 +70,7 @@ type ResoniteBuildConfig struct {
 	HeadlessPassword string
 
 	// Steam app / depot IDs.
-	AppID          string // Resonite の Steam AppID (default 2519830)
+	AppID           string // Resonite の Steam AppID (default 2519830)
 	HeadlessDepotID string // Resonite headless の Steam DepotID
 
 	// builder image の起動設定. controller は builder image を one-shot container として
@@ -127,8 +127,8 @@ func LoadEnvConfig() (*EnvConfig, error) {
 	cfg.Docker.HeadlessImageName = os.Getenv("HEADLESS_IMAGE_NAME")
 	cfg.Docker.FluentdAddress = os.Getenv("CONTAINER_LOGS_FLUENTD_ADDRESS")
 
-	cfg.GRPC.ConnectTimeout = getEnvDuration("GRPC_CONNECT_TIMEOUT", 5*time.Second)                      //nolint:mnd // default
-	cfg.GRPC.CallTimeout = getEnvDuration("GRPC_CALL_TIMEOUT", 10*time.Second)                           //nolint:mnd // default
+	cfg.GRPC.ConnectTimeout = getEnvDuration("GRPC_CONNECT_TIMEOUT", 5*time.Second) //nolint:mnd // default
+	cfg.GRPC.CallTimeout = getEnvDuration("GRPC_CALL_TIMEOUT", 10*time.Second)      //nolint:mnd // default
 
 	cfg.Worker.ContentCheckInterval = getEnvDuration("CONTENT_CHECK_INTERVAL", time.Hour)
 	cfg.Worker.AutoBuildNewVersions = getEnvBoolWithDefault("AUTO_BUILD_NEW_VERSIONS", true)
@@ -161,7 +161,7 @@ func LoadEnvConfig() (*EnvConfig, error) {
 	cfg.Server.SessionPortMax = portMax
 	cfg.Server.PublicIP = strings.TrimSpace(os.Getenv("HEADLESS_PUBLIC_IP"))
 
-	cfg.ResoniteLink.TokenTTL = getEnvDuration("RESONITE_LINK_TOKEN_TTL", 5*time.Hour)    //nolint:mnd // default
+	cfg.ResoniteLink.TokenTTL = getEnvDuration("RESONITE_LINK_TOKEN_TTL", 5*time.Hour)           //nolint:mnd // default
 	cfg.ResoniteLink.ReadyTimeout = getEnvDuration("RESONITE_LINK_READY_TIMEOUT", 5*time.Second) //nolint:mnd // default
 	cfg.ResoniteLink.AllowedOrigins = parseCSV(os.Getenv("RESONITE_LINK_ALLOWED_ORIGINS"))
 
