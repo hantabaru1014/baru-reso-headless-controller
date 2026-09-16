@@ -66,11 +66,14 @@ export function RoleDetailDialog({
               {t("roleList.grantedPermissions")}
             </p>
             <Loading loading={isPending}>
-              <PermissionKeyCheckList
-                permissions={permsData?.permissions ?? []}
-                value={role.permissionKeys}
-                readOnly
-              />
+              {/* 読み込み中はリストが空で高さ 0 になりスピナーがラベルに被るため最低高さを確保する */}
+              <div className="min-h-12">
+                <PermissionKeyCheckList
+                  permissions={permsData?.permissions ?? []}
+                  value={role.permissionKeys}
+                  readOnly
+                />
+              </div>
             </Loading>
           </div>
         </div>
