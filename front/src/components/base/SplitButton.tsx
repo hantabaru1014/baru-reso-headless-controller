@@ -10,8 +10,7 @@ import { cn } from "@/libs/cssUtils";
 import type { VariantProps } from "class-variance-authority";
 
 export interface SplitButtonProps
-  extends React.ComponentProps<"button">,
-    VariantProps<typeof buttonVariants> {
+  extends React.ComponentProps<"button">, VariantProps<typeof buttonVariants> {
   children?: React.ReactNode;
   dropdownContent?: React.ReactNode;
   onClick?: () => void;
