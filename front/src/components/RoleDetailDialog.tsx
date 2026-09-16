@@ -11,9 +11,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui";
-import { ReadOnlyField } from "./base";
+import { Loading, ReadOnlyField } from "./base";
 import { PermissionKeyCheckList } from "./PermissionKeyCheckList";
-import { roleScopeToLabel } from "../libs/permissionUtils";
+import {
+  PERMISSIONS_STALE_TIME,
+  roleScopeToLabel,
+} from "../libs/permissionUtils";
 
 /**
  * ロールの内容 (名前 / スコープ / 種別 / 付与パーミッション) を閲覧専用で表示するダイアログ.
@@ -29,9 +32,11 @@ export function RoleDetailDialog({
   onClose?: () => void;
 }) {
   const { t } = useTranslation();
-  const { data: permsData, isPending } = useQuery(listPermissions, {
-    scope: role.scope,
-  });
+  const { data: permsData, isPending } = useQuery(
+    listPermissions,
+    { scope: role.scope },
+    { staleTime: PERMISSIONS_STALE_TIME },
+  );
 
   return (
     <Dialog
@@ -60,16 +65,13 @@ export function RoleDetailDialog({
             <p className="text-sm font-medium">
               {t("roleList.grantedPermissions")}
             </p>
-            <PermissionKeyCheckList
-              permissions={permsData?.permissions ?? []}
-              value={role.permissionKeys}
-              readOnly
-            />
-            {isPending && (
-              <p className="text-sm text-muted-foreground">
-                {t("common.loading")}
-              </p>
-            )}
+            <Loading loading={isPending}>
+              <PermissionKeyCheckList
+                permissions={permsData?.permissions ?? []}
+                value={role.permissionKeys}
+                readOnly
+              />
+            </Loading>
           </div>
         </div>
         <DialogFooter>

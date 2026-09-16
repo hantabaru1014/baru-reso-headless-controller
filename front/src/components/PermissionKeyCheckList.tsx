@@ -1,6 +1,7 @@
 import { Checkbox } from "./ui";
 import { PermissionKey } from "../../pbgen/hdlctrl/v1/permission_pb";
 import { permissionKeyToLabel } from "../libs/permissionUtils";
+import { cn } from "../libs/cssUtils";
 
 /**
  * permission_key のチェックボックス一覧.
@@ -21,33 +22,31 @@ export function PermissionKeyCheckList({
 }) {
   return (
     <div className="space-y-2">
-      {permissions.map((p) => {
-        const checked = value.includes(p.key);
-        return (
-          <label
-            key={p.key}
-            className={`flex items-center gap-2 ${readOnly ? "" : "cursor-pointer"}`}
-          >
-            <Checkbox
-              checked={checked}
-              disabled={readOnly}
-              onCheckedChange={(c) => {
-                if (readOnly) return;
-                const next = c
-                  ? [...value, p.key]
-                  : value.filter((k) => k !== p.key);
-                onChange?.(next);
-              }}
-            />
-            <span className="text-sm">
-              {permissionKeyToLabel(p.key)}{" "}
-              <span className="text-muted-foreground font-mono text-xs">
-                ({p.key})
-              </span>
+      {permissions.map((p) => (
+        <label
+          key={p.key}
+          className={cn(
+            "flex items-center gap-2",
+            !readOnly && "cursor-pointer",
+          )}
+        >
+          <Checkbox
+            checked={value.includes(p.key)}
+            disabled={readOnly}
+            onCheckedChange={(c) =>
+              onChange?.(
+                c ? [...value, p.key] : value.filter((k) => k !== p.key),
+              )
+            }
+          />
+          <span className="text-sm">
+            {permissionKeyToLabel(p.key)}{" "}
+            <span className="text-muted-foreground font-mono text-xs">
+              ({p.key})
             </span>
-          </label>
-        );
-      })}
+          </span>
+        </label>
+      ))}
     </div>
   );
 }

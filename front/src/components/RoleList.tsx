@@ -31,7 +31,10 @@ import { DataTable, RefetchButton, TextField } from "./base";
 import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
 import { PermissionKeyCheckList } from "./PermissionKeyCheckList";
 import { RoleDetailDialog } from "./RoleDetailDialog";
-import { roleScopeToLabel } from "../libs/permissionUtils";
+import {
+  PERMISSIONS_STALE_TIME,
+  roleScopeToLabel,
+} from "../libs/permissionUtils";
 import { useInvalidateMyPermissions } from "../hooks/useInvalidateMyPermissions";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -60,7 +63,11 @@ function RoleEditorDialog({
   const { t } = useTranslation();
   const isEdit = !!initial;
   const invalidateMyPermissions = useInvalidateMyPermissions();
-  const { data: permsData } = useQuery(listPermissions, { scope });
+  const { data: permsData } = useQuery(
+    listPermissions,
+    { scope },
+    { staleTime: PERMISSIONS_STALE_TIME },
+  );
   const { mutateAsync: mutateCreate, isPending: isCreating } =
     useMutation(createRole);
   const { mutateAsync: mutateUpdate, isPending: isUpdating } =
@@ -237,17 +244,12 @@ export default function RoleList({
       {
         accessorKey: "permissionKeys",
         header: t("roleList.permission"),
-        cell: ({ row }) => (
-          <Button
-            variant="link"
-            size="sm"
-            className="h-auto p-0 text-xs text-muted-foreground"
-            onClick={() => setViewingRole(row.original)}
-          >
+        cell: ({ cell }) => (
+          <span className="text-xs text-muted-foreground">
             {t("roleList.countSuffix", {
-              count: row.original.permissionKeys.length,
+              count: cell.getValue<string[]>().length,
             })}
-          </Button>
+          </span>
         ),
       },
       {
@@ -258,13 +260,16 @@ export default function RoleList({
           const editable = canManage && !role.isBuiltin;
           return (
             <div className="flex gap-1">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setViewingRole(role)}
-              >
-                {t("roleList.viewRole")}
-              </Button>
+              {/* 編集できるロールは編集ダイアログで内容を確認できるため、閲覧専用の入口は編集不可のときだけ出す */}
+              {!editable && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setViewingRole(role)}
+                >
+                  {t("roleList.viewRole")}
+                </Button>
+              )}
               <PermissionGuardedButton
                 allowed={editable}
                 disabledReason={
