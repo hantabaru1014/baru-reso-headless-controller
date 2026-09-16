@@ -46,9 +46,12 @@ export function ChatDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
+        <ResizablePanelGroup
+          orientation="horizontal"
+          className="flex-1 min-h-0"
+        >
           {/* Left panel: Contact list */}
-          <ResizablePanel defaultSize={30} minSize={20}>
+          <ResizablePanel defaultSize="30%" minSize="20%">
             <ContactListPanel
               accountId={accountId}
               enabled={open}
@@ -60,7 +63,7 @@ export function ChatDialog({
           <ResizableHandle withHandle />
 
           {/* Right panel: Messages */}
-          <ResizablePanel defaultSize={70} minSize={40}>
+          <ResizablePanel defaultSize="70%" minSize="40%">
             <ChatMessagesPanel
               accountId={accountId}
               contact={selectedContact}
