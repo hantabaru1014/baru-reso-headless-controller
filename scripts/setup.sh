@@ -1,6 +1,23 @@
 #!/bin/sh
 set -eu
 
+# 必要なコマンドの存在を最初に検証する (途中で失敗しないように)
+MISSING=""
+for cmd in curl jq openssl docker; do
+  if ! command -v "$cmd" > /dev/null 2>&1; then
+    MISSING="$MISSING $cmd"
+  fi
+done
+if [ -n "$MISSING" ]; then
+  echo "Error: 必要なコマンドが見つかりません:$MISSING" >&2
+  echo "インストールしてから再実行してください" >&2
+  exit 1
+fi
+if ! docker compose version > /dev/null 2>&1; then
+  echo "Error: docker compose (Compose V2 プラグイン) が利用できません" >&2
+  exit 1
+fi
+
 if [ -f ".env" ]; then
   echo "Error: .env file already exists"
   exit 1
@@ -13,6 +30,8 @@ fi
 
 curl -O https://raw.githubusercontent.com/hantabaru1014/baru-reso-headless-controller/refs/heads/main/docker-compose.db.yml
 curl -O https://raw.githubusercontent.com/hantabaru1014/baru-reso-headless-controller/refs/heads/main/docker-compose.yml
+mkdir -p fluentd
+curl -o fluentd/container-logs.yaml https://raw.githubusercontent.com/hantabaru1014/baru-reso-headless-controller/refs/heads/main/fluentd/container-logs.yaml
 curl -o "brhcli" -L https://github.com/hantabaru1014/baru-reso-headless-controller/releases/latest/download/brhcli-${CPU_ARCH}
 chmod a+x brhcli
 
@@ -31,11 +50,15 @@ HEADLESS_IMAGE_NAME=${HEADLESS_IMAGE_NAME:-$DEFAULT_IMAGE}
 echo "ヘッドレスイメージのビルドに使う Steam 認証情報を入力してください"
 echo "※ パスワードログインができて2段階認証 (Steam Guard) をオフにした新規の専用アカウントを用意してください"
 echo "※ ベータアクセスコードはダウンロード時に指定されるため、アカウント自体で headless ブランチを有効化する必要はありません"
-read -p 'Steam ユーザー名: ' STEAM_USERNAME
-read -p 'Steam パスワード: ' STEAM_PASSWORD
-read -p 'Resonite headless ブランチのベータアクセスコード: ' HEADLESS_PASSWORD
+printf '%s' 'Steam ユーザー名: '
+read -r STEAM_USERNAME
+printf '%s' 'Steam パスワード: '
+read -r STEAM_PASSWORD
+printf '%s' 'Resonite headless ブランチのベータアクセスコード: '
+read -r HEADLESS_PASSWORD
 
-read -p 'DB_URL を入力 (default: postgres://postgres:${POSTGRES_PASSWORD}@localhost:5432/brhcdb?sslmode=disable): ' DB_URL
+printf '%s' 'DB_URL を入力 (default: postgres://postgres:${POSTGRES_PASSWORD}@localhost:5432/brhcdb?sslmode=disable): '
+read -r DB_URL
 DB_URL=${DB_URL:-"postgres://postgres:$(echo $POSTGRES_PASSWORD | jq -Rr @uri)@localhost:5432/brhcdb?sslmode=disable"}
 
 cat > .env << EOF
@@ -80,9 +103,10 @@ echo ""
 echo "===== データベースのセットアップを開始します ====="
 echo ""
 
-# DBコンテナを起動
+# DB / RustFS コンテナを起動
+# fluentd は DB 起動 & fluentbit ユーザーのパスワード設定後でないと接続に失敗して終了するため、ここでは起動しない
 echo "1. データベースを起動中..."
-docker compose -f docker-compose.db.yml up -d
+docker compose -f docker-compose.db.yml up -d db rustfs
 
 # DBの起動を待機
 echo "2. データベースの起動を待機中..."
@@ -107,6 +131,7 @@ echo "4. fluentbitユーザーのパスワードを設定中..."
 docker compose -f docker-compose.db.yml exec -T db psql -U postgres -d brhcdb -c "ALTER USER fluentbit WITH PASSWORD '${FLUENTBIT_PGSQL_PASSWORD}';"
 
 echo "5. サービス起動中..."
+docker compose -f docker-compose.db.yml up -d
 docker compose up -d
 
 echo ""
