@@ -103,6 +103,11 @@
     "placeholder": "ユーザーID/名",
     "noHostMessage": "(まずHostを選択してください)"
   },
+  "resoniteUserPicker": {
+    "placeholder": "ユーザー名 / U- から始まる ID で検索",
+    "noResults": "該当するユーザーが見つかりません",
+    "clear": "選択を解除"
+  },
   "chatDialog": {
     "title": "チャット - {{name}}"
   },
@@ -463,8 +468,8 @@
     "cannotDeleteSelf": "自分自身は削除できません",
     "cannotDeleteSystem": "system ユーザーは削除できません",
     "noDeletePermission": "削除権限がありません",
-    "resoniteIdRequired": "Resonite ID は必須です",
-    "resoniteIdFormat": "Resonite ID は U- から始まる必要があります",
+    "resoniteUserLabel": "Resonite ユーザー",
+    "resoniteUserRequired": "Resonite ユーザーを選択してください",
     "roleRequired": "ロールを選択してください",
     "builtinSuffix": " (組込)",
     "tokenIssueError": "招待トークンの発行に失敗しました",
