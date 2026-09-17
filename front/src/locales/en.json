@@ -445,11 +445,7 @@
     "changePasswordButton": "Change Password"
   },
   "adminIndexPage": {
-    "description": "System-wide management features. The items shown depend on the system permissions you hold.",
-    "noAvailableFeatures": "No system management features available",
-    "userManagement": "User Management",
-    "viewAllGroups": "View All Groups",
-    "globalRoleManagement": "Global Role Management"
+    "noAvailableFeatures": "No system management features available"
   },
   "adminGroupsPage": {
     "description": "Showing all groups on the system."
