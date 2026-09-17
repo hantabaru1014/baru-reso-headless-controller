@@ -8,8 +8,9 @@ import {
   History,
   UsersRound,
   ShieldCheck,
+  ChevronRight,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAtom } from "jotai";
 import { sessionAtom, Session } from "../atoms/sessionAtom";
@@ -25,7 +26,19 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarTrigger,
+  useSidebar,
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuItem,
 } from "@/components/ui";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/libs/cssUtils";
@@ -33,14 +46,29 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { SidebarVersionFooter } from "@/components/SidebarVersionFooter";
 import { UserMenuDropdown } from "@/components/UserMenuDropdown";
 import { GroupSwitcher } from "@/components/base/GroupSwitcher";
+import { ADMIN_SECTIONS } from "../pages/admin/sections";
 
-type NavItem = {
+type Perms = ReturnType<typeof usePermissions>;
+
+type NavLeaf = {
   titleKey: string;
   href: string;
-  icon: typeof Home;
   /** undefined のとき常時表示. 関数のとき true を返したものだけ表示する. */
-  visible?: (perms: ReturnType<typeof usePermissions>) => boolean;
+  visible?: (perms: Perms) => boolean;
 };
+
+type NavLink = NavLeaf & { icon: typeof Home };
+
+/** 折り畳みでサブ項目を持つ項目. 自身は遷移先を持たず, 表示できる children が無ければ非表示. */
+type NavGroup = {
+  titleKey: string;
+  icon: typeof Home;
+  children: NavLeaf[];
+};
+
+type NavItem = NavLink | NavGroup;
+
+const isNavGroup = (item: NavItem): item is NavGroup => "children" in item;
 
 const navigation: NavItem[] = [
   {
@@ -92,32 +120,116 @@ const navigation: NavItem[] = [
   },
   {
     titleKey: "routes.admin",
-    href: "/admin",
     icon: ShieldCheck,
-    visible: (p) =>
-      p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_GROUP_LIST) ||
-      p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_ROLE_MANAGE) ||
-      p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_USER_LIST) ||
-      p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_USER_CREATE) ||
-      p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_USER_DELETE),
+    children: ADMIN_SECTIONS.map((s) => ({
+      titleKey: s.titleKey,
+      href: s.href,
+      visible: (p) => s.permissions.some((key) => p.hasSystemPermission(key)),
+    })),
   },
 ];
+
+function NavGroupItem({
+  item,
+  activeHref,
+}: {
+  item: NavGroup;
+  activeHref: string | undefined;
+}) {
+  const { t } = useTranslation();
+  const { state, isMobile } = useSidebar();
+  const groupActive = item.children.some((c) => c.href === activeHref);
+
+  // 配下の画面に入ったときは自動で開く. それ以外はユーザーの開閉操作を保持する.
+  const [open, setOpen] = useState(groupActive);
+  const [prevGroupActive, setPrevGroupActive] = useState(groupActive);
+  if (groupActive !== prevGroupActive) {
+    setPrevGroupActive(groupActive);
+    if (groupActive) setOpen(true);
+  }
+
+  // アイコンのみ表示中はサブ項目を展開できないので, ドロップダウンで各画面へ直接飛べるようにする.
+  if (state === "collapsed" && !isMobile) {
+    return (
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton isActive={groupActive}>
+              <item.icon />
+              <span>{t(item.titleKey)}</span>
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="right" align="start">
+            <DropdownMenuLabel>{t(item.titleKey)}</DropdownMenuLabel>
+            {item.children.map((child) => (
+              <DropdownMenuItem key={child.href} asChild>
+                <Link to={child.href}>{t(child.titleKey)}</Link>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    );
+  }
+
+  return (
+    <Collapsible
+      asChild
+      open={open}
+      onOpenChange={setOpen}
+      className="group/collapsible"
+    >
+      <SidebarMenuItem>
+        <CollapsibleTrigger asChild>
+          <SidebarMenuButton isActive={groupActive && !open}>
+            <item.icon />
+            <span>{t(item.titleKey)}</span>
+            <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+          </SidebarMenuButton>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarMenuSub>
+            {item.children.map((child) => (
+              <SidebarMenuSubItem key={child.href}>
+                <SidebarMenuSubButton
+                  asChild
+                  isActive={child.href === activeHref}
+                >
+                  <Link to={child.href}>
+                    <span>{t(child.titleKey)}</span>
+                  </Link>
+                </SidebarMenuSubButton>
+              </SidebarMenuSubItem>
+            ))}
+          </SidebarMenuSub>
+        </CollapsibleContent>
+      </SidebarMenuItem>
+    </Collapsible>
+  );
+}
 
 function AppSidebar() {
   const { t } = useTranslation();
   const location = useLocation();
   const perms = usePermissions();
-  const visibleNavigation = useMemo(
-    () => navigation.filter((n) => (n.visible ? n.visible(perms) : true)),
-    [perms],
-  );
+  const visibleNavigation = useMemo(() => {
+    const isVisible = (n: NavLeaf) => (n.visible ? n.visible(perms) : true);
+    return navigation.flatMap<NavItem>((item) => {
+      if (!isNavGroup(item)) return isVisible(item) ? [item] : [];
+      const children = item.children.filter(isVisible);
+      return children.length > 0 ? [{ ...item, children }] : [];
+    });
+  }, [perms]);
 
   // 最も長く一致した href のみを active にする。
   // 例: pathname=/sessions/scheduled では /sessions ではなく /sessions/scheduled が選ばれる。
   const activeHref = useMemo(() => {
     const path = location.pathname;
     let best: string | undefined;
-    for (const item of visibleNavigation) {
+    const leaves = visibleNavigation.flatMap<NavLeaf>((item) =>
+      isNavGroup(item) ? item.children : [item],
+    );
+    for (const item of leaves) {
       const matched =
         item.href === "/"
           ? path === "/"
@@ -135,19 +247,27 @@ function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {visibleNavigation.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={item.href === activeHref}
-                  >
-                    <Link to={item.href}>
-                      <item.icon />
-                      <span>{t(item.titleKey)}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {visibleNavigation.map((item) =>
+                isNavGroup(item) ? (
+                  <NavGroupItem
+                    key={item.titleKey}
+                    item={item}
+                    activeHref={activeHref}
+                  />
+                ) : (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={item.href === activeHref}
+                    >
+                      <Link to={item.href}>
+                        <item.icon />
+                        <span>{t(item.titleKey)}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ),
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

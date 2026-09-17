@@ -445,11 +445,7 @@
     "changePasswordButton": "パスワードを変更"
   },
   "adminIndexPage": {
-    "description": "システム全体の管理機能です。表示される項目は保持しているシステム権限により変わります。",
-    "noAvailableFeatures": "利用可能なシステム管理機能がありません",
-    "userManagement": "ユーザー管理",
-    "viewAllGroups": "全グループ閲覧",
-    "globalRoleManagement": "グローバルロール管理"
+    "noAvailableFeatures": "利用可能なシステム管理機能がありません"
   },
   "adminGroupsPage": {
     "description": "システム上の全グループを表示しています。"
