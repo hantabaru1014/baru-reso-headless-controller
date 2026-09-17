@@ -13,11 +13,13 @@ export function UserList({
   isLoading,
   renderActions,
   onUserClick,
+  showId = false,
 }: {
   data: UserInfo[];
   isLoading?: boolean;
   renderActions?: (user: UserInfo) => React.ReactNode;
   onUserClick?: (user: UserInfo) => void;
+  showId?: boolean;
 }) {
   const { t } = useTranslation();
   return (
@@ -40,7 +42,14 @@ export function UserList({
                   iconUrl={user.iconUrl}
                   alt={t("userList.iconAlt", { name: user.name })}
                 />
-                <span className="text-sm font-medium">{user.name}</span>
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">{user.name}</div>
+                  {showId && (
+                    <div className="text-muted-foreground font-mono text-xs">
+                      {user.id}
+                    </div>
+                  )}
+                </div>
               </div>
               {renderActions && renderActions(user)}
             </div>

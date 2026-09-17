@@ -40,8 +40,8 @@ import {
 import {
   DataTable,
   RefetchButton,
+  ResoniteUserPicker,
   SelectField,
-  TextField,
 } from "../../components/base";
 import { PermissionGuardedButton } from "../../components/base/PermissionGuardedButton";
 import { ResoniteUserIcon } from "../../components/ResoniteUserIcon";
@@ -52,13 +52,16 @@ import { sessionAtom } from "../../atoms/sessionAtom";
 
 const makeInviteFormSchema = (t: TFunction) =>
   z.object({
-    resoniteId: z
-      .string()
-      .min(1, t("adminUsersPage.resoniteIdRequired"))
-      .regex(/^U-/, t("adminUsersPage.resoniteIdFormat")),
+    resoniteUser: z
+      .object({ id: z.string(), name: z.string(), iconUrl: z.string() })
+      .nullable()
+      .refine((u) => u !== null, t("adminUsersPage.resoniteUserRequired")),
     personalRoleId: z.string().min(1, t("adminUsersPage.roleRequired")),
   });
-type InviteFormData = z.infer<ReturnType<typeof makeInviteFormSchema>>;
+type InviteFormSchema = ReturnType<typeof makeInviteFormSchema>;
+// resoniteUser は未選択 (null) を入力として許し、バリデーション後は non-null になる.
+type InviteFormInput = z.input<InviteFormSchema>;
+type InviteFormData = z.output<InviteFormSchema>;
 
 function InviteUserDialog({
   open,
@@ -91,13 +94,12 @@ function InviteUserDialog({
 
   const {
     control,
-    register,
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<InviteFormData>({
+  } = useForm<InviteFormInput, unknown, InviteFormData>({
     resolver: zodResolver(inviteFormSchema),
-    defaultValues: { resoniteId: "", personalRoleId: "seed-admin" },
+    defaultValues: { resoniteUser: null, personalRoleId: "seed-admin" },
   });
 
   const handleClose = () => {
@@ -110,7 +112,7 @@ function InviteUserDialog({
     try {
       // personal_role_id はトークンと一緒に DB に保存される (改竄不能).
       const res = await mutateAsync({
-        resoniteId: data.resoniteId,
+        resoniteId: data.resoniteUser.id,
         personalRoleId: data.personalRoleId || undefined,
       });
       setIssued({ ...res, personalRoleId: data.personalRoleId });
@@ -198,11 +200,18 @@ function InviteUserDialog({
             onSubmit={handleSubmit(onSubmit)}
             className="space-y-4"
           >
-            <TextField
-              label="Resonite ID"
-              placeholder="U-username"
-              {...register("resoniteId")}
-              error={errors.resoniteId?.message}
+            <Controller
+              name="resoniteUser"
+              control={control}
+              render={({ field }) => (
+                <ResoniteUserPicker
+                  label={t("adminUsersPage.resoniteUserLabel")}
+                  value={field.value ?? undefined}
+                  onChange={(u) => field.onChange(u ?? null)}
+                  error={errors.resoniteUser?.message}
+                  disabled={isPending}
+                />
+              )}
             />
             <Controller
               name="personalRoleId"

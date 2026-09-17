@@ -103,6 +103,11 @@
     "placeholder": "User ID / name",
     "noHostMessage": "(Please select a Host first)"
   },
+  "resoniteUserPicker": {
+    "placeholder": "Search by username or ID starting with U-",
+    "noResults": "No matching users found",
+    "clear": "Clear selection"
+  },
   "chatDialog": {
     "title": "Chat - {{name}}"
   },
@@ -463,8 +468,8 @@
     "cannotDeleteSelf": "You cannot delete yourself",
     "cannotDeleteSystem": "The system user cannot be deleted",
     "noDeletePermission": "You do not have permission to delete",
-    "resoniteIdRequired": "Resonite ID is required",
-    "resoniteIdFormat": "Resonite ID must start with U-",
+    "resoniteUserLabel": "Resonite user",
+    "resoniteUserRequired": "Please select a Resonite user",
     "roleRequired": "Please select a role",
     "builtinSuffix": " (Built-in)",
     "tokenIssueError": "Failed to issue invitation token",

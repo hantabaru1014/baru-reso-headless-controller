@@ -13,6 +13,7 @@ export * from "./Markdown";
 export * from "./RadioGroupField";
 export * from "./ReadOnlyField";
 export * from "./RefetchButton";
+export * from "./ResoniteUserPicker";
 export * from "./ScrollBase";
 export * from "./SelectField";
 export * from "./SplitButton";
