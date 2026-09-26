@@ -1,5 +1,6 @@
 {
   "common": {
+    "all": "全て",
     "save": "保存",
     "cancel": "キャンセル",
     "delete": "削除",
@@ -579,7 +580,6 @@
     "columnError": "エラー",
     "filterStatus": "状態",
     "filterType": "種別",
-    "filterAll": "全て",
     "includeAllUsers": "全ユーザー分を表示",
     "showErrorDetail": "クリックでエラー全文を表示",
     "errorDialogTitle": "エラー詳細",

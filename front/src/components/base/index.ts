@@ -5,6 +5,7 @@ export * from "./EditableFieldBase";
 export * from "./EditableSelectField";
 export * from "./EditableTextArea";
 export * from "./EditableTextField";
+export * from "./EnumFilterField";
 export * from "./FieldFooter";
 export * from "./FieldHeader";
 export * from "./GroupSwitcher";
