@@ -6,17 +6,20 @@ import ScheduledOperationList from "../../components/ScheduledOperationList";
 import { useQuery } from "@connectrpc/connect-query";
 import { getSessionDetails } from "../../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { SessionStatus } from "../../../pbgen/hdlctrl/v1/controller_pb";
+import { isNotFoundError } from "../../libs/connectErrorUtils";
 
 export default function SessionDetail() {
   const { t } = useTranslation();
   const { id } = useParams();
-  const { data } = useQuery(getSessionDetails, {
-    sessionId: id,
-  });
+  const { data, error } = useQuery(
+    getSessionDetails,
+    { sessionId: id ?? "" },
+    { enabled: !!id },
+  );
 
   return (
     <div className="container mx-auto p-4 space-y-4">
-      {id ? (
+      {id && !isNotFoundError(error) ? (
         <>
           <div className="w-full">
             <SessionForm sessionId={id} />

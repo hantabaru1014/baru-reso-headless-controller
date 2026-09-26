@@ -15,6 +15,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-errors/errors"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
@@ -315,6 +316,31 @@ func requirePerm(ctx context.Context, permUC *usecase.PermissionUsecase, userID,
 	return nil
 }
 
+// requirePermOrHide は requirePerm と同様に permKey を判定するが、caller が
+// 対象リソースの閲覧権限 (readKey) すら持たない場合は PermissionDenied ではなく
+// 存在しない ID を指定した場合と同じ NotFound を返す. 閲覧できない caller に
+// ID の存在有無を判別させないため. notFoundPrefix は repository が NotFound を
+// 返す際の prefix と揃える.
+func requirePermOrHide(ctx context.Context, permUC *usecase.PermissionUsecase, userID, groupID, permKey, readKey, notFoundPrefix string) error {
+	permErr := requirePerm(ctx, permUC, userID, groupID, permKey)
+	if connect.CodeOf(permErr) != connect.CodePermissionDenied {
+		return permErr
+	}
+
+	if permKey != readKey {
+		readable, err := permUC.HasPermission(ctx, userID, groupID, readKey)
+		if err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+
+		if readable {
+			return permErr
+		}
+	}
+
+	return convertErr(errors.WrapPrefix(domain.ErrNotFound, notFoundPrefix, 0))
+}
+
 // ===== 汎用 resolver factory =====
 
 // idExtractor[T] は req.Any() を *T にキャストして string を取り出す.
@@ -343,7 +369,7 @@ func checkHostPermission[T any](permKey string, extract idExtractor[T]) permissi
 			return convertErr(err)
 		}
 
-		return requirePerm(ctx, permUC, claims.UserID, groupID, permKey)
+		return requirePermOrHide(ctx, permUC, claims.UserID, groupID, permKey, entity.PermKey_HostRead, "headless host")
 	}
 }
 
@@ -369,7 +395,7 @@ func checkSessionPermission[T any](permKey string, extract idExtractor[T]) permi
 			return convertErr(err)
 		}
 
-		return requirePerm(ctx, permUC, claims.UserID, s.GroupID, permKey)
+		return requirePermOrHide(ctx, permUC, claims.UserID, s.GroupID, permKey, entity.PermKey_SessionRead, "session")
 	}
 }
 
