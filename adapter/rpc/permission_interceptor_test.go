@@ -127,6 +127,7 @@ func TestPermissionInterceptor_DeniesNonMemberOfGroup(t *testing.T) {
 
 	hostErr := getHost(host.ID)
 	missingHostErr := getHost("non-existent-host")
+
 	assert.Equal(t, connect.CodeNotFound, hostErr.Code(),
 		"non-member should get NotFound on host they cannot read")
 	assert.Equal(t, missingHostErr.Code(), hostErr.Code())
@@ -159,6 +160,7 @@ func TestPermissionInterceptor_DeniesNonMemberOfGroup(t *testing.T) {
 
 	sessionErr := getSession(session.ID)
 	missingSessionErr := getSession("non-existent-session")
+
 	assert.Equal(t, connect.CodeNotFound, sessionErr.Code(),
 		"non-member should get NotFound on session they cannot read")
 	assert.Equal(t, missingSessionErr.Code(), sessionErr.Code())
