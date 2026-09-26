@@ -14,6 +14,9 @@ type PageParam = {
   cursorId?: bigint;
 };
 
+// この距離 (px) 以内なら最下部にいるとみなす
+const BOTTOM_THRESHOLD_PX = 30;
+
 export default function HostLogViewer({
   hostId,
   instanceId,
@@ -38,6 +41,8 @@ export default function HostLogViewer({
     prevFirstVisibleIndex?: number;
     addedCount?: number;
   } | null>(null);
+  // 最下部付近にスクロールしているか (新しいログ追加時に追従するかの判定用)
+  const isAtBottomRef = useRef(true);
 
   const {
     data,
@@ -128,8 +133,8 @@ export default function HostLogViewer({
           prevFirstVisibleIndex: firstVisibleIndex,
           addedCount,
         };
-      } else {
-        // 新しいログが末尾に追加された - 最下部にスクロール
+      } else if (isAtBottomRef.current) {
+        // 新しいログが末尾に追加された - 最下部を見ていた場合のみ追従
         scrollAdjustmentRef.current = { type: "after" };
       }
     }
@@ -164,6 +169,10 @@ export default function HostLogViewer({
     if (!container) return;
 
     const handleScroll = () => {
+      const distanceToBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight;
+      isAtBottomRef.current = distanceToBottom < BOTTOM_THRESHOLD_PX;
+
       const isFetching = isFetchingNextPage || isFetchingPreviousPage;
 
       // 上端到達 → 古いログ取得
@@ -171,13 +180,7 @@ export default function HostLogViewer({
         fetchPreviousPage();
       }
       // 下端到達 → 新しいログ取得 (tailing無効時)
-      if (
-        container.scrollHeight - container.scrollTop - container.clientHeight <
-          100 &&
-        hasNextPage &&
-        !tailing &&
-        !isFetching
-      ) {
+      if (distanceToBottom < 100 && hasNextPage && !tailing && !isFetching) {
         fetchNextPage();
       }
     };
