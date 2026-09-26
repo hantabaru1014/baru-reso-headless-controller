@@ -22,11 +22,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui";
-import { DataTable, RefetchButton, TextField } from "./base";
+import { DataTable, EnumFilterField, RefetchButton, TextField } from "./base";
 import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
 import { usePermissions } from "../hooks/usePermissions";
 import { useInvalidateMyPermissions } from "../hooks/useInvalidateMyPermissions";
 import { PERMISSION_KEYS, groupTypeToLabel } from "../libs/permissionUtils";
+
+const GROUP_TYPE_VALUES = [
+  GroupType.PERSONAL,
+  GroupType.NORMAL,
+  GroupType.SYSTEM,
+];
 
 const makeNewGroupFormSchema = (t: TFunction) =>
   z.object({
@@ -119,9 +125,16 @@ export default function GroupList() {
   const navigate = useNavigate();
   const { data, isPending, refetch } = useQuery(listGroups, {});
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<GroupType | undefined>();
   const { hasSystemPermission } = usePermissions();
   const invalidateMyPermissions = useInvalidateMyPermissions();
   const canCreate = hasSystemPermission(PERMISSION_KEYS.SYSTEM_GROUP_MANAGE);
+
+  const filteredGroups = useMemo(() => {
+    const all = data?.groups ?? [];
+    if (typeFilter === undefined) return all;
+    return all.filter((g) => g.type === typeFilter);
+  }, [data?.groups, typeFilter]);
 
   const columns: ColumnDef<Group>[] = useMemo(
     () => [
@@ -153,19 +166,28 @@ export default function GroupList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end gap-2">
-        <RefetchButton refetch={refetch} />
-        <PermissionGuardedButton
-          allowed={canCreate}
-          disabledReason={t("groupList.noCreatePermission")}
-          onClick={() => setIsNewDialogOpen(true)}
-        >
-          {t("groupList.newGroup")}
-        </PermissionGuardedButton>
+      <div className="flex justify-between items-end gap-2">
+        <EnumFilterField
+          label={t("groupList.type")}
+          values={GROUP_TYPE_VALUES}
+          selected={typeFilter}
+          toLabel={groupTypeToLabel}
+          onChange={setTypeFilter}
+        />
+        <div className="flex gap-2">
+          <RefetchButton refetch={refetch} />
+          <PermissionGuardedButton
+            allowed={canCreate}
+            disabledReason={t("groupList.noCreatePermission")}
+            onClick={() => setIsNewDialogOpen(true)}
+          >
+            {t("groupList.newGroup")}
+          </PermissionGuardedButton>
+        </div>
       </div>
       <DataTable
         columns={columns}
-        data={data?.groups ?? []}
+        data={filteredGroups}
         isLoading={isPending}
         onClickRow={(row) => navigate(`/groups/${row.id}`)}
       />

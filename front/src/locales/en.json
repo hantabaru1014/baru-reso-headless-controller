@@ -1,5 +1,6 @@
 {
   "common": {
+    "all": "All",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -579,7 +580,6 @@
     "columnError": "Error",
     "filterStatus": "Status",
     "filterType": "Kind",
-    "filterAll": "All",
     "includeAllUsers": "Show all users",
     "showErrorDetail": "Click to show the full error",
     "errorDialogTitle": "Error Details",
