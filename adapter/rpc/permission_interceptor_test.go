@@ -94,7 +94,9 @@ func TestPermissionInterceptor_AllowsUserWithSystemGroupManage(t *testing.T) {
 }
 
 // TestPermissionInterceptor_DeniesNonMemberOfGroup verifies that a user who
-// is not a member of any group cannot access protected operations.
+// is not a member of any group cannot access protected operations, and that
+// the error is indistinguishable from the one for a non-existent resource
+// (閲覧権限の無い caller に ID の存在有無を判別させない).
 func TestPermissionInterceptor_DeniesNonMemberOfGroup(t *testing.T) {
 	setup := setupControllerServiceTest(t)
 	defer setup.Cleanup()
@@ -105,18 +107,60 @@ func TestPermissionInterceptor_DeniesNonMemberOfGroup(t *testing.T) {
 
 	testutil.CreateTestHeadlessAccount(t, setup.queries, "U-account", "user@example.test", "password")
 	host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-account", "TestHost", entity.HeadlessHostStatus_EXITED)
+	session := testutil.CreateTestSession(t, setup.queries, host.ID, "TestSession", entity.SessionStatus_ENDED)
 
 	client := setupAuthenticatedClient(t, setup.service)
 
-	req := testutil.CreateAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostRequest{
+	getHost := func(hostID string) *connect.Error {
+		req := testutil.CreateAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostRequest{
+			HostId: hostID,
+		}, callerUserID, "U-resonite", "")
+
+		_, err := client.GetHeadlessHost(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.ErrorAs(t, err, &connectErr)
+
+		return connectErr
+	}
+
+	hostErr := getHost(host.ID)
+	missingHostErr := getHost("non-existent-host")
+	assert.Equal(t, connect.CodeNotFound, hostErr.Code(),
+		"non-member should get NotFound on host they cannot read")
+	assert.Equal(t, missingHostErr.Code(), hostErr.Code())
+	assert.Equal(t, missingHostErr.Message(), hostErr.Message())
+
+	// host:read の無い write 系 RPC も存在を漏らさない.
+	shutdownReq := testutil.CreateAuthenticatedRequest(t, &hdlctrlv1.ShutdownHeadlessHostRequest{
 		HostId: host.ID,
 	}, callerUserID, "U-resonite", "")
-
-	_, err := client.GetHeadlessHost(t.Context(), req)
+	_, err := client.ShutdownHeadlessHost(t.Context(), shutdownReq)
 	require.Error(t, err)
 
-	connectErr := &connect.Error{}
-	require.ErrorAs(t, err, &connectErr)
-	assert.Equal(t, connect.CodePermissionDenied, connectErr.Code(),
-		"non-member should get PermissionDenied on protected RPC")
+	shutdownErr := &connect.Error{}
+	require.ErrorAs(t, err, &shutdownErr)
+	assert.Equal(t, connect.CodeNotFound, shutdownErr.Code())
+
+	getSession := func(sessionID string) *connect.Error {
+		req := testutil.CreateAuthenticatedRequest(t, &hdlctrlv1.GetSessionDetailsRequest{
+			SessionId: sessionID,
+		}, callerUserID, "U-resonite", "")
+
+		_, err := client.GetSessionDetails(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.ErrorAs(t, err, &connectErr)
+
+		return connectErr
+	}
+
+	sessionErr := getSession(session.ID)
+	missingSessionErr := getSession("non-existent-session")
+	assert.Equal(t, connect.CodeNotFound, sessionErr.Code(),
+		"non-member should get NotFound on session they cannot read")
+	assert.Equal(t, missingSessionErr.Code(), sessionErr.Code())
+	assert.Equal(t, missingSessionErr.Message(), sessionErr.Message())
 }

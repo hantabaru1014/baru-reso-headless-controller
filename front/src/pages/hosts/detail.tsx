@@ -5,11 +5,12 @@ import HostDetailPanel from "../../components/HostDetailPanel";
 import { useQuery } from "@connectrpc/connect-query";
 import { getHeadlessHost } from "../../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { HeadlessHostStatus } from "../../../pbgen/hdlctrl/v1/controller_pb";
+import { isNotFoundError } from "../../libs/connectErrorUtils";
 
 export default function HostDetail() {
   const { t } = useTranslation();
   const { id } = useParams();
-  const { data: hostData } = useQuery(
+  const { data: hostData, error } = useQuery(
     getHeadlessHost,
     { hostId: id ?? "" },
     { enabled: !!id },
@@ -17,7 +18,7 @@ export default function HostDetail() {
 
   return (
     <div className="container mx-auto p-4 space-y-4">
-      {id ? (
+      {id && !isNotFoundError(error) ? (
         <>
           <div className="w-full">
             <HostDetailPanel hostId={id} />

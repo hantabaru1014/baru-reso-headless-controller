@@ -421,10 +421,10 @@
     "register": "Register"
   },
   "sessionDetailPage": {
-    "notFound": "NotFound: Session not found"
+    "notFound": "Session not found"
   },
   "hostDetailPage": {
-    "notFound": "NotFound: Host not found"
+    "notFound": "Host not found"
   },
   "groupDetailPage": {
     "notFound": "NotFound: Group not found",

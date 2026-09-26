@@ -8,8 +8,11 @@ import { useNotificationStream } from "./hooks/useNotificationStream";
 import { useResoniteUserSync } from "./hooks/useResoniteUserSync";
 import { Toaster } from "./components/ui";
 import { ThemeProvider } from "./components/ThemeProvider";
+import { shouldRetryQuery } from "./libs/connectErrorUtils";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: shouldRetryQuery } },
+});
 
 function AppContent() {
   useResoniteUserSync();
