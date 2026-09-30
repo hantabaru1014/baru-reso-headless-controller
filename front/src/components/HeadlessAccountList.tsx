@@ -37,6 +37,7 @@ import {
   updateHeadlessAccountCredentials,
   updateHeadlessAccountIcon,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
+import { listGroups } from "../../pbgen/hdlctrl/v1/permission-GroupService_connectquery";
 import { RefetchButton } from "./base/RefetchButton";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
@@ -58,6 +59,7 @@ import { ScrollBase } from "./base/ScrollBase";
 import { IconChangeDialog } from "./IconChangeDialog";
 import { ResoniteUserIcon } from "./ResoniteUserIcon";
 import { ChatDialog } from "./chat";
+import { ResourceTransferDialog } from "./ResourceTransferDialog";
 import { GroupSelectField } from "./GroupSelectField";
 import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
 import { usePermissions } from "../hooks/usePermissions";
@@ -67,16 +69,26 @@ import { currentGroupIdAtom } from "../atoms/currentGroupAtom";
 import { PERMISSION_KEYS } from "../libs/permissionUtils";
 import { useTranslation } from "react-i18next";
 
+// 同一の Resonite アカウントを複数グループに登録できるため、
+// アカウントは groupId + userId の組で特定する.
+type AccountRef = { groupId: string; userId: string };
+
+const isSameAccount = (a: AccountRef | null | undefined, b: AccountRef) =>
+  a?.groupId === b.groupId && a.userId === b.userId;
+
 function FriendRequestsDialog({
   onClose,
+  groupId,
   accountId,
 }: {
   onClose?: () => void;
+  groupId: string;
   accountId: string;
 }) {
   const { t } = useTranslation();
   const { data, isPending, refetch } = useQuery(getFriendRequests, {
     headlessAccountId: accountId,
+    groupId,
   });
   const { mutateAsync: mutateAcceptFriendRequest, isPending: isPendingAccept } =
     useMutation(acceptFriendRequests);
@@ -117,6 +129,7 @@ function FriendRequestsDialog({
                 try {
                   await mutateRemoveContact({
                     headlessAccountId: accountId,
+                    groupId,
                     targetUserId: row.original.id,
                   });
                   refetch();
@@ -141,6 +154,7 @@ function FriendRequestsDialog({
                 try {
                   await mutateAcceptFriendRequest({
                     headlessAccountId: accountId,
+                    groupId,
                     targetUserId: row.original.id,
                   });
                   refetch();
@@ -204,10 +218,12 @@ function FriendRequestsDialog({
 }
 
 function SendFriendRequestDialog({
+  groupId,
   accountId,
   open,
   onClose,
 }: {
+  groupId: string;
   accountId: string;
   open: boolean;
   onClose?: () => void;
@@ -222,16 +238,18 @@ function SendFriendRequestDialog({
   // controller RPC (SearchResoniteUsers / GetResoniteUser) を使うのでホスト不要.
   const { data: hostsData } = useQuery(
     listHeadlessHost,
-    { page: { pageIndex: 0, pageSize: 100 } },
+    { page: { pageIndex: 0, pageSize: 100 }, groupId },
     { enabled: open },
   );
   const runningHost = useMemo(
     () =>
       hostsData?.hosts.find(
         (h) =>
-          h.accountId === accountId && h.status === HeadlessHostStatus.RUNNING,
+          h.groupId === groupId &&
+          h.accountId === accountId &&
+          h.status === HeadlessHostStatus.RUNNING,
       ),
-    [hostsData, accountId],
+    [hostsData, groupId, accountId],
   );
   const hasRunningHost = !!runningHost;
 
@@ -243,10 +261,11 @@ function SendFriendRequestDialog({
     hasNextPage: hasMoreContacts,
     isFetchingNextPage: isFetchingMoreContacts,
   } = useInfiniteQuery({
-    queryKey: ["allContacts", accountId],
+    queryKey: ["allContacts", groupId, accountId],
     queryFn: async ({ pageParam }) => {
       const res = await callUnaryMethod(transport, listContacts, {
         headlessAccountId: accountId,
+        groupId,
         limit: 200,
         cursor: pageParam?.cursor,
       });
@@ -336,6 +355,7 @@ function SendFriendRequestDialog({
     try {
       await mutateSendFriendRequest({
         headlessAccountId: accountId,
+        groupId,
         user: { case: "userId", value: userId },
       });
       toast.success(t("headlessAccountList.friendRequestSent"));
@@ -519,10 +539,12 @@ function NewAccountDialog({
 }
 
 function UpdateAccountCredentialsDialog({
+  groupId,
   accountId,
   open,
   onClose,
 }: {
+  groupId: string;
   accountId: string;
   open: boolean;
   onClose?: () => void;
@@ -571,6 +593,7 @@ function UpdateAccountCredentialsDialog({
               try {
                 await mutateUpdateAccount({
                   accountId,
+                  groupId,
                   credential,
                   password,
                 });
@@ -598,9 +621,16 @@ function UpdateAccountCredentialsDialog({
   );
 }
 
-function StorageInfoTip({ accountId }: { accountId: string }) {
+function StorageInfoTip({
+  groupId,
+  accountId,
+}: {
+  groupId: string;
+  accountId: string;
+}) {
   const { data, isPending } = useQuery(getHeadlessAccountStorageInfo, {
     accountId,
+    groupId,
   });
 
   return isPending ? (
@@ -637,29 +667,33 @@ export default function HeadlessAccountList() {
     useMutation(refetchHeadlessAccountInfo);
   const { mutateAsync: mutateUpdateIcon, isPending: isUpdatingIcon } =
     useMutation(updateHeadlessAccountIcon);
-  const [updateDialogAccountId, setUpdateDialogAccountId] = useState<string>();
+  const [updateDialogAccount, setUpdateDialogAccount] = useState<AccountRef>();
   const [isOpenNewAccountDialog, setIsOpenNewAccountDialog] = useState(false);
-  const [actionAccountId, setActionAccountId] = useState<string | null>(null);
-  const [iconChangeAccount, setIconChangeAccount] = useState<{
-    userId: string;
-    iconUrl: string;
-  }>();
-  const [chatAccount, setChatAccount] = useState<{
-    userId: string;
-    userName: string;
-  }>();
-  const [sendFriendReqAccountId, setSendFriendReqAccountId] =
-    useState<string>();
+  const [actionAccount, setActionAccount] = useState<AccountRef | null>(null);
+  const [iconChangeAccount, setIconChangeAccount] = useState<
+    AccountRef & { iconUrl: string }
+  >();
+  const [chatAccount, setChatAccount] = useState<
+    AccountRef & { userName: string }
+  >();
+  const [sendFriendReqAccount, setSendFriendReqAccount] =
+    useState<AccountRef>();
+  const [transferAccount, setTransferAccount] = useState<AccountRef>();
 
-  const handleChangeIcon = useCallback((userId: string, iconUrl: string) => {
-    setIconChangeAccount({ userId, iconUrl });
-  }, []);
+  // 全グループ表示では同じアカウントが複数行に並びうるので、所属グループ名で区別できるようにする.
+  const { data: groupsData } = useQuery(listGroups, {});
+  const groupNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const g of groupsData?.groups ?? []) m.set(g.id, g.name);
+    return m;
+  }, [groupsData?.groups]);
 
   const handleUploadIcon = useCallback(
     async (iconData: Uint8Array) => {
       if (!iconChangeAccount) return;
       await mutateUpdateIcon({
         accountId: iconChangeAccount.userId,
+        groupId: iconChangeAccount.groupId,
         iconData,
       });
       toast.success(t("headlessAccountList.iconUpdated"));
@@ -669,10 +703,10 @@ export default function HeadlessAccountList() {
   );
 
   const handleRefetchInfo = useCallback(
-    async (accountId: string) => {
-      setActionAccountId(accountId);
+    async ({ groupId, userId }: AccountRef) => {
+      setActionAccount({ groupId, userId });
       try {
-        await mutateRefetchAccountInfo({ accountId });
+        await mutateRefetchAccountInfo({ accountId: userId, groupId });
         toast.success(t("headlessAccountList.accountInfoRefetched"));
         refetch();
       } catch (e) {
@@ -682,17 +716,17 @@ export default function HeadlessAccountList() {
             : t("headlessAccountList.accountInfoRefetchFailed"),
         );
       } finally {
-        setActionAccountId(null);
+        setActionAccount(null);
       }
     },
     [mutateRefetchAccountInfo, refetch, t],
   );
 
   const handleDeleteAccount = useCallback(
-    async (accountId: string) => {
-      setActionAccountId(accountId);
+    async ({ groupId, userId }: AccountRef) => {
+      setActionAccount({ groupId, userId });
       try {
-        await mutateDeleteAccount({ accountId });
+        await mutateDeleteAccount({ accountId: userId, groupId });
         toast.success(t("headlessAccountList.accountDeleted"));
         refetch();
       } catch (e) {
@@ -702,7 +736,7 @@ export default function HeadlessAccountList() {
             : t("headlessAccountList.accountDeleteFailed"),
         );
       } finally {
-        setActionAccountId(null);
+        setActionAccount(null);
       }
     },
     [mutateDeleteAccount, refetch, t],
@@ -728,21 +762,43 @@ export default function HeadlessAccountList() {
         accessorKey: "userName",
         header: t("headlessAccountList.userName"),
       },
+      ...(currentGroupId
+        ? []
+        : [
+            {
+              accessorKey: "groupId",
+              header: t("headlessAccountList.group"),
+              cell: ({ row }) =>
+                groupNameById.get(row.original.groupId) ?? row.original.groupId,
+            } satisfies ColumnDef<HeadlessAccount>,
+          ]),
       {
         header: t("headlessAccountList.storage"),
-        cell: ({ row }) => <StorageInfoTip accountId={row.original.userId} />,
+        cell: ({ row }) => (
+          <StorageInfoTip
+            groupId={row.original.groupId}
+            accountId={row.original.userId}
+          />
+        ),
       },
       {
         id: "friendRequests",
         header: t("headlessAccountList.friendReq"),
         cell: ({ row }) => (
-          <FriendRequestsDialog accountId={row.original.userId} />
+          <FriendRequestsDialog
+            groupId={row.original.groupId}
+            accountId={row.original.userId}
+          />
         ),
       },
       {
         id: "actions",
         header: t("common.actions"),
         cell: ({ row }) => {
+          const account: AccountRef = {
+            groupId: row.original.groupId,
+            userId: row.original.userId,
+          };
           const canWrite = hasPermission(
             row.original.groupId,
             PERMISSION_KEYS.ACCOUNT_WRITE,
@@ -763,7 +819,7 @@ export default function HeadlessAccountList() {
                   disabled={!canUse}
                   onClick={() =>
                     setChatAccount({
-                      userId: row.original.userId,
+                      ...account,
                       userName: row.original.userName,
                     })
                   }
@@ -772,23 +828,23 @@ export default function HeadlessAccountList() {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!canWrite}
-                  onClick={() => setSendFriendReqAccountId(row.original.userId)}
+                  onClick={() => setSendFriendReqAccount(account)}
                 >
                   {t("headlessAccountList.addFriend")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!canWrite}
-                  onClick={() => setUpdateDialogAccountId(row.original.userId)}
+                  onClick={() => setUpdateDialogAccount(account)}
                 >
                   {t("headlessAccountList.updateCredentials")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!canWrite}
                   onClick={() =>
-                    handleChangeIcon(
-                      row.original.userId,
-                      resolveUrl(row.original.iconUrl) ?? "",
-                    )
+                    setIconChangeAccount({
+                      ...account,
+                      iconUrl: resolveUrl(row.original.iconUrl) ?? "",
+                    })
                   }
                 >
                   {t("headlessAccountList.changeIcon")}
@@ -796,19 +852,24 @@ export default function HeadlessAccountList() {
                 <DropdownMenuItem
                   disabled={
                     !canWrite ||
-                    (isPendingRefetch &&
-                      actionAccountId === row.original.userId)
+                    (isPendingRefetch && isSameAccount(actionAccount, account))
                   }
-                  onClick={() => handleRefetchInfo(row.original.userId)}
+                  onClick={() => handleRefetchInfo(account)}
                 >
                   {t("headlessAccountList.refetchNameIcon")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
+                  disabled={!canWrite}
+                  onClick={() => setTransferAccount(account)}
+                >
+                  {t("resourceTransferDialog.title")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
                   disabled={
                     !canWrite ||
-                    (isPendingDelete && actionAccountId === row.original.userId)
+                    (isPendingDelete && isSameAccount(actionAccount, account))
                   }
-                  onClick={() => handleDeleteAccount(row.original.userId)}
+                  onClick={() => handleDeleteAccount(account)}
                 >
                   {t("common.delete")}
                 </DropdownMenuItem>
@@ -819,14 +880,14 @@ export default function HeadlessAccountList() {
       },
     ],
     [
-      setUpdateDialogAccountId,
       handleRefetchInfo,
       handleDeleteAccount,
-      handleChangeIcon,
       isPendingRefetch,
       isPendingDelete,
-      actionAccountId,
+      actionAccount,
       hasPermission,
+      currentGroupId,
+      groupNameById,
       t,
     ],
   );
@@ -863,10 +924,11 @@ export default function HeadlessAccountList() {
         }}
       />
       <UpdateAccountCredentialsDialog
-        accountId={updateDialogAccountId ?? ""}
-        open={!!updateDialogAccountId}
+        groupId={updateDialogAccount?.groupId ?? ""}
+        accountId={updateDialogAccount?.userId ?? ""}
+        open={!!updateDialogAccount}
         onClose={() => {
-          setUpdateDialogAccountId(undefined);
+          setUpdateDialogAccount(undefined);
           refetch();
         }}
       />
@@ -880,13 +942,27 @@ export default function HeadlessAccountList() {
       <ChatDialog
         open={!!chatAccount}
         onClose={() => setChatAccount(undefined)}
+        groupId={chatAccount?.groupId ?? ""}
         accountId={chatAccount?.userId ?? ""}
         accountName={chatAccount?.userName ?? ""}
       />
       <SendFriendRequestDialog
-        accountId={sendFriendReqAccountId ?? ""}
-        open={!!sendFriendReqAccountId}
-        onClose={() => setSendFriendReqAccountId(undefined)}
+        groupId={sendFriendReqAccount?.groupId ?? ""}
+        accountId={sendFriendReqAccount?.userId ?? ""}
+        open={!!sendFriendReqAccount}
+        onClose={() => setSendFriendReqAccount(undefined)}
+      />
+      <ResourceTransferDialog
+        open={!!transferAccount}
+        onClose={() => setTransferAccount(undefined)}
+        resource={{
+          case: "account",
+          value: {
+            groupId: transferAccount?.groupId ?? "",
+            accountId: transferAccount?.userId ?? "",
+          },
+        }}
+        sourceGroupId={transferAccount?.groupId ?? ""}
       />
     </div>
   );

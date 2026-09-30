@@ -17,11 +17,11 @@ import (
 // 権限: account.group_id に対して account:use.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.ControllerServiceAcceptFriendRequestsProcedure,
-	checkAccountPermission(entity.PermKey_AccountUse, accountIDFromAcceptFriends),
+	checkAccountPermission(entity.PermKey_AccountUse, accountRefFromAcceptFriends),
 )
 
 func (c *ControllerService) AcceptFriendRequests(ctx context.Context, req *connect.Request[hdlctrlv1.AcceptFriendRequestsRequest]) (*connect.Response[hdlctrlv1.AcceptFriendRequestsResponse], error) {
-	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.GetHeadlessAccountId())
+	hosts, err := c.listRunningHostsByAccountRef(ctx, req.Msg.GetGroupId(), req.Msg.GetHeadlessAccountId())
 	if err != nil {
 		return nil, convertErr(err)
 	}
@@ -56,11 +56,11 @@ func (c *ControllerService) AcceptFriendRequests(ctx context.Context, req *conne
 // container RPC が cloud を叩くため、そのアカウントで起動中のホストが必要.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.ControllerServiceSendFriendRequestProcedure,
-	checkAccountPermission(entity.PermKey_AccountUse, accountIDFromSendFriendRequest),
+	checkAccountPermission(entity.PermKey_AccountUse, accountRefFromSendFriendRequest),
 )
 
 func (c *ControllerService) SendFriendRequest(ctx context.Context, req *connect.Request[hdlctrlv1.SendFriendRequestRequest]) (*connect.Response[hdlctrlv1.SendFriendRequestResponse], error) {
-	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.GetHeadlessAccountId())
+	hosts, err := c.listRunningHostsByAccountRef(ctx, req.Msg.GetGroupId(), req.Msg.GetHeadlessAccountId())
 	if err != nil {
 		return nil, convertErr(err)
 	}
@@ -98,11 +98,11 @@ func (c *ControllerService) SendFriendRequest(ctx context.Context, req *connect.
 // フレンドリクエストの拒否や既存コンタクトの削除に使う.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.ControllerServiceRemoveContactProcedure,
-	checkAccountPermission(entity.PermKey_AccountUse, accountIDFromRemoveContact),
+	checkAccountPermission(entity.PermKey_AccountUse, accountRefFromRemoveContact),
 )
 
 func (c *ControllerService) RemoveContact(ctx context.Context, req *connect.Request[hdlctrlv1.RemoveContactRequest]) (*connect.Response[hdlctrlv1.RemoveContactResponse], error) {
-	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.GetHeadlessAccountId())
+	hosts, err := c.listRunningHostsByAccountRef(ctx, req.Msg.GetGroupId(), req.Msg.GetHeadlessAccountId())
 	if err != nil {
 		return nil, convertErr(err)
 	}
@@ -130,11 +130,11 @@ func (c *ControllerService) RemoveContact(ctx context.Context, req *connect.Requ
 // 権限: account.group_id に対して account:use.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.ControllerServiceGetFriendRequestsProcedure,
-	checkAccountPermission(entity.PermKey_AccountUse, accountIDFromGetFriendRequests),
+	checkAccountPermission(entity.PermKey_AccountUse, accountRefFromGetFriendRequests),
 )
 
 func (c *ControllerService) GetFriendRequests(ctx context.Context, req *connect.Request[hdlctrlv1.GetFriendRequestsRequest]) (*connect.Response[hdlctrlv1.GetFriendRequestsResponse], error) {
-	account, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.GetHeadlessAccountId())
+	account, err := c.hauc.ResolveHeadlessAccount(ctx, req.Msg.GetGroupId(), req.Msg.GetHeadlessAccountId())
 	if err != nil {
 		return nil, convertErr(err)
 	}
@@ -277,7 +277,7 @@ func (c *ControllerService) GetOwnWorlds(ctx context.Context, req *connect.Reque
 		return nil, convertErr(err)
 	}
 
-	account, err := c.hauc.GetHeadlessAccount(ctx, host.AccountId)
+	account, err := c.hauc.GetHeadlessAccount(ctx, host.GroupID, host.AccountId)
 	if err != nil {
 		return nil, convertErr(err)
 	}

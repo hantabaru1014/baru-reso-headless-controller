@@ -146,6 +146,23 @@
     "belongingGroup": "Group",
     "noSelectableGroups": "No selectable groups"
   },
+  "resourceTransferDialog": {
+    "title": "Transfer to another group",
+    "description": "Moves the resource to another group. The account, every host using that account, and every session on those hosts are always transferred together.",
+    "destinationGroup": "Destination group",
+    "destinationGroupHelper": "Only groups where you have the required permission are shown",
+    "previewSummary": "All of the following resources will be transferred from \"{{source}}\" to \"{{destination}}\".",
+    "account": "Account",
+    "noAccount": "The account registration no longer exists, so no account will be transferred",
+    "mergedTitle": "The destination already has this account registered",
+    "mergedDescription": "The existing registration (login credentials) in \"{{destination}}\" will be kept and the source registration will be deleted. Transferred hosts will use the destination's registration.",
+    "hosts": "Hosts ({{n}})",
+    "sessions": "Sessions ({{n}})",
+    "transfer": "Transfer",
+    "transferring": "Transferring...",
+    "transferred": "Transferred to \"{{group}}\"",
+    "transferFailed": "Failed to transfer"
+  },
   "groupDetailPanel": {
     "notFound": "Group not found",
     "groupName": "Group name",
@@ -327,6 +344,7 @@
     "accountDeleted": "Account deleted",
     "accountDeleteFailed": "Failed to delete account",
     "userName": "Username",
+    "group": "Group",
     "storage": "Storage",
     "friendReq": "Requests",
     "openChat": "Open chat",

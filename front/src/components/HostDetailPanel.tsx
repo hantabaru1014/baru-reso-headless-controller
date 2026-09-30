@@ -42,6 +42,9 @@ import { toast } from "sonner";
 import { RefetchButton, SplitButton, TextField } from "./base";
 import { MoreHorizontalIcon } from "lucide-react";
 import { PastInstancesDialog } from "./PastInstancesDialog";
+import { ResourceTransferDialog } from "./ResourceTransferDialog";
+import { usePermissions } from "../hooks/usePermissions";
+import { PERMISSION_KEYS } from "../libs/permissionUtils";
 import { useTranslation } from "react-i18next";
 
 type AllowedAccessEntryType = {
@@ -461,6 +464,11 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
   const settings = data?.host?.hostSettings;
 
   const [isInstancesDialogOpen, setIsInstancesDialogOpen] = useState(false);
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+  const { hasPermission } = usePermissions();
+  const canTransfer =
+    !!data?.host &&
+    hasPermission(data.host.groupId, PERMISSION_KEYS.HOST_WRITE);
 
   const handleRestart = async () => {
     try {
@@ -604,12 +612,24 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
                 >
                   {t("hostDetailPanel.pastInstances")}
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!canTransfer}
+                  onClick={() => setIsTransferDialogOpen(true)}
+                >
+                  {t("resourceTransferDialog.title")}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <PastInstancesDialog
               hostId={hostId}
               open={isInstancesDialogOpen}
               onOpenChange={setIsInstancesDialogOpen}
+            />
+            <ResourceTransferDialog
+              open={isTransferDialogOpen}
+              onClose={() => setIsTransferDialogOpen(false)}
+              resource={{ case: "hostId", value: hostId }}
+              sourceGroupId={data?.host?.groupId ?? ""}
             />
           </div>
           <ReadOnlyField

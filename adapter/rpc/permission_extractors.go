@@ -43,41 +43,45 @@ func hostIDFromListUsersInSession(r *hdlctrlv1.ListUsersInSessionRequest) string
 	return r.GetHostId()
 }
 
-// ===== Account ID extractors =====
+// ===== Account ref extractors =====
+//
+// アカウントは (group_id, resonite_id) で一意なので、group_id と account_id の組を返す.
 
-func accountIDFromDelete(r *hdlctrlv1.DeleteHeadlessAccountRequest) string { return r.GetAccountId() }
-func accountIDFromUpdateCreds(r *hdlctrlv1.UpdateHeadlessAccountCredentialsRequest) string {
-	return r.GetAccountId()
+func accountRefFromDelete(r *hdlctrlv1.DeleteHeadlessAccountRequest) (string, string) {
+	return r.GetGroupId(), r.GetAccountId()
 }
-func accountIDFromStorageInfo(r *hdlctrlv1.GetHeadlessAccountStorageInfoRequest) string {
-	return r.GetAccountId()
+func accountRefFromUpdateCreds(r *hdlctrlv1.UpdateHeadlessAccountCredentialsRequest) (string, string) {
+	return r.GetGroupId(), r.GetAccountId()
 }
-func accountIDFromRefetch(r *hdlctrlv1.RefetchHeadlessAccountInfoRequest) string {
-	return r.GetAccountId()
+func accountRefFromStorageInfo(r *hdlctrlv1.GetHeadlessAccountStorageInfoRequest) (string, string) {
+	return r.GetGroupId(), r.GetAccountId()
 }
-func accountIDFromUpdateIcon(r *hdlctrlv1.UpdateHeadlessAccountIconRequest) string {
-	return r.GetAccountId()
+func accountRefFromRefetch(r *hdlctrlv1.RefetchHeadlessAccountInfoRequest) (string, string) {
+	return r.GetGroupId(), r.GetAccountId()
 }
-func accountIDFromGetFriendRequests(r *hdlctrlv1.GetFriendRequestsRequest) string {
-	return r.GetHeadlessAccountId()
+func accountRefFromUpdateIcon(r *hdlctrlv1.UpdateHeadlessAccountIconRequest) (string, string) {
+	return r.GetGroupId(), r.GetAccountId()
 }
-func accountIDFromAcceptFriends(r *hdlctrlv1.AcceptFriendRequestsRequest) string {
-	return r.GetHeadlessAccountId()
+func accountRefFromGetFriendRequests(r *hdlctrlv1.GetFriendRequestsRequest) (string, string) {
+	return r.GetGroupId(), r.GetHeadlessAccountId()
 }
-func accountIDFromSendFriendRequest(r *hdlctrlv1.SendFriendRequestRequest) string {
-	return r.GetHeadlessAccountId()
+func accountRefFromAcceptFriends(r *hdlctrlv1.AcceptFriendRequestsRequest) (string, string) {
+	return r.GetGroupId(), r.GetHeadlessAccountId()
 }
-func accountIDFromRemoveContact(r *hdlctrlv1.RemoveContactRequest) string {
-	return r.GetHeadlessAccountId()
+func accountRefFromSendFriendRequest(r *hdlctrlv1.SendFriendRequestRequest) (string, string) {
+	return r.GetGroupId(), r.GetHeadlessAccountId()
 }
-func accountIDFromListContacts(r *hdlctrlv1.ListContactsRequest) string {
-	return r.GetHeadlessAccountId()
+func accountRefFromRemoveContact(r *hdlctrlv1.RemoveContactRequest) (string, string) {
+	return r.GetGroupId(), r.GetHeadlessAccountId()
 }
-func accountIDFromGetMessages(r *hdlctrlv1.GetContactMessagesRequest) string {
-	return r.GetHeadlessAccountId()
+func accountRefFromListContacts(r *hdlctrlv1.ListContactsRequest) (string, string) {
+	return r.GetGroupId(), r.GetHeadlessAccountId()
 }
-func accountIDFromSendMessage(r *hdlctrlv1.SendContactMessageRequest) string {
-	return r.GetHeadlessAccountId()
+func accountRefFromGetMessages(r *hdlctrlv1.GetContactMessagesRequest) (string, string) {
+	return r.GetGroupId(), r.GetHeadlessAccountId()
+}
+func accountRefFromSendMessage(r *hdlctrlv1.SendContactMessageRequest) (string, string) {
+	return r.GetGroupId(), r.GetHeadlessAccountId()
 }
 
 // ===== Session ID extractors =====

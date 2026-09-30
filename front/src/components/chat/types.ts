@@ -16,6 +16,8 @@ export type MessagePageParam = {
 };
 
 export interface ContactListPanelProps {
+  // アカウントは (groupId, accountId) の組で特定する
+  groupId: string;
   accountId: string;
   enabled: boolean;
   selectedContact: UserInfo | null;
@@ -23,6 +25,7 @@ export interface ContactListPanelProps {
 }
 
 export interface ChatMessagesPanelProps {
+  groupId: string;
   accountId: string;
   contact: UserInfo | null;
   enabled: boolean;
@@ -34,6 +37,7 @@ export interface ChatMessagesPanelProps {
 export interface ChatDialogProps {
   open: boolean;
   onClose?: () => void;
+  groupId: string;
   accountId: string;
   accountName: string;
 }
@@ -41,6 +45,7 @@ export interface ChatDialogProps {
 export interface DirectChatDialogProps {
   open: boolean;
   onClose?: () => void;
+  groupId: string;
   accountId: string;
   accountName: string;
   contact: UserInfo;

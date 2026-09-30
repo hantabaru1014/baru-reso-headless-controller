@@ -160,6 +160,9 @@ func allKnownProcedures() []string {
 		hdlctrlv1connect.ControllerServiceListAsyncJobsProcedure,
 		hdlctrlv1connect.ControllerServiceGetAsyncJobProcedure,
 
+		// ===== ControllerService: リソース移管系 =====
+		hdlctrlv1connect.ControllerServiceTransferResourcesProcedure,
+
 		// ===== GroupService =====
 		hdlctrlv1connect.GroupServiceCreateGroupProcedure,
 		hdlctrlv1connect.GroupServiceGetGroupProcedure,
@@ -399,7 +402,13 @@ func checkSessionPermission[T any](permKey string, extract idExtractor[T]) permi
 	}
 }
 
-func checkAccountPermission[T any](permKey string, extract idExtractor[T]) permissionCheck {
+// accountRefExtractor[T] は req.Any() を *T にキャストしてアカウントの (group_id, account_id) を取り出す.
+type accountRefExtractor[T any] func(*T) (groupID, accountID string)
+
+// checkAccountPermission は account_id を含む RPC 用. account.group_id に対して permKey を要求する.
+// group_id 未指定の場合は登録先グループが 1 つに定まるときだけ解決する
+// (HeadlessAccountUsecase.ResolveHeadlessAccount).
+func checkAccountPermission[T any](permKey string, extract accountRefExtractor[T]) permissionCheck {
 	return func(ctx context.Context, req connect.AnyRequest, deps *PermissionDeps, permUC *usecase.PermissionUsecase) error {
 		typed, ok := req.Any().(*T)
 		if !ok {
@@ -411,12 +420,14 @@ func checkAccountPermission[T any](permKey string, extract idExtractor[T]) permi
 			return err
 		}
 
-		accountID := strings.TrimSpace(extract(typed))
+		groupID, accountID := extract(typed)
+
+		accountID = strings.TrimSpace(accountID)
 		if accountID == "" {
 			return connect.NewError(connect.CodeInvalidArgument, errors.New("account_id is required"))
 		}
 
-		a, err := deps.AccountUC.GetHeadlessAccount(ctx, accountID)
+		a, err := deps.AccountUC.ResolveHeadlessAccount(ctx, strings.TrimSpace(groupID), accountID)
 		if err != nil {
 			return convertErr(err)
 		}
@@ -497,7 +508,8 @@ func checkGroupReadable(ctx context.Context, userID, groupID, permKey string, de
 // ===== 個別チェック (resolver / 複合 perm) =====
 
 // checkStartHeadlessHost: StartHeadlessHost は host:write + (account.group_id に対し account:use).
-// group_id 未指定なら account.group_id にフォールバック (同一グループ制約).
+// アカウントは group_id のグループから引く (同一グループ制約). group_id 未指定なら
+// アカウントの登録先グループが 1 つに定まるときだけそのグループにフォールバックする.
 func checkStartHeadlessHost(ctx context.Context, req connect.AnyRequest, deps *PermissionDeps, permUC *usecase.PermissionUsecase) error {
 	msg, ok := req.Any().(*hdlctrlv1.StartHeadlessHostRequest)
 	if !ok {
@@ -520,17 +532,9 @@ func checkStartHeadlessHostMsg(ctx context.Context, userID string, msg *hdlctrlv
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("headless_account_id is required"))
 	}
 
-	acc, accErr := deps.AccountUC.GetHeadlessAccount(ctx, accID)
+	acc, accErr := deps.AccountUC.ResolveHeadlessAccount(ctx, msg.GetGroupId(), accID)
 	if accErr != nil {
-		// 既存テスト互換: アカウント未存在は Internal (旧実装の挙動).
-		// domain.ErrNotFound でラップされていない素の pgx.ErrNoRows を返すため.
 		return convertErr(accErr)
-	}
-
-	requestedGroupID := msg.GetGroupId()
-	if requestedGroupID != "" && acc.GroupID != requestedGroupID {
-		return connect.NewError(connect.CodeFailedPrecondition,
-			errors.New("account group does not match requested host group"))
 	}
 
 	groupID := acc.GroupID

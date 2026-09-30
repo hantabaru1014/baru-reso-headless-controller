@@ -442,6 +442,7 @@ export default function SessionUserList({ sessionId }: { sessionId: string }) {
         <DirectChatDialog
           open={!!chatUserId}
           onClose={() => setChatUserId(null)}
+          groupId={hostData.host.groupId}
           accountId={hostData.host.accountId}
           accountName={hostData.host.accountName}
           contact={chatContact}

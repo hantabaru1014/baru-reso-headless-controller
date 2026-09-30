@@ -146,6 +146,23 @@
     "belongingGroup": "所属グループ",
     "noSelectableGroups": "選択可能なグループがありません"
   },
+  "resourceTransferDialog": {
+    "title": "グループを移管",
+    "description": "リソースを別のグループへ移管します。アカウント・そのアカウントを使う全ホスト・それらのホスト上の全セッションは、常にまとめて移管されます。",
+    "destinationGroup": "移管先グループ",
+    "destinationGroupHelper": "移管に必要な権限を持つグループのみ表示されます",
+    "previewSummary": "以下のリソースがすべて「{{source}}」から「{{destination}}」へ移管されます。",
+    "account": "アカウント",
+    "noAccount": "アカウント登録が存在しないため、アカウントは移管されません",
+    "mergedTitle": "移管先に同じアカウントが登録済みです",
+    "mergedDescription": "「{{destination}}」の既存の登録 (ログイン情報) がそのまま使われ、移管元の登録は削除されます。移管されるホストは移管先の登録を使うようになります。",
+    "hosts": "ホスト ({{n}})",
+    "sessions": "セッション ({{n}})",
+    "transfer": "移管する",
+    "transferring": "移管中...",
+    "transferred": "「{{group}}」へ移管しました",
+    "transferFailed": "移管に失敗しました"
+  },
   "groupDetailPanel": {
     "notFound": "グループが見つかりませんでした",
     "groupName": "グループ名",
@@ -327,6 +344,7 @@
     "accountDeleted": "アカウントを削除しました",
     "accountDeleteFailed": "アカウントの削除に失敗しました",
     "userName": "ユーザ名",
+    "group": "所属グループ",
     "storage": "ストレージ",
     "friendReq": "フレリク",
     "openChat": "チャットを開く",

@@ -22,6 +22,11 @@ import { EditableTextArea, SplitButton } from "./base";
 import { AspectRatio, DropdownMenuItem } from "./ui";
 import HostTip from "./HostTip";
 import { SessionOpsMenu } from "./SessionOpsMenu";
+import { ResourceTransferDialog } from "./ResourceTransferDialog";
+import { PermissionGuardedButton } from "./base/PermissionGuardedButton";
+import { usePermissions } from "../hooks/usePermissions";
+import { PERMISSION_KEYS } from "../libs/permissionUtils";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export default function SessionForm({ sessionId }: { sessionId: string }) {
@@ -40,6 +45,11 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
   const { mutateAsync: mutateDelete, isPending: isPendingDelete } =
     useMutation(deleteEndedSession);
   const navigate = useNavigate();
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+  const { hasPermission } = usePermissions();
+  const canTransfer =
+    !!data?.session &&
+    hasPermission(data.session.groupId, PERMISSION_KEYS.SESSION_WRITE);
 
   const hostId = data?.session?.hostId;
   const isRunning = data?.session?.status === SessionStatus.RUNNING;
@@ -165,7 +175,18 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
                       {t("sessionForm.copyUrl")}
                     </SplitButton>
                     {hostId && (
-                      <SessionOpsMenu hostId={hostId} sessionId={sessionId} />
+                      <SessionOpsMenu
+                        hostId={hostId}
+                        sessionId={sessionId}
+                        extraItems={
+                          <DropdownMenuItem
+                            disabled={!canTransfer}
+                            onClick={() => setIsTransferDialogOpen(true)}
+                          >
+                            {t("resourceTransferDialog.title")}
+                          </DropdownMenuItem>
+                        }
+                      />
                     )}
                   </>
                 }
@@ -195,6 +216,13 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
               <Button onClick={handleOpenWithSameSettings}>
                 {t("sessionForm.startWithSameSettings")}
               </Button>
+              <PermissionGuardedButton
+                variant="outline"
+                allowed={canTransfer}
+                onClick={() => setIsTransferDialogOpen(true)}
+              >
+                {t("resourceTransferDialog.title")}
+              </PermissionGuardedButton>
               <Button
                 variant="destructive"
                 onClick={handleDeleteSession}
@@ -204,6 +232,12 @@ export default function SessionForm({ sessionId }: { sessionId: string }) {
               </Button>
             </div>
           )}
+          <ResourceTransferDialog
+            open={isTransferDialogOpen}
+            onClose={() => setIsTransferDialogOpen(false)}
+            resource={{ case: "sessionId", value: sessionId }}
+            sourceGroupId={data?.session?.groupId ?? ""}
+          />
         </div>
         <Card className="h-full">
           <CardContent className="h-full">

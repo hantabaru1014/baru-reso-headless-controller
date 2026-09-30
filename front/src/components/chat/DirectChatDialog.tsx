@@ -8,6 +8,7 @@ import { ChatMessagesPanel } from "./ChatMessagesPanel";
 export function DirectChatDialog({
   open,
   onClose,
+  groupId,
   accountId,
   accountName,
   contact,
@@ -39,6 +40,7 @@ export function DirectChatDialog({
         </DialogHeader>
 
         <ChatMessagesPanel
+          groupId={groupId}
           accountId={accountId}
           contact={contact}
           enabled={open}

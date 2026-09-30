@@ -29,6 +29,7 @@ import {
 } from "./utils";
 
 export function ChatMessagesPanel({
+  groupId,
   accountId,
   contact,
   enabled,
@@ -72,10 +73,11 @@ export function ChatMessagesPanel({
     isFetchingPreviousPage,
     isPending: isLoadingMessages,
   } = useInfiniteQuery({
-    queryKey: ["contactMessages", accountId, contact?.id],
+    queryKey: ["contactMessages", groupId, accountId, contact?.id],
     queryFn: async ({ pageParam }: { pageParam: MessagePageParam }) => {
       const response = await callUnaryMethod(transport, getContactMessages, {
         headlessAccountId: accountId,
+        groupId,
         contactUserId: contact!.id,
         limit: 50,
         beforeId:
@@ -221,6 +223,7 @@ export function ChatMessagesPanel({
       try {
         const response = await callUnaryMethod(transport, getContactMessages, {
           headlessAccountId: accountId,
+          groupId,
           contactUserId: contact.id,
           limit: 50,
           afterId: newestMessage.id,
@@ -230,7 +233,7 @@ export function ChatMessagesPanel({
           const wasNearBottom = isNearBottom();
 
           queryClient.setQueryData(
-            ["contactMessages", accountId, contact.id],
+            ["contactMessages", groupId, accountId, contact.id],
             (oldData: typeof messagesData) => {
               if (!oldData) return oldData;
               const newPages = [...oldData.pages];
@@ -267,6 +270,7 @@ export function ChatMessagesPanel({
   }, [
     enabled,
     contact,
+    groupId,
     accountId,
     messagesData?.pages,
     transport,
@@ -314,6 +318,7 @@ export function ChatMessagesPanel({
     try {
       await mutateSendMessage({
         headlessAccountId: accountId,
+        groupId,
         contactUserId: contact.id,
         message: messageContent,
       });
@@ -333,6 +338,7 @@ export function ChatMessagesPanel({
       if (newestMessage) {
         const response = await callUnaryMethod(transport, getContactMessages, {
           headlessAccountId: accountId,
+          groupId,
           contactUserId: contact.id,
           limit: 50,
           afterId: newestMessage.id,
@@ -340,7 +346,7 @@ export function ChatMessagesPanel({
 
         if (response.messages.length > 0) {
           queryClient.setQueryData(
-            ["contactMessages", accountId, contact.id],
+            ["contactMessages", groupId, accountId, contact.id],
             (oldData: typeof messagesData) => {
               if (!oldData) return oldData;
               const newPages = [...oldData.pages];
@@ -376,6 +382,7 @@ export function ChatMessagesPanel({
   }, [
     messageInput,
     contact,
+    groupId,
     accountId,
     mutateSendMessage,
     messagesData?.pages,

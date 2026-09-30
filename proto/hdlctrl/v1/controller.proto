@@ -79,16 +79,23 @@ service ControllerService {
   // 非同期job系
   rpc ListAsyncJobs(ListAsyncJobsRequest) returns (ListAsyncJobsResponse);
   rpc GetAsyncJob(GetAsyncJobRequest) returns (GetAsyncJobResponse);
+
+  // リソース移管系
+  rpc TransferResources(TransferResourcesRequest) returns (TransferResourcesResponse);
 }
 
 message RefetchHeadlessAccountInfoRequest {
   string account_id = 1;
+  // アカウントの登録先グループ. 未指定時はアカウントが 1 グループにのみ登録されている場合に限り解決する.
+  string group_id = 2;
 }
 
 message RefetchHeadlessAccountInfoResponse {}
 
 message UpdateHeadlessAccountIconRequest {
   string account_id = 1;
+  // アカウントの登録先グループ. 未指定時はアカウントが 1 グループにのみ登録されている場合に限り解決する.
+  string group_id = 3;
   bytes icon_data = 2; // 画像バイナリ (PNG, JPG, GIF, WebP)
 }
 
@@ -98,6 +105,8 @@ message UpdateHeadlessAccountIconResponse {
 
 message GetHeadlessAccountStorageInfoRequest {
   string account_id = 1;
+  // アカウントの登録先グループ. 未指定時はアカウントが 1 グループにのみ登録されている場合に限り解決する.
+  string group_id = 2;
 }
 
 message GetHeadlessAccountStorageInfoResponse {
@@ -107,6 +116,8 @@ message GetHeadlessAccountStorageInfoResponse {
 
 message UpdateHeadlessAccountCredentialsRequest {
   string account_id = 1;
+  // アカウントの登録先グループ. 未指定時はアカウントが 1 グループにのみ登録されている場合に限り解決する.
+  string group_id = 4;
   string credential = 2; // email or userId
   string password = 3;
 }
@@ -115,6 +126,8 @@ message UpdateHeadlessAccountCredentialsResponse {}
 
 message DeleteHeadlessAccountRequest {
   string account_id = 1;
+  // アカウントの登録先グループ. 未指定時はアカウントが 1 グループにのみ登録されている場合に限り解決する.
+  string group_id = 2;
 }
 
 message DeleteHeadlessAccountResponse {}
@@ -162,8 +175,9 @@ message StartHeadlessHostRequest {
   optional headless.v1.StartupConfig startup_config = 4;
   optional HeadlessHostAutoUpdatePolicy auto_update_policy = 5;
   optional string memo = 6;
-  // 起動するホストの所属グループ. 未指定の場合は呼び出しユーザーの personal グループ.
-  // 指定する場合は account の group_id と一致する必要がある (同一グループ制約).
+  // 起動するホストの所属グループ. ホストとアカウントは同一グループに属する必要がある
+  // (同一グループ制約) ため、headless_account_id のアカウントもこのグループから引く.
+  // 未指定の場合はアカウントが 1 グループにのみ登録されているときに限りそのグループとして解決する.
   optional string group_id = 7;
 }
 
@@ -260,6 +274,8 @@ message BuildResoniteImageResponse {
 message AcceptFriendRequestsRequest {
   reserved 1, 2;
   string headless_account_id = 3;
+  // アカウントの登録先グループ. 未指定時はアカウントが 1 グループにのみ登録されている場合に限り解決する.
+  string group_id = 5;
   string target_user_id = 4;
 }
 
@@ -268,6 +284,8 @@ message AcceptFriendRequestsResponse {}
 message GetFriendRequestsRequest {
   reserved 1;
   string headless_account_id = 2;
+  // アカウントの登録先グループ. 未指定時はアカウントが 1 グループにのみ登録されている場合に限り解決する.
+  string group_id = 3;
 }
 
 message GetFriendRequestsResponse {
@@ -412,6 +430,8 @@ message SendDynamicImpulseResponse {
 
 message SendFriendRequestRequest {
   string headless_account_id = 1;
+  // アカウントの登録先グループ. 未指定時はアカウントが 1 グループにのみ登録されている場合に限り解決する.
+  string group_id = 4;
   oneof user {
     string user_id = 2;
     string user_name = 3;
@@ -422,6 +442,8 @@ message SendFriendRequestResponse {}
 
 message RemoveContactRequest {
   string headless_account_id = 1;
+  // アカウントの登録先グループ. 未指定時はアカウントが 1 グループにのみ登録されている場合に限り解決する.
+  string group_id = 3;
   string target_user_id = 2;
 }
 
@@ -769,6 +791,8 @@ message SearchResoniteUsersResponse {
 // コンタクト・チャット系メッセージ
 message ListContactsRequest {
   string headless_account_id = 1;
+  // アカウントの登録先グループ. 未指定時はアカウントが 1 グループにのみ登録されている場合に限り解決する.
+  string group_id = 4;
   int32 limit = 2;
   optional string cursor = 3;
 }
@@ -780,6 +804,8 @@ message ListContactsResponse {
 
 message GetContactMessagesRequest {
   string headless_account_id = 1;
+  // アカウントの登録先グループ. 未指定時はアカウントが 1 グループにのみ登録されている場合に限り解決する.
+  string group_id = 6;
   string contact_user_id = 2;
   int32 limit = 3;
   optional string before_id = 4;
@@ -803,6 +829,8 @@ message ContactMessage {
 
 message SendContactMessageRequest {
   string headless_account_id = 1;
+  // アカウントの登録先グループ. 未指定時はアカウントが 1 グループにのみ登録されている場合に限り解決する.
+  string group_id = 4;
   string contact_user_id = 2;
   string message = 3;
 }
@@ -967,4 +995,57 @@ message GetAsyncJobResponse {
   // 失敗時の詳細ログ (image build なら builder のフルログ). 一覧レスポンスを
   // 膨らませないため、この RPC でのみ返す.
   optional string error_detail = 2;
+}
+
+// リソース移管系メッセージ
+
+// ヘッドレスアカウント 1 件を指す. 同一の Resonite アカウントを複数グループに登録できるため、
+// group_id + account_id (Resonite ユーザー ID) の組で特定する.
+message HeadlessAccountRef {
+  string group_id = 1;
+  string account_id = 2;
+}
+
+// リソースを別グループへ移管する.
+// 指定したリソース 1 つを起点に、依存関係にあるリソース一式 (アカウント / そのアカウントを
+// 使う全ホスト / それらのホスト上の全セッション) をまとめて destination_group_id へ移す.
+// 移管先に同一アカウントが既に登録されている場合は移管先の登録を残してマージする
+// (移管元のアカウント登録は削除され、ホストは移管先のアカウント登録を使うようになる).
+//
+// 権限: 移管元・移管先の両グループに対し、移管対象に含まれるリソース種別ごとの write 権限
+// (account:write / host:write / session:write) が必要.
+message TransferResourcesRequest {
+  // 移管の起点にするリソース.
+  oneof resource {
+    string host_id = 1;
+    string session_id = 2;
+    HeadlessAccountRef account = 3;
+  }
+  string destination_group_id = 4;
+  // true の場合は移管を実行せず、移管対象の一覧だけを返す (実行前の確認用).
+  bool dry_run = 5;
+}
+
+message TransferResourcesResponse {
+  message Account {
+    string user_id = 1;
+    string user_name = 2;
+    // 移管先に同一アカウントが既に登録されており、マージされる (された) かどうか.
+    bool merged = 3;
+  }
+  message Host {
+    string id = 1;
+    string name = 2;
+  }
+  message Session {
+    string id = 1;
+    string name = 2;
+  }
+
+  string source_group_id = 1;
+  string destination_group_id = 2;
+  // 移管対象のアカウント. アカウント登録が既に削除されている場合は未設定.
+  optional Account account = 3;
+  repeated Host hosts = 4;
+  repeated Session sessions = 5;
 }

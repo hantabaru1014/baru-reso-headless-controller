@@ -83,7 +83,7 @@ type drainState struct {
 // orchestrator needs. It is an interface so tests can substitute it
 // without pulling in skyfrost.
 type HeadlessAccountFetcher interface {
-	GetHeadlessAccount(ctx context.Context, resoniteID string) (*entity.HeadlessAccount, error)
+	GetHeadlessAccount(ctx context.Context, groupID, resoniteID string) (*entity.HeadlessAccount, error)
 }
 
 var (
@@ -305,7 +305,7 @@ func (o *HostUpgradeOrchestrator) enrollHost(ctx context.Context, host *entity.H
 		return
 	}
 
-	account, err := o.accountRepo.GetHeadlessAccount(ctx, host.AccountId)
+	account, err := o.accountRepo.GetHeadlessAccount(ctx, host.GroupID, host.AccountId)
 	if err != nil {
 		slog.Warn("upgrade-orchestrator: account fetch failed; deferring enroll",
 			"hostID", host.ID, "error", err)

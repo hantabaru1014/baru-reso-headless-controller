@@ -223,8 +223,11 @@ func (h *HeadlessHostRepository) ListPaged(ctx context.Context, opts port.HostLi
 }
 
 // ListRunningByAccount implements port.HeadlessHostRepository.
-func (h *HeadlessHostRepository) ListRunningByAccount(ctx context.Context, accountId string) (entity.HeadlessHostList, error) {
-	hosts, err := h.q.ListRunningHostsByAccount(ctx, accountId)
+func (h *HeadlessHostRepository) ListRunningByAccount(ctx context.Context, groupID, accountId string) (entity.HeadlessHostList, error) {
+	hosts, err := h.q.ListRunningHostsByAccount(ctx, db.ListRunningHostsByAccountParams{
+		GroupID:   groupID,
+		AccountID: accountId,
+	})
 	if err != nil {
 		return nil, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
 	}
@@ -757,7 +760,10 @@ func (h *HeadlessHostRepository) dbToEntity(ctx context.Context, dbHost *db.Host
 			host.HostSettings = *converter.HeadlessHostSettingsProtoToEntity(parsed)
 		}
 
-		account, err := h.q.GetHeadlessAccount(ctx, dbHost.AccountID)
+		account, err := h.q.GetHeadlessAccount(ctx, db.GetHeadlessAccountParams{
+			GroupID:    dbHost.GroupID,
+			ResoniteID: dbHost.AccountID,
+		})
 		if err == nil {
 			host.AccountName = account.LastDisplayName.String
 		}

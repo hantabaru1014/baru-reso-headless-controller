@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
@@ -60,18 +61,44 @@ func TestControllerService_ListContacts(t *testing.T) {
 
 		const groupID = "g-mp-lcontacts"
 		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-lc-acc", "x@example.test", "p", groupID)
-		testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-lc-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-lc-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
 
-		setup.mockHostConnector.EXPECT().GetRpcClient(gomock.Any(), gomock.Any()).Return(setup.mockRpcClient, nil)
+		// 同じ Resonite アカウントが caller の権限外グループにも登録され、そちらでも
+		// ホストが起動中. group_id 指定で caller のグループのホストだけが使われること.
+		const otherGroupID = "g-mp-lcontacts-other"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-lc-acc", "x@example.test", "p", otherGroupID)
+		testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-lc-acc", "OtherHost", entity.HeadlessHostStatus_RUNNING, otherGroupID)
+
+		setup.mockHostConnector.EXPECT().
+			GetRpcClient(gomock.Any(), hostconnector.HostConnectString(host.ConnectString)).
+			Return(setup.mockRpcClient, nil)
 		setup.mockRpcClient.EXPECT().ListContacts(gomock.Any(), gomock.Any()).Return(&headlessv1.ListContactsResponse{}, nil)
 
 		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.ListContactsRequest{
 			HeadlessAccountId: "U-mp-lc-acc",
+			GroupId:           groupID,
 			Limit:             10,
 		}, "U-mp-lcontacts", groupID, []string{entity.PermKey_AccountRead})
 
 		_, err := client.ListContacts(t.Context(), req)
 		require.NoError(t, err)
+
+		// 権限の無いグループの登録は指定しても使えない.
+		_, err = client.ListContacts(t.Context(), testutil.CreateAuthenticatedRequest(t, &hdlctrlv1.ListContactsRequest{
+			HeadlessAccountId: "U-mp-lc-acc",
+			GroupId:           otherGroupID,
+			Limit:             10,
+		}, "U-mp-lcontacts", "U-resonite-U-mp-lcontacts", ""))
+		require.Error(t, err)
+		assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+
+		// 複数グループに登録されたアカウントは group_id 無しでは特定できない.
+		_, err = client.ListContacts(t.Context(), testutil.CreateAuthenticatedRequest(t, &hdlctrlv1.ListContactsRequest{
+			HeadlessAccountId: "U-mp-lc-acc",
+			Limit:             10,
+		}, "U-mp-lcontacts", "U-resonite-U-mp-lcontacts", ""))
+		require.Error(t, err)
+		assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 	})
 
 	t.Run("失敗: 起動中のホストがない", func(t *testing.T) {

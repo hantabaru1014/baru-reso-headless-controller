@@ -288,6 +288,54 @@ func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
 	return items, nil
 }
 
+const listSessionsByHostAccount = `-- name: ListSessionsByHostAccount :many
+SELECT s.id, s.name, s.status, s.started_at, s.created_by, s.ended_at, s.host_id, s.startup_parameters, s.startup_parameters_schema_version, s.auto_upgrade, s.memo, s.created_at, s.updated_at, s.group_id FROM sessions s
+INNER JOIN hosts h ON h.id = s.host_id
+WHERE h.group_id = $1::text AND h.account_id = $2::text
+ORDER BY s.started_at DESC NULLS LAST, s.id ASC
+`
+
+type ListSessionsByHostAccountParams struct {
+	GroupID   string
+	AccountID string
+}
+
+// 指定アカウントを使うホスト上の全セッション (グループ間移管の対象列挙用).
+func (q *Queries) ListSessionsByHostAccount(ctx context.Context, arg ListSessionsByHostAccountParams) ([]Session, error) {
+	rows, err := q.db.Query(ctx, listSessionsByHostAccount, arg.GroupID, arg.AccountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Session
+	for rows.Next() {
+		var i Session
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Status,
+			&i.StartedAt,
+			&i.CreatedBy,
+			&i.EndedAt,
+			&i.HostID,
+			&i.StartupParameters,
+			&i.StartupParametersSchemaVersion,
+			&i.AutoUpgrade,
+			&i.Memo,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.GroupID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSessionsByHostAndStatus = `-- name: ListSessionsByHostAndStatus :many
 SELECT id, name, status, started_at, created_by, ended_at, host_id, startup_parameters, startup_parameters_schema_version, auto_upgrade, memo, created_at, updated_at, group_id FROM sessions WHERE host_id = $1 AND status = $2 ORDER BY started_at DESC
 `
@@ -468,6 +516,21 @@ func (q *Queries) UpdateSessionAfterWorldSaved(ctx context.Context, arg UpdateSe
 	return err
 }
 
+const updateSessionGroup = `-- name: UpdateSessionGroup :exec
+UPDATE sessions SET group_id = $2 WHERE id = $1
+`
+
+type UpdateSessionGroupParams struct {
+	ID      string
+	GroupID string
+}
+
+// グループ間移管用. ホストが既に削除されたセッション単体を移す.
+func (q *Queries) UpdateSessionGroup(ctx context.Context, arg UpdateSessionGroupParams) error {
+	_, err := q.db.Exec(ctx, updateSessionGroup, arg.ID, arg.GroupID)
+	return err
+}
+
 const updateSessionStatus = `-- name: UpdateSessionStatus :exec
 UPDATE sessions SET status = $2 WHERE id = $1
 `
@@ -479,6 +542,26 @@ type UpdateSessionStatusParams struct {
 
 func (q *Queries) UpdateSessionStatus(ctx context.Context, arg UpdateSessionStatusParams) error {
 	_, err := q.db.Exec(ctx, updateSessionStatus, arg.ID, arg.Status)
+	return err
+}
+
+const updateSessionsGroupByHostAccount = `-- name: UpdateSessionsGroupByHostAccount :exec
+UPDATE sessions SET group_id = $1::text
+WHERE host_id IN (
+    SELECT h.id FROM hosts h WHERE h.group_id = $2::text AND h.account_id = $3::text
+)
+`
+
+type UpdateSessionsGroupByHostAccountParams struct {
+	NewGroupID string
+	GroupID    string
+	AccountID  string
+}
+
+// グループ間移管用. 指定アカウントを使うホスト上の全セッションをまとめて別グループへ移す.
+// hosts の group_id を書き換える前に実行すること.
+func (q *Queries) UpdateSessionsGroupByHostAccount(ctx context.Context, arg UpdateSessionsGroupByHostAccountParams) error {
+	_, err := q.db.Exec(ctx, updateSessionsGroupByHostAccount, arg.NewGroupID, arg.GroupID, arg.AccountID)
 	return err
 }
 

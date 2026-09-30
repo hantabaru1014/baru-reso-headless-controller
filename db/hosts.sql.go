@@ -205,6 +205,52 @@ func (q *Queries) ListHosts(ctx context.Context) ([]Host, error) {
 	return items, nil
 }
 
+const listHostsByAccount = `-- name: ListHostsByAccount :many
+SELECT id, name, status, account_id, created_by, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count, group_id FROM hosts WHERE group_id = $1 AND account_id = $2 ORDER BY started_at DESC NULLS LAST, id ASC
+`
+
+type ListHostsByAccountParams struct {
+	GroupID   string
+	AccountID string
+}
+
+func (q *Queries) ListHostsByAccount(ctx context.Context, arg ListHostsByAccountParams) ([]Host, error) {
+	rows, err := q.db.Query(ctx, listHostsByAccount, arg.GroupID, arg.AccountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Host
+	for rows.Next() {
+		var i Host
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Status,
+			&i.AccountID,
+			&i.CreatedBy,
+			&i.LastStartupConfig,
+			&i.LastStartupConfigSchemaVersion,
+			&i.ConnectorType,
+			&i.ConnectString,
+			&i.StartedAt,
+			&i.Memo,
+			&i.AutoUpdatePolicy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.InstanceCount,
+			&i.GroupID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listHostsByStatus = `-- name: ListHostsByStatus :many
 SELECT id, name, status, account_id, created_by, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count, group_id FROM hosts WHERE status = $1 ORDER BY started_at DESC
 `
@@ -307,11 +353,17 @@ func (q *Queries) ListHostsPaged(ctx context.Context, arg ListHostsPagedParams) 
 }
 
 const listRunningHostsByAccount = `-- name: ListRunningHostsByAccount :many
-SELECT id, name, status, account_id, created_by, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count, group_id FROM hosts WHERE account_id = $1 AND status = 2 ORDER BY started_at DESC
+SELECT id, name, status, account_id, created_by, last_startup_config, last_startup_config_schema_version, connector_type, connect_string, started_at, memo, auto_update_policy, created_at, updated_at, instance_count, group_id FROM hosts WHERE group_id = $1 AND account_id = $2 AND status = 2 ORDER BY started_at DESC
 `
 
-func (q *Queries) ListRunningHostsByAccount(ctx context.Context, accountID string) ([]Host, error) {
-	rows, err := q.db.Query(ctx, listRunningHostsByAccount, accountID)
+type ListRunningHostsByAccountParams struct {
+	GroupID   string
+	AccountID string
+}
+
+// アカウントは (group_id, resonite_id) で一意なので、ホストも group_id 込みで引く.
+func (q *Queries) ListRunningHostsByAccount(ctx context.Context, arg ListRunningHostsByAccountParams) ([]Host, error) {
+	rows, err := q.db.Query(ctx, listRunningHostsByAccount, arg.GroupID, arg.AccountID)
 	if err != nil {
 		return nil, err
 	}
@@ -442,5 +494,21 @@ type UpdateHostStatusParams struct {
 
 func (q *Queries) UpdateHostStatus(ctx context.Context, arg UpdateHostStatusParams) error {
 	_, err := q.db.Exec(ctx, updateHostStatus, arg.ID, arg.Status)
+	return err
+}
+
+const updateHostsGroupByAccount = `-- name: UpdateHostsGroupByAccount :exec
+UPDATE hosts SET group_id = $1::text WHERE group_id = $2::text AND account_id = $3::text
+`
+
+type UpdateHostsGroupByAccountParams struct {
+	NewGroupID string
+	GroupID    string
+	AccountID  string
+}
+
+// グループ間移管用. 指定アカウントを使う全ホストをまとめて別グループへ移す.
+func (q *Queries) UpdateHostsGroupByAccount(ctx context.Context, arg UpdateHostsGroupByAccountParams) error {
+	_, err := q.db.Exec(ctx, updateHostsGroupByAccount, arg.NewGroupID, arg.GroupID, arg.AccountID)
 	return err
 }

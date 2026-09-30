@@ -150,14 +150,13 @@ func (c *ControllerService) StartHeadlessHost(ctx context.Context, req *connect.
 	}
 
 	// account の存在確認は受付時に行う (存在しない account への job 化を防ぐ).
-	account, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.GetHeadlessAccountId())
+	account, err := c.hauc.ResolveHeadlessAccount(ctx, req.Msg.GetGroupId(), req.Msg.GetHeadlessAccountId())
 	if err != nil {
 		return nil, convertErr(err)
 	}
 
 	// group_id 解決: 未指定なら account のグループ (同一グループ制約).
-	// 指定された場合は account.group_id と一致することを permission interceptor が
-	// 検証済み.
+	// job 実行時に同じ登録を引けるよう、解決済みの group_id を payload に固定する.
 	if req.Msg.GroupId == nil || req.Msg.GetGroupId() == "" {
 		gid := account.GroupID
 		req.Msg.GroupId = &gid

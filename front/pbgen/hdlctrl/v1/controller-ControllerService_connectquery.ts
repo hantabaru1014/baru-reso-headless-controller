@@ -317,3 +317,10 @@ export const listAsyncJobs = ControllerService.method.listAsyncJobs;
  * @generated from rpc hdlctrl.v1.ControllerService.GetAsyncJob
  */
 export const getAsyncJob = ControllerService.method.getAsyncJob;
+
+/**
+ * リソース移管系
+ *
+ * @generated from rpc hdlctrl.v1.ControllerService.TransferResources
+ */
+export const transferResources = ControllerService.method.transferResources;

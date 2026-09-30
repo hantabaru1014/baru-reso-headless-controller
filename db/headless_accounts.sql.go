@@ -39,20 +39,31 @@ func (q *Queries) CreateHeadlessAccount(ctx context.Context, arg CreateHeadlessA
 }
 
 const deleteHeadlessAccount = `-- name: DeleteHeadlessAccount :exec
-DELETE FROM headless_accounts WHERE resonite_id = $1
+DELETE FROM headless_accounts WHERE group_id = $1 AND resonite_id = $2
 `
 
-func (q *Queries) DeleteHeadlessAccount(ctx context.Context, resoniteID string) error {
-	_, err := q.db.Exec(ctx, deleteHeadlessAccount, resoniteID)
+type DeleteHeadlessAccountParams struct {
+	GroupID    string
+	ResoniteID string
+}
+
+func (q *Queries) DeleteHeadlessAccount(ctx context.Context, arg DeleteHeadlessAccountParams) error {
+	_, err := q.db.Exec(ctx, deleteHeadlessAccount, arg.GroupID, arg.ResoniteID)
 	return err
 }
 
 const getHeadlessAccount = `-- name: GetHeadlessAccount :one
-SELECT resonite_id, credential, password, last_display_name, last_icon_url, created_at, updated_at, group_id, created_by FROM headless_accounts WHERE resonite_id = $1
+SELECT resonite_id, credential, password, last_display_name, last_icon_url, created_at, updated_at, group_id, created_by FROM headless_accounts WHERE group_id = $1 AND resonite_id = $2
 `
 
-func (q *Queries) GetHeadlessAccount(ctx context.Context, resoniteID string) (HeadlessAccount, error) {
-	row := q.db.QueryRow(ctx, getHeadlessAccount, resoniteID)
+type GetHeadlessAccountParams struct {
+	GroupID    string
+	ResoniteID string
+}
+
+// アカウントは (group_id, resonite_id) で一意. 同一 resonite_id を複数グループに登録できる.
+func (q *Queries) GetHeadlessAccount(ctx context.Context, arg GetHeadlessAccountParams) (HeadlessAccount, error) {
+	row := q.db.QueryRow(ctx, getHeadlessAccount, arg.GroupID, arg.ResoniteID)
 	var i HeadlessAccount
 	err := row.Scan(
 		&i.ResoniteID,
@@ -69,7 +80,7 @@ func (q *Queries) GetHeadlessAccount(ctx context.Context, resoniteID string) (He
 }
 
 const listHeadlessAccounts = `-- name: ListHeadlessAccounts :many
-SELECT resonite_id, credential, password, last_display_name, last_icon_url, created_at, updated_at, group_id, created_by FROM headless_accounts ORDER BY resonite_id
+SELECT resonite_id, credential, password, last_display_name, last_icon_url, created_at, updated_at, group_id, created_by FROM headless_accounts ORDER BY resonite_id, group_id
 `
 
 func (q *Queries) ListHeadlessAccounts(ctx context.Context) ([]HeadlessAccount, error) {
@@ -102,11 +113,46 @@ func (q *Queries) ListHeadlessAccounts(ctx context.Context) ([]HeadlessAccount, 
 	return items, nil
 }
 
+const listHeadlessAccountsByResoniteID = `-- name: ListHeadlessAccountsByResoniteID :many
+SELECT resonite_id, credential, password, last_display_name, last_icon_url, created_at, updated_at, group_id, created_by FROM headless_accounts WHERE resonite_id = $1 ORDER BY group_id
+`
+
+// group_id 未指定のリクエストを解決するための逆引き (登録先グループが 1 つに定まるか調べる).
+func (q *Queries) ListHeadlessAccountsByResoniteID(ctx context.Context, resoniteID string) ([]HeadlessAccount, error) {
+	rows, err := q.db.Query(ctx, listHeadlessAccountsByResoniteID, resoniteID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []HeadlessAccount
+	for rows.Next() {
+		var i HeadlessAccount
+		if err := rows.Scan(
+			&i.ResoniteID,
+			&i.Credential,
+			&i.Password,
+			&i.LastDisplayName,
+			&i.LastIconUrl,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.GroupID,
+			&i.CreatedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listHeadlessAccountsPaged = `-- name: ListHeadlessAccountsPaged :many
 SELECT headless_accounts.resonite_id, headless_accounts.credential, headless_accounts.password, headless_accounts.last_display_name, headless_accounts.last_icon_url, headless_accounts.created_at, headless_accounts.updated_at, headless_accounts.group_id, headless_accounts.created_by, COUNT(*) OVER() AS total_count
 FROM headless_accounts
 WHERE ($1::text[] IS NULL OR group_id = ANY($1::text[]))
-ORDER BY resonite_id
+ORDER BY resonite_id, group_id
 LIMIT $3::int OFFSET $2::int
 `
 
@@ -156,45 +202,75 @@ func (q *Queries) ListHeadlessAccountsPaged(ctx context.Context, arg ListHeadles
 }
 
 const updateAccountIconUrl = `-- name: UpdateAccountIconUrl :exec
-UPDATE headless_accounts SET last_icon_url = $2 WHERE resonite_id = $1
+UPDATE headless_accounts SET last_icon_url = $3 WHERE group_id = $1 AND resonite_id = $2
 `
 
 type UpdateAccountIconUrlParams struct {
+	GroupID     string
 	ResoniteID  string
 	LastIconUrl pgtype.Text
 }
 
 func (q *Queries) UpdateAccountIconUrl(ctx context.Context, arg UpdateAccountIconUrlParams) error {
-	_, err := q.db.Exec(ctx, updateAccountIconUrl, arg.ResoniteID, arg.LastIconUrl)
+	_, err := q.db.Exec(ctx, updateAccountIconUrl, arg.GroupID, arg.ResoniteID, arg.LastIconUrl)
 	return err
 }
 
 const updateAccountInfo = `-- name: UpdateAccountInfo :exec
-UPDATE headless_accounts SET last_display_name = $2, last_icon_url = $3 WHERE resonite_id = $1
+UPDATE headless_accounts SET last_display_name = $3, last_icon_url = $4 WHERE group_id = $1 AND resonite_id = $2
 `
 
 type UpdateAccountInfoParams struct {
+	GroupID         string
 	ResoniteID      string
 	LastDisplayName pgtype.Text
 	LastIconUrl     pgtype.Text
 }
 
 func (q *Queries) UpdateAccountInfo(ctx context.Context, arg UpdateAccountInfoParams) error {
-	_, err := q.db.Exec(ctx, updateAccountInfo, arg.ResoniteID, arg.LastDisplayName, arg.LastIconUrl)
+	_, err := q.db.Exec(ctx, updateAccountInfo,
+		arg.GroupID,
+		arg.ResoniteID,
+		arg.LastDisplayName,
+		arg.LastIconUrl,
+	)
 	return err
 }
 
 const updateHeadlessAccountCredentials = `-- name: UpdateHeadlessAccountCredentials :exec
-UPDATE headless_accounts SET credential = $2, password = $3 WHERE resonite_id = $1
+UPDATE headless_accounts SET credential = $3, password = $4 WHERE group_id = $1 AND resonite_id = $2
 `
 
 type UpdateHeadlessAccountCredentialsParams struct {
+	GroupID    string
 	ResoniteID string
 	Credential string
 	Password   string
 }
 
 func (q *Queries) UpdateHeadlessAccountCredentials(ctx context.Context, arg UpdateHeadlessAccountCredentialsParams) error {
-	_, err := q.db.Exec(ctx, updateHeadlessAccountCredentials, arg.ResoniteID, arg.Credential, arg.Password)
+	_, err := q.db.Exec(ctx, updateHeadlessAccountCredentials,
+		arg.GroupID,
+		arg.ResoniteID,
+		arg.Credential,
+		arg.Password,
+	)
+	return err
+}
+
+const updateHeadlessAccountGroup = `-- name: UpdateHeadlessAccountGroup :exec
+UPDATE headless_accounts SET group_id = $1::text WHERE group_id = $2::text AND resonite_id = $3::text
+`
+
+type UpdateHeadlessAccountGroupParams struct {
+	NewGroupID string
+	GroupID    string
+	ResoniteID string
+}
+
+// グループ間移管用. 移管先に同一 resonite_id が既にある場合は PK 違反になるので、
+// 呼び出し側で事前に確認してマージ (移管元の行を削除) すること.
+func (q *Queries) UpdateHeadlessAccountGroup(ctx context.Context, arg UpdateHeadlessAccountGroupParams) error {
+	_, err := q.db.Exec(ctx, updateHeadlessAccountGroup, arg.NewGroupID, arg.GroupID, arg.ResoniteID)
 	return err
 }
