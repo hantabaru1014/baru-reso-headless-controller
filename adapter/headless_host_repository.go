@@ -80,6 +80,16 @@ func (h *HeadlessHostRepository) GetGroupID(ctx context.Context, id string) (str
 	return host.GroupID, nil
 }
 
+// GetStatus implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) GetStatus(ctx context.Context, id string) (entity.HeadlessHostStatus, error) {
+	host, err := h.q.GetHost(ctx, id)
+	if err != nil {
+		return entity.HeadlessHostStatus_UNKNOWN, errors.WrapPrefix(convertDBErr(err), "headless host", 0)
+	}
+
+	return entity.HeadlessHostStatus(host.Status), nil
+}
+
 // Find implements port.HeadlessHostRepository.
 func (h *HeadlessHostRepository) Find(ctx context.Context, id string, fetchOptions port.HeadlessHostFetchOptions) (*entity.HeadlessHost, error) {
 	host, err := h.q.GetHost(ctx, id)

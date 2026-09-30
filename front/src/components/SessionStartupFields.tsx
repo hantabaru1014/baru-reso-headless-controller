@@ -34,6 +34,11 @@ type Props = {
   errors: FieldErrors<SessionFormValues>;
   watch: UseFormWatch<SessionFormValues>;
   setValue: UseFormSetValue<SessionFormValues>;
+  /**
+   * 選択中のホストが稼働しているか (既定: true)。
+   * false の場合、ホストの RPC を経由する機能 (ワールド情報取得 / コンタクト検索) を無効化する。
+   */
+  hostRunning?: boolean;
 };
 
 /**
@@ -45,11 +50,17 @@ export default function SessionStartupFields({
   errors,
   watch,
   setValue,
+  hostRunning = true,
 }: Props) {
   const { t } = useTranslation();
   const hostId = watch("hostId");
   const worldSource = watch("worldSource");
   const worldUrl = watch("worldUrl");
+  // ユーザー検索はホストの RPC を使うため、停止中は未選択時と同じ案内表示に倒す.
+  const userSearchHostId = hostRunning ? hostId : undefined;
+  const userSearchNoHostMessage = hostRunning
+    ? undefined
+    : t("sessionStartupFields.hostStoppedUserSearch");
 
   const { mutateAsync: mutateFetchInfo, isPending: isPendingFetchInfo } =
     useMutation(fetchWorldInfo);
@@ -134,7 +145,7 @@ export default function SessionStartupFields({
 
   const handleFetchInfo = async (url?: string) => {
     const targetUrl = url ?? worldUrl;
-    if (!hostId || !targetUrl) return;
+    if (!hostRunning || !hostId || !targetUrl) return;
 
     try {
       const data = await mutateFetchInfo({ hostId, url: targetUrl });
@@ -203,7 +214,9 @@ export default function SessionStartupFields({
               size="lg"
               className="shrink-0"
               onClick={() => handleFetchInfo()}
-              disabled={isPendingFetchInfo || !hostId || !worldUrl}
+              disabled={
+                isPendingFetchInfo || !hostRunning || !hostId || !worldUrl
+              }
             >
               <Download className="h-4 w-4" />
               <span className="hidden sm:inline">
@@ -551,7 +564,8 @@ export default function SessionStartupFields({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1">
           <UserSearchField
-            hostId={hostId}
+            hostId={userSearchHostId}
+            noHostMessage={userSearchNoHostMessage}
             onUserSelect={handleAutoInviteSelect}
             placeholder={t("sessionStartupFields.searchUserPlaceholder")}
             label={t("sessionStartupFields.autoInviteUsers")}
@@ -621,7 +635,8 @@ export default function SessionStartupFields({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1">
           <UserSearchField
-            hostId={hostId}
+            hostId={userSearchHostId}
+            noHostMessage={userSearchNoHostMessage}
             onUserSelect={handleDefaultUserRoleSelect}
             placeholder={t("sessionStartupFields.searchUserPlaceholder")}
             label={t("sessionStartupFields.defaultUserRoles")}

@@ -551,7 +551,8 @@ func checkStartHeadlessHostMsg(ctx context.Context, userID string, msg *hdlctrlv
 // ホストを起動できる (host:write を持つ) ユーザーには許可する.
 // follow_up 付きの場合は chain される job に対して、その job を直接呼んだ場合と同一の
 // チェックを行う (then_start_host: 対象グループへの host:write + account:use /
-// then_restart_host: 対象ホストのグループへの host:write).
+// then_restart_host: 対象ホストのグループへの host:write /
+// then_start_world: StartWorld と同一 + 対象ホストのグループへの host:write).
 func checkBuildResoniteImage(ctx context.Context, req connect.AnyRequest, deps *PermissionDeps, permUC *usecase.PermissionUsecase) error {
 	msg, ok := req.Any().(*hdlctrlv1.BuildResoniteImageRequest)
 	if !ok {
@@ -568,6 +569,19 @@ func checkBuildResoniteImage(ctx context.Context, req connect.AnyRequest, deps *
 		return checkStartHeadlessHostMsg(ctx, claims.UserID, f.ThenStartHost, deps, permUC)
 	case *hdlctrlv1.BuildResoniteImageRequest_ThenRestartHost:
 		groupID, err := deps.HostRepo.GetGroupID(ctx, f.ThenRestartHost.GetHostId())
+		if err != nil {
+			return convertErr(err)
+		}
+
+		return requirePerm(ctx, permUC, claims.UserID, groupID, entity.PermKey_HostWrite)
+	case *hdlctrlv1.BuildResoniteImageRequest_ThenStartWorld:
+		if err := checkStartWorldMsg(ctx, claims.UserID, f.ThenStartWorld, deps, permUC); err != nil {
+			return err
+		}
+
+		// この chain はホストの起動を伴う場合にしか発生しないので、ビルド完了時点の
+		// ホストの状態によらず host:write を要求する.
+		groupID, err := deps.HostRepo.GetGroupID(ctx, f.ThenStartWorld.GetHostId())
 		if err != nil {
 			return convertErr(err)
 		}
@@ -627,6 +641,7 @@ func checkCreateHeadlessAccount(ctx context.Context, req connect.AnyRequest, _ *
 
 // checkStartWorld: host:use + account:use + session:write を host.group_id に対して.
 // session.group_id == host.group_id == account.group_id (同一グループ制約) を満たすこと.
+// 停止中のホストは job 内で起動されるため、その場合は host:write も要求する.
 func checkStartWorld(ctx context.Context, req connect.AnyRequest, deps *PermissionDeps, permUC *usecase.PermissionUsecase) error {
 	msg, ok := req.Any().(*hdlctrlv1.StartWorldRequest)
 	if !ok {
@@ -638,6 +653,12 @@ func checkStartWorld(ctx context.Context, req connect.AnyRequest, deps *Permissi
 		return err
 	}
 
+	return checkStartWorldMsg(ctx, claims.UserID, msg, deps, permUC)
+}
+
+// checkStartWorldMsg は StartWorldRequest 本体に対する権限判定.
+// StartWorld 直接呼び出しと BuildResoniteImage の then_start_world chain の両方から使う.
+func checkStartWorldMsg(ctx context.Context, userID string, msg *hdlctrlv1.StartWorldRequest, deps *PermissionDeps, permUC *usecase.PermissionUsecase) error {
 	hostID := msg.GetHostId()
 	if hostID == "" {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("host_id is required"))
@@ -653,12 +674,23 @@ func checkStartWorld(ctx context.Context, req connect.AnyRequest, deps *Permissi
 			errors.New("session group must equal host group"))
 	}
 
-	for _, key := range []string{
+	keys := []string{
 		entity.PermKey_HostUse,
 		entity.PermKey_AccountUse,
 		entity.PermKey_SessionWrite,
-	} {
-		if err := requirePerm(ctx, permUC, claims.UserID, hostGroupID, key); err != nil {
+	}
+
+	hostStatus, err := deps.HostRepo.GetStatus(ctx, hostID)
+	if err != nil {
+		return convertErr(err)
+	}
+
+	if hostStatus.IsStopped() {
+		keys = append(keys, entity.PermKey_HostWrite)
+	}
+
+	for _, key := range keys {
+		if err := requirePerm(ctx, permUC, userID, hostGroupID, key); err != nil {
 			return err
 		}
 	}

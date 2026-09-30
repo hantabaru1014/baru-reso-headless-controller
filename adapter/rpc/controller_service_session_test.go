@@ -683,7 +683,7 @@ func TestControllerService_StartWorld(t *testing.T) {
 		client := setupAuthenticatedClient(t, setup.service)
 
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test", "test@example.test", "password")
-		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_EXITED)
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test", "TestHost", entity.HeadlessHostStatus_RUNNING)
 
 		worldUrl := "resrec:///U-test/R-12345"
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.StartWorldRequest{
@@ -707,7 +707,7 @@ func TestControllerService_StartWorld(t *testing.T) {
 
 		const groupID = "g-mp-startworld"
 		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-sw-acc", "mp@example.test", "password", groupID)
-		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-sw-acc", "TestHost", entity.HeadlessHostStatus_EXITED, groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-sw-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
 
 		worldUrl := "resrec:///U-test/R-12345"
 		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.StartWorldRequest{
@@ -726,6 +726,60 @@ func TestControllerService_StartWorld(t *testing.T) {
 		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_START_SESSION))
 	})
 
+	// 停止中のホストは job 内で起動されるので、host:write (ホストの起動権限) も要る.
+	t.Run("成功: 停止中ホストは host:write も持つ caller で起動", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-sw-stopped"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-sw-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-sw-acc", "TestHost", entity.HeadlessHostStatus_EXITED, groupID)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.StartWorldRequest{
+			HostId:     host.ID,
+			Parameters: &headlessv1.WorldStartupParameters{},
+		}, "U-mp-sw-stopped", groupID, []string{
+			entity.PermKey_HostUse,
+			entity.PermKey_AccountUse,
+			entity.PermKey_SessionWrite,
+			entity.PermKey_HostWrite,
+		})
+
+		res, err := client.StartWorld(t.Context(), req)
+		require.NoError(t, err)
+		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_START_SESSION))
+	})
+
+	t.Run("失敗: 停止中ホストで host:write 不足なら PermissionDenied", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-sw-stopped-nowrite"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-sw-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-sw-acc", "TestHost", entity.HeadlessHostStatus_CRASHED, groupID)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.StartWorldRequest{
+			HostId:     host.ID,
+			Parameters: &headlessv1.WorldStartupParameters{},
+		}, "U-mp-sw-stopped-nowrite", groupID, []string{
+			entity.PermKey_HostUse,
+			entity.PermKey_AccountUse,
+			entity.PermKey_SessionWrite,
+		})
+
+		_, err := client.StartWorld(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+		assert.Contains(t, connectErr.Message(), entity.PermKey_HostWrite)
+	})
+
 	// 複合 perm RPC の "1 perm 不足" バリエーション. 順序は permission_interceptor.go の
 	// checkStartWorld 内ループの順序 (host:use → account:use → session:write).
 	t.Run("失敗: host:use 不足で PermissionDenied", func(t *testing.T) {
@@ -736,7 +790,7 @@ func TestControllerService_StartWorld(t *testing.T) {
 
 		const groupID = "g-mp-sw-nohostuse"
 		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-sw-acc", "mp@example.test", "password", groupID)
-		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-sw-acc", "TestHost", entity.HeadlessHostStatus_EXITED, groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-sw-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
 
 		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.StartWorldRequest{
 			HostId:     host.ID,
@@ -763,7 +817,7 @@ func TestControllerService_StartWorld(t *testing.T) {
 
 		const groupID = "g-mp-sw-noaccuse"
 		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-sw-acc", "mp@example.test", "password", groupID)
-		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-sw-acc", "TestHost", entity.HeadlessHostStatus_EXITED, groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-sw-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
 
 		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.StartWorldRequest{
 			HostId:     host.ID,
@@ -790,7 +844,7 @@ func TestControllerService_StartWorld(t *testing.T) {
 
 		const groupID = "g-mp-sw-nosessw"
 		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-sw-acc", "mp@example.test", "password", groupID)
-		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-sw-acc", "TestHost", entity.HeadlessHostStatus_EXITED, groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-sw-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
 
 		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.StartWorldRequest{
 			HostId:     host.ID,

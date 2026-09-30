@@ -13,6 +13,11 @@ const (
 	HeadlessHostStatus_CRASHED  HeadlessHostStatus = 5
 )
 
+// IsStopped はコンテナが止まっていて、再起動 (Restart) で立ち上げ直せる状態かを返す.
+func (s HeadlessHostStatus) IsStopped() bool {
+	return s == HeadlessHostStatus_EXITED || s == HeadlessHostStatus_CRASHED
+}
+
 type HostAllowedAccessType int32
 
 const (
