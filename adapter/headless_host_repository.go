@@ -21,6 +21,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -101,39 +102,96 @@ func (h *HeadlessHostRepository) Find(ctx context.Context, id string, fetchOptio
 }
 
 // GetLogs implements port.HeadlessHostRepository.
-func (h *HeadlessHostRepository) GetLogs(ctx context.Context, params port.GetLogsParams) (port.LogLineList, error) {
-	// FluentBitタグを構築: headless-{hostID}-{instanceID}
-	tag := fmt.Sprintf("headless-%s-%d", params.HostID, params.InstanceID)
+func (h *HeadlessHostRepository) GetLogs(ctx context.Context, params port.GetLogsParams) (port.LogLineList, bool, error) {
+	tag := containerLogTag(params.HostID, params.InstanceID)
+	// 1件多く取得して、取得方向にさらにログがあるかを判定する
+	fetchLimit := params.Limit + 1
 
-	queryLimit := params.Limit
-	if queryLimit <= 0 {
-		queryLimit = 100
+	var (
+		rows []db.ContainerLog
+		err  error
+	)
+
+	if params.Newer {
+		rows, err = h.q.GetContainerLogsAfter(ctx, db.GetContainerLogsAfterParams{
+			Tag:     tag,
+			AfterID: params.CursorID,
+			MaxRows: fetchLimit,
+		})
+	} else {
+		rows, err = h.q.GetContainerLogsBefore(ctx, db.GetContainerLogsBeforeParams{
+			Tag:      tag,
+			BeforeID: params.CursorID,
+			MaxRows:  fetchLimit,
+		})
 	}
 
-	rows, err := h.q.GetContainerLogsByTag(ctx, db.GetContainerLogsByTagParams{
-		Tag:      pgtype.Text{String: tag, Valid: true},
-		BeforeID: params.BeforeID,
-		AfterID:  params.AfterID,
-		MaxRows:  queryLimit,
-	})
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return nil, false, errors.Wrap(err, 0)
+	}
+
+	// どちらのクエリもカーソルに近い順で返すので、余分な1件は常に末尾
+	hasMore := len(rows) > int(params.Limit)
+	if hasMore {
+		rows = rows[:params.Limit]
 	}
 
 	logs := make(port.LogLineList, 0, len(rows))
 
 	for _, row := range rows {
-		logLine, err := h.parseContainerLogRow(row)
-		if err != nil {
-			continue
+		if logLine, err := parseContainerLogRow(row); err == nil {
+			logs = append(logs, logLine)
 		}
-
-		logs = append(logs, logLine)
 	}
 
-	slices.Reverse(logs) // 時系列順に反転
+	if !params.Newer {
+		slices.Reverse(logs) // 時系列順に反転
+	}
 
-	return logs, nil
+	return logs, hasMore, nil
+}
+
+// SearchLog implements port.HeadlessHostRepository.
+func (h *HeadlessHostRepository) SearchLog(ctx context.Context, params port.SearchLogParams) (int64, bool, error) {
+	tag := containerLogTag(params.HostID, params.InstanceID)
+	pattern := "%" + likeEscaper.Replace(params.Query) + "%"
+
+	var (
+		id  pgtype.Int8
+		err error
+	)
+
+	if params.Newer {
+		id, err = h.q.SearchContainerLogAfter(ctx, db.SearchContainerLogAfterParams{
+			Tag:     tag,
+			AfterID: params.CursorID,
+			Pattern: pattern,
+		})
+	} else {
+		id, err = h.q.SearchContainerLogBefore(ctx, db.SearchContainerLogBeforeParams{
+			Tag:      tag,
+			BeforeID: params.CursorID,
+			Pattern:  pattern,
+		})
+	}
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, false, nil
+		}
+
+		return 0, false, errors.Wrap(err, 0)
+	}
+
+	return id.Int64, true, nil
+}
+
+// likeEscaper は LIKE / ILIKE のワイルドカードとエスケープ文字をリテラルとして一致させるためのもの.
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
+// containerLogTag は FluentBit がコンテナログに付けるタグ (headless-{hostID}-{instanceID}) を構築する.
+func containerLogTag(hostID string, instanceID int32) pgtype.Text {
+	return pgtype.Text{String: fmt.Sprintf("headless-%s-%d", hostID, instanceID), Valid: true}
 }
 
 // GetInstanceTimestamps implements port.HeadlessHostRepository.
@@ -621,7 +679,7 @@ func (h *HeadlessHostRepository) dbHostsToEntities(ctx context.Context, hosts []
 	return result
 }
 
-func (h *HeadlessHostRepository) parseContainerLogRow(row db.GetContainerLogsByTagRow) (*port.LogLine, error) {
+func parseContainerLogRow(row db.ContainerLog) (*port.LogLine, error) {
 	var data struct {
 		Log    string `json:"log"`
 		Stream string `json:"stream"` // "stdout" or "stderr"

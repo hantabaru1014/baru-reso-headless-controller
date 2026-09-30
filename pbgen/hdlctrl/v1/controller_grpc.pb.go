@@ -23,6 +23,7 @@ const (
 	ControllerService_ListHeadlessHost_FullMethodName                 = "/hdlctrl.v1.ControllerService/ListHeadlessHost"
 	ControllerService_GetHeadlessHost_FullMethodName                  = "/hdlctrl.v1.ControllerService/GetHeadlessHost"
 	ControllerService_GetHeadlessHostLogs_FullMethodName              = "/hdlctrl.v1.ControllerService/GetHeadlessHostLogs"
+	ControllerService_SearchHeadlessHostLogs_FullMethodName           = "/hdlctrl.v1.ControllerService/SearchHeadlessHostLogs"
 	ControllerService_ShutdownHeadlessHost_FullMethodName             = "/hdlctrl.v1.ControllerService/ShutdownHeadlessHost"
 	ControllerService_KillHeadlessHost_FullMethodName                 = "/hdlctrl.v1.ControllerService/KillHeadlessHost"
 	ControllerService_UpdateHeadlessHostSettings_FullMethodName       = "/hdlctrl.v1.ControllerService/UpdateHeadlessHostSettings"
@@ -91,6 +92,7 @@ type ControllerServiceClient interface {
 	ListHeadlessHost(ctx context.Context, in *ListHeadlessHostRequest, opts ...grpc.CallOption) (*ListHeadlessHostResponse, error)
 	GetHeadlessHost(ctx context.Context, in *GetHeadlessHostRequest, opts ...grpc.CallOption) (*GetHeadlessHostResponse, error)
 	GetHeadlessHostLogs(ctx context.Context, in *GetHeadlessHostLogsRequest, opts ...grpc.CallOption) (*GetHeadlessHostLogsResponse, error)
+	SearchHeadlessHostLogs(ctx context.Context, in *SearchHeadlessHostLogsRequest, opts ...grpc.CallOption) (*SearchHeadlessHostLogsResponse, error)
 	ShutdownHeadlessHost(ctx context.Context, in *ShutdownHeadlessHostRequest, opts ...grpc.CallOption) (*ShutdownHeadlessHostResponse, error)
 	KillHeadlessHost(ctx context.Context, in *KillHeadlessHostRequest, opts ...grpc.CallOption) (*KillHeadlessHostResponse, error)
 	UpdateHeadlessHostSettings(ctx context.Context, in *UpdateHeadlessHostSettingsRequest, opts ...grpc.CallOption) (*UpdateHeadlessHostSettingsResponse, error)
@@ -190,6 +192,16 @@ func (c *controllerServiceClient) GetHeadlessHostLogs(ctx context.Context, in *G
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetHeadlessHostLogsResponse)
 	err := c.cc.Invoke(ctx, ControllerService_GetHeadlessHostLogs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) SearchHeadlessHostLogs(ctx context.Context, in *SearchHeadlessHostLogsRequest, opts ...grpc.CallOption) (*SearchHeadlessHostLogsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchHeadlessHostLogsResponse)
+	err := c.cc.Invoke(ctx, ControllerService_SearchHeadlessHostLogs_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -784,6 +796,7 @@ type ControllerServiceServer interface {
 	ListHeadlessHost(context.Context, *ListHeadlessHostRequest) (*ListHeadlessHostResponse, error)
 	GetHeadlessHost(context.Context, *GetHeadlessHostRequest) (*GetHeadlessHostResponse, error)
 	GetHeadlessHostLogs(context.Context, *GetHeadlessHostLogsRequest) (*GetHeadlessHostLogsResponse, error)
+	SearchHeadlessHostLogs(context.Context, *SearchHeadlessHostLogsRequest) (*SearchHeadlessHostLogsResponse, error)
 	ShutdownHeadlessHost(context.Context, *ShutdownHeadlessHostRequest) (*ShutdownHeadlessHostResponse, error)
 	KillHeadlessHost(context.Context, *KillHeadlessHostRequest) (*KillHeadlessHostResponse, error)
 	UpdateHeadlessHostSettings(context.Context, *UpdateHeadlessHostSettingsRequest) (*UpdateHeadlessHostSettingsResponse, error)
@@ -867,6 +880,9 @@ func (UnimplementedControllerServiceServer) GetHeadlessHost(context.Context, *Ge
 }
 func (UnimplementedControllerServiceServer) GetHeadlessHostLogs(context.Context, *GetHeadlessHostLogsRequest) (*GetHeadlessHostLogsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetHeadlessHostLogs not implemented")
+}
+func (UnimplementedControllerServiceServer) SearchHeadlessHostLogs(context.Context, *SearchHeadlessHostLogsRequest) (*SearchHeadlessHostLogsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchHeadlessHostLogs not implemented")
 }
 func (UnimplementedControllerServiceServer) ShutdownHeadlessHost(context.Context, *ShutdownHeadlessHostRequest) (*ShutdownHeadlessHostResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ShutdownHeadlessHost not implemented")
@@ -1113,6 +1129,24 @@ func _ControllerService_GetHeadlessHostLogs_Handler(srv interface{}, ctx context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).GetHeadlessHostLogs(ctx, req.(*GetHeadlessHostLogsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_SearchHeadlessHostLogs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchHeadlessHostLogsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).SearchHeadlessHostLogs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_SearchHeadlessHostLogs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).SearchHeadlessHostLogs(ctx, req.(*SearchHeadlessHostLogsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2179,6 +2213,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetHeadlessHostLogs",
 			Handler:    _ControllerService_GetHeadlessHostLogs_Handler,
+		},
+		{
+			MethodName: "SearchHeadlessHostLogs",
+			Handler:    _ControllerService_SearchHeadlessHostLogs_Handler,
 		},
 		{
 			MethodName: "ShutdownHeadlessHost",

@@ -10,6 +10,7 @@ service ControllerService {
   rpc ListHeadlessHost(ListHeadlessHostRequest) returns (ListHeadlessHostResponse);
   rpc GetHeadlessHost(GetHeadlessHostRequest) returns (GetHeadlessHostResponse);
   rpc GetHeadlessHostLogs(GetHeadlessHostLogsRequest) returns (GetHeadlessHostLogsResponse);
+  rpc SearchHeadlessHostLogs(SearchHeadlessHostLogsRequest) returns (SearchHeadlessHostLogsResponse);
   rpc ShutdownHeadlessHost(ShutdownHeadlessHostRequest) returns (ShutdownHeadlessHostResponse);
   rpc KillHeadlessHost(KillHeadlessHostRequest) returns (KillHeadlessHostResponse);
   rpc UpdateHeadlessHostSettings(UpdateHeadlessHostSettingsRequest) returns (UpdateHeadlessHostSettingsResponse);
@@ -352,6 +353,9 @@ message GetHeadlessHostLogsRequest {
     int64 before_id = 9;
     // 新しいログを取得: このIDより大きいログ
     int64 after_id = 10;
+    // 指定IDのログを中心に前後のログを取得 (検索結果へのジャンプ用)
+    // このID以下を limit/2 件、このIDより大きいログを limit/2 件返す
+    int64 around_id = 11;
   }
 }
 
@@ -368,6 +372,28 @@ message GetHeadlessHostLogsResponse {
   bool has_more_before = 2;
   // より新しいログが存在するか
   bool has_more_after = 3;
+}
+
+// ログ本文を検索し、カーソル位置から指定方向で最も近い 1 件の ID を返す
+message SearchHeadlessHostLogsRequest {
+  string host_id = 1;
+  int32 instance_id = 2;
+
+  // 検索文字列 (部分一致、大文字小文字を区別しない。最大200文字)
+  string query = 3;
+
+  // 検索開始位置と方向。未指定の場合は最新のログから古い方向へ検索する
+  oneof cursor {
+    // このIDより小さいログを古い方向へ検索
+    int64 before_id = 4;
+    // このIDより大きいログを新しい方向へ検索
+    int64 after_id = 5;
+  }
+}
+
+message SearchHeadlessHostLogsResponse {
+  // 一致したログのID。見つからなかった場合は未設定
+  optional int64 log_id = 1;
 }
 
 message SearchUserInfoRequest {

@@ -92,6 +92,7 @@ func allKnownProcedures() []string {
 		hdlctrlv1connect.ControllerServiceListHeadlessHostProcedure,
 		hdlctrlv1connect.ControllerServiceGetHeadlessHostProcedure,
 		hdlctrlv1connect.ControllerServiceGetHeadlessHostLogsProcedure,
+		hdlctrlv1connect.ControllerServiceSearchHeadlessHostLogsProcedure,
 		hdlctrlv1connect.ControllerServiceListHeadlessHostInstancesProcedure,
 		hdlctrlv1connect.ControllerServiceShutdownHeadlessHostProcedure,
 		hdlctrlv1connect.ControllerServiceKillHeadlessHostProcedure,

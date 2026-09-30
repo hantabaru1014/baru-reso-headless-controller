@@ -22,6 +22,11 @@ export const getHeadlessHost = ControllerService.method.getHeadlessHost;
 export const getHeadlessHostLogs = ControllerService.method.getHeadlessHostLogs;
 
 /**
+ * @generated from rpc hdlctrl.v1.ControllerService.SearchHeadlessHostLogs
+ */
+export const searchHeadlessHostLogs = ControllerService.method.searchHeadlessHostLogs;
+
+/**
  * @generated from rpc hdlctrl.v1.ControllerService.ShutdownHeadlessHost
  */
 export const shutdownHeadlessHost = ControllerService.method.shutdownHeadlessHost;

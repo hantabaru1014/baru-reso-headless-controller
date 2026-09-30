@@ -2,7 +2,10 @@ package rpc
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
+	"unicode/utf8"
 
 	"connectrpc.com/connect"
 	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/converter"
@@ -314,23 +317,23 @@ var _ = registerRPCPermission(
 )
 
 func (c *ControllerService) GetHeadlessHostLogs(ctx context.Context, req *connect.Request[hdlctrlv1.GetHeadlessHostLogsRequest]) (*connect.Response[hdlctrlv1.GetHeadlessHostLogsResponse], error) {
-	// カーソル解析 (ID-based)
-	var beforeID, afterID int64
-
-	switch cursor := req.Msg.GetCursor().(type) {
-	case *hdlctrlv1.GetHeadlessHostLogsRequest_BeforeId:
-		beforeID = cursor.BeforeId
-	case *hdlctrlv1.GetHeadlessHostLogsRequest_AfterId:
-		afterID = cursor.AfterId
-	}
-
-	result, err := c.hhuc.HeadlessHostGetLogs(ctx, usecase.HeadlessHostGetLogsParams{
+	params := usecase.HeadlessHostGetLogsParams{
 		HostID:     req.Msg.GetHostId(),
 		InstanceID: req.Msg.GetInstanceId(),
 		Limit:      req.Msg.GetLimit(),
-		BeforeID:   beforeID,
-		AfterID:    afterID,
-	})
+	}
+
+	// カーソル解析 (ID-based). 未指定の場合は最新のログから取得する.
+	switch cursor := req.Msg.GetCursor().(type) {
+	case *hdlctrlv1.GetHeadlessHostLogsRequest_BeforeId:
+		params.Cursor, params.CursorID = usecase.HostLogsCursor_BEFORE, cursor.BeforeId
+	case *hdlctrlv1.GetHeadlessHostLogsRequest_AfterId:
+		params.Cursor, params.CursorID = usecase.HostLogsCursor_AFTER, cursor.AfterId
+	case *hdlctrlv1.GetHeadlessHostLogsRequest_AroundId:
+		params.Cursor, params.CursorID = usecase.HostLogsCursor_AROUND, cursor.AroundId
+	}
+
+	result, err := c.hhuc.HeadlessHostGetLogs(ctx, params)
 	if err != nil {
 		return nil, convertErr(err)
 	}
@@ -352,6 +355,54 @@ func (c *ControllerService) GetHeadlessHostLogs(ctx context.Context, req *connec
 	})
 
 	return res, nil
+}
+
+// searchLogsQueryMaxRunes はログ検索文字列の最大文字数.
+const searchLogsQueryMaxRunes = 200
+
+// SearchHeadlessHostLogs implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: host.group_id に対して host:read.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceSearchHeadlessHostLogsProcedure,
+	checkHostPermission(entity.PermKey_HostRead, hostIDFromSearchLogs),
+)
+
+func (c *ControllerService) SearchHeadlessHostLogs(ctx context.Context, req *connect.Request[hdlctrlv1.SearchHeadlessHostLogsRequest]) (*connect.Response[hdlctrlv1.SearchHeadlessHostLogsResponse], error) {
+	query := req.Msg.GetQuery()
+	if query == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("query is required"))
+	}
+
+	if utf8.RuneCountInString(query) > searchLogsQueryMaxRunes {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("query must be at most %d characters", searchLogsQueryMaxRunes))
+	}
+
+	params := port.SearchLogParams{
+		HostID:     req.Msg.GetHostId(),
+		InstanceID: req.Msg.GetInstanceId(),
+		Query:      query,
+		CursorID:   port.LatestLogCursorID,
+	}
+
+	// カーソル解析 (ID-based). 未指定の場合は最新のログから古い方向へ検索する.
+	switch cursor := req.Msg.GetCursor().(type) {
+	case *hdlctrlv1.SearchHeadlessHostLogsRequest_BeforeId:
+		params.CursorID = cursor.BeforeId
+	case *hdlctrlv1.SearchHeadlessHostLogsRequest_AfterId:
+		params.CursorID, params.Newer = cursor.AfterId, true
+	}
+
+	logID, found, err := c.hhuc.HeadlessHostSearchLogs(ctx, params)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	res := &hdlctrlv1.SearchHeadlessHostLogsResponse{}
+	if found {
+		res.LogId = &logID
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 // ListHeadlessHostInstances implements hdlctrlv1connect.ControllerServiceHandler.

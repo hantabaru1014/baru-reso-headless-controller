@@ -1,14 +1,44 @@
--- name: GetContainerLogsByTag :many
--- 特定のタグ（hostID + instanceID）のログを取得
--- before_id: このIDより小さいログ (古い方向へのページネーション)
--- after_id: このIDより大きいログ (新しい方向へのページネーション)
-SELECT id, tag, ts, data
+-- name: GetContainerLogsBefore :many
+-- 特定のタグ（hostID + instanceID）のログを、before_id より小さい ID の中から新しい順に取得
+-- (古い方向へのページネーション / 最新からの初回取得)
+-- カーソルなしで最新から取得する場合は before_id に bigint の最大値を渡す
+SELECT tag, ts, data, id
 FROM container_logs
 WHERE tag = @tag
-  AND (@before_id::bigint IS NULL OR @before_id = 0 OR id < @before_id)
-  AND (@after_id::bigint IS NULL OR @after_id = 0 OR id > @after_id)
+  AND id < @before_id::bigint
 ORDER BY id DESC
-LIMIT CASE WHEN @max_rows > 0 THEN @max_rows ELSE 100 END;
+LIMIT @max_rows;
+
+-- name: GetContainerLogsAfter :many
+-- 特定のタグ（hostID + instanceID）のログを、after_id より大きい ID の中から古い順に取得
+-- (新しい方向へのページネーション)
+SELECT tag, ts, data, id
+FROM container_logs
+WHERE tag = @tag
+  AND id > @after_id::bigint
+ORDER BY id ASC
+LIMIT @max_rows;
+
+-- name: SearchContainerLogBefore :one
+-- before_id より小さい ID の中から、本文がパターンに一致する最も新しいログの ID を返す
+-- カーソルなしで最新から検索する場合は before_id に bigint の最大値を渡す
+SELECT id
+FROM container_logs
+WHERE tag = @tag
+  AND id < @before_id::bigint
+  AND data->>'log' ILIKE @pattern::text
+ORDER BY id DESC
+LIMIT 1;
+
+-- name: SearchContainerLogAfter :one
+-- after_id より大きい ID の中から、本文がパターンに一致する最も古いログの ID を返す
+SELECT id
+FROM container_logs
+WHERE tag = @tag
+  AND id > @after_id::bigint
+  AND data->>'log' ILIKE @pattern::text
+ORDER BY id ASC
+LIMIT 1;
 
 -- name: InsertContainerLog :exec
 -- テスト用

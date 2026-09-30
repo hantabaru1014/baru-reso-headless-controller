@@ -227,12 +227,22 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostEnsureRunning(ctx context.Context, 
 	return true, nil
 }
 
+// HostLogsCursor はログ取得の起点の指定方法.
+type HostLogsCursor int
+
+const (
+	HostLogsCursor_LATEST HostLogsCursor = iota // 最新のログから取得 (CursorID は使わない)
+	HostLogsCursor_BEFORE                       // CursorID より古いログ (古い方向へのページネーション)
+	HostLogsCursor_AFTER                        // CursorID より新しいログ (新しい方向へのページネーション)
+	HostLogsCursor_AROUND                       // CursorID のログを中心に前後のログ (検索結果へのジャンプ)
+)
+
 type HeadlessHostGetLogsParams struct {
 	HostID     string
 	InstanceID int32
 	Limit      int32
-	BeforeID   int64 // このIDより小さいログ (古い方向へのページネーション)
-	AfterID    int64 // このIDより大きいログ (新しい方向へのページネーション)
+	Cursor     HostLogsCursor
+	CursorID   int64
 }
 
 type HeadlessHostGetLogsResult struct {
@@ -241,55 +251,86 @@ type HeadlessHostGetLogsResult struct {
 	HasMoreAfter  bool
 }
 
+const (
+	defaultLogsLimit = 100
+	// maxLogsLimit は 1 リクエストで返すログ件数の上限 (proto の GetHeadlessHostLogsRequest.limit に記載の最大値).
+	maxLogsLimit = 1000
+)
+
 func (hhuc *HeadlessHostUsecase) HeadlessHostGetLogs(ctx context.Context, params HeadlessHostGetLogsParams) (*HeadlessHostGetLogsResult, error) {
 	if err := hhuc.requireHostRead(ctx, params.HostID); err != nil {
 		return nil, err
 	}
 
-	// limit+1 件取得して has_more を判定
-	fetchLimit := params.Limit
-	if fetchLimit <= 0 {
-		fetchLimit = 100
+	limit := params.Limit
+	if limit <= 0 {
+		limit = defaultLogsLimit
 	}
 
-	fetchLimit++ // 1件多く取得して has_more 判定
+	limit = min(limit, maxLogsLimit)
 
-	logs, err := hhuc.hhrepo.GetLogs(ctx, port.GetLogsParams{
+	older := port.GetLogsParams{
 		HostID:     params.HostID,
 		InstanceID: params.InstanceID,
-		Limit:      fetchLimit,
-		BeforeID:   params.BeforeID,
-		AfterID:    params.AfterID,
-	})
+		Limit:      limit,
+		CursorID:   port.LatestLogCursorID,
+	}
+	newer := older
+	newer.CursorID = params.CursorID
+	newer.Newer = true
+
+	result := &HeadlessHostGetLogsResult{}
+
+	var err error
+
+	switch params.Cursor {
+	case HostLogsCursor_AROUND:
+		// CursorID 以下を前半、CursorID より大きいログを後半として取得する.
+		// limit が奇数の場合は対象ログを含む前半を 1 件多くする (limit = 1 でも対象ログを返す).
+		newer.Limit = limit / 2 //nolint:mnd // 前後で半分ずつ
+		older.Limit = limit - newer.Limit
+
+		// 「CursorID 以下」=「CursorID + 1 より古い」. オーバーフローする場合は最新からと同義.
+		if params.CursorID < port.LatestLogCursorID {
+			older.CursorID = params.CursorID + 1
+		}
+
+		var after port.LogLineList
+
+		result.Logs, result.HasMoreBefore, err = hhuc.hhrepo.GetLogs(ctx, older)
+		if err == nil {
+			after, result.HasMoreAfter, err = hhuc.hhrepo.GetLogs(ctx, newer)
+			result.Logs = append(result.Logs, after...)
+		}
+	case HostLogsCursor_AFTER:
+		result.Logs, result.HasMoreAfter, err = hhuc.hhrepo.GetLogs(ctx, newer)
+	case HostLogsCursor_BEFORE:
+		older.CursorID = params.CursorID
+		result.Logs, result.HasMoreBefore, err = hhuc.hhrepo.GetLogs(ctx, older)
+	case HostLogsCursor_LATEST:
+		result.Logs, result.HasMoreBefore, err = hhuc.hhrepo.GetLogs(ctx, older)
+	}
+
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
 
-	hasMore := len(logs) >= int(fetchLimit)
-	if hasMore {
-		logs = logs[:len(logs)-1] // 余分な1件を削除
-	}
-
-	// before_id 指定時は has_more_before、after_id 指定時は has_more_after
-	result := &HeadlessHostGetLogsResult{
-		Logs:          logs,
-		HasMoreBefore: false,
-		HasMoreAfter:  false,
-	}
-
-	switch {
-	case params.BeforeID > 0:
-		// before_id 指定 = 古いログを取得中 → hasMore は「さらに古いログがある」
-		result.HasMoreBefore = hasMore
-	case params.AfterID > 0:
-		// after_id 指定 = 新しいログを取得中 → hasMore は「さらに新しいログがある」
-		result.HasMoreAfter = hasMore
-	default:
-		// カーソルなし = 最新から取得 → hasMore は「古いログがある」
-		result.HasMoreBefore = hasMore
-	}
-
 	return result, nil
+}
+
+// HeadlessHostSearchLogs は本文が Query を含むログのうち、カーソルから指定方向で最も近い 1 件の ID を返す.
+// 見つからない場合は found = false.
+func (hhuc *HeadlessHostUsecase) HeadlessHostSearchLogs(ctx context.Context, params port.SearchLogParams) (int64, bool, error) {
+	if err := hhuc.requireHostRead(ctx, params.HostID); err != nil {
+		return 0, false, err
+	}
+
+	logID, found, err := hhuc.hhrepo.SearchLog(ctx, params)
+	if err != nil {
+		return 0, false, errors.Wrap(err, 0)
+	}
+
+	return logID, found, nil
 }
 
 type HeadlessHostInstance struct {

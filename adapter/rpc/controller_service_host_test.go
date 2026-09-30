@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
+	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/testutil"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -729,6 +731,34 @@ func TestControllerService_UpdateHeadlessHostSettings(t *testing.T) {
 	})
 }
 
+// logBodies はログ本文だけを取り出す. どのログが返ったかを順序込みで検証するためのもの.
+func logBodies(logs []*hdlctrlv1.GetHeadlessHostLogsResponse_Log) []string {
+	bodies := make([]string, 0, len(logs))
+	for _, log := range logs {
+		bodies = append(bodies, log.GetBody())
+	}
+
+	return bodies
+}
+
+// logIDsByBody は指定インスタンスの全ログを取得し、本文 → ID の対応を返す.
+func logIDsByBody(t *testing.T, client hdlctrlv1connect.ControllerServiceClient, hostID string, instanceID int32) map[string]int64 {
+	t.Helper()
+
+	res, err := client.GetHeadlessHostLogs(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
+		HostId:     hostID,
+		InstanceId: instanceID,
+	}))
+	require.NoError(t, err)
+
+	ids := make(map[string]int64, len(res.Msg.GetLogs()))
+	for _, log := range res.Msg.GetLogs() {
+		ids[log.GetBody()] = log.GetId()
+	}
+
+	return ids
+}
+
 func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 	t.Run("成功: ログを取得", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
@@ -827,9 +857,34 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 
 		res, err := client.GetHeadlessHostLogs(t.Context(), req)
 		require.NoError(t, err)
-		assert.Len(t, res.Msg.GetLogs(), 3)
+		// 最新のログを含む末尾 3 件が時系列順で返る (余分に取得した 1 件は古い側を捨てる)
+		assert.Equal(t, []string{"Log line 3", "Log line 4", "Log line 5"}, logBodies(res.Msg.GetLogs()))
 		assert.True(t, res.Msg.GetHasMoreBefore(), "should have more logs before")
 		assert.False(t, res.Msg.GetHasMoreAfter(), "should not have more logs after (initial fetch)")
+
+		// 最新ログを before_id にすると、その直前の 3 件が返る (カーソルに隣接するログを捨てない)
+		latestID := res.Msg.GetLogs()[2].GetId()
+		beforeLatestRes, err := client.GetHeadlessHostLogs(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+			Limit:      3,
+			Cursor:     &hdlctrlv1.GetHeadlessHostLogsRequest_BeforeId{BeforeId: latestID},
+		}))
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Log line 2", "Log line 3", "Log line 4"}, logBodies(beforeLatestRes.Msg.GetLogs()))
+		assert.True(t, beforeLatestRes.Msg.GetHasMoreBefore(), "Log line 1 remains")
+
+		// 1 ページ目の先頭を before_id にして続きを取得すると、抜けなく残りが返る
+		oldestID := res.Msg.GetLogs()[0].GetId()
+		nextPageRes, err := client.GetHeadlessHostLogs(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+			Limit:      3,
+			Cursor:     &hdlctrlv1.GetHeadlessHostLogsRequest_BeforeId{BeforeId: oldestID},
+		}))
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Log line 1", "Log line 2"}, logBodies(nextPageRes.Msg.GetLogs()))
+		assert.False(t, nextPageRes.Msg.GetHasMoreBefore(), "no more older logs")
 	})
 
 	t.Run("成功: beforeIdカーソルで古いログを取得", func(t *testing.T) {
@@ -897,41 +952,36 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 		testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime, "stdout", "Old log")
 		testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime.Add(time.Minute), "stdout", "Middle log")
 		testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime.Add(2*time.Minute), "stdout", "New log")
+		testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime.Add(3*time.Minute), "stdout", "Newer log")
 
-		// First, get all logs to find the ID of "Middle log"
-		allLogsReq := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
-			HostId:     host.ID,
-			InstanceId: host.InstanceCount,
-		})
-		allLogsRes, err := client.GetHeadlessHostLogs(t.Context(), allLogsReq)
-		require.NoError(t, err)
-		require.Len(t, allLogsRes.Msg.GetLogs(), 3)
-
-		// Find the middle log's ID (logs are returned in chronological order: Old, Middle, New)
-		var middleLogId int64
-
-		for _, log := range allLogsRes.Msg.GetLogs() {
-			if log.GetBody() == "Middle log" {
-				middleLogId = log.GetId()
-
-				break
-			}
-		}
-
-		require.NotZero(t, middleLogId, "should find middle log")
+		ids := logIDsByBody(t, client, host.ID, host.InstanceCount)
+		require.Len(t, ids, 4)
 
 		// Use afterId cursor to get logs after "Middle log"
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
 			HostId:     host.ID,
 			InstanceId: host.InstanceCount,
-			Cursor:     &hdlctrlv1.GetHeadlessHostLogsRequest_AfterId{AfterId: middleLogId},
+			Cursor:     &hdlctrlv1.GetHeadlessHostLogsRequest_AfterId{AfterId: ids["Middle log"]},
 		})
 
 		res, err := client.GetHeadlessHostLogs(t.Context(), req)
 		require.NoError(t, err)
-		assert.Len(t, res.Msg.GetLogs(), 1)
-		assert.Equal(t, "New log", res.Msg.GetLogs()[0].GetBody())
+		// カーソルより新しいログが時系列順で返る
+		assert.Equal(t, []string{"New log", "Newer log"}, logBodies(res.Msg.GetLogs()))
 		assert.False(t, res.Msg.GetHasMoreAfter(), "no more newer logs")
+		assert.False(t, res.Msg.GetHasMoreBefore(), "should not have has_more_before with after cursor")
+
+		// after_id = 0 は「最古のログから」であり、カーソルなし (最新から) にはならない
+		res, err = client.GetHeadlessHostLogs(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+			Limit:      2,
+			Cursor:     &hdlctrlv1.GetHeadlessHostLogsRequest_AfterId{AfterId: 0},
+		}))
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Old log", "Middle log"}, logBodies(res.Msg.GetLogs()))
+		assert.True(t, res.Msg.GetHasMoreAfter())
+		assert.False(t, res.Msg.GetHasMoreBefore())
 	})
 
 	t.Run("成功: 異なるinstanceIdでログを分離", func(t *testing.T) {
@@ -1008,9 +1058,423 @@ func TestControllerService_GetHeadlessHostLogs(t *testing.T) {
 
 		res, err := client.GetHeadlessHostLogs(t.Context(), req)
 		require.NoError(t, err)
-		assert.Len(t, res.Msg.GetLogs(), 2)
+		// カーソル直後の 2 件が時系列順で返る (最新側の 2 件ではない)
+		assert.Equal(t, []string{"Log 2", "Log 3"}, logBodies(res.Msg.GetLogs()))
 		assert.True(t, res.Msg.GetHasMoreAfter(), "should have more logs after")
 		assert.False(t, res.Msg.GetHasMoreBefore(), "should not have has_more_before with after cursor")
+
+		// 返ってきた末尾を after_id にして続きを取得すると、抜けなく残りが返る
+		nextPageRes, err := client.GetHeadlessHostLogs(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+			Limit:      2,
+			Cursor:     &hdlctrlv1.GetHeadlessHostLogsRequest_AfterId{AfterId: res.Msg.GetLogs()[1].GetId()},
+		}))
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Log 4", "Log 5"}, logBodies(nextPageRes.Msg.GetLogs()))
+		assert.False(t, nextPageRes.Msg.GetHasMoreAfter(), "no more newer logs")
+	})
+
+	t.Run("成功: aroundIdカーソルで指定ログの前後を取得", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-test8", "test8@example.test", "password")
+		host := testutil.CreateTestHeadlessHost(t, setup.queries, "U-test8", "TestHost8", entity.HeadlessHostStatus_EXITED)
+
+		// Insert 10 logs. 間に別インスタンスのログを挟み、ID が連番でなくても正しく前後を取れることを確認する
+		baseTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		for i := range 10 {
+			testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime.Add(time.Duration(i)*time.Minute), "stdout", fmt.Sprintf("Log %d", i+1))
+			testutil.InsertTestContainerLog(t, setup.queries, host.ID, 0, baseTime.Add(time.Duration(i)*time.Minute), "stdout", fmt.Sprintf("Other instance log %d", i+1))
+		}
+
+		ids := logIDsByBody(t, client, host.ID, host.InstanceCount)
+		require.Len(t, ids, 10)
+
+		getAround := func(target string, limit int32) *hdlctrlv1.GetHeadlessHostLogsResponse {
+			res, err := client.GetHeadlessHostLogs(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessHostLogsRequest{
+				HostId:     host.ID,
+				InstanceId: host.InstanceCount,
+				Limit:      limit,
+				Cursor:     &hdlctrlv1.GetHeadlessHostLogsRequest_AroundId{AroundId: ids[target]},
+			}))
+			require.NoError(t, err)
+
+			return res.Msg
+		}
+
+		// 中央: 対象ログ以前を limit/2 件 (対象を含む)、対象より後を limit/2 件、時系列順で返す
+		middle := getAround("Log 5", 4)
+		assert.Equal(t, []string{"Log 4", "Log 5", "Log 6", "Log 7"}, logBodies(middle.GetLogs()))
+		assert.True(t, middle.GetHasMoreBefore(), "Log 1-3 remain")
+		assert.True(t, middle.GetHasMoreAfter(), "Log 8-10 remain")
+
+		// limit が奇数の場合は対象ログを含む前半が 1 件多い
+		odd := getAround("Log 5", 3)
+		assert.Equal(t, []string{"Log 4", "Log 5", "Log 6"}, logBodies(odd.GetLogs()))
+		assert.True(t, odd.GetHasMoreBefore())
+		assert.True(t, odd.GetHasMoreAfter())
+
+		// limit = 1 でも対象ログは返る
+		single := getAround("Log 5", 1)
+		assert.Equal(t, []string{"Log 5"}, logBodies(single.GetLogs()))
+		assert.True(t, single.GetHasMoreBefore())
+		assert.True(t, single.GetHasMoreAfter())
+
+		// 先頭付近: 前半が足りなくても後半を増やさず、has_more_before は false
+		first := getAround("Log 1", 4)
+		assert.Equal(t, []string{"Log 1", "Log 2", "Log 3"}, logBodies(first.GetLogs()))
+		assert.False(t, first.GetHasMoreBefore(), "no older logs than Log 1")
+		assert.True(t, first.GetHasMoreAfter(), "Log 4-10 remain")
+
+		// 前半がちょうど収まる場合も has_more_before は false
+		second := getAround("Log 2", 4)
+		assert.Equal(t, []string{"Log 1", "Log 2", "Log 3", "Log 4"}, logBodies(second.GetLogs()))
+		assert.False(t, second.GetHasMoreBefore(), "Log 1 is the oldest")
+		assert.True(t, second.GetHasMoreAfter(), "Log 5-10 remain")
+
+		// 末尾付近: 後半が無くても対象ログは返り、has_more_after は false
+		last := getAround("Log 10", 4)
+		assert.Equal(t, []string{"Log 9", "Log 10"}, logBodies(last.GetLogs()))
+		assert.True(t, last.GetHasMoreBefore(), "Log 1-8 remain")
+		assert.False(t, last.GetHasMoreAfter(), "no newer logs than Log 10")
+
+		// 後半がちょうど収まる場合も has_more_after は false
+		secondLast := getAround("Log 8", 4)
+		assert.Equal(t, []string{"Log 7", "Log 8", "Log 9", "Log 10"}, logBodies(secondLast.GetLogs()))
+		assert.True(t, secondLast.GetHasMoreBefore(), "Log 1-6 remain")
+		assert.False(t, secondLast.GetHasMoreAfter(), "Log 10 is the newest")
+
+		// limit 未指定時はデフォルト件数 (100) で全件が収まる
+		all := getAround("Log 5", 0)
+		assert.Equal(t, []string{"Log 1", "Log 2", "Log 3", "Log 4", "Log 5", "Log 6", "Log 7", "Log 8", "Log 9", "Log 10"}, logBodies(all.GetLogs()))
+		assert.False(t, all.GetHasMoreBefore())
+		assert.False(t, all.GetHasMoreAfter())
+	})
+}
+
+func TestControllerService_SearchHeadlessHostLogs(t *testing.T) {
+	const backslashLog = `Loading C:\data\world.json`
+
+	// 検索対象のログ (古い順). これらの後に別インスタンス (instance 0) のログを最新として入れる.
+	searchTestLogs := []string{
+		"Server started",
+		backslashLog,
+		"User Alice joined",
+		"progress 100% done",
+		"user_name changed",
+		"USER Bob joined",
+		"Shutdown complete",
+	}
+
+	const otherInstanceLog = "user joined other instance"
+
+	// seedLogs はホストと検索対象のログを作成し、ホストと本文 → ID の対応を返す.
+	seedLogs := func(t *testing.T, setup *controllerServiceTestSetup, client hdlctrlv1connect.ControllerServiceClient, groupID string) (db.Host, map[string]int64) {
+		t.Helper()
+
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-search-acc", "search@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-search-acc", "SearchHost", entity.HeadlessHostStatus_EXITED, groupID)
+
+		baseTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		for i, body := range searchTestLogs {
+			// 実際のコンテナログと同様に末尾へ改行を付ける
+			testutil.InsertTestContainerLog(t, setup.queries, host.ID, host.InstanceCount, baseTime.Add(time.Duration(i)*time.Second), "stdout", body+"\n")
+		}
+
+		testutil.InsertTestContainerLog(t, setup.queries, host.ID, 0, baseTime.Add(time.Hour), "stdout", otherInstanceLog)
+
+		ids := logIDsByBody(t, client, host.ID, host.InstanceCount)
+		require.Len(t, ids, len(searchTestLogs))
+
+		return host, ids
+	}
+
+	// search は system-admin として検索し、一致したログの ID (見つからなければ nil) を返す.
+	search := func(t *testing.T, client hdlctrlv1connect.ControllerServiceClient, msg *hdlctrlv1.SearchHeadlessHostLogsRequest) *int64 {
+		t.Helper()
+
+		res, err := client.SearchHeadlessHostLogs(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, msg))
+		require.NoError(t, err)
+
+		return res.Msg.LogId
+	}
+
+	t.Run("成功: カーソルなしは最新の一致を返す (大文字小文字を区別しない)", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		host, ids := seedLogs(t, setup, client, entity.MigratedPrePermissionGroupID)
+
+		// "user" は User Alice / user_name / USER Bob に一致する. 最新の USER Bob を返す
+		got := search(t, client, &hdlctrlv1.SearchHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+			Query:      "user",
+		})
+		require.NotNil(t, got)
+		assert.Equal(t, ids["USER Bob joined"], *got)
+
+		// クエリ側が大文字でも一致する
+		got = search(t, client, &hdlctrlv1.SearchHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+			Query:      "ALICE JOIN",
+		})
+		require.NotNil(t, got)
+		assert.Equal(t, ids["User Alice joined"], *got)
+	})
+
+	t.Run("成功: 最小権限 caller (host:read) で実行", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-searchlogs"
+
+		host, ids := seedLogs(t, setup, client, groupID)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.SearchHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+			Query:      "started",
+		}, "U-mp-searchlogs", groupID, []string{entity.PermKey_HostRead})
+
+		res, err := client.SearchHeadlessHostLogs(t.Context(), req)
+		require.NoError(t, err)
+		require.NotNil(t, res.Msg.LogId)
+		assert.Equal(t, ids["Server started"], res.Msg.GetLogId())
+	})
+
+	t.Run("成功: beforeIdカーソルより古い方向で最も近い一致を返す", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		host, ids := seedLogs(t, setup, client, entity.MigratedPrePermissionGroupID)
+
+		searchBefore := func(beforeBody string) *int64 {
+			return search(t, client, &hdlctrlv1.SearchHeadlessHostLogsRequest{
+				HostId:     host.ID,
+				InstanceId: host.InstanceCount,
+				Query:      "user",
+				Cursor:     &hdlctrlv1.SearchHeadlessHostLogsRequest_BeforeId{BeforeId: ids[beforeBody]},
+			})
+		}
+
+		// カーソルのログ自身 (USER Bob) は一致していても対象外で、その直前の一致を返す
+		got := searchBefore("USER Bob joined")
+		require.NotNil(t, got)
+		assert.Equal(t, ids["user_name changed"], *got)
+
+		// 一致しないログをカーソルにした場合も、最古の一致 (User Alice) ではなく最も近い一致を返す
+		got = searchBefore("Shutdown complete")
+		require.NotNil(t, got)
+		assert.Equal(t, ids["USER Bob joined"], *got)
+
+		got = searchBefore("user_name changed")
+		require.NotNil(t, got)
+		assert.Equal(t, ids["User Alice joined"], *got)
+
+		// それより古い一致は無い
+		assert.Nil(t, searchBefore("User Alice joined"))
+	})
+
+	t.Run("成功: afterIdカーソルより新しい方向で最も近い一致を返す", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		host, ids := seedLogs(t, setup, client, entity.MigratedPrePermissionGroupID)
+
+		searchAfter := func(afterBody string) *int64 {
+			return search(t, client, &hdlctrlv1.SearchHeadlessHostLogsRequest{
+				HostId:     host.ID,
+				InstanceId: host.InstanceCount,
+				Query:      "user",
+				Cursor:     &hdlctrlv1.SearchHeadlessHostLogsRequest_AfterId{AfterId: ids[afterBody]},
+			})
+		}
+
+		// カーソルのログ自身 (User Alice) は対象外で、最新の一致 (USER Bob) ではなく直後の一致を返す
+		got := searchAfter("User Alice joined")
+		require.NotNil(t, got)
+		assert.Equal(t, ids["user_name changed"], *got)
+
+		got = searchAfter("Server started")
+		require.NotNil(t, got)
+		assert.Equal(t, ids["User Alice joined"], *got)
+
+		got = searchAfter("user_name changed")
+		require.NotNil(t, got)
+		assert.Equal(t, ids["USER Bob joined"], *got)
+
+		// それより新しい一致は無い (より新しい別インスタンスのログには一致しない)
+		assert.Nil(t, searchAfter("USER Bob joined"))
+
+		// after_id = 0 は「最古のログから新しい方向へ」であり、カーソルなし (最新から古い方向へ) にはならない
+		got = search(t, client, &hdlctrlv1.SearchHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+			Query:      "user",
+			Cursor:     &hdlctrlv1.SearchHeadlessHostLogsRequest_AfterId{AfterId: 0},
+		})
+		require.NotNil(t, got)
+		assert.Equal(t, ids["User Alice joined"], *got)
+	})
+
+	t.Run("成功: % と _ とバックスラッシュはワイルドカードではなく文字として一致する", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		host, ids := seedLogs(t, setup, client, entity.MigratedPrePermissionGroupID)
+
+		// ワイルドカード扱いなら最新の "Shutdown complete" に一致してしまう
+		for query, wantBody := range map[string]string{
+			"%":       "progress 100% done",
+			"100% d":  "progress 100% done",
+			"_":       "user_name changed",
+			"r_n":     "user_name changed",
+			`\`:       backslashLog,
+			`c:\DATA`: backslashLog,
+		} {
+			got := search(t, client, &hdlctrlv1.SearchHeadlessHostLogsRequest{
+				HostId:     host.ID,
+				InstanceId: host.InstanceCount,
+				Query:      query,
+			})
+			require.NotNil(t, got, "query %q should match", query)
+			assert.Equal(t, ids[wantBody], *got, "query %q", query)
+		}
+
+		// "_" / "%" が任意文字扱い、"\" がエスケープ扱いなら一致してしまう
+		for _, query := range []string{"User_Alice", "User%joined", `\U`, `C:\\data`} {
+			assert.Nil(t, search(t, client, &hdlctrlv1.SearchHeadlessHostLogsRequest{
+				HostId:     host.ID,
+				InstanceId: host.InstanceCount,
+				Query:      query,
+			}), "query %q should not match", query)
+		}
+	})
+
+	t.Run("成功: 一致するログが無い場合は log_id 未設定", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		host, _ := seedLogs(t, setup, client, entity.MigratedPrePermissionGroupID)
+
+		assert.Nil(t, search(t, client, &hdlctrlv1.SearchHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+			Query:      "no such message",
+		}))
+
+		// 最大長 (200 文字) のクエリは受け付ける (マルチバイト文字はバイト数ではなく文字数で数える)
+		assert.Nil(t, search(t, client, &hdlctrlv1.SearchHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+			Query:      strings.Repeat("あ", 200),
+		}))
+	})
+
+	t.Run("成功: 別インスタンスのログには一致しない", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		host, ids := seedLogs(t, setup, client, entity.MigratedPrePermissionGroupID)
+
+		// instance 0 にしか無い文言は、対象インスタンスでは見つからない
+		assert.Nil(t, search(t, client, &hdlctrlv1.SearchHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: host.InstanceCount,
+			Query:      "other instance",
+		}))
+
+		// instance 0 を指定すれば instance 0 のログだけが対象になる
+		got := search(t, client, &hdlctrlv1.SearchHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: 0,
+			Query:      "user",
+		})
+		require.NotNil(t, got)
+		assert.Equal(t, logIDsByBody(t, client, host.ID, 0)[otherInstanceLog], *got)
+		assert.NotEqual(t, ids["USER Bob joined"], *got)
+
+		assert.Nil(t, search(t, client, &hdlctrlv1.SearchHeadlessHostLogsRequest{
+			HostId:     host.ID,
+			InstanceId: 0,
+			Query:      "Shutdown",
+		}))
+	})
+
+	t.Run("失敗: 空または長すぎる検索文字列は InvalidArgument", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+		host, _ := seedLogs(t, setup, client, entity.MigratedPrePermissionGroupID)
+
+		for _, query := range []string{"", strings.Repeat("a", 201), strings.Repeat("あ", 201)} {
+			_, err := client.SearchHeadlessHostLogs(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.SearchHeadlessHostLogsRequest{
+				HostId:     host.ID,
+				InstanceId: host.InstanceCount,
+				Query:      query,
+			}))
+			require.Error(t, err)
+
+			connectErr := &connect.Error{}
+			require.ErrorAs(t, err, &connectErr)
+			assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code(), "query of %d bytes", len(query))
+		}
+	})
+
+	t.Run("失敗: host:read の無いグループのホストは NotFound (存在しないホストと区別できない)", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const (
+			callerUserID  = "U-mp-searchlogs-stranger"
+			callerGroupID = "g-mp-searchlogs-caller"
+			hostGroupID   = "g-mp-searchlogs-other"
+		)
+
+		host, _ := seedLogs(t, setup, client, hostGroupID)
+
+		// caller は自分のグループの host:read しか持たない
+		testutil.SetupUserWithExactPermissions(t, setup.queries, callerUserID, callerGroupID, []string{entity.PermKey_HostRead})
+
+		searchErr := func(hostID string) *connect.Error {
+			req := testutil.CreateAuthenticatedRequest(t, &hdlctrlv1.SearchHeadlessHostLogsRequest{
+				HostId:     hostID,
+				InstanceId: host.InstanceCount,
+				Query:      "user",
+			}, callerUserID, "U-resonite-"+callerUserID, "")
+
+			_, err := client.SearchHeadlessHostLogs(t.Context(), req)
+			require.Error(t, err)
+
+			connectErr := &connect.Error{}
+			require.ErrorAs(t, err, &connectErr)
+
+			return connectErr
+		}
+
+		otherGroupErr := searchErr(host.ID)
+		missingErr := searchErr("non-existent-host")
+
+		assert.Equal(t, connect.CodeNotFound, otherGroupErr.Code())
+		assert.Equal(t, missingErr.Code(), otherGroupErr.Code())
+		assert.Equal(t, missingErr.Message(), otherGroupErr.Message())
 	})
 }
 
@@ -1353,7 +1817,7 @@ func TestControllerService_DeleteHeadlessHost(t *testing.T) {
 		testutil.InsertTestContainerLog(t, setup.queries, host.ID, 2, now, "stdout", "log from instance 2")
 
 		// Verify logs exist before deletion
-		logsBefore, err := setup.queries.GetContainerLogsByTag(t.Context(), db.GetContainerLogsByTagParams{
+		logsBefore, err := setup.queries.GetContainerLogsAfter(t.Context(), db.GetContainerLogsAfterParams{
 			Tag:     pgtype.Text{String: "headless-" + host.ID + "-1", Valid: true},
 			MaxRows: int32(100),
 		})
@@ -1378,14 +1842,14 @@ func TestControllerService_DeleteHeadlessHost(t *testing.T) {
 		require.Error(t, err)
 
 		// Verify container logs were also deleted
-		logsAfter1, err := setup.queries.GetContainerLogsByTag(t.Context(), db.GetContainerLogsByTagParams{
+		logsAfter1, err := setup.queries.GetContainerLogsAfter(t.Context(), db.GetContainerLogsAfterParams{
 			Tag:     pgtype.Text{String: "headless-" + host.ID + "-1", Valid: true},
 			MaxRows: int32(100),
 		})
 		require.NoError(t, err)
 		assert.Empty(t, logsAfter1, "logs for instance 1 should be deleted")
 
-		logsAfter2, err := setup.queries.GetContainerLogsByTag(t.Context(), db.GetContainerLogsByTagParams{
+		logsAfter2, err := setup.queries.GetContainerLogsAfter(t.Context(), db.GetContainerLogsAfterParams{
 			Tag:     pgtype.Text{String: "headless-" + host.ID + "-2", Valid: true},
 			MaxRows: int32(100),
 		})
