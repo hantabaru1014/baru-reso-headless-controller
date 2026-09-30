@@ -236,7 +236,13 @@
     "downloadFailed": "Failed to download logs",
     "downloading": "Downloading...",
     "download": "Download",
-    "noLogs": "No logs"
+    "noLogs": "No logs",
+    "searchPlaceholder": "Search logs",
+    "searchOlder": "Previous match (older) — Enter",
+    "searchNewer": "Next match (newer) — Shift+Enter",
+    "searchNoMatch": "No more matches in this direction",
+    "searchFailed": "Failed to search logs",
+    "jumpToLatest": "Latest"
   },
   "hostList": {
     "nameRequired": "Host name is required",

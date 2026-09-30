@@ -11,6 +11,10 @@ func hostIDFromGetLogs(r *hdlctrlv1.GetHeadlessHostLogsRequest) string {
 	return r.GetHostId()
 }
 
+func hostIDFromSearchLogs(r *hdlctrlv1.SearchHeadlessHostLogsRequest) string {
+	return r.GetHostId()
+}
+
 func hostIDFromListInstances(r *hdlctrlv1.ListHeadlessHostInstancesRequest) string {
 	return r.GetHostId()
 }

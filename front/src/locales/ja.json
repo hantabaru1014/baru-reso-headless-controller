@@ -236,7 +236,13 @@
     "downloadFailed": "ログのダウンロードに失敗しました",
     "downloading": "Downloading...",
     "download": "Download",
-    "noLogs": "ログがありません"
+    "noLogs": "ログがありません",
+    "searchPlaceholder": "ログを検索",
+    "searchOlder": "前の一致 (古い方向) — Enter",
+    "searchNewer": "次の一致 (新しい方向) — Shift+Enter",
+    "searchNoMatch": "この方向に一致するログはありません",
+    "searchFailed": "ログの検索に失敗しました",
+    "jumpToLatest": "最新へ"
   },
   "hostList": {
     "nameRequired": "ホスト名は必須です",

@@ -23,52 +23,80 @@ func (q *Queries) DeleteContainerLogsByHostID(ctx context.Context, hostID pgtype
 	return err
 }
 
-const getContainerLogsByTag = `-- name: GetContainerLogsByTag :many
-SELECT id, tag, ts, data
+const getContainerLogsAfter = `-- name: GetContainerLogsAfter :many
+SELECT tag, ts, data, id
 FROM container_logs
 WHERE tag = $1
-  AND ($2::bigint IS NULL OR $2 = 0 OR id < $2)
-  AND ($3::bigint IS NULL OR $3 = 0 OR id > $3)
-ORDER BY id DESC
-LIMIT CASE WHEN $4 > 0 THEN $4 ELSE 100 END
+  AND id > $2::bigint
+ORDER BY id ASC
+LIMIT $3
 `
 
-type GetContainerLogsByTagParams struct {
-	Tag      pgtype.Text
-	BeforeID int64
-	AfterID  int64
-	MaxRows  interface{}
+type GetContainerLogsAfterParams struct {
+	Tag     pgtype.Text
+	AfterID int64
+	MaxRows int32
 }
 
-type GetContainerLogsByTagRow struct {
-	ID   pgtype.Int8
-	Tag  pgtype.Text
-	Ts   pgtype.Timestamp
-	Data []byte
-}
-
-// 特定のタグ（hostID + instanceID）のログを取得
-// before_id: このIDより小さいログ (古い方向へのページネーション)
-// after_id: このIDより大きいログ (新しい方向へのページネーション)
-func (q *Queries) GetContainerLogsByTag(ctx context.Context, arg GetContainerLogsByTagParams) ([]GetContainerLogsByTagRow, error) {
-	rows, err := q.db.Query(ctx, getContainerLogsByTag,
-		arg.Tag,
-		arg.BeforeID,
-		arg.AfterID,
-		arg.MaxRows,
-	)
+// 特定のタグ（hostID + instanceID）のログを、after_id より大きい ID の中から古い順に取得
+// (新しい方向へのページネーション)
+func (q *Queries) GetContainerLogsAfter(ctx context.Context, arg GetContainerLogsAfterParams) ([]ContainerLog, error) {
+	rows, err := q.db.Query(ctx, getContainerLogsAfter, arg.Tag, arg.AfterID, arg.MaxRows)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetContainerLogsByTagRow
+	var items []ContainerLog
 	for rows.Next() {
-		var i GetContainerLogsByTagRow
+		var i ContainerLog
 		if err := rows.Scan(
-			&i.ID,
 			&i.Tag,
 			&i.Ts,
 			&i.Data,
+			&i.ID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getContainerLogsBefore = `-- name: GetContainerLogsBefore :many
+SELECT tag, ts, data, id
+FROM container_logs
+WHERE tag = $1
+  AND id < $2::bigint
+ORDER BY id DESC
+LIMIT $3
+`
+
+type GetContainerLogsBeforeParams struct {
+	Tag      pgtype.Text
+	BeforeID int64
+	MaxRows  int32
+}
+
+// 特定のタグ（hostID + instanceID）のログを、before_id より小さい ID の中から新しい順に取得
+// (古い方向へのページネーション / 最新からの初回取得)
+// カーソルなしで最新から取得する場合は before_id に bigint の最大値を渡す
+func (q *Queries) GetContainerLogsBefore(ctx context.Context, arg GetContainerLogsBeforeParams) ([]ContainerLog, error) {
+	rows, err := q.db.Query(ctx, getContainerLogsBefore, arg.Tag, arg.BeforeID, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ContainerLog
+	for rows.Next() {
+		var i ContainerLog
+		if err := rows.Scan(
+			&i.Tag,
+			&i.Ts,
+			&i.Data,
+			&i.ID,
 		); err != nil {
 			return nil, err
 		}
@@ -139,4 +167,53 @@ type InsertContainerLogParams struct {
 func (q *Queries) InsertContainerLog(ctx context.Context, arg InsertContainerLogParams) error {
 	_, err := q.db.Exec(ctx, insertContainerLog, arg.Tag, arg.Ts, arg.Data)
 	return err
+}
+
+const searchContainerLogAfter = `-- name: SearchContainerLogAfter :one
+SELECT id
+FROM container_logs
+WHERE tag = $1
+  AND id > $2::bigint
+  AND data->>'log' ILIKE $3::text
+ORDER BY id ASC
+LIMIT 1
+`
+
+type SearchContainerLogAfterParams struct {
+	Tag     pgtype.Text
+	AfterID int64
+	Pattern string
+}
+
+// after_id より大きい ID の中から、本文がパターンに一致する最も古いログの ID を返す
+func (q *Queries) SearchContainerLogAfter(ctx context.Context, arg SearchContainerLogAfterParams) (pgtype.Int8, error) {
+	row := q.db.QueryRow(ctx, searchContainerLogAfter, arg.Tag, arg.AfterID, arg.Pattern)
+	var id pgtype.Int8
+	err := row.Scan(&id)
+	return id, err
+}
+
+const searchContainerLogBefore = `-- name: SearchContainerLogBefore :one
+SELECT id
+FROM container_logs
+WHERE tag = $1
+  AND id < $2::bigint
+  AND data->>'log' ILIKE $3::text
+ORDER BY id DESC
+LIMIT 1
+`
+
+type SearchContainerLogBeforeParams struct {
+	Tag      pgtype.Text
+	BeforeID int64
+	Pattern  string
+}
+
+// before_id より小さい ID の中から、本文がパターンに一致する最も新しいログの ID を返す
+// カーソルなしで最新から検索する場合は before_id に bigint の最大値を渡す
+func (q *Queries) SearchContainerLogBefore(ctx context.Context, arg SearchContainerLogBeforeParams) (pgtype.Int8, error) {
+	row := q.db.QueryRow(ctx, searchContainerLogBefore, arg.Tag, arg.BeforeID, arg.Pattern)
+	var id pgtype.Int8
+	err := row.Scan(&id)
+	return id, err
 }

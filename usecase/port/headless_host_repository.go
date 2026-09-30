@@ -2,6 +2,7 @@ package port
 
 import (
 	"context"
+	"math"
 
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
@@ -16,12 +17,29 @@ type LogLine struct {
 
 type LogLineList []*LogLine
 
+// LatestLogCursorID は「最新のログから古い方向へ」を表すカーソル ID (どのログ ID よりも大きい).
+const LatestLogCursorID int64 = math.MaxInt64
+
+// GetLogsParams はログ取得の条件.
 type GetLogsParams struct {
 	HostID     string
 	InstanceID int32
 	Limit      int32
-	BeforeID   int64 // このIDより小さいログ (古い方向へのページネーション)
-	AfterID    int64 // このIDより大きいログ (新しい方向へのページネーション)
+	// 起点となるログID (このID自体は対象外).
+	CursorID int64
+	// true なら CursorID より新しいログを、false なら古いログを、カーソルに近い方から Limit 件取得する.
+	Newer bool
+}
+
+// SearchLogParams はログ検索の条件.
+type SearchLogParams struct {
+	HostID     string
+	InstanceID int32
+	Query      string // 部分一致・大文字小文字を区別しない
+	// 検索の起点となるログID (このID自体は対象外).
+	CursorID int64
+	// true なら CursorID より新しい方向へ、false なら古い方向へ検索する.
+	Newer bool
 }
 
 type InstanceTimestamp struct {
@@ -85,7 +103,11 @@ type HeadlessHostRepository interface {
 	// permission interceptor が container RPC を起こさないようにするための専用 API.
 	GetGroupID(ctx context.Context, id string) (string, error)
 	GetRpcClient(ctx context.Context, id string) (headlessv1.HeadlessControlServiceClient, error)
-	GetLogs(ctx context.Context, params GetLogsParams) (LogLineList, error)
+	// GetLogs はログを時系列順 (ID 昇順) で返す. hasMore は取得方向にさらにログが存在するかどうか.
+	GetLogs(ctx context.Context, params GetLogsParams) (logs LogLineList, hasMore bool, err error)
+	// SearchLog は本文が Query を含むログのうち、カーソルから指定方向で最も近い 1 件の ID を返す.
+	// 見つからない場合は found = false (エラーではない).
+	SearchLog(ctx context.Context, params SearchLogParams) (logID int64, found bool, err error)
 	GetInstanceTimestamps(ctx context.Context, hostID string) (InstanceTimestampList, error)
 	Rename(ctx context.Context, id, newName string) error
 	UpdateHostSettings(ctx context.Context, id string, settings *entity.HeadlessHostSettings) error
