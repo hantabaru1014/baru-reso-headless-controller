@@ -248,6 +248,8 @@ message BuildResoniteImageRequest {
   oneof follow_up {
     StartHeadlessHostRequest then_start_host = 3;
     RestartHeadlessHostRequest then_restart_host = 4;
+    // 停止中ホストへの StartWorld が、ホスト起動用イメージの未ビルドで中断した場合の再実行.
+    StartWorldRequest then_start_world = 5;
   }
 }
 
@@ -531,6 +533,8 @@ message GetSessionDetailsResponse {
 }
 
 message StartWorldRequest {
+  // 停止中 (EXITED / CRASHED) のホストを指定した場合は、ホストを起動してからセッションを開始する.
+  // その場合は host.group_id に対する host:write も必要.
   string host_id = 1;
   headless.v1.WorldStartupParameters parameters = 2;
   string memo = 3;

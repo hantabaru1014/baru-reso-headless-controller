@@ -8,6 +8,9 @@ import {
   startWorld,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import {
+  Alert,
+  AlertDescription,
+  Badge,
   Button,
   Dialog,
   DialogContent,
@@ -35,6 +38,7 @@ import { useMemo, useState } from "react";
 import SessionStartupFields from "./SessionStartupFields";
 import { usePermissions } from "../hooks/usePermissions";
 import { PERMISSION_KEYS } from "../libs/permissionUtils";
+import { hostStatusToLabel } from "../libs/hostUtils";
 import {
   ScheduledOperationSchema,
   ScheduledTriggerSchema,
@@ -47,6 +51,10 @@ import {
   defaultScheduledAtInputValue,
   localDateTimeStringToDate,
 } from "../libs/scheduledOperationUtils";
+
+// 停止しているホスト. セッション開始時に backend がホストを起動してから開始する.
+const isStoppedHostStatus = (status: HeadlessHostStatus) =>
+  status === HeadlessHostStatus.EXITED || status === HeadlessHostStatus.CRASHED;
 
 export default function NewSessionForm() {
   const { t } = useTranslation();
@@ -89,6 +97,57 @@ export default function NewSessionForm() {
 
   const hostId = watch("hostId");
 
+  // セッション開始には host:use + session:write が host.group_id に対して必要.
+  // 権限を持たないグループのホストは選択肢に出さない.
+  // 停止中のホストは開始時に backend が起動するため、追加で host:write も要求する.
+  // 加えて、ヘッダーで選択中のグループでも絞り込み (backend 側も group_id でフィルタするが
+  // listHeadlessHost の cache を別キーで使う他の画面と混ざらないように client 側でも明示する).
+  const selectableHosts = useMemo(
+    () =>
+      (hostList?.hosts ?? [])
+        .filter((host) => !currentGroupId || host.groupId === currentGroupId)
+        .filter(
+          (host) =>
+            hasPermission(host.groupId, PERMISSION_KEYS.HOST_USE) &&
+            hasPermission(host.groupId, PERMISSION_KEYS.SESSION_WRITE),
+        )
+        .filter(
+          (host) =>
+            host.status === HeadlessHostStatus.RUNNING ||
+            (isStoppedHostStatus(host.status) &&
+              hasPermission(host.groupId, PERMISSION_KEYS.HOST_WRITE)),
+        )
+        .map((host) => {
+          const groupName = host.groupId
+            ? (groupNameById.get(host.groupId) ?? host.groupId)
+            : t("newSessionForm.noGroup");
+          const stopped = isStoppedHostStatus(host.status);
+          // 停止中のホストは resoniteVersion が空なので、空の要素は詰める.
+          const baseLabel = [
+            `${host.name} (${host.id.slice(0, 6)})`,
+            host.accountName,
+            host.resoniteVersion,
+            `[${groupName}]`,
+          ]
+            .filter(Boolean)
+            .join(" - ");
+          const statusLabel = hostStatusToLabel(host.status);
+          return {
+            id: host.id,
+            label: stopped ? `${baseLabel} (${statusLabel})` : baseLabel,
+            baseLabel,
+            statusLabel,
+            stopped,
+            value: host,
+          };
+        })
+        // 稼働中 → 停止中の順に並べる (sort は安定なので各グループ内の順序は保たれる).
+        .sort((a, b) => Number(a.stopped) - Number(b.stopped)),
+    [hostList?.hosts, hasPermission, currentGroupId, groupNameById, t],
+  );
+  const isSelectedHostStopped =
+    selectableHosts.find((host) => host.id === hostId)?.stopped ?? false;
+
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduledAt, setScheduledAt] = useState(
     defaultScheduledAtInputValue(),
@@ -102,7 +161,11 @@ export default function NewSessionForm() {
       });
       // 非同期 job として実行されるので「受け付けた」だけ通知し、
       // 完了は notificationDispatch 経由の JobCompletedEvent toast で出す.
-      toast.success(t("newSessionForm.startAccepted"));
+      toast.success(
+        isSelectedHostStopped
+          ? t("newSessionForm.startAcceptedWithHostStart")
+          : t("newSessionForm.startAccepted"),
+      );
       navigate("/sessions");
     } catch (e) {
       toast.error(
@@ -114,6 +177,12 @@ export default function NewSessionForm() {
   };
 
   const openScheduleDialog = async () => {
+    // 予約実行はホストを起動しないので、停止中のホストでは予約させない.
+    if (isSelectedHostStopped) {
+      toast.error(t("newSessionForm.scheduleRequiresRunningHost"));
+      return;
+    }
+
     const ok = await validate();
     if (!ok) {
       toast.error(t("newSessionForm.checkInput"));
@@ -160,33 +229,6 @@ export default function NewSessionForm() {
     }
   };
 
-  // セッション開始には host:use + session:write が host.group_id に対して必要.
-  // 権限を持たないグループのホストは選択肢に出さない.
-  // 加えて、ヘッダーで選択中のグループでも絞り込み (backend 側も group_id でフィルタするが
-  // listHeadlessHost の cache を別キーで使う他の画面と混ざらないように client 側でも明示する).
-  const runningHosts = useMemo(
-    () =>
-      hostList?.hosts
-        .filter((host) => host.status === HeadlessHostStatus.RUNNING)
-        .filter((host) => !currentGroupId || host.groupId === currentGroupId)
-        .filter(
-          (host) =>
-            hasPermission(host.groupId, PERMISSION_KEYS.HOST_USE) &&
-            hasPermission(host.groupId, PERMISSION_KEYS.SESSION_WRITE),
-        )
-        .map((host) => {
-          const groupName = host.groupId
-            ? (groupNameById.get(host.groupId) ?? host.groupId)
-            : t("newSessionForm.noGroup");
-          return {
-            id: host.id,
-            label: `${host.name} (${host.id.slice(0, 6)}) - ${host.accountName} - ${host.resoniteVersion} - [${groupName}]`,
-            value: host,
-          };
-        }) ?? [],
-    [hostList?.hosts, hasPermission, currentGroupId, groupNameById, t],
-  );
-
   return (
     <>
       <Dialog open={!hostId}>
@@ -202,20 +244,23 @@ export default function NewSessionForm() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 max-h-[70vh] overflow-y-auto">
-            {runningHosts.map((host) => (
+            {selectableHosts.map((host) => (
               <Button
                 key={host.id}
                 variant="outline"
-                className="w-full justify-start"
+                className="w-full h-auto min-h-9 justify-start whitespace-normal text-left"
                 onClick={() => setValue("hostId", host.id)}
               >
-                {host.label}
+                <span className="flex-1">{host.baseLabel}</span>
+                {host.stopped && (
+                  <Badge variant="secondary">{host.statusLabel}</Badge>
+                )}
               </Button>
             ))}
-            {runningHosts.length === 0 && (
+            {selectableHosts.length === 0 && (
               <div className="text-center py-4 space-y-3">
                 <p className="text-muted-foreground">
-                  {t("newSessionForm.noRunningHosts")}
+                  {t("newSessionForm.noSelectableHosts")}
                 </p>
                 <Button variant="outline" asChild>
                   <Link to="/hosts">{t("newSessionForm.toHostList")}</Link>
@@ -233,7 +278,7 @@ export default function NewSessionForm() {
           render={({ field }) => (
             <SelectField
               label="Host"
-              options={runningHosts}
+              options={selectableHosts}
               selectedId={field.value || ""}
               onChange={(option) => field.onChange(option.value?.id ?? "")}
               minWidth="7rem"
@@ -241,12 +286,20 @@ export default function NewSessionForm() {
             />
           )}
         />
+        {isSelectedHostStopped && (
+          <Alert>
+            <AlertDescription>
+              {t("newSessionForm.stoppedHostNotice")}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <SessionStartupFields
           control={control}
           errors={errors}
           watch={watch}
           setValue={setValue}
+          hostRunning={!isSelectedHostStopped}
         />
 
         <div className="sticky bottom-0 border-t p-4 mt-8 bg-background flex gap-2">

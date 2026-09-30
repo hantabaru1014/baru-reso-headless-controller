@@ -84,6 +84,8 @@ type HeadlessHostRepository interface {
 	// GetGroupID は host の group_id だけを DB のみで返す軽量メソッド.
 	// permission interceptor が container RPC を起こさないようにするための専用 API.
 	GetGroupID(ctx context.Context, id string) (string, error)
+	// GetStatus は host の status だけを DB のみで返す軽量メソッド.
+	GetStatus(ctx context.Context, id string) (entity.HeadlessHostStatus, error)
 	GetRpcClient(ctx context.Context, id string) (headlessv1.HeadlessControlServiceClient, error)
 	GetLogs(ctx context.Context, params GetLogsParams) (LogLineList, error)
 	GetInstanceTimestamps(ctx context.Context, hostID string) (InstanceTimestampList, error)
