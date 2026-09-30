@@ -139,7 +139,7 @@ func (u *Usecase) EnqueueStartHost(ctx context.Context, req *hdlctrlv1.StartHead
 }
 
 // EnqueueBuildImage は 1 バージョンのローカルビルド job を投入する.
-// req.follow_up が指定されていれば、build 成功後にその job (START_HOST / RESTART_HOST) が
+// req.follow_up が指定されていれば、build 成功後にその job (START_HOST / RESTART_HOST / START_SESSION) が
 // 自動で enqueue される (chain).
 func (u *Usecase) EnqueueBuildImage(ctx context.Context, req *hdlctrlv1.BuildResoniteImageRequest, createdBy *string) (string, error) {
 	payload, err := marshalPayload(req)
@@ -147,12 +147,15 @@ func (u *Usecase) EnqueueBuildImage(ctx context.Context, req *hdlctrlv1.BuildRes
 		return "", err
 	}
 
-	// 既存ホストの再起動 chain なら、job 履歴でホストに紐付けられるよう host_id を持たせる
+	// 既存ホストが対象の chain なら、job 履歴でホストに紐付けられるよう host_id を持たせる
 	// (起動 chain のホストはまだ発番されていないので付けられない).
 	var hostID *string
 
 	if r := req.GetThenRestartHost(); r != nil && r.GetHostId() != "" {
 		id := r.GetHostId()
+		hostID = &id
+	} else if w := req.GetThenStartWorld(); w != nil && w.GetHostId() != "" {
+		id := w.GetHostId()
 		hostID = &id
 	}
 

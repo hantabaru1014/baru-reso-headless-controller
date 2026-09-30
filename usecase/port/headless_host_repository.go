@@ -97,11 +97,14 @@ const HostConnectorType_DOCKER HostConnectorType = "docker"
 type HeadlessHostRepository interface {
 	ListAll(ctx context.Context, fetchOptions HeadlessHostFetchOptions) (entity.HeadlessHostList, error)
 	ListPaged(ctx context.Context, opts HostListPageOptions) (*HostListPageResult, error)
-	ListRunningByAccount(ctx context.Context, accountId string) (entity.HeadlessHostList, error)
+	// ListRunningByAccount は groupID に登録されたアカウント accountId で起動中のホストを返す.
+	ListRunningByAccount(ctx context.Context, groupID, accountId string) (entity.HeadlessHostList, error)
 	Find(ctx context.Context, id string, fetchOptions HeadlessHostFetchOptions) (*entity.HeadlessHost, error)
 	// GetGroupID は host の group_id だけを DB のみで返す軽量メソッド.
 	// permission interceptor が container RPC を起こさないようにするための専用 API.
 	GetGroupID(ctx context.Context, id string) (string, error)
+	// GetStatus は host の status だけを DB のみで返す軽量メソッド.
+	GetStatus(ctx context.Context, id string) (entity.HeadlessHostStatus, error)
 	GetRpcClient(ctx context.Context, id string) (headlessv1.HeadlessControlServiceClient, error)
 	// GetLogs はログを時系列順 (ID 昇順) で返す. hasMore は取得方向にさらにログが存在するかどうか.
 	GetLogs(ctx context.Context, params GetLogsParams) (logs LogLineList, hasMore bool, err error)

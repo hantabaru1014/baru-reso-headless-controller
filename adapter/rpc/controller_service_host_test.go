@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/hantabaru1014/baru-reso-headless-controller/adapter/hostconnector"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
+	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1/hdlctrlv1connect"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
@@ -164,6 +166,28 @@ func TestControllerService_StartHeadlessHost(t *testing.T) {
 		res, err := client.StartHeadlessHost(t.Context(), req)
 		require.NoError(t, err)
 		require.NotNil(t, res.Msg)
+		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_START_HOST))
+
+		// 同じ Resonite アカウントが caller の権限外グループにも登録されると、group_id 無し
+		// では登録を特定できない. group_id 指定なら caller のグループの登録で起動できる.
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-acc", "mp@example.test", "password", "g-mp-starthost-other")
+
+		_, err = client.StartHeadlessHost(t.Context(), testutil.CreateAuthenticatedRequest(t, &hdlctrlv1.StartHeadlessHostRequest{
+			HeadlessAccountId: "U-mp-acc",
+			Name:              "TestHost",
+			ImageTag:          &imageTag,
+		}, callerID, "U-resonite-"+callerID, ""))
+		require.Error(t, err)
+		assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+
+		gid := groupID
+		res, err = client.StartHeadlessHost(t.Context(), testutil.CreateAuthenticatedRequest(t, &hdlctrlv1.StartHeadlessHostRequest{
+			HeadlessAccountId: "U-mp-acc",
+			Name:              "TestHost",
+			ImageTag:          &imageTag,
+			GroupId:           &gid,
+		}, callerID, "U-resonite-"+callerID, ""))
+		require.NoError(t, err)
 		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_START_HOST))
 	})
 
@@ -426,6 +450,66 @@ func TestControllerService_BuildResoniteImage(t *testing.T) {
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 		assert.Contains(t, connectErr.Message(), entity.PermKey_HostWrite)
 	})
+
+	t.Run("成功: then_start_world 付きは StartWorld の権限 + host:write で実行できる", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-build-world-chain"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-acc", "TestHost", entity.HeadlessHostStatus_EXITED, groupID)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.BuildResoniteImageRequest{
+			ManifestId: "MANIFEST-1",
+			Branch:     "headless",
+			FollowUp: &hdlctrlv1.BuildResoniteImageRequest_ThenStartWorld{
+				ThenStartWorld: &hdlctrlv1.StartWorldRequest{HostId: host.ID},
+			},
+		}, "U-mp-build-world-chain", groupID, []string{
+			entity.PermKey_HostUse,
+			entity.PermKey_AccountUse,
+			entity.PermKey_SessionWrite,
+			entity.PermKey_HostWrite,
+		})
+
+		res, err := client.BuildResoniteImage(t.Context(), req)
+		require.NoError(t, err)
+		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_BUILD_IMAGE))
+	})
+
+	// 起動中ホストへの StartWorld は host:write 不要だが、それを口実にビルドは走らせられない.
+	t.Run("失敗: then_start_world 付きで host:write が無いと PermissionDenied", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		const groupID = "g-mp-build-world-nowrite"
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-acc", "mp@example.test", "password", groupID)
+		host := testutil.CreateTestHeadlessHostInGroup(t, setup.queries, "U-mp-acc", "TestHost", entity.HeadlessHostStatus_RUNNING, groupID)
+
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.BuildResoniteImageRequest{
+			ManifestId: "MANIFEST-1",
+			Branch:     "headless",
+			FollowUp: &hdlctrlv1.BuildResoniteImageRequest_ThenStartWorld{
+				ThenStartWorld: &hdlctrlv1.StartWorldRequest{HostId: host.ID},
+			},
+		}, "U-mp-build-world-nowrite", groupID, []string{
+			entity.PermKey_HostUse,
+			entity.PermKey_AccountUse,
+			entity.PermKey_SessionWrite,
+		})
+
+		_, err := client.BuildResoniteImage(t.Context(), req)
+		require.Error(t, err)
+
+		connectErr := &connect.Error{}
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+		assert.Contains(t, connectErr.Message(), entity.PermKey_HostWrite)
+	})
 }
 
 func TestControllerService_RestartHeadlessHost(t *testing.T) {
@@ -448,6 +532,32 @@ func TestControllerService_RestartHeadlessHost(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, res.Msg)
 		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_RESTART_HOST))
+
+		// job が実行する再起動本体. memo と自動アップデート設定は再起動をまたいで残る.
+		ctx := auth.WithActAsUser(t.Context(), "test@example.test")
+
+		require.NoError(t, setup.queries.UpdateHostMemo(ctx, db.UpdateHostMemoParams{
+			ID:   host.ID,
+			Memo: pgtype.Text{Valid: true, String: "keep this memo"},
+		}))
+		require.NoError(t, setup.queries.UpdateHostAutoUpdatePolicy(ctx, db.UpdateHostAutoUpdatePolicyParams{
+			ID:               host.ID,
+			AutoUpdatePolicy: int32(entity.HostAutoUpdatePolicy_USERS_EMPTY),
+		}))
+
+		setup.mockHostConnector.EXPECT().Remove(gomock.Any(), gomock.Any()).Return(nil)
+		setup.mockHostConnector.EXPECT().Start(gomock.Any(), gomock.Any()).
+			Return(hostconnector.HostConnectString("restarted-container:1234"), nil)
+
+		// DB に無いタグはそのまま使われるので、バージョン解決を挟まずに再起動できる.
+		tag := "test-tag"
+		require.NoError(t, setup.service.hhuc.HeadlessHostRestart(ctx, host.ID, &tag, true, 0))
+
+		restarted, err := setup.queries.GetHost(ctx, host.ID)
+		require.NoError(t, err)
+		assert.Equal(t, int32(entity.HeadlessHostStatus_RUNNING), restarted.Status)
+		assert.Equal(t, "keep this memo", restarted.Memo.String)
+		assert.Equal(t, int32(entity.HostAutoUpdatePolicy_USERS_EMPTY), restarted.AutoUpdatePolicy)
 	})
 
 	t.Run("成功: 最小権限 caller (host:write) で実行", func(t *testing.T) {

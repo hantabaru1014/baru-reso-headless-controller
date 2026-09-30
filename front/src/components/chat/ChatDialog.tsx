@@ -15,6 +15,7 @@ import { ChatMessagesPanel } from "./ChatMessagesPanel";
 export function ChatDialog({
   open,
   onClose,
+  groupId,
   accountId,
   accountName,
 }: ChatDialogProps) {
@@ -53,6 +54,7 @@ export function ChatDialog({
           {/* Left panel: Contact list */}
           <ResizablePanel defaultSize="30%" minSize="20%">
             <ContactListPanel
+              groupId={groupId}
               accountId={accountId}
               enabled={open}
               selectedContact={selectedContact}
@@ -65,6 +67,7 @@ export function ChatDialog({
           {/* Right panel: Messages */}
           <ResizablePanel defaultSize="70%" minSize="40%">
             <ChatMessagesPanel
+              groupId={groupId}
               accountId={accountId}
               contact={selectedContact}
               enabled={open}

@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -12,6 +14,17 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
 
+const (
+	// 起動したホストが RPC に応答できる (engine 初期化 + ログイン完了) までの待ち時間の上限.
+	defaultHostReadyTimeout      = 3 * time.Minute
+	defaultHostReadyPollInterval = 3 * time.Second
+	// ready 判定の RPC 1 回あたりの上限. 起動途中のコンテナは応答が返らないことがある.
+	hostReadyProbeTimeout = 5 * time.Second
+	// HeadlessHostEnsureRunning が Restart に渡す停止猶予. 対象は停止済みなので通常は
+	// 使われないが、判定後に他経路で起動されていた場合に即 kill しないための値.
+	ensureRunningStopTimeoutSeconds = 10 * 60
+)
+
 type HeadlessHostUsecase struct {
 	hhrepo port.HeadlessHostRepository
 	srepo  port.SessionRepository
@@ -19,16 +32,26 @@ type HeadlessHostUsecase struct {
 	hauc   *HeadlessAccountUsecase
 	permUC *PermissionUsecase
 	rvuc   *ResoniteVersionUsecase
+
+	hostReadyTimeout      time.Duration
+	hostReadyPollInterval time.Duration
+
+	// startLocks は HeadlessHostEnsureRunning をホスト単位で直列化する (値は容量 1 の semaphore).
+	startLocksMu sync.Mutex
+	startLocks   map[string]chan struct{}
 }
 
 func NewHeadlessHostUsecase(hhrepo port.HeadlessHostRepository, srepo port.SessionRepository, huc *SessionUsecase, hauc *HeadlessAccountUsecase, permUC *PermissionUsecase, rvuc *ResoniteVersionUsecase) *HeadlessHostUsecase {
 	return &HeadlessHostUsecase{
-		hhrepo: hhrepo,
-		srepo:  srepo,
-		huc:    huc,
-		hauc:   hauc,
-		permUC: permUC,
-		rvuc:   rvuc,
+		hhrepo:                hhrepo,
+		srepo:                 srepo,
+		huc:                   huc,
+		hauc:                  hauc,
+		permUC:                permUC,
+		rvuc:                  rvuc,
+		hostReadyTimeout:      defaultHostReadyTimeout,
+		hostReadyPollInterval: defaultHostReadyPollInterval,
+		startLocks:            make(map[string]chan struct{}),
 	}
 }
 
@@ -129,7 +152,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 		return errors.Wrap(err, 0)
 	}
 
-	account, err := hhuc.hauc.GetHeadlessAccount(ctx, host.AccountId)
+	account, err := hhuc.hauc.GetHeadlessAccount(ctx, host.GroupID, host.AccountId)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -149,11 +172,15 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 		return errors.Wrap(err, 0)
 	}
 
+	// repo.Restart は memo と自動アップデート設定を渡された値で上書きするので、
+	// 現在の値を引き継ぐ.
 	startupConfig := port.HeadlessHostStartParams{
 		Name:              host.Name,
 		ContainerImageTag: tagToUse,
 		StartupConfig:     converter.HeadlessHostSettingsToStartupConfigProto(&host.HostSettings),
 		HeadlessAccount:   *account,
+		AutoUpdatePolicy:  host.AutoUpdatePolicy,
+		Memo:              host.Memo,
 	}
 
 	err = hhuc.hhrepo.Restart(ctx, host.ID, startupConfig, timeoutSeconds)
@@ -162,6 +189,42 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 	}
 
 	return nil
+}
+
+// HeadlessHostEnsureRunning は停止中 (EXITED / CRASHED) のホストを起動し、RPC を
+// 受けられる状態になるまで待つ. 起動した場合は true を返す.
+// 停止中以外 (RUNNING や遷移中) のホストには何もしない.
+// 起動は HeadlessHostRestart と同じ扱い (最新イメージ + 停止時の world を復元) で、
+// host:write を要求する. イメージが未 built なら *NotBuiltError を返す.
+func (hhuc *HeadlessHostUsecase) HeadlessHostEnsureRunning(ctx context.Context, id string) (bool, error) {
+	// 同じホストを指定した呼び出しが並行しても起動は 1 回にする. 後続は先行の
+	// ready 待ちが終わってから RUNNING を観測して素通りする (プロセス内の best-effort).
+	unlock, err := hhuc.lockHostStart(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	defer unlock()
+
+	status, err := hhuc.hhrepo.GetStatus(ctx, id)
+	if err != nil {
+		return false, errors.Wrap(err, 0)
+	}
+
+	if !status.IsStopped() {
+		return false, nil
+	}
+
+	slog.Info("starting stopped host on demand", "hostID", id)
+
+	if err := hhuc.HeadlessHostRestart(ctx, id, nil, true, ensureRunningStopTimeoutSeconds); err != nil {
+		return false, err
+	}
+
+	if err := hhuc.waitUntilReady(ctx, id); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 // HostLogsCursor はログ取得の起点の指定方法.
@@ -365,6 +428,71 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostKill(ctx context.Context, id string
 	}
 
 	return nil
+}
+
+func (hhuc *HeadlessHostUsecase) lockHostStart(ctx context.Context, id string) (func(), error) {
+	hhuc.startLocksMu.Lock()
+
+	lock, ok := hhuc.startLocks[id]
+	if !ok {
+		lock = make(chan struct{}, 1)
+		hhuc.startLocks[id] = lock
+	}
+
+	hhuc.startLocksMu.Unlock()
+
+	select {
+	case lock <- struct{}{}:
+		return func() { <-lock }, nil
+	case <-ctx.Done():
+		return nil, errors.Wrap(ctx.Err(), 0)
+	}
+}
+
+// waitUntilReady は起動直後のホストが RPC を受けられるようになるまで待つ.
+// コンテナは engine 初期化やログインより先に gRPC を listen し始めるので、
+// ログイン完了後にしか成功しない GetAccountInfo が通ることを ready の目印にする.
+func (hhuc *HeadlessHostUsecase) waitUntilReady(ctx context.Context, id string) error {
+	ctx, cancel := context.WithTimeout(ctx, hhuc.hostReadyTimeout)
+	defer cancel()
+
+	ticker := time.NewTicker(hhuc.hostReadyPollInterval)
+	defer ticker.Stop()
+
+	var client headlessv1.HeadlessControlServiceClient
+
+	for {
+		// 起動に失敗してコンテナが落ちた場合は docker event watcher が status を
+		// 書き換えるので、timeout を待たずに諦める.
+		status, err := hhuc.hhrepo.GetStatus(ctx, id)
+		if err == nil && status.IsStopped() {
+			return errors.New("host exited before it became ready")
+		}
+
+		// 毎回取り直すと接続が増え続けるので、取得できた client を使い回す.
+		if client == nil {
+			client, _ = hhuc.hhrepo.GetRpcClient(ctx, id)
+		}
+
+		if client != nil && hhuc.probeReady(ctx, client) {
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return errors.WrapPrefix(ctx.Err(), "host did not become ready", 0)
+		case <-ticker.C:
+		}
+	}
+}
+
+func (hhuc *HeadlessHostUsecase) probeReady(ctx context.Context, client headlessv1.HeadlessControlServiceClient) bool {
+	ctx, cancel := context.WithTimeout(ctx, hostReadyProbeTimeout)
+	defer cancel()
+
+	_, err := client.GetAccountInfo(ctx, &headlessv1.GetAccountInfoRequest{})
+
+	return err == nil
 }
 
 // requireHostWrite は hostID の group を引いて host:write を要求する.

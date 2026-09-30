@@ -9,7 +9,18 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+)
+
+// pgUniqueViolation は PostgreSQL の unique_violation (SQLSTATE).
+const pgUniqueViolation = "23505"
+
+var (
+	// ErrHeadlessAccountAlreadyExists は同一グループに同じ Resonite アカウントを重複登録しようとした.
+	ErrHeadlessAccountAlreadyExists = errors.New("headless account is already registered in this group")
+	// ErrHeadlessAccountGroupAmbiguous は group_id 未指定のアカウント指定が複数グループの登録に該当した.
+	ErrHeadlessAccountGroupAmbiguous = errors.New("headless account is registered in multiple groups; group_id is required")
 )
 
 type HeadlessAccountUsecase struct {
@@ -46,7 +57,7 @@ func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, cred
 		createdByText = pgtype.Text{String: *createdBy, Valid: true}
 	}
 
-	return u.queries.CreateHeadlessAccount(ctx, db.CreateHeadlessAccountParams{
+	err = u.queries.CreateHeadlessAccount(ctx, db.CreateHeadlessAccountParams{
 		ResoniteID:      userSession.UserId,
 		Credential:      credential,
 		Password:        password,
@@ -55,10 +66,22 @@ func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, cred
 		GroupID:         groupID,
 		CreatedBy:       createdByText,
 	})
+	if err != nil {
+		// アカウントは (group_id, resonite_id) で一意. 別グループへの登録は重複にならない.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
+			return errors.Wrap(ErrHeadlessAccountAlreadyExists, 0)
+		}
+
+		return errors.Wrap(err, 0)
+	}
+
+	return nil
 }
 
-func (u *HeadlessAccountUsecase) UpdateHeadlessAccountCredentials(ctx context.Context, resoniteID, credential, password string) error {
-	if err := u.requireAccountWrite(ctx, resoniteID); err != nil {
+func (u *HeadlessAccountUsecase) UpdateHeadlessAccountCredentials(ctx context.Context, groupID, resoniteID, credential, password string) error {
+	account, err := u.requireAccountWrite(ctx, groupID, resoniteID)
+	if err != nil {
 		return err
 	}
 
@@ -77,6 +100,7 @@ func (u *HeadlessAccountUsecase) UpdateHeadlessAccountCredentials(ctx context.Co
 	}
 
 	return u.queries.UpdateHeadlessAccountCredentials(ctx, db.UpdateHeadlessAccountCredentialsParams{
+		GroupID:    account.GroupID,
 		ResoniteID: resoniteID,
 		Credential: credential,
 		Password:   password,
@@ -160,15 +184,19 @@ func (u *HeadlessAccountUsecase) ListHeadlessAccountsPaged(ctx context.Context, 
 	return result, nil
 }
 
-// GetHeadlessAccount は resoniteID のアカウントを引く.
+// GetHeadlessAccount は groupID に登録された resoniteID のアカウントを引く.
+// アカウントは (group_id, resonite_id) で一意で、同一 resoniteID を複数グループに登録できる.
 //
 // NOTE: このメソッドは意図的に権限チェックを行わない. RPC permission interceptor
 // 自身が group_id 解決のために呼ぶほか、ホスト起動 / async job など「account:use
 // のみ」の文脈からも呼ばれるため、ここで account:read を要求すると権限セマンティクス
 // が壊れる. 戻り値には平文の認証情報が含まれるので、新規の呼び出し元は必ず呼び出し側
 // で認可を済ませること (RPC handler なら interceptor 登録、usecase なら Require*).
-func (u *HeadlessAccountUsecase) GetHeadlessAccount(ctx context.Context, resoniteID string) (*entity.HeadlessAccount, error) {
-	v, err := u.queries.GetHeadlessAccount(ctx, resoniteID)
+func (u *HeadlessAccountUsecase) GetHeadlessAccount(ctx context.Context, groupID, resoniteID string) (*entity.HeadlessAccount, error) {
+	v, err := u.queries.GetHeadlessAccount(ctx, db.GetHeadlessAccountParams{
+		GroupID:    groupID,
+		ResoniteID: resoniteID,
+	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrNotFound
@@ -180,16 +208,46 @@ func (u *HeadlessAccountUsecase) GetHeadlessAccount(ctx context.Context, resonit
 	return headlessAccountToEntity(v), nil
 }
 
-func (u *HeadlessAccountUsecase) DeleteHeadlessAccount(ctx context.Context, resoniteID string) error {
-	if err := u.requireAccountWrite(ctx, resoniteID); err != nil {
+// ResolveHeadlessAccount はリクエストで指定された (groupID, resoniteID) からアカウントを引く.
+// groupID が空の場合は、resoniteID の登録先グループが 1 つに定まるときに限りそれを返す
+// (複数グループに登録されていれば ErrHeadlessAccountGroupAmbiguous).
+//
+// GetHeadlessAccount と同じく権限チェックは行わない.
+func (u *HeadlessAccountUsecase) ResolveHeadlessAccount(ctx context.Context, groupID, resoniteID string) (*entity.HeadlessAccount, error) {
+	if groupID != "" {
+		return u.GetHeadlessAccount(ctx, groupID, resoniteID)
+	}
+
+	list, err := u.queries.ListHeadlessAccountsByResoniteID(ctx, resoniteID)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	switch len(list) {
+	case 0:
+		return nil, domain.ErrNotFound
+	case 1:
+		return headlessAccountToEntity(list[0]), nil
+	default:
+		return nil, errors.Wrap(ErrHeadlessAccountGroupAmbiguous, 0)
+	}
+}
+
+func (u *HeadlessAccountUsecase) DeleteHeadlessAccount(ctx context.Context, groupID, resoniteID string) error {
+	account, err := u.requireAccountWrite(ctx, groupID, resoniteID)
+	if err != nil {
 		return err
 	}
 
-	return u.queries.DeleteHeadlessAccount(ctx, resoniteID)
+	return u.queries.DeleteHeadlessAccount(ctx, db.DeleteHeadlessAccountParams{
+		GroupID:    account.GroupID,
+		ResoniteID: resoniteID,
+	})
 }
 
-func (u *HeadlessAccountUsecase) RefetchHeadlessAccountInfo(ctx context.Context, resoniteID string) error {
-	if err := u.requireAccountWrite(ctx, resoniteID); err != nil {
+func (u *HeadlessAccountUsecase) RefetchHeadlessAccountInfo(ctx context.Context, groupID, resoniteID string) error {
+	account, err := u.requireAccountWrite(ctx, groupID, resoniteID)
+	if err != nil {
 		return err
 	}
 
@@ -199,6 +257,7 @@ func (u *HeadlessAccountUsecase) RefetchHeadlessAccountInfo(ctx context.Context,
 	}
 
 	return u.queries.UpdateAccountInfo(ctx, db.UpdateAccountInfoParams{
+		GroupID:         account.GroupID,
 		ResoniteID:      resoniteID,
 		LastDisplayName: pgtype.Text{String: userInfo.UserName, Valid: true},
 		LastIconUrl:     pgtype.Text{String: userInfo.IconUrl, Valid: true},
@@ -207,15 +266,10 @@ func (u *HeadlessAccountUsecase) RefetchHeadlessAccountInfo(ctx context.Context,
 
 // UpdateHeadlessAccountIcon updates the headless account's profile icon
 // It processes the image, uploads it to Resonite cloud, and updates the profile.
-func (u *HeadlessAccountUsecase) UpdateHeadlessAccountIcon(ctx context.Context, resoniteID string, iconData []byte) (string, error) {
-	if err := u.requireAccountWrite(ctx, resoniteID); err != nil {
-		return "", err
-	}
-
-	// Get account credentials from DB
-	account, err := u.queries.GetHeadlessAccount(ctx, resoniteID)
+func (u *HeadlessAccountUsecase) UpdateHeadlessAccountIcon(ctx context.Context, groupID, resoniteID string, iconData []byte) (string, error) {
+	account, err := u.requireAccountWrite(ctx, groupID, resoniteID)
 	if err != nil {
-		return "", errors.Errorf("failed to get headless account: %w", err)
+		return "", err
 	}
 
 	// Process the image (crop to square, resize to 256x256, convert to PNG)
@@ -240,6 +294,7 @@ func (u *HeadlessAccountUsecase) UpdateHeadlessAccountIcon(ctx context.Context, 
 
 	// Update the DB with new icon URL
 	if err := u.queries.UpdateAccountIconUrl(ctx, db.UpdateAccountIconUrlParams{
+		GroupID:     account.GroupID,
 		ResoniteID:  resoniteID,
 		LastIconUrl: pgtype.Text{String: iconUrl, Valid: true},
 	}); err != nil {
@@ -249,13 +304,17 @@ func (u *HeadlessAccountUsecase) UpdateHeadlessAccountIcon(ctx context.Context, 
 	return iconUrl, nil
 }
 
-// requireAccountWrite は resoniteID の account.group_id を引いて
-// account:write を要求する. account が存在しなければ domain.ErrNotFound を返す.
-func (u *HeadlessAccountUsecase) requireAccountWrite(ctx context.Context, resoniteID string) error {
-	account, err := u.GetHeadlessAccount(ctx, resoniteID)
+// requireAccountWrite は (groupID, resoniteID) の account を解決し、その group_id に
+// 対して account:write を要求する. account が存在しなければ domain.ErrNotFound を返す.
+func (u *HeadlessAccountUsecase) requireAccountWrite(ctx context.Context, groupID, resoniteID string) (*entity.HeadlessAccount, error) {
+	account, err := u.ResolveHeadlessAccount(ctx, groupID, resoniteID)
 	if err != nil {
-		return errors.Wrap(err, 0)
+		return nil, errors.Wrap(err, 0)
 	}
 
-	return u.permUC.RequirePermissionForGroup(ctx, account.GroupID, entity.PermKey_AccountWrite)
+	if err := u.permUC.RequirePermissionForGroup(ctx, account.GroupID, entity.PermKey_AccountWrite); err != nil {
+		return nil, err
+	}
+
+	return account, nil
 }

@@ -21,6 +21,7 @@ type (
 		HeadlessHostStart(ctx context.Context, params port.HeadlessHostStartParams, userID *string) (string, error)
 		HeadlessHostShutdown(ctx context.Context, id string) error
 		HeadlessHostRestart(ctx context.Context, id string, newTag *string, withWorldRestart bool, timeoutSeconds int) error
+		HeadlessHostEnsureRunning(ctx context.Context, id string) (started bool, err error)
 	}
 
 	SessionOperator interface {
@@ -29,7 +30,7 @@ type (
 	}
 
 	AccountFetcher interface {
-		GetHeadlessAccount(ctx context.Context, id string) (*entity.HeadlessAccount, error)
+		ResolveHeadlessAccount(ctx context.Context, groupID, resoniteID string) (*entity.HeadlessAccount, error)
 	}
 
 	// ImageBuildOperator は BUILD_IMAGE job handler が呼ぶ「実ビルド」インタフェース.
@@ -89,7 +90,7 @@ func (d *Dispatcher) startHost(ctx context.Context, job *entity.AsyncJob) (JobRe
 		return JobResult{}, "", errors.WrapPrefix(err, "decode start_host payload", 0)
 	}
 
-	account, err := d.account.GetHeadlessAccount(ctx, req.GetHeadlessAccountId())
+	account, err := d.account.ResolveHeadlessAccount(ctx, req.GetGroupId(), req.GetHeadlessAccountId())
 	if err != nil {
 		return JobResult{}, "", errors.WrapPrefix(err, "get headless account", 0)
 	}
@@ -197,6 +198,15 @@ func (d *Dispatcher) buildImage(ctx context.Context, job *entity.AsyncJob) (JobR
 		}
 
 		msg = fmt.Sprintf("%s (host_restart_job=%s)", msg, restartJobID)
+	case *hdlctrlv1.BuildResoniteImageRequest_ThenStartWorld:
+		// StartWorld はイメージタグを持たないので、後続 job でのホスト起動は最新版を
+		// 解決し直す. その間に更に新しい版が出ていた場合はもう一度 build が chain される.
+		startJobID, chainErr := d.uc.EnqueueStartSession(ctx, f.ThenStartWorld, job.CreatedBy)
+		if chainErr != nil {
+			return JobResult{}, "", errors.WrapPrefix(chainErr, "enqueue chained start_session", 0)
+		}
+
+		msg = fmt.Sprintf("%s (session_start_job=%s)", msg, startJobID)
 	}
 
 	return JobResult{}, msg, nil
@@ -268,6 +278,21 @@ func (d *Dispatcher) startSession(ctx context.Context, job *entity.AsyncJob) (Jo
 		memo = &m
 	}
 
+	// 停止中のホストが指定された場合は、先にホストを起動する.
+	hostStarted, err := d.host.HeadlessHostEnsureRunning(ctx, req.GetHostId())
+	if err != nil {
+		// restart_host と同様、未 built なら BUILD_IMAGE を chain してこの job は成功終了.
+		if nbe := asNotBuilt(err); nbe != nil {
+			return d.chainBuild(ctx, job, &hdlctrlv1.BuildResoniteImageRequest{
+				ManifestId: nbe.ManifestID,
+				Branch:     string(nbe.Branch),
+				FollowUp:   &hdlctrlv1.BuildResoniteImageRequest_ThenStartWorld{ThenStartWorld: req},
+			}, JobResult{HostID: req.GetHostId()})
+		}
+
+		return JobResult{}, "", errors.WrapPrefix(err, "start stopped host", 0)
+	}
+
 	s, err := d.session.StartSession(ctx, req.GetHostId(), req.GetGroupId(), job.CreatedBy, req.GetParameters(), memo)
 	if err != nil {
 		return JobResult{}, "", err
@@ -278,7 +303,12 @@ func (d *Dispatcher) startSession(ctx context.Context, job *entity.AsyncJob) (Jo
 		name = s.ID
 	}
 
-	return JobResult{SessionID: s.ID, HostID: req.GetHostId()}, fmt.Sprintf("セッション %q を開始しました", name), nil
+	msg := fmt.Sprintf("セッション %q を開始しました", name)
+	if hostStarted {
+		msg = fmt.Sprintf("ホストを起動し、セッション %q を開始しました", name)
+	}
+
+	return JobResult{SessionID: s.ID, HostID: req.GetHostId()}, msg, nil
 }
 
 func (d *Dispatcher) stopSession(ctx context.Context, job *entity.AsyncJob) (JobResult, string, error) {

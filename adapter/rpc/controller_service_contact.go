@@ -15,11 +15,11 @@ import (
 // 権限: account.group_id に対して account:read.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.ControllerServiceListContactsProcedure,
-	checkAccountPermission(entity.PermKey_AccountRead, accountIDFromListContacts),
+	checkAccountPermission(entity.PermKey_AccountRead, accountRefFromListContacts),
 )
 
 func (c *ControllerService) ListContacts(ctx context.Context, req *connect.Request[hdlctrlv1.ListContactsRequest]) (*connect.Response[hdlctrlv1.ListContactsResponse], error) {
-	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.GetHeadlessAccountId())
+	hosts, err := c.listRunningHostsByAccountRef(ctx, req.Msg.GetGroupId(), req.Msg.GetHeadlessAccountId())
 	if err != nil {
 		return nil, convertErr(err)
 	}
@@ -62,16 +62,16 @@ func (c *ControllerService) ListContacts(ctx context.Context, req *connect.Reque
 // 振る舞う」操作に属するため、SendContactMessage と同じ account:use に揃える.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.ControllerServiceGetContactMessagesProcedure,
-	checkAccountPermission(entity.PermKey_AccountUse, accountIDFromGetMessages),
+	checkAccountPermission(entity.PermKey_AccountUse, accountRefFromGetMessages),
 )
 
 func (c *ControllerService) GetContactMessages(ctx context.Context, req *connect.Request[hdlctrlv1.GetContactMessagesRequest]) (*connect.Response[hdlctrlv1.GetContactMessagesResponse], error) {
-	account, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.GetHeadlessAccountId())
+	account, err := c.hauc.ResolveHeadlessAccount(ctx, req.Msg.GetGroupId(), req.Msg.GetHeadlessAccountId())
 	if err != nil {
 		return nil, convertErr(err)
 	}
 
-	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.GetHeadlessAccountId())
+	hosts, err := c.hhrepo.ListRunningByAccount(ctx, account.GroupID, account.ResoniteID)
 	if err != nil {
 		return nil, convertErr(err)
 	}
@@ -118,11 +118,11 @@ func (c *ControllerService) GetContactMessages(ctx context.Context, req *connect
 // 権限: account.group_id に対して account:use.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.ControllerServiceSendContactMessageProcedure,
-	checkAccountPermission(entity.PermKey_AccountUse, accountIDFromSendMessage),
+	checkAccountPermission(entity.PermKey_AccountUse, accountRefFromSendMessage),
 )
 
 func (c *ControllerService) SendContactMessage(ctx context.Context, req *connect.Request[hdlctrlv1.SendContactMessageRequest]) (*connect.Response[hdlctrlv1.SendContactMessageResponse], error) {
-	hosts, err := c.hhrepo.ListRunningByAccount(ctx, req.Msg.GetHeadlessAccountId())
+	hosts, err := c.listRunningHostsByAccountRef(ctx, req.Msg.GetGroupId(), req.Msg.GetHeadlessAccountId())
 	if err != nil {
 		return nil, convertErr(err)
 	}

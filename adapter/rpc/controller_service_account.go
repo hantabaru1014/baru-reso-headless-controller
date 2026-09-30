@@ -102,11 +102,11 @@ func (c *ControllerService) ListHeadlessAccounts(ctx context.Context, req *conne
 // 権限: account.group_id に対して account:write.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.ControllerServiceDeleteHeadlessAccountProcedure,
-	checkAccountPermission(entity.PermKey_AccountWrite, accountIDFromDelete),
+	checkAccountPermission(entity.PermKey_AccountWrite, accountRefFromDelete),
 )
 
 func (c *ControllerService) DeleteHeadlessAccount(ctx context.Context, req *connect.Request[hdlctrlv1.DeleteHeadlessAccountRequest]) (*connect.Response[hdlctrlv1.DeleteHeadlessAccountResponse], error) {
-	err := c.hauc.DeleteHeadlessAccount(ctx, req.Msg.GetAccountId())
+	err := c.hauc.DeleteHeadlessAccount(ctx, req.Msg.GetGroupId(), req.Msg.GetAccountId())
 	if err != nil {
 		return nil, convertErr(err)
 	}
@@ -118,11 +118,11 @@ func (c *ControllerService) DeleteHeadlessAccount(ctx context.Context, req *conn
 // 権限: account.group_id に対して account:write.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.ControllerServiceUpdateHeadlessAccountCredentialsProcedure,
-	checkAccountPermission(entity.PermKey_AccountWrite, accountIDFromUpdateCreds),
+	checkAccountPermission(entity.PermKey_AccountWrite, accountRefFromUpdateCreds),
 )
 
 func (c *ControllerService) UpdateHeadlessAccountCredentials(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateHeadlessAccountCredentialsRequest]) (*connect.Response[hdlctrlv1.UpdateHeadlessAccountCredentialsResponse], error) {
-	err := c.hauc.UpdateHeadlessAccountCredentials(ctx, req.Msg.GetAccountId(), req.Msg.GetCredential(), req.Msg.GetPassword())
+	err := c.hauc.UpdateHeadlessAccountCredentials(ctx, req.Msg.GetGroupId(), req.Msg.GetAccountId(), req.Msg.GetCredential(), req.Msg.GetPassword())
 	if err != nil {
 		return nil, convertErr(err)
 	}
@@ -134,11 +134,11 @@ func (c *ControllerService) UpdateHeadlessAccountCredentials(ctx context.Context
 // 権限: account.group_id に対して account:read.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.ControllerServiceGetHeadlessAccountStorageInfoProcedure,
-	checkAccountPermission(entity.PermKey_AccountRead, accountIDFromStorageInfo),
+	checkAccountPermission(entity.PermKey_AccountRead, accountRefFromStorageInfo),
 )
 
 func (c *ControllerService) GetHeadlessAccountStorageInfo(ctx context.Context, req *connect.Request[hdlctrlv1.GetHeadlessAccountStorageInfoRequest]) (*connect.Response[hdlctrlv1.GetHeadlessAccountStorageInfoResponse], error) {
-	account, err := c.hauc.GetHeadlessAccount(ctx, req.Msg.GetAccountId())
+	account, err := c.hauc.ResolveHeadlessAccount(ctx, req.Msg.GetGroupId(), req.Msg.GetAccountId())
 	if err != nil {
 		return nil, convertErr(err)
 	}
@@ -160,11 +160,11 @@ func (c *ControllerService) GetHeadlessAccountStorageInfo(ctx context.Context, r
 // 権限: account.group_id に対して account:write.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.ControllerServiceRefetchHeadlessAccountInfoProcedure,
-	checkAccountPermission(entity.PermKey_AccountWrite, accountIDFromRefetch),
+	checkAccountPermission(entity.PermKey_AccountWrite, accountRefFromRefetch),
 )
 
 func (c *ControllerService) RefetchHeadlessAccountInfo(ctx context.Context, req *connect.Request[hdlctrlv1.RefetchHeadlessAccountInfoRequest]) (*connect.Response[hdlctrlv1.RefetchHeadlessAccountInfoResponse], error) {
-	err := c.hauc.RefetchHeadlessAccountInfo(ctx, req.Msg.GetAccountId())
+	err := c.hauc.RefetchHeadlessAccountInfo(ctx, req.Msg.GetGroupId(), req.Msg.GetAccountId())
 	if err != nil {
 		return nil, convertErr(err)
 	}
@@ -176,11 +176,11 @@ func (c *ControllerService) RefetchHeadlessAccountInfo(ctx context.Context, req 
 // 権限: account.group_id に対して account:write.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.ControllerServiceUpdateHeadlessAccountIconProcedure,
-	checkAccountPermission(entity.PermKey_AccountWrite, accountIDFromUpdateIcon),
+	checkAccountPermission(entity.PermKey_AccountWrite, accountRefFromUpdateIcon),
 )
 
 func (c *ControllerService) UpdateHeadlessAccountIcon(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateHeadlessAccountIconRequest]) (*connect.Response[hdlctrlv1.UpdateHeadlessAccountIconResponse], error) {
-	newIconUrl, err := c.hauc.UpdateHeadlessAccountIcon(ctx, req.Msg.GetAccountId(), req.Msg.GetIconData())
+	newIconUrl, err := c.hauc.UpdateHeadlessAccountIcon(ctx, req.Msg.GetGroupId(), req.Msg.GetAccountId(), req.Msg.GetIconData())
 	if err != nil {
 		return nil, convertErr(err)
 	}

@@ -161,6 +161,9 @@ func allKnownProcedures() []string {
 		hdlctrlv1connect.ControllerServiceListAsyncJobsProcedure,
 		hdlctrlv1connect.ControllerServiceGetAsyncJobProcedure,
 
+		// ===== ControllerService: リソース移管系 =====
+		hdlctrlv1connect.ControllerServiceTransferResourcesProcedure,
+
 		// ===== GroupService =====
 		hdlctrlv1connect.GroupServiceCreateGroupProcedure,
 		hdlctrlv1connect.GroupServiceGetGroupProcedure,
@@ -400,7 +403,13 @@ func checkSessionPermission[T any](permKey string, extract idExtractor[T]) permi
 	}
 }
 
-func checkAccountPermission[T any](permKey string, extract idExtractor[T]) permissionCheck {
+// accountRefExtractor[T] は req.Any() を *T にキャストしてアカウントの (group_id, account_id) を取り出す.
+type accountRefExtractor[T any] func(*T) (groupID, accountID string)
+
+// checkAccountPermission は account_id を含む RPC 用. account.group_id に対して permKey を要求する.
+// group_id 未指定の場合は登録先グループが 1 つに定まるときだけ解決する
+// (HeadlessAccountUsecase.ResolveHeadlessAccount).
+func checkAccountPermission[T any](permKey string, extract accountRefExtractor[T]) permissionCheck {
 	return func(ctx context.Context, req connect.AnyRequest, deps *PermissionDeps, permUC *usecase.PermissionUsecase) error {
 		typed, ok := req.Any().(*T)
 		if !ok {
@@ -412,12 +421,14 @@ func checkAccountPermission[T any](permKey string, extract idExtractor[T]) permi
 			return err
 		}
 
-		accountID := strings.TrimSpace(extract(typed))
+		groupID, accountID := extract(typed)
+
+		accountID = strings.TrimSpace(accountID)
 		if accountID == "" {
 			return connect.NewError(connect.CodeInvalidArgument, errors.New("account_id is required"))
 		}
 
-		a, err := deps.AccountUC.GetHeadlessAccount(ctx, accountID)
+		a, err := deps.AccountUC.ResolveHeadlessAccount(ctx, strings.TrimSpace(groupID), accountID)
 		if err != nil {
 			return convertErr(err)
 		}
@@ -498,7 +509,8 @@ func checkGroupReadable(ctx context.Context, userID, groupID, permKey string, de
 // ===== 個別チェック (resolver / 複合 perm) =====
 
 // checkStartHeadlessHost: StartHeadlessHost は host:write + (account.group_id に対し account:use).
-// group_id 未指定なら account.group_id にフォールバック (同一グループ制約).
+// アカウントは group_id のグループから引く (同一グループ制約). group_id 未指定なら
+// アカウントの登録先グループが 1 つに定まるときだけそのグループにフォールバックする.
 func checkStartHeadlessHost(ctx context.Context, req connect.AnyRequest, deps *PermissionDeps, permUC *usecase.PermissionUsecase) error {
 	msg, ok := req.Any().(*hdlctrlv1.StartHeadlessHostRequest)
 	if !ok {
@@ -521,17 +533,9 @@ func checkStartHeadlessHostMsg(ctx context.Context, userID string, msg *hdlctrlv
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("headless_account_id is required"))
 	}
 
-	acc, accErr := deps.AccountUC.GetHeadlessAccount(ctx, accID)
+	acc, accErr := deps.AccountUC.ResolveHeadlessAccount(ctx, msg.GetGroupId(), accID)
 	if accErr != nil {
-		// 既存テスト互換: アカウント未存在は Internal (旧実装の挙動).
-		// domain.ErrNotFound でラップされていない素の pgx.ErrNoRows を返すため.
 		return convertErr(accErr)
-	}
-
-	requestedGroupID := msg.GetGroupId()
-	if requestedGroupID != "" && acc.GroupID != requestedGroupID {
-		return connect.NewError(connect.CodeFailedPrecondition,
-			errors.New("account group does not match requested host group"))
 	}
 
 	groupID := acc.GroupID
@@ -548,7 +552,8 @@ func checkStartHeadlessHostMsg(ctx context.Context, userID string, msg *hdlctrlv
 // ホストを起動できる (host:write を持つ) ユーザーには許可する.
 // follow_up 付きの場合は chain される job に対して、その job を直接呼んだ場合と同一の
 // チェックを行う (then_start_host: 対象グループへの host:write + account:use /
-// then_restart_host: 対象ホストのグループへの host:write).
+// then_restart_host: 対象ホストのグループへの host:write /
+// then_start_world: StartWorld と同一 + 対象ホストのグループへの host:write).
 func checkBuildResoniteImage(ctx context.Context, req connect.AnyRequest, deps *PermissionDeps, permUC *usecase.PermissionUsecase) error {
 	msg, ok := req.Any().(*hdlctrlv1.BuildResoniteImageRequest)
 	if !ok {
@@ -565,6 +570,19 @@ func checkBuildResoniteImage(ctx context.Context, req connect.AnyRequest, deps *
 		return checkStartHeadlessHostMsg(ctx, claims.UserID, f.ThenStartHost, deps, permUC)
 	case *hdlctrlv1.BuildResoniteImageRequest_ThenRestartHost:
 		groupID, err := deps.HostRepo.GetGroupID(ctx, f.ThenRestartHost.GetHostId())
+		if err != nil {
+			return convertErr(err)
+		}
+
+		return requirePerm(ctx, permUC, claims.UserID, groupID, entity.PermKey_HostWrite)
+	case *hdlctrlv1.BuildResoniteImageRequest_ThenStartWorld:
+		if err := checkStartWorldMsg(ctx, claims.UserID, f.ThenStartWorld, deps, permUC); err != nil {
+			return err
+		}
+
+		// この chain はホストの起動を伴う場合にしか発生しないので、ビルド完了時点の
+		// ホストの状態によらず host:write を要求する.
+		groupID, err := deps.HostRepo.GetGroupID(ctx, f.ThenStartWorld.GetHostId())
 		if err != nil {
 			return convertErr(err)
 		}
@@ -624,6 +642,7 @@ func checkCreateHeadlessAccount(ctx context.Context, req connect.AnyRequest, _ *
 
 // checkStartWorld: host:use + account:use + session:write を host.group_id に対して.
 // session.group_id == host.group_id == account.group_id (同一グループ制約) を満たすこと.
+// 停止中のホストは job 内で起動されるため、その場合は host:write も要求する.
 func checkStartWorld(ctx context.Context, req connect.AnyRequest, deps *PermissionDeps, permUC *usecase.PermissionUsecase) error {
 	msg, ok := req.Any().(*hdlctrlv1.StartWorldRequest)
 	if !ok {
@@ -635,6 +654,12 @@ func checkStartWorld(ctx context.Context, req connect.AnyRequest, deps *Permissi
 		return err
 	}
 
+	return checkStartWorldMsg(ctx, claims.UserID, msg, deps, permUC)
+}
+
+// checkStartWorldMsg は StartWorldRequest 本体に対する権限判定.
+// StartWorld 直接呼び出しと BuildResoniteImage の then_start_world chain の両方から使う.
+func checkStartWorldMsg(ctx context.Context, userID string, msg *hdlctrlv1.StartWorldRequest, deps *PermissionDeps, permUC *usecase.PermissionUsecase) error {
 	hostID := msg.GetHostId()
 	if hostID == "" {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("host_id is required"))
@@ -650,12 +675,23 @@ func checkStartWorld(ctx context.Context, req connect.AnyRequest, deps *Permissi
 			errors.New("session group must equal host group"))
 	}
 
-	for _, key := range []string{
+	keys := []string{
 		entity.PermKey_HostUse,
 		entity.PermKey_AccountUse,
 		entity.PermKey_SessionWrite,
-	} {
-		if err := requirePerm(ctx, permUC, claims.UserID, hostGroupID, key); err != nil {
+	}
+
+	hostStatus, err := deps.HostRepo.GetStatus(ctx, hostID)
+	if err != nil {
+		return convertErr(err)
+	}
+
+	if hostStatus.IsStopped() {
+		keys = append(keys, entity.PermKey_HostWrite)
+	}
+
+	for _, key := range keys {
+		if err := requirePerm(ctx, permUC, userID, hostGroupID, key); err != nil {
 			return err
 		}
 	}

@@ -217,6 +217,9 @@ const (
 	// ControllerServiceGetAsyncJobProcedure is the fully-qualified name of the ControllerService's
 	// GetAsyncJob RPC.
 	ControllerServiceGetAsyncJobProcedure = "/hdlctrl.v1.ControllerService/GetAsyncJob"
+	// ControllerServiceTransferResourcesProcedure is the fully-qualified name of the
+	// ControllerService's TransferResources RPC.
+	ControllerServiceTransferResourcesProcedure = "/hdlctrl.v1.ControllerService/TransferResources"
 )
 
 // ControllerServiceClient is a client for the hdlctrl.v1.ControllerService service.
@@ -289,6 +292,8 @@ type ControllerServiceClient interface {
 	// 非同期job系
 	ListAsyncJobs(context.Context, *connect.Request[v1.ListAsyncJobsRequest]) (*connect.Response[v1.ListAsyncJobsResponse], error)
 	GetAsyncJob(context.Context, *connect.Request[v1.GetAsyncJobRequest]) (*connect.Response[v1.GetAsyncJobResponse], error)
+	// リソース移管系
+	TransferResources(context.Context, *connect.Request[v1.TransferResourcesRequest]) (*connect.Response[v1.TransferResourcesResponse], error)
 }
 
 // NewControllerServiceClient constructs a client for the hdlctrl.v1.ControllerService service. By
@@ -668,6 +673,12 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(controllerServiceMethods.ByName("GetAsyncJob")),
 			connect.WithClientOptions(opts...),
 		),
+		transferResources: connect.NewClient[v1.TransferResourcesRequest, v1.TransferResourcesResponse](
+			httpClient,
+			baseURL+ControllerServiceTransferResourcesProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("TransferResources")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -734,6 +745,7 @@ type controllerServiceClient struct {
 	cancelScheduledSessionOperation  *connect.Client[v1.CancelScheduledSessionOperationRequest, v1.CancelScheduledSessionOperationResponse]
 	listAsyncJobs                    *connect.Client[v1.ListAsyncJobsRequest, v1.ListAsyncJobsResponse]
 	getAsyncJob                      *connect.Client[v1.GetAsyncJobRequest, v1.GetAsyncJobResponse]
+	transferResources                *connect.Client[v1.TransferResourcesRequest, v1.TransferResourcesResponse]
 }
 
 // ListHeadlessHost calls hdlctrl.v1.ControllerService.ListHeadlessHost.
@@ -1044,6 +1056,11 @@ func (c *controllerServiceClient) GetAsyncJob(ctx context.Context, req *connect.
 	return c.getAsyncJob.CallUnary(ctx, req)
 }
 
+// TransferResources calls hdlctrl.v1.ControllerService.TransferResources.
+func (c *controllerServiceClient) TransferResources(ctx context.Context, req *connect.Request[v1.TransferResourcesRequest]) (*connect.Response[v1.TransferResourcesResponse], error) {
+	return c.transferResources.CallUnary(ctx, req)
+}
+
 // ControllerServiceHandler is an implementation of the hdlctrl.v1.ControllerService service.
 type ControllerServiceHandler interface {
 	// ホスト系
@@ -1114,6 +1131,8 @@ type ControllerServiceHandler interface {
 	// 非同期job系
 	ListAsyncJobs(context.Context, *connect.Request[v1.ListAsyncJobsRequest]) (*connect.Response[v1.ListAsyncJobsResponse], error)
 	GetAsyncJob(context.Context, *connect.Request[v1.GetAsyncJobRequest]) (*connect.Response[v1.GetAsyncJobResponse], error)
+	// リソース移管系
+	TransferResources(context.Context, *connect.Request[v1.TransferResourcesRequest]) (*connect.Response[v1.TransferResourcesResponse], error)
 }
 
 // NewControllerServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -1489,6 +1508,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		connect.WithSchema(controllerServiceMethods.ByName("GetAsyncJob")),
 		connect.WithHandlerOptions(opts...),
 	)
+	controllerServiceTransferResourcesHandler := connect.NewUnaryHandler(
+		ControllerServiceTransferResourcesProcedure,
+		svc.TransferResources,
+		connect.WithSchema(controllerServiceMethods.ByName("TransferResources")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/hdlctrl.v1.ControllerService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ControllerServiceListHeadlessHostProcedure:
@@ -1613,6 +1638,8 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceListAsyncJobsHandler.ServeHTTP(w, r)
 		case ControllerServiceGetAsyncJobProcedure:
 			controllerServiceGetAsyncJobHandler.ServeHTTP(w, r)
+		case ControllerServiceTransferResourcesProcedure:
+			controllerServiceTransferResourcesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1864,4 +1891,8 @@ func (UnimplementedControllerServiceHandler) ListAsyncJobs(context.Context, *con
 
 func (UnimplementedControllerServiceHandler) GetAsyncJob(context.Context, *connect.Request[v1.GetAsyncJobRequest]) (*connect.Response[v1.GetAsyncJobResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.GetAsyncJob is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) TransferResources(context.Context, *connect.Request[v1.TransferResourcesRequest]) (*connect.Response[v1.TransferResourcesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.TransferResources is not implemented"))
 }

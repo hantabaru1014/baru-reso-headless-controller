@@ -170,3 +170,23 @@ LIMIT @page_size::int OFFSET @page_offset::int;
 
 -- name: DeleteSession :exec
 DELETE FROM sessions WHERE id = $1;
+
+-- name: ListSessionsByHostAccount :many
+-- 指定アカウントを使うホスト上の全セッション (グループ間移管の対象列挙用).
+SELECT s.* FROM sessions s
+INNER JOIN hosts h ON h.id = s.host_id
+WHERE h.group_id = @group_id::text AND h.account_id = @account_id::text
+ORDER BY s.started_at DESC NULLS LAST, s.id ASC;
+
+-- name: UpdateSessionsGroupByHostAccount :exec
+-- グループ間移管用. 指定アカウントを使うホスト上の全セッションをまとめて別グループへ移す.
+-- hosts の group_id を書き換える前に実行すること.
+UPDATE sessions SET group_id = @new_group_id::text
+WHERE host_id IN (
+    SELECT h.id FROM hosts h WHERE h.group_id = @group_id::text AND h.account_id = @account_id::text
+);
+
+-- name: UpdateSessionGroup :exec
+-- グループ間移管用. ホストが既に削除されたセッション単体を移す.
+UPDATE sessions SET group_id = $2 WHERE id = $1;
+

@@ -329,7 +329,9 @@ func (c *ControllerService) UpdateUserRole(ctx context.Context, req *connect.Req
 
 // StartWorld implements hdlctrlv1connect.ControllerServiceHandler.
 // container への StartWorld RPC は時間がかかるため非同期 job 化する.
+// 停止中のホストが指定された場合は、job 内でホストを起動してからセッションを開始する.
 // 権限: host.group_id に対して host:use + account:use + session:write (同一グループ制約).
+// 停止中のホストでは host:write も必要.
 var _ = registerRPCPermission(
 	hdlctrlv1connect.ControllerServiceStartWorldProcedure,
 	checkStartWorld,

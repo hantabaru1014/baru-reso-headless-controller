@@ -15,7 +15,15 @@ LIMIT @page_size::int OFFSET @page_offset::int;
 SELECT * FROM hosts WHERE status = $1 ORDER BY started_at DESC;
 
 -- name: ListRunningHostsByAccount :many
-SELECT * FROM hosts WHERE account_id = $1 AND status = 2 ORDER BY started_at DESC;
+-- アカウントは (group_id, resonite_id) で一意なので、ホストも group_id 込みで引く.
+SELECT * FROM hosts WHERE group_id = $1 AND account_id = $2 AND status = 2 ORDER BY started_at DESC;
+
+-- name: ListHostsByAccount :many
+SELECT * FROM hosts WHERE group_id = $1 AND account_id = $2 ORDER BY started_at DESC NULLS LAST, id ASC;
+
+-- name: UpdateHostsGroupByAccount :exec
+-- グループ間移管用. 指定アカウントを使う全ホストをまとめて別グループへ移す.
+UPDATE hosts SET group_id = @new_group_id::text WHERE group_id = @group_id::text AND account_id = @account_id::text;
 
 -- name: GetHost :one
 SELECT * FROM hosts WHERE id = $1 LIMIT 1;
