@@ -248,9 +248,12 @@ function SendDynamicImpulseDialog({
 export function SessionOpsMenu({
   hostId,
   sessionId,
+  extraItems,
 }: {
   hostId: string;
   sessionId: string;
+  /** メニュー末尾に追加する DropdownMenuItem */
+  extraItems?: React.ReactNode;
 }) {
   const { t } = useTranslation();
   const [openSpawn, setOpenSpawn] = useState(false);
@@ -279,6 +282,7 @@ export function SessionOpsMenu({
           <DropdownMenuItem onClick={() => setOpenImpulse(true)}>
             {t("sessionOpsMenu.sendImpulse")}
           </DropdownMenuItem>
+          {extraItems}
         </DropdownMenuContent>
       </DropdownMenu>
       <SpawnItemDialog

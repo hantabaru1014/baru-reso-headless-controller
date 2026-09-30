@@ -129,7 +129,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostRestart(ctx context.Context, id str
 		return errors.Wrap(err, 0)
 	}
 
-	account, err := hhuc.hauc.GetHeadlessAccount(ctx, host.AccountId)
+	account, err := hhuc.hauc.GetHeadlessAccount(ctx, host.GroupID, host.AccountId)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}

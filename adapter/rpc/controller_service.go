@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
+	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/logging"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
@@ -61,6 +62,7 @@ type ControllerService struct {
 	souc           *usecase.ScheduledSessionOperationUsecase
 	ajuc           *async_job.Usecase
 	rvuc           *usecase.ResoniteVersionUsecase
+	rtuc           *usecase.ResourceTransferUsecase
 	permUC         *usecase.PermissionUsecase
 	groupRepo      port.GroupRepository
 	roleRepo       port.RoleRepository
@@ -78,6 +80,7 @@ func NewControllerService(
 	souc *usecase.ScheduledSessionOperationUsecase,
 	ajuc *async_job.Usecase,
 	rvuc *usecase.ResoniteVersionUsecase,
+	rtuc *usecase.ResourceTransferUsecase,
 	permUC *usecase.PermissionUsecase,
 	groupRepo port.GroupRepository,
 	roleRepo port.RoleRepository,
@@ -94,6 +97,7 @@ func NewControllerService(
 		souc:           souc,
 		ajuc:           ajuc,
 		rvuc:           rvuc,
+		rtuc:           rtuc,
 		permUC:         permUC,
 		groupRepo:      groupRepo,
 		roleRepo:       roleRepo,
@@ -145,6 +149,18 @@ func convertErr(err error) error {
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 
+	if errors.Is(err, usecase.ErrHeadlessAccountGroupAmbiguous) || errors.Is(err, usecase.ErrInvalidTransferTarget) {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	if errors.Is(err, usecase.ErrInvalidTransferDestination) {
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+
+	if errors.Is(err, usecase.ErrHeadlessAccountAlreadyExists) {
+		return connect.NewError(connect.CodeAlreadyExists, err)
+	}
+
 	return connect.NewError(connect.CodeInternal, err)
 }
 
@@ -155,6 +171,17 @@ func convertRpcClientErr(err error) error {
 	}
 
 	return connect.NewError(connect.CodeInternal, err)
+}
+
+// listRunningHostsByAccountRef はリクエストの (group_id, account_id) が指すアカウント登録で
+// 起動中のホストを返す. group_id 未指定時の解決は ResolveHeadlessAccount に従う.
+func (c *ControllerService) listRunningHostsByAccountRef(ctx context.Context, groupID, accountID string) (entity.HeadlessHostList, error) {
+	account, err := c.hauc.ResolveHeadlessAccount(ctx, groupID, accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.hhrepo.ListRunningByAccount(ctx, account.GroupID, account.ResoniteID)
 }
 
 // publishHostUpdated は単一ホストの再フェッチを促す通知を発行する.

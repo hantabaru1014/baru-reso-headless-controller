@@ -21,7 +21,7 @@ import { toast } from "sonner";
 // 形式. TanStack Query は部分マッチで invalidate するので、input を省くと
 // 同 method の全 input を一括無効化できる.
 
-function invalidate<I extends DescMessage, O extends DescMessage>(
+export function invalidate<I extends DescMessage, O extends DescMessage>(
   queryClient: QueryClient,
   schema: DescMethodUnary<I, O>,
   input?: MessageInitShape<I>,

@@ -29,7 +29,7 @@ type (
 	}
 
 	AccountFetcher interface {
-		GetHeadlessAccount(ctx context.Context, id string) (*entity.HeadlessAccount, error)
+		ResolveHeadlessAccount(ctx context.Context, groupID, resoniteID string) (*entity.HeadlessAccount, error)
 	}
 
 	// ImageBuildOperator は BUILD_IMAGE job handler が呼ぶ「実ビルド」インタフェース.
@@ -89,7 +89,7 @@ func (d *Dispatcher) startHost(ctx context.Context, job *entity.AsyncJob) (JobRe
 		return JobResult{}, "", errors.WrapPrefix(err, "decode start_host payload", 0)
 	}
 
-	account, err := d.account.GetHeadlessAccount(ctx, req.GetHeadlessAccountId())
+	account, err := d.account.ResolveHeadlessAccount(ctx, req.GetGroupId(), req.GetHeadlessAccountId())
 	if err != nil {
 		return JobResult{}, "", errors.WrapPrefix(err, "get headless account", 0)
 	}

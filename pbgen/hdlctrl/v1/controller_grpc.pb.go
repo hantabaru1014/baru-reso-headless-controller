@@ -80,6 +80,7 @@ const (
 	ControllerService_CancelScheduledSessionOperation_FullMethodName  = "/hdlctrl.v1.ControllerService/CancelScheduledSessionOperation"
 	ControllerService_ListAsyncJobs_FullMethodName                    = "/hdlctrl.v1.ControllerService/ListAsyncJobs"
 	ControllerService_GetAsyncJob_FullMethodName                      = "/hdlctrl.v1.ControllerService/GetAsyncJob"
+	ControllerService_TransferResources_FullMethodName                = "/hdlctrl.v1.ControllerService/TransferResources"
 )
 
 // ControllerServiceClient is the client API for ControllerService service.
@@ -153,6 +154,8 @@ type ControllerServiceClient interface {
 	// 非同期job系
 	ListAsyncJobs(ctx context.Context, in *ListAsyncJobsRequest, opts ...grpc.CallOption) (*ListAsyncJobsResponse, error)
 	GetAsyncJob(ctx context.Context, in *GetAsyncJobRequest, opts ...grpc.CallOption) (*GetAsyncJobResponse, error)
+	// リソース移管系
+	TransferResources(ctx context.Context, in *TransferResourcesRequest, opts ...grpc.CallOption) (*TransferResourcesResponse, error)
 }
 
 type controllerServiceClient struct {
@@ -763,6 +766,16 @@ func (c *controllerServiceClient) GetAsyncJob(ctx context.Context, in *GetAsyncJ
 	return out, nil
 }
 
+func (c *controllerServiceClient) TransferResources(ctx context.Context, in *TransferResourcesRequest, opts ...grpc.CallOption) (*TransferResourcesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TransferResourcesResponse)
+	err := c.cc.Invoke(ctx, ControllerService_TransferResources_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ControllerServiceServer is the server API for ControllerService service.
 // All implementations must embed UnimplementedControllerServiceServer
 // for forward compatibility.
@@ -834,6 +847,8 @@ type ControllerServiceServer interface {
 	// 非同期job系
 	ListAsyncJobs(context.Context, *ListAsyncJobsRequest) (*ListAsyncJobsResponse, error)
 	GetAsyncJob(context.Context, *GetAsyncJobRequest) (*GetAsyncJobResponse, error)
+	// リソース移管系
+	TransferResources(context.Context, *TransferResourcesRequest) (*TransferResourcesResponse, error)
 	mustEmbedUnimplementedControllerServiceServer()
 }
 
@@ -1023,6 +1038,9 @@ func (UnimplementedControllerServiceServer) ListAsyncJobs(context.Context, *List
 }
 func (UnimplementedControllerServiceServer) GetAsyncJob(context.Context, *GetAsyncJobRequest) (*GetAsyncJobResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAsyncJob not implemented")
+}
+func (UnimplementedControllerServiceServer) TransferResources(context.Context, *TransferResourcesRequest) (*TransferResourcesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method TransferResources not implemented")
 }
 func (UnimplementedControllerServiceServer) mustEmbedUnimplementedControllerServiceServer() {}
 func (UnimplementedControllerServiceServer) testEmbeddedByValue()                           {}
@@ -2125,6 +2143,24 @@ func _ControllerService_GetAsyncJob_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_TransferResources_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TransferResourcesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).TransferResources(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_TransferResources_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).TransferResources(ctx, req.(*TransferResourcesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ControllerService_ServiceDesc is the grpc.ServiceDesc for ControllerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2371,6 +2407,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAsyncJob",
 			Handler:    _ControllerService_GetAsyncJob_Handler,
+		},
+		{
+			MethodName: "TransferResources",
+			Handler:    _ControllerService_TransferResources_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

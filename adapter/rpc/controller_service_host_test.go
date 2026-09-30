@@ -163,6 +163,28 @@ func TestControllerService_StartHeadlessHost(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, res.Msg)
 		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_START_HOST))
+
+		// 同じ Resonite アカウントが caller の権限外グループにも登録されると、group_id 無し
+		// では登録を特定できない. group_id 指定なら caller のグループの登録で起動できる.
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-mp-acc", "mp@example.test", "password", "g-mp-starthost-other")
+
+		_, err = client.StartHeadlessHost(t.Context(), testutil.CreateAuthenticatedRequest(t, &hdlctrlv1.StartHeadlessHostRequest{
+			HeadlessAccountId: "U-mp-acc",
+			Name:              "TestHost",
+			ImageTag:          &imageTag,
+		}, callerID, "U-resonite-"+callerID, ""))
+		require.Error(t, err)
+		assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+
+		gid := groupID
+		res, err = client.StartHeadlessHost(t.Context(), testutil.CreateAuthenticatedRequest(t, &hdlctrlv1.StartHeadlessHostRequest{
+			HeadlessAccountId: "U-mp-acc",
+			Name:              "TestHost",
+			ImageTag:          &imageTag,
+			GroupId:           &gid,
+		}, callerID, "U-resonite-"+callerID, ""))
+		require.NoError(t, err)
+		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_START_HOST))
 	})
 
 	t.Run("失敗: host:write のみ (account:use 不足) で PermissionDenied", func(t *testing.T) {
