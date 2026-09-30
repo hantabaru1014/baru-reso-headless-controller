@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
  * - `requiredPermission` で指定した key を呼び出しユーザーが持つグループのみ選択肢に出る
  * - personal グループはデフォルト選択候補 (リスト先頭) として並ぶ
  * - `restrictToGroupId` を指定すると、そのグループのみに選択肢を絞る (同一グループ制約用)
+ * - `excludeGroupId` を指定すると、そのグループを選択肢から除く (移管先の選択用)
  */
 export function GroupSelectField({
   label,
@@ -22,6 +23,7 @@ export function GroupSelectField({
   onChange,
   requiredPermission,
   restrictToGroupId,
+  excludeGroupId,
   error,
   readOnly,
 }: {
@@ -31,6 +33,7 @@ export function GroupSelectField({
   onChange: (groupId: string) => void;
   requiredPermission: PermissionKey;
   restrictToGroupId?: string;
+  excludeGroupId?: string;
   error?: string;
   readOnly?: boolean;
 }) {
@@ -49,6 +52,9 @@ export function GroupSelectField({
     if (restrictToGroupId) {
       candidates = candidates.filter((g) => g.id === restrictToGroupId);
     }
+    if (excludeGroupId) {
+      candidates = candidates.filter((g) => g.id !== excludeGroupId);
+    }
     // personal を先頭に
     candidates.sort((a, b) => {
       if (a.type === b.type) return a.name.localeCompare(b.name);
@@ -63,6 +69,7 @@ export function GroupSelectField({
     groupsWithPermission,
     requiredPermission,
     restrictToGroupId,
+    excludeGroupId,
   ]);
 
   return (

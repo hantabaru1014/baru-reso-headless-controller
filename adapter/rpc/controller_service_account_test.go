@@ -167,8 +167,7 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 		assert.NotNil(t, res.Msg)
 
 		// Verify account was created in DB
-		account, err := setup.queries.GetHeadlessAccount(t.Context(), "U-testuser123")
-		require.NoError(t, err)
+		account := testutil.GetOnlyHeadlessAccount(t, setup.queries, "U-testuser123")
 		assert.Equal(t, "testuser@example.test", account.Credential)
 	})
 
@@ -198,8 +197,7 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 		require.NoError(t, err)
 
 		// 作成された account は指定 group_id に所属している.
-		acc, err := setup.queries.GetHeadlessAccount(t.Context(), "U-mp-newacc")
-		require.NoError(t, err)
+		acc := testutil.GetOnlyHeadlessAccount(t, setup.queries, "U-mp-newacc")
 		assert.Equal(t, groupID, acc.GroupID)
 	})
 
@@ -228,7 +226,7 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
 
-	t.Run("失敗: 既に存在するアカウントを作成", func(t *testing.T) {
+	t.Run("失敗: 同一グループに既に存在するアカウントを作成 (別グループには登録できる)", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
@@ -237,10 +235,10 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 		// Create initial account
 		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-existing", "existing@example.test", "password123")
 
-		// Mock skyfrost to return successful login but DB insert will fail
 		setup.mockSkyfrost.EXPECT().
 			UserLogin(gomock.Any(), "existing@example.test", "newpassword123").
-			Return(&skyfrost.UserSession{UserId: "U-existing"}, nil)
+			Return(&skyfrost.UserSession{UserId: "U-existing"}, nil).
+			Times(2)
 
 		setup.mockSkyfrost.EXPECT().
 			FetchUserInfo(gomock.Any(), "U-existing").
@@ -248,20 +246,38 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 				ID:       "U-existing",
 				UserName: "ExistingUser",
 				IconUrl:  "https://example.test/icon.png",
-			}, nil)
+			}, nil).
+			Times(2)
 
+		// アカウントは (group_id, resonite_id) で一意なので、別グループ (caller の
+		// personal グループ) には同じ Resonite アカウントを登録できる.
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateHeadlessAccountRequest{
 			Credential: "existing@example.test",
 			Password:   "newpassword123",
 		})
 
 		_, err := client.CreateHeadlessAccount(t.Context(), req)
+		require.NoError(t, err)
+
+		registered, err := setup.queries.ListHeadlessAccountsByResoniteID(t.Context(), "U-existing")
+		require.NoError(t, err)
+		require.Len(t, registered, 2)
+
+		// 同一グループへの重複登録は AlreadyExists.
+		gid := entity.MigratedPrePermissionGroupID
+		reqDup := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateHeadlessAccountRequest{
+			Credential: "existing@example.test",
+			Password:   "newpassword123",
+			GroupId:    &gid,
+		})
+
+		_, err = client.CreateHeadlessAccount(t.Context(), reqDup)
 		require.Error(t, err)
 
 		connectErr := &connect.Error{}
 		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
-		assert.Equal(t, connect.CodeInternal, connectErr.Code())
+		assert.Equal(t, connect.CodeAlreadyExists, connectErr.Code())
 	})
 }
 
@@ -284,8 +300,31 @@ func TestControllerService_DeleteHeadlessAccount(t *testing.T) {
 		assert.NotNil(t, res.Msg)
 
 		// Verify account was deleted
-		_, err = setup.queries.GetHeadlessAccount(t.Context(), "U-todelete")
-		assert.Error(t, err)
+		remaining, err := setup.queries.ListHeadlessAccountsByResoniteID(t.Context(), "U-todelete")
+		require.NoError(t, err)
+		assert.Empty(t, remaining)
+
+		// 同一アカウントが複数グループに登録されている場合、group_id 無しでは対象を
+		// 特定できず InvalidArgument. group_id を指定するとそのグループの登録だけが消える.
+		const otherGroupID = "g-del-other"
+
+		testutil.CreateTestHeadlessAccount(t, setup.queries, "U-multi", "multi@example.test", "password123")
+		testutil.CreateTestHeadlessAccountInGroup(t, setup.queries, "U-multi", "multi@example.test", "password123", otherGroupID)
+
+		_, err = client.DeleteHeadlessAccount(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.DeleteHeadlessAccountRequest{
+			AccountId: "U-multi",
+		}))
+		require.Error(t, err)
+		assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+
+		_, err = client.DeleteHeadlessAccount(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.DeleteHeadlessAccountRequest{
+			AccountId: "U-multi",
+			GroupId:   otherGroupID,
+		}))
+		require.NoError(t, err)
+
+		survivor := testutil.GetOnlyHeadlessAccount(t, setup.queries, "U-multi")
+		assert.Equal(t, entity.MigratedPrePermissionGroupID, survivor.GroupID)
 	})
 
 	t.Run("成功: 最小権限 caller (account:write) で削除", func(t *testing.T) {
@@ -361,8 +400,7 @@ func TestControllerService_UpdateHeadlessAccountCredentials(t *testing.T) {
 		assert.NotNil(t, res.Msg)
 
 		// Verify credentials were updated in DB
-		account, err := setup.queries.GetHeadlessAccount(t.Context(), "U-update")
-		require.NoError(t, err)
+		account := testutil.GetOnlyHeadlessAccount(t, setup.queries, "U-update")
 		assert.Equal(t, "new@example.test", account.Credential)
 	})
 
@@ -572,8 +610,7 @@ func TestControllerService_RefetchHeadlessAccountInfo(t *testing.T) {
 		assert.NotNil(t, res.Msg)
 
 		// Verify account info was updated
-		account, err := setup.queries.GetHeadlessAccount(t.Context(), "U-refetch")
-		require.NoError(t, err)
+		account := testutil.GetOnlyHeadlessAccount(t, setup.queries, "U-refetch")
 		assert.Equal(t, "UpdatedName", account.LastDisplayName.String)
 		assert.Equal(t, "https://example.test/new-icon.png", account.LastIconUrl.String)
 	})

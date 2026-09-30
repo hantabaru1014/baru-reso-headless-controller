@@ -79,7 +79,8 @@ const HostConnectorType_DOCKER HostConnectorType = "docker"
 type HeadlessHostRepository interface {
 	ListAll(ctx context.Context, fetchOptions HeadlessHostFetchOptions) (entity.HeadlessHostList, error)
 	ListPaged(ctx context.Context, opts HostListPageOptions) (*HostListPageResult, error)
-	ListRunningByAccount(ctx context.Context, accountId string) (entity.HeadlessHostList, error)
+	// ListRunningByAccount は groupID に登録されたアカウント accountId で起動中のホストを返す.
+	ListRunningByAccount(ctx context.Context, groupID, accountId string) (entity.HeadlessHostList, error)
 	Find(ctx context.Context, id string, fetchOptions HeadlessHostFetchOptions) (*entity.HeadlessHost, error)
 	// GetGroupID は host の group_id だけを DB のみで返す軽量メソッド.
 	// permission interceptor が container RPC を起こさないようにするための専用 API.

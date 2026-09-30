@@ -69,12 +69,32 @@ func CreateTestHeadlessAccount(t *testing.T, queries *db.Queries, resoniteID, cr
 		t.Fatalf("failed to create test headless account: %v", err)
 	}
 
-	account, err := queries.GetHeadlessAccount(t.Context(), resoniteID)
+	account, err := queries.GetHeadlessAccount(t.Context(), db.GetHeadlessAccountParams{
+		GroupID:    entity.MigratedPrePermissionGroupID,
+		ResoniteID: resoniteID,
+	})
 	if err != nil {
 		t.Fatalf("failed to get created headless account: %v", err)
 	}
 
 	return account
+}
+
+// GetOnlyHeadlessAccount は resoniteID のアカウント登録がちょうど 1 グループにあることを確認して返す.
+// アカウントは (group_id, resonite_id) で一意なので、登録先グループを問わず引きたいテスト用.
+func GetOnlyHeadlessAccount(t *testing.T, queries *db.Queries, resoniteID string) db.HeadlessAccount {
+	t.Helper()
+
+	accounts, err := queries.ListHeadlessAccountsByResoniteID(t.Context(), resoniteID)
+	if err != nil {
+		t.Fatalf("failed to list headless accounts by resonite id %q: %v", resoniteID, err)
+	}
+
+	if len(accounts) != 1 {
+		t.Fatalf("expected exactly 1 headless account for resonite id %q, got %d", resoniteID, len(accounts))
+	}
+
+	return accounts[0]
 }
 
 // CreateTestHeadlessHost creates a test headless host in the database.
@@ -335,7 +355,10 @@ func CreateTestHeadlessAccountInGroup(t *testing.T, queries *db.Queries, resonit
 		t.Fatalf("failed to create test headless account in group %q: %v", groupID, err)
 	}
 
-	account, err := queries.GetHeadlessAccount(t.Context(), resoniteID)
+	account, err := queries.GetHeadlessAccount(t.Context(), db.GetHeadlessAccountParams{
+		GroupID:    groupID,
+		ResoniteID: resoniteID,
+	})
 	if err != nil {
 		t.Fatalf("failed to get created headless account: %v", err)
 	}
@@ -392,6 +415,17 @@ func SetupUserWithExactPermissions(t *testing.T, queries *db.Queries, userID, gr
 
 	_ = CreateTestUser(t, queries, userID, "dummy-password")
 
+	AddUserToGroupWithExactPermissions(t, queries, userID, groupID, permKeys)
+
+	return groupID
+}
+
+// AddUserToGroupWithExactPermissions は既存ユーザーを、指定 permission key だけを持つ
+// カスタムロールで normal グループに追加する (グループが無ければ作成する).
+// 複数グループにまたがる権限 (グループ間移管など) を持つ caller を組むために使う.
+func AddUserToGroupWithExactPermissions(t *testing.T, queries *db.Queries, userID, groupID string, permKeys []string) {
+	t.Helper()
+
 	// normal グループを作成 (存在しない場合)
 	if _, err := queries.GetGroup(t.Context(), groupID); err != nil {
 		_, createErr := queries.CreateGroup(t.Context(), db.CreateGroupParams{
@@ -408,7 +442,7 @@ func SetupUserWithExactPermissions(t *testing.T, queries *db.Queries, userID, gr
 	_, err := queries.CreateRole(t.Context(), db.CreateRoleParams{
 		ID:      roleID,
 		GroupID: pgtype.Text{String: groupID, Valid: true},
-		Name:    "exact-perm-role",
+		Name:    "exact-perm-role-" + userID,
 		Scope:   string(entity.RoleScope_Normal),
 	})
 	require.NoError(t, err, "failed to create custom role")
@@ -429,8 +463,6 @@ func SetupUserWithExactPermissions(t *testing.T, queries *db.Queries, userID, gr
 		AddedBy: pgtype.Text{Valid: false},
 	})
 	require.NoError(t, err, "failed to add user to group")
-
-	return groupID
 }
 
 // SetupUserWithExactSystemPermissions は system グループに「指定 system permission key

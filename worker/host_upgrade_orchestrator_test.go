@@ -165,8 +165,8 @@ func (r *orchestratorSessionRepo) Upsert(_ context.Context, s *entity.Session) e
 
 type fakeAccountFetcher struct{}
 
-func (fakeAccountFetcher) GetHeadlessAccount(_ context.Context, id string) (*entity.HeadlessAccount, error) {
-	return &entity.HeadlessAccount{ResoniteID: id, Credential: "cred", Password: "pw"}, nil
+func (fakeAccountFetcher) GetHeadlessAccount(_ context.Context, groupID, id string) (*entity.HeadlessAccount, error) {
+	return &entity.HeadlessAccount{ResoniteID: id, Credential: "cred", Password: "pw", GroupID: groupID}, nil
 }
 
 // stubRPCClient is a tiny HeadlessControlServiceClient covering the RPCs

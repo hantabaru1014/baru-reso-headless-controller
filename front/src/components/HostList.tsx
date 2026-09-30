@@ -71,7 +71,6 @@ function NewHostDialog({
   onClose?: () => void;
 }) {
   const { t } = useTranslation();
-  const { data: accounts } = useQuery(listHeadlessAccounts);
   const { data: resoVersions } = useQuery(listResoniteVersions, {});
   const { mutateAsync: mutateStartHost, isPending } =
     useMutation(startHeadlessHost);
@@ -102,6 +101,12 @@ function NewHostDialog({
   });
 
   const selectedGroupId = watch("groupId");
+  // 同一アカウントが複数グループに登録されうるので、選択中グループのアカウントだけを取得する.
+  const { data: accounts } = useQuery(
+    listHeadlessAccounts,
+    { groupId: selectedGroupId },
+    { enabled: !!selectedGroupId },
+  );
 
   // 非同期に解決される default group をユーザーが触っていなければ反映する.
   useEffect(() => {
@@ -251,7 +256,13 @@ function NewHostDialog({
             render={({ field }) => (
               <GroupSelectField
                 value={field.value}
-                onChange={field.onChange}
+                onChange={(groupId) => {
+                  if (groupId !== field.value) {
+                    // アカウントはグループごとの登録なので選び直させる
+                    setValue("accountId", "");
+                  }
+                  field.onChange(groupId);
+                }}
                 requiredPermission={PERMISSION_KEYS.HOST_WRITE}
                 helperText={t("hostList.groupHelper")}
                 error={errors.groupId?.message}
@@ -267,10 +278,7 @@ function NewHostDialog({
                 helperText={t("hostList.hostUserHelper")}
                 options={
                   accounts?.accounts
-                    .filter(
-                      (account) =>
-                        !selectedGroupId || account.groupId === selectedGroupId,
-                    )
+                    .filter((account) => account.groupId === selectedGroupId)
                     .map((account) => ({
                       id: account.userId,
                       label: (

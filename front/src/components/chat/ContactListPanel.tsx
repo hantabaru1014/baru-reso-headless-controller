@@ -11,6 +11,7 @@ import { ResoniteUserIcon } from "../ResoniteUserIcon";
 import type { ContactListPanelProps } from "./types";
 
 export function ContactListPanel({
+  groupId,
   accountId,
   enabled,
   selectedContact,
@@ -31,10 +32,11 @@ export function ContactListPanel({
     isError: isContactsError,
     error: contactsError,
   } = useInfiniteQuery({
-    queryKey: ["contacts", accountId],
+    queryKey: ["contacts", groupId, accountId],
     queryFn: async ({ pageParam }) => {
       const response = await callUnaryMethod(transport, listContacts, {
         headlessAccountId: accountId,
+        groupId,
         limit: 50,
         cursor: pageParam?.cursor,
       });
