@@ -6497,8 +6497,13 @@ func (*ResoniteLinkStreamRequest_TextFrame) isResoniteLinkStreamRequest_Payload(
 func (*ResoniteLinkStreamRequest_BinaryFrame) isResoniteLinkStreamRequest_Payload() {}
 
 type ResoniteLinkInit struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	// 接続を発行した Resonite ユーザー ID (U-xxx)。
+	// 指定するとそのユーザーがローカルで ResoniteLink を開始したときと同様に、
+	// SimpleAvatarProtection によるスロットのアクセス判定がこのユーザーを基準に行われる。
+	// 空ならヘッドレスアカウント (LocalUser) 基準のままになる。
+	UserId        string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6536,6 +6541,13 @@ func (*ResoniteLinkInit) Descriptor() ([]byte, []int) {
 func (x *ResoniteLinkInit) GetSessionId() string {
 	if x != nil {
 		return x.SessionId
+	}
+	return ""
+}
+
+func (x *ResoniteLinkInit) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -7186,10 +7198,11 @@ const file_headless_v1_headless_proto_rawDesc = "" +
 	"\n" +
 	"text_frame\x18\x02 \x01(\tH\x00R\ttextFrame\x12#\n" +
 	"\fbinary_frame\x18\x03 \x01(\fH\x00R\vbinaryFrameB\t\n" +
-	"\apayload\"1\n" +
+	"\apayload\"J\n" +
 	"\x10ResoniteLinkInit\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\"\xa5\x01\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xa5\x01\n" +
 	"\x1aResoniteLinkStreamResponse\x126\n" +
 	"\x05ready\x18\x01 \x01(\v2\x1e.headless.v1.ResoniteLinkReadyH\x00R\x05ready\x12\x1f\n" +
 	"\n" +

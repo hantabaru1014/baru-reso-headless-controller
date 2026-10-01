@@ -485,6 +485,9 @@ message IssueResoniteLinkConnectionRequest {
 message IssueResoniteLinkConnectionResponse {
   string ws_path = 1;
   google.protobuf.Timestamp expires_at = 2;
+  // この接続が headless 上で振る舞う Resonite ユーザー ID (発行ユーザーの Resonite ID)。
+  // 空なら発行ユーザーに Resonite ID が未登録で、headless アカウント基準で動作する。
+  string resonite_user_id = 3;
 }
 
 message FetchWorldInfoRequest {

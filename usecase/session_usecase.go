@@ -71,14 +71,15 @@ var ErrHostDraining = errors.New("host is draining for upgrade")
 var _ port.SessionStopper = (*SessionUsecase)(nil)
 
 // IssueResoniteLinkToken は ResoniteLink WebSocket 接続用の短期 JWT を発行する.
-// セッションが存在することを確認した上で、claims に session_id と userID を含める.
+// セッションが存在することを確認した上で、claims に session_id と userID、
+// 発行ユーザーの Resonite ユーザー ID (resoniteUserID, 未登録なら空) を含める.
 // TODO: owner-only enforcement - 現在は認証済みなら誰でも発行可能.
-func (u *SessionUsecase) IssueResoniteLinkToken(ctx context.Context, sessionID, userID string) (string, time.Time, error) {
+func (u *SessionUsecase) IssueResoniteLinkToken(ctx context.Context, sessionID, userID, resoniteUserID string) (string, time.Time, error) {
 	if _, err := u.sessionRepo.Get(ctx, sessionID); err != nil {
 		return "", time.Time{}, errors.Wrap(err, 0)
 	}
 
-	return auth.GenerateResoniteLinkToken(userID, sessionID, u.resoniteLinkTTL)
+	return auth.GenerateResoniteLinkToken(userID, resoniteUserID, sessionID, u.resoniteLinkTTL)
 }
 
 func (u *SessionUsecase) StartSession(ctx context.Context, hostId string, groupID string, userId *string, params *headlessv1.WorldStartupParameters, memo *string) (*entity.Session, error) {

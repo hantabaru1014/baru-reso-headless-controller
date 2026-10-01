@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	testSessionID = "S-test-session"
-	testHostID    = "H-test-host"
+	testSessionID      = "S-test-session"
+	testHostID         = "H-test-host"
+	testResoniteUserID = "U-test"
 )
 
 // --- fakes ---
@@ -142,7 +143,7 @@ func wsURL(server *httptest.Server, query string) string {
 func issueToken(t *testing.T, ttl time.Duration) string {
 	t.Helper()
 
-	token, _, err := auth.GenerateResoniteLinkToken("U-test", testSessionID, ttl)
+	token, _, err := auth.GenerateResoniteLinkToken("test-user", testResoniteUserID, testSessionID, ttl)
 	require.NoError(t, err)
 
 	return token
@@ -175,6 +176,8 @@ func TestBridge_HappyPath_TextAndBinary(t *testing.T) {
 		init, ok := sent.GetPayload().(*headlessv1.ResoniteLinkStreamRequest_Init)
 		require.True(t, ok, "expected Init payload, got %T", sent.GetPayload())
 		assert.Equal(t, testSessionID, init.Init.GetSessionId())
+		// token に載せた Resonite ID が user_id として container へ渡る.
+		assert.Equal(t, testResoniteUserID, init.Init.GetUserId())
 	case <-time.After(2 * time.Second):
 		t.Fatal("Init was not forwarded to gRPC stream")
 	}

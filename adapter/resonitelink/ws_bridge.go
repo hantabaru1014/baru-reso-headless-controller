@@ -117,9 +117,14 @@ func (b *Bridge) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// user_id には発行ユーザーの Resonite ID を渡す. container 側はこれを基準に
+	// SimpleAvatarProtection の判定を行う (空なら headless アカウント基準).
 	initReq := &headlessv1.ResoniteLinkStreamRequest{
 		Payload: &headlessv1.ResoniteLinkStreamRequest_Init{
-			Init: &headlessv1.ResoniteLinkInit{SessionId: claims.SessionID},
+			Init: &headlessv1.ResoniteLinkInit{
+				SessionId: claims.SessionID,
+				UserId:    claims.ResoniteUserID,
+			},
 		},
 	}
 	if err := stream.Send(initReq); err != nil {
