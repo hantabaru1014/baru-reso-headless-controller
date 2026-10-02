@@ -245,20 +245,25 @@ func WithActAsUser(ctx context.Context, userID string) context.Context {
 
 // ResoniteLinkClaims は ResoniteLink WebSocket 接続用の短期トークン用クレーム.
 type ResoniteLinkClaims struct {
-	UserID    string `json:"user_id"`
-	SessionID string `json:"session_id"`
+	UserID string `json:"user_id"`
+	// ResoniteUserID は発行ユーザーの Resonite ユーザー ID (U-xxx).
+	// headless container へ渡し、ResoniteLink のスロットアクセス判定 (SimpleAvatarProtection) を
+	// このユーザー基準で行わせる. 未登録なら空.
+	ResoniteUserID string `json:"resonite_user_id,omitempty"`
+	SessionID      string `json:"session_id"`
 	jwt.RegisteredClaims
 }
 
 // GenerateResoniteLinkToken は ResoniteLink 接続用の短期 JWT を発行する.
 // audience に ResoniteLinkAudience を固定し、ParseResoniteLinkToken で検証することで
 // アクセストークン (AuthClaims) からの取り違えを防ぐ.
-func GenerateResoniteLinkToken(userID, sessionID string, ttl time.Duration) (string, time.Time, error) {
+func GenerateResoniteLinkToken(userID, resoniteUserID, sessionID string, ttl time.Duration) (string, time.Time, error) {
 	now := time.Now()
 	expiresAt := now.Add(ttl)
 	claims := ResoniteLinkClaims{
-		UserID:    userID,
-		SessionID: sessionID,
+		UserID:         userID,
+		ResoniteUserID: resoniteUserID,
+		SessionID:      sessionID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Audience:  jwt.ClaimStrings{ResoniteLinkAudience},
 			ExpiresAt: jwt.NewNumericDate(expiresAt),

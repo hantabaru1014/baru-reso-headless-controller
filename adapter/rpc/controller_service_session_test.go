@@ -1102,6 +1102,9 @@ func TestControllerService_IssueResoniteLinkConnection(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, session.ID, claims.SessionID)
 		assert.NotEmpty(t, claims.UserID)
+		// 発行ユーザーの Resonite ID (CreateDefaultAuthenticatedRequest のもの) が token と response に載る
+		assert.Equal(t, "U-test123", claims.ResoniteUserID)
+		assert.Equal(t, "U-test123", res.Msg.GetResoniteUserId())
 		require.NotNil(t, res.Msg.GetExpiresAt())
 		assert.True(t, res.Msg.GetExpiresAt().AsTime().After(time.Now()))
 	})

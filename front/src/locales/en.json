@@ -648,6 +648,8 @@
     "issuing": "Issuing...",
     "copy": "Copy",
     "expiresAt": "Expires: {{time}}",
+    "actsAsUser": "Slots protected by Simple Avatar Protection are accessible as {{userId}} over this connection.",
+    "noResoniteId": "Your account has no Resonite ID linked, so this connection acts as the headless account. Slots protected by other users' Simple Avatar Protection will not be accessible.",
     "reissue": "Reissue",
     "close": "Close"
   },

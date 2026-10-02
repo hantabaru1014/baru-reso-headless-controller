@@ -83,6 +83,18 @@ export function ResoniteLinkConnectionDialog({
               })}
             </p>
           )}
+          {data &&
+            (data.resoniteUserId ? (
+              <p className="text-xs text-muted-foreground">
+                {t("resoniteLinkConnectionDialog.actsAsUser", {
+                  userId: data.resoniteUserId,
+                })}
+              </p>
+            ) : (
+              <p className="text-xs text-destructive">
+                {t("resoniteLinkConnectionDialog.noResoniteId")}
+              </p>
+            ))}
         </div>
         <DialogFooter>
           <Button

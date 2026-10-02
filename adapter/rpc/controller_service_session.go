@@ -414,14 +414,17 @@ func (c *ControllerService) IssueResoniteLinkConnection(ctx context.Context, req
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("session_id is required"))
 	}
 
-	token, expiresAt, err := c.suc.IssueResoniteLinkToken(ctx, req.Msg.GetSessionId(), claims.UserID)
+	// 発行ユーザーの Resonite ID を token に載せ、container 側で ResoniteLink の
+	// スロットアクセス判定をそのユーザー基準にさせる (未登録なら空 = headless アカウント基準).
+	token, expiresAt, err := c.suc.IssueResoniteLinkToken(ctx, req.Msg.GetSessionId(), claims.UserID, claims.ResoniteID)
 	if err != nil {
 		return nil, convertErr(err)
 	}
 
 	res := connect.NewResponse(&hdlctrlv1.IssueResoniteLinkConnectionResponse{
-		WsPath:    resonitelink.BuildWSPath(token),
-		ExpiresAt: timestamppb.New(expiresAt),
+		WsPath:         resonitelink.BuildWSPath(token),
+		ExpiresAt:      timestamppb.New(expiresAt),
+		ResoniteUserId: claims.ResoniteID,
 	})
 
 	return res, nil

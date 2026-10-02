@@ -4073,11 +4073,14 @@ func (x *IssueResoniteLinkConnectionRequest) GetSessionId() string {
 }
 
 type IssueResoniteLinkConnectionResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	WsPath        string                 `protobuf:"bytes,1,opt,name=ws_path,json=wsPath,proto3" json:"ws_path,omitempty"`
-	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	WsPath    string                 `protobuf:"bytes,1,opt,name=ws_path,json=wsPath,proto3" json:"ws_path,omitempty"`
+	ExpiresAt *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	// この接続が headless 上で振る舞う Resonite ユーザー ID (発行ユーザーの Resonite ID)。
+	// 空なら発行ユーザーに Resonite ID が未登録で、headless アカウント基準で動作する。
+	ResoniteUserId string `protobuf:"bytes,3,opt,name=resonite_user_id,json=resoniteUserId,proto3" json:"resonite_user_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *IssueResoniteLinkConnectionResponse) Reset() {
@@ -4122,6 +4125,13 @@ func (x *IssueResoniteLinkConnectionResponse) GetExpiresAt() *timestamppb.Timest
 		return x.ExpiresAt
 	}
 	return nil
+}
+
+func (x *IssueResoniteLinkConnectionResponse) GetResoniteUserId() string {
+	if x != nil {
+		return x.ResoniteUserId
+	}
+	return ""
 }
 
 type FetchWorldInfoRequest struct {
@@ -9348,11 +9358,12 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x15RemoveContactResponse\"C\n" +
 	"\"IssueResoniteLinkConnectionRequest\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\"y\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"\xa3\x01\n" +
 	"#IssueResoniteLinkConnectionResponse\x12\x17\n" +
 	"\aws_path\x18\x01 \x01(\tR\x06wsPath\x129\n" +
 	"\n" +
-	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"B\n" +
+	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12(\n" +
+	"\x10resonite_user_id\x18\x03 \x01(\tR\x0eresoniteUserId\"B\n" +
 	"\x15FetchWorldInfoRequest\x12\x17\n" +
 	"\ahost_id\x18\x01 \x01(\tR\x06hostId\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\"o\n" +

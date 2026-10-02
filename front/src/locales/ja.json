@@ -648,6 +648,8 @@
     "issuing": "発行中...",
     "copy": "コピー",
     "expiresAt": "有効期限: {{time}}",
+    "actsAsUser": "この接続では Simple Avatar Protection のかかったスロットに {{userId}} としてアクセスできます。",
+    "noResoniteId": "アカウントに Resonite ID が紐付いていないため、この接続はヘッドレスアカウントとして扱われます。他ユーザーの Simple Avatar Protection がかかったスロットにはアクセスできません。",
     "reissue": "再発行",
     "close": "閉じる"
   },
