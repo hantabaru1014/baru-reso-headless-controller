@@ -24,7 +24,11 @@ interface IconChangeDialogProps {
   isUploading?: boolean;
   title?: string;
   description?: string;
-  cancelLabel?: string;
+  /**
+   * 指定するとキャンセルの代わりに「スキップ」を表示する. 設定かスキップのどちらかを
+   * 選ばせるため、閉じるボタン・ESC・外側クリックでは閉じない.
+   */
+  onSkip?: () => Promise<void>;
 }
 
 export function IconChangeDialog({
@@ -35,7 +39,7 @@ export function IconChangeDialog({
   isUploading = false,
   title,
   description,
-  cancelLabel,
+  onSkip,
 }: IconChangeDialogProps) {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -153,9 +157,20 @@ export function IconChangeDialog({
     }
   }, [imageUrl, croppedAreaPixels, onUpload, onClose, t]);
 
+  const handleSkip = useCallback(async () => {
+    try {
+      await onSkip?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, [onSkip]);
+
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose?.()}>
-      <DialogContent className="sm:max-w-[480px]">
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => !isOpen && !onSkip && onClose?.()}
+    >
+      <DialogContent className="sm:max-w-[480px]" showCloseButton={!onSkip}>
         <DialogHeader>
           <DialogTitle>
             {title ?? t("iconChangeDialog.changeIconTitle")}
@@ -278,11 +293,21 @@ export function IconChangeDialog({
         </div>
 
         <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline" disabled={isUploading}>
-              {cancelLabel ?? t("common.cancel")}
+          {onSkip ? (
+            <Button
+              variant="outline"
+              disabled={isUploading}
+              onClick={handleSkip}
+            >
+              {t("iconChangeDialog.skip")}
             </Button>
-          </DialogClose>
+          ) : (
+            <DialogClose asChild>
+              <Button variant="outline" disabled={isUploading}>
+                {t("common.cancel")}
+              </Button>
+            </DialogClose>
+          )}
           <Button
             onClick={handleUpload}
             disabled={!imageUrl || !croppedAreaPixels || isUploading}

@@ -1,8 +1,11 @@
 package rpc
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"image"
+	"image/png"
 	"strings"
 	"testing"
 	"time"
@@ -203,6 +206,41 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 		assert.Equal(t, groupID, acc.GroupID)
 	})
 
+	t.Run("成功: アイコンを指定するとアイコンを設定してから追加する", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		setup.mockSkyfrost.EXPECT().
+			UserLogin(gomock.Any(), "icon@example.test", "p").
+			Return(&skyfrost.UserSession{UserId: "U-icon"}, nil)
+		setup.mockSkyfrost.EXPECT().
+			FetchUserInfo(gomock.Any(), "U-icon").
+			Return(&skyfrost.UserInfo{ID: "U-icon", UserName: "IconUser"}, nil)
+		setup.mockSkyfrost.EXPECT().
+			UploadTextureRecord(gomock.Any(), "icon@example.test", "p", "Profile Icon", "Inventory", gomock.Any()).
+			Return("R-icon", "resdb:///icon.webp", nil)
+		setup.mockSkyfrost.EXPECT().
+			UpdateUserProfile(gomock.Any(), "icon@example.test", "p", &skyfrost.UserProfile{IconUrl: "resdb:///icon.webp"}).
+			Return(nil)
+
+		var iconData bytes.Buffer
+		require.NoError(t, png.Encode(&iconData, image.NewRGBA(image.Rect(0, 0, 8, 8))))
+
+		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateHeadlessAccountRequest{ //nolint:gosec // G101: テスト用のダミー認証情報
+			Credential: "icon@example.test",
+			Password:   "p",
+			IconData:   iconData.Bytes(),
+		})
+
+		_, err := client.CreateHeadlessAccount(t.Context(), req)
+		require.NoError(t, err)
+
+		acc := testutil.GetOnlyHeadlessAccount(t, setup.queries, "U-icon")
+		assert.Equal(t, "resdb:///icon.webp", acc.LastIconUrl.String)
+	})
+
 	t.Run("失敗: 無効な認証情報でアカウント作成", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
@@ -284,7 +322,7 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 }
 
 func TestControllerService_RegisterHeadlessAccount(t *testing.T) {
-	t.Run("成功: Resonite アカウントを登録し、指定グループのアカウントとして追加", func(t *testing.T) {
+	t.Run("成功: Resonite アカウントを登録する (メール認証前なのでヘッドレスアカウントには追加しない)", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)
 		defer setup.Cleanup()
 
@@ -308,13 +346,10 @@ func TestControllerService_RegisterHeadlessAccount(t *testing.T) {
 		res, err := client.RegisterHeadlessAccount(t.Context(), req)
 		require.NoError(t, err)
 		assert.Equal(t, "U-newuser", res.Msg.GetAccountId())
-		assert.Equal(t, groupID, res.Msg.GetGroupId())
 
-		acc := testutil.GetOnlyHeadlessAccount(t, setup.queries, "U-newuser")
-		assert.Equal(t, groupID, acc.GroupID)
-		assert.Equal(t, "newuser@example.test", acc.Credential)
-		assert.Equal(t, "Passw0rd", acc.Password)
-		assert.Equal(t, "NewUser", acc.LastDisplayName.String)
+		registered, err := setup.queries.ListHeadlessAccountsByResoniteID(t.Context(), "U-newuser")
+		require.NoError(t, err)
+		assert.Empty(t, registered)
 	})
 
 	t.Run("失敗: 入力が Resonite の登録条件を満たさない場合は InvalidArgument (Resonite に送らない)", func(t *testing.T) {
@@ -677,6 +712,10 @@ func TestControllerService_GetHeadlessAccountStorageInfo(t *testing.T) {
 		setup.mockSkyfrost.EXPECT().
 			GetStorageInfo(gomock.Any(), "user@example.test", "password", "U-storage").
 			Return(nil, connect.NewError(connect.CodeUnauthenticated, nil))
+		// Resonite にログインを拒否された (メール未認証等) 場合.
+		setup.mockSkyfrost.EXPECT().
+			GetStorageInfo(gomock.Any(), "user@example.test", "password", "U-storage").
+			Return(nil, fmt.Errorf("failed to login: %w", &skyfrost.APIError{StatusCode: 403, Body: `"Login.EmailNotVerified"`}))
 
 		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetHeadlessAccountStorageInfoRequest{
 			AccountId: "U-storage",
@@ -689,6 +728,11 @@ func TestControllerService_GetHeadlessAccountStorageInfo(t *testing.T) {
 		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
+
+		// フロントがリトライしないよう Internal と区別する.
+		_, err = client.GetHeadlessAccountStorageInfo(t.Context(), req)
+		require.Error(t, err)
+		assert.Equal(t, connect.CodeFailedPrecondition, connect.CodeOf(err))
 	})
 }
 

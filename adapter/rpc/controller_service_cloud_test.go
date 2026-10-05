@@ -238,6 +238,26 @@ func TestControllerService_GetFriendRequests(t *testing.T) {
 	})
 }
 
+func TestControllerService_GetResoniteUser(t *testing.T) {
+	t.Run("成功: 公開プロフィールとメール認証状態を取得", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		setup.mockSkyfrost.EXPECT().
+			FetchUserInfo(gomock.Any(), "U-verified").
+			Return(&skyfrost.UserInfo{ID: "U-verified", UserName: "Verified", IsVerified: true}, nil)
+
+		res, err := client.GetResoniteUser(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.GetResoniteUserRequest{
+			ResoniteId: "U-verified",
+		}))
+		require.NoError(t, err)
+		assert.Equal(t, "Verified", res.Msg.GetName())
+		assert.True(t, res.Msg.GetIsVerified())
+	})
+}
+
 func TestControllerService_SearchUserInfo(t *testing.T) {
 	t.Run("成功: ユーザー情報を検索", func(t *testing.T) {
 		setup := setupControllerServiceTest(t)

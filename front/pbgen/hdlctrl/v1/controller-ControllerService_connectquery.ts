@@ -94,7 +94,7 @@ export const buildResoniteImage = ControllerService.method.buildResoniteImage;
 export const createHeadlessAccount = ControllerService.method.createHeadlessAccount;
 
 /**
- * Resonite アカウントを新規登録し、ヘッドレスアカウントとして追加する.
+ * Resonite アカウントを新規登録する. ヘッドレスアカウントへの追加はメール認証後に CreateHeadlessAccount で行う.
  *
  * @generated from rpc hdlctrl.v1.ControllerService.RegisterHeadlessAccount
  */

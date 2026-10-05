@@ -108,7 +108,7 @@ type ControllerServiceClient interface {
 	BuildResoniteImage(ctx context.Context, in *BuildResoniteImageRequest, opts ...grpc.CallOption) (*BuildResoniteImageResponse, error)
 	// アカウント系
 	CreateHeadlessAccount(ctx context.Context, in *CreateHeadlessAccountRequest, opts ...grpc.CallOption) (*CreateHeadlessAccountResponse, error)
-	// Resonite アカウントを新規登録し、ヘッドレスアカウントとして追加する.
+	// Resonite アカウントを新規登録する. ヘッドレスアカウントへの追加はメール認証後に CreateHeadlessAccount で行う.
 	RegisterHeadlessAccount(ctx context.Context, in *RegisterHeadlessAccountRequest, opts ...grpc.CallOption) (*RegisterHeadlessAccountResponse, error)
 	ListHeadlessAccounts(ctx context.Context, in *ListHeadlessAccountsRequest, opts ...grpc.CallOption) (*ListHeadlessAccountsResponse, error)
 	DeleteHeadlessAccount(ctx context.Context, in *DeleteHeadlessAccountRequest, opts ...grpc.CallOption) (*DeleteHeadlessAccountResponse, error)
@@ -824,7 +824,7 @@ type ControllerServiceServer interface {
 	BuildResoniteImage(context.Context, *BuildResoniteImageRequest) (*BuildResoniteImageResponse, error)
 	// アカウント系
 	CreateHeadlessAccount(context.Context, *CreateHeadlessAccountRequest) (*CreateHeadlessAccountResponse, error)
-	// Resonite アカウントを新規登録し、ヘッドレスアカウントとして追加する.
+	// Resonite アカウントを新規登録する. ヘッドレスアカウントへの追加はメール認証後に CreateHeadlessAccount で行う.
 	RegisterHeadlessAccount(context.Context, *RegisterHeadlessAccountRequest) (*RegisterHeadlessAccountResponse, error)
 	ListHeadlessAccounts(context.Context, *ListHeadlessAccountsRequest) (*ListHeadlessAccountsResponse, error)
 	DeleteHeadlessAccount(context.Context, *DeleteHeadlessAccountRequest) (*DeleteHeadlessAccountResponse, error)

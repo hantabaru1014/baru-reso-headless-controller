@@ -41,7 +41,9 @@ func NewHeadlessAccountUsecase(queries *db.Queries, skyfrostClient skyfrost.Clie
 	}
 }
 
-func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, credential, password, groupID string, createdBy *string) error {
+// CreateHeadlessAccount は既存の Resonite アカウントを groupID のヘッドレスアカウントとして追加する.
+// iconData を指定した場合はアイコンを設定してから追加する.
+func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, credential, password, groupID string, iconData []byte, createdBy *string) error {
 	if err := u.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_AccountWrite); err != nil {
 		return err
 	}
@@ -56,12 +58,45 @@ func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, cred
 		return errors.Wrap(err, 0)
 	}
 
-	return u.insertHeadlessAccount(ctx, userInfo, credential, password, groupID, createdBy)
+	iconUrl := userInfo.IconUrl
+	if len(iconData) > 0 {
+		iconUrl, err = u.uploadIcon(ctx, credential, password, iconData)
+		if err != nil {
+			return err
+		}
+	}
+
+	createdByText := pgtype.Text{}
+	if createdBy != nil {
+		createdByText = pgtype.Text{String: *createdBy, Valid: true}
+	}
+
+	err = u.queries.CreateHeadlessAccount(ctx, db.CreateHeadlessAccountParams{
+		ResoniteID:      userSession.UserId,
+		Credential:      credential,
+		Password:        password,
+		LastDisplayName: pgtype.Text{String: userInfo.UserName, Valid: true},
+		LastIconUrl:     pgtype.Text{String: iconUrl, Valid: true},
+		GroupID:         groupID,
+		CreatedBy:       createdByText,
+	})
+	if err != nil {
+		// アカウントは (group_id, resonite_id) で一意. 別グループへの登録は重複にならない.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
+			return errors.Wrap(ErrHeadlessAccountAlreadyExists, 0)
+		}
+
+		return errors.Wrap(err, 0)
+	}
+
+	return nil
 }
 
-// RegisterHeadlessAccount は Resonite アカウントを新規登録し、groupID のヘッドレスアカウントとして追加する.
-// dateOfBirth は YYYY-MM-DD. 戻り値は登録された Resonite ID.
-func (u *HeadlessAccountUsecase) RegisterHeadlessAccount(ctx context.Context, username, email, password, dateOfBirth, groupID string, createdBy *string) (string, error) {
+// RegisterHeadlessAccount は Resonite アカウントを新規登録し、登録された Resonite ID を返す.
+// dateOfBirth は YYYY-MM-DD. 未認証のアカウントはログインできないので、ヘッドレスアカウントへの
+// 追加はメール認証後に CreateHeadlessAccount で行う. groupID は追加予定のグループで、権限チェックに使う.
+func (u *HeadlessAccountUsecase) RegisterHeadlessAccount(ctx context.Context, username, email, password, dateOfBirth, groupID string) (string, error) {
 	if err := u.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_AccountWrite); err != nil {
 		return "", err
 	}
@@ -79,10 +114,6 @@ func (u *HeadlessAccountUsecase) RegisterHeadlessAccount(ctx context.Context, us
 		return "", errors.Errorf("%w: %w", ErrInvalidAccountRegistration, err)
 	}
 
-	// Resonite 側でアカウントが作られた後に DB へ保存し損ねないよう、リクエストが
-	// キャンセルされても (タブを閉じた / プロキシのタイムアウト等) 最後まで処理する.
-	ctx = context.WithoutCancel(ctx)
-
 	resoniteID, err := u.skyfrostClient.RegisterUser(ctx, username, email, password, dob)
 	if err != nil {
 		var apiErr *skyfrost.APIError
@@ -95,12 +126,6 @@ func (u *HeadlessAccountUsecase) RegisterHeadlessAccount(ctx context.Context, us
 		}
 
 		return "", errors.Errorf("failed to register resonite account: %w", err)
-	}
-
-	// 登録直後でアイコンは未設定なので、ユーザー情報を取り直さずに保存する.
-	userInfo := &skyfrost.UserInfo{ID: resoniteID, UserName: username}
-	if err := u.insertHeadlessAccount(ctx, userInfo, email, password, groupID, createdBy); err != nil {
-		return "", err
 	}
 
 	return resoniteID, nil
@@ -299,24 +324,9 @@ func (u *HeadlessAccountUsecase) UpdateHeadlessAccountIcon(ctx context.Context, 
 		return "", err
 	}
 
-	// Process the image (crop to square, resize to 256x256, convert to PNG)
-	processedData, err := skyfrost.ProcessIconImage(iconData)
+	iconUrl, err := u.uploadIcon(ctx, account.Credential, account.Password, iconData)
 	if err != nil {
-		return "", errors.Errorf("failed to process icon image: %w", err)
-	}
-
-	// Upload the image to Resonite cloud as a texture record
-	_, iconUrl, err := u.skyfrostClient.UploadTextureRecord(ctx, account.Credential, account.Password, "Profile Icon", "Inventory", processedData)
-	if err != nil {
-		return "", errors.Errorf("failed to upload icon: %w", err)
-	}
-
-	// Update the user profile with new icon URL
-	profile := &skyfrost.UserProfile{
-		IconUrl: iconUrl,
-	}
-	if err := u.skyfrostClient.UpdateUserProfile(ctx, account.Credential, account.Password, profile); err != nil {
-		return "", errors.Errorf("failed to update profile: %w", err)
+		return "", err
 	}
 
 	// Update the DB with new icon URL
@@ -346,30 +356,27 @@ func (u *HeadlessAccountUsecase) requireAccountWrite(ctx context.Context, groupI
 	return account, nil
 }
 
-func (u *HeadlessAccountUsecase) insertHeadlessAccount(ctx context.Context, userInfo *skyfrost.UserInfo, credential, password, groupID string, createdBy *string) error {
-	createdByText := pgtype.Text{}
-	if createdBy != nil {
-		createdByText = pgtype.Text{String: *createdBy, Valid: true}
-	}
-
-	err := u.queries.CreateHeadlessAccount(ctx, db.CreateHeadlessAccountParams{
-		ResoniteID:      userInfo.ID,
-		Credential:      credential,
-		Password:        password,
-		LastDisplayName: pgtype.Text{String: userInfo.UserName, Valid: true},
-		LastIconUrl:     pgtype.Text{String: userInfo.IconUrl, Valid: true},
-		GroupID:         groupID,
-		CreatedBy:       createdByText,
-	})
+// uploadIcon はアイコン画像を Resonite にアップロードしてプロフィールに設定し、アイコンの URL を返す.
+func (u *HeadlessAccountUsecase) uploadIcon(ctx context.Context, credential, password string, iconData []byte) (string, error) {
+	// Process the image (crop to square, resize to 256x256, convert to PNG)
+	processedData, err := skyfrost.ProcessIconImage(iconData)
 	if err != nil {
-		// アカウントは (group_id, resonite_id) で一意. 別グループへの登録は重複にならない.
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
-			return errors.Wrap(ErrHeadlessAccountAlreadyExists, 0)
-		}
-
-		return errors.Wrap(err, 0)
+		return "", errors.Errorf("failed to process icon image: %w", err)
 	}
 
-	return nil
+	// Upload the image to Resonite cloud as a texture record
+	_, iconUrl, err := u.skyfrostClient.UploadTextureRecord(ctx, credential, password, "Profile Icon", "Inventory", processedData)
+	if err != nil {
+		return "", errors.Errorf("failed to upload icon: %w", err)
+	}
+
+	// Update the user profile with new icon URL
+	profile := &skyfrost.UserProfile{
+		IconUrl: iconUrl,
+	}
+	if err := u.skyfrostClient.UpdateUserProfile(ctx, credential, password, profile); err != nil {
+		return "", errors.Errorf("failed to update profile: %w", err)
+	}
+
+	return iconUrl, nil
 }

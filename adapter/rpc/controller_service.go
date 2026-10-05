@@ -158,6 +158,13 @@ func convertErr(err error) error {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	// Resonite に拒否された (メール未認証でログインできない等). リトライしても結果は変わらず、
+	// 未認証アカウントへのログイン試行のたびに確認メールが再送されるので Internal と区別する.
+	var apiErr *skyfrost.APIError
+	if errors.As(err, &apiErr) && apiErr.IsClientError() {
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+
 	if errors.Is(err, usecase.ErrInvalidTransferDestination) {
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}

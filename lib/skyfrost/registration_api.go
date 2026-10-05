@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/mail"
@@ -22,21 +21,6 @@ var ErrRegistrationNotConfirmed = errors.New("registration was accepted but its 
 
 // errRegistrationFailed は Resonite 側で登録処理が失敗した (アカウントは作成されない).
 var errRegistrationFailed = errors.New("registration failed")
-
-// APIError は Resonite API が 2xx 以外を返したことを表す.
-type APIError struct {
-	StatusCode int
-	Body       string
-}
-
-func (e *APIError) Error() string {
-	return fmt.Sprintf("%d %s - %s", e.StatusCode, http.StatusText(e.StatusCode), e.Body)
-}
-
-// IsClientError は 4xx (リクエスト内容が受け付けられなかった) かどうか.
-func (e *APIError) IsClientError() bool {
-	return e.StatusCode >= http.StatusBadRequest && e.StatusCode < http.StatusInternalServerError
-}
 
 // ValidateRegistration は SkyFrost の RegistrationRequest と同じ条件で登録内容を検証する.
 func ValidateRegistration(username, email, password string, dateOfBirth, now time.Time) error {

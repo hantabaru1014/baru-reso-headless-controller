@@ -1502,7 +1502,9 @@ type CreateHeadlessAccountRequest struct {
 	Credential string                 `protobuf:"bytes,2,opt,name=credential,proto3" json:"credential,omitempty"` // email or userId
 	Password   string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
 	// 作成するアカウントの所属グループ. 未指定の場合は呼び出しユーザーの personal グループ.
-	GroupId       *string `protobuf:"bytes,4,opt,name=group_id,json=groupId,proto3,oneof" json:"group_id,omitempty"`
+	GroupId *string `protobuf:"bytes,4,opt,name=group_id,json=groupId,proto3,oneof" json:"group_id,omitempty"`
+	// 指定した場合はアイコンを設定してから追加する (PNG, JPG, GIF, WebP).
+	IconData      []byte `protobuf:"bytes,5,opt,name=icon_data,json=iconData,proto3" json:"icon_data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1558,6 +1560,13 @@ func (x *CreateHeadlessAccountRequest) GetGroupId() string {
 	return ""
 }
 
+func (x *CreateHeadlessAccountRequest) GetIconData() []byte {
+	if x != nil {
+		return x.IconData
+	}
+	return nil
+}
+
 type CreateHeadlessAccountResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -1601,7 +1610,7 @@ type RegisterHeadlessAccountRequest struct {
 	Password string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
 	// 生年月日 (YYYY-MM-DD).
 	DateOfBirth string `protobuf:"bytes,4,opt,name=date_of_birth,json=dateOfBirth,proto3" json:"date_of_birth,omitempty"`
-	// 作成するアカウントの所属グループ. 未指定の場合は呼び出しユーザーの personal グループ.
+	// 追加予定のグループ. 権限チェックに使う. 未指定の場合は呼び出しユーザーの personal グループ.
 	GroupId       *string `protobuf:"bytes,5,opt,name=group_id,json=groupId,proto3,oneof" json:"group_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1675,7 +1684,6 @@ func (x *RegisterHeadlessAccountRequest) GetGroupId() string {
 type RegisterHeadlessAccountResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	GroupId       string                 `protobuf:"bytes,2,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1713,13 +1721,6 @@ func (*RegisterHeadlessAccountResponse) Descriptor() ([]byte, []int) {
 func (x *RegisterHeadlessAccountResponse) GetAccountId() string {
 	if x != nil {
 		return x.AccountId
-	}
-	return ""
-}
-
-func (x *RegisterHeadlessAccountResponse) GetGroupId() string {
-	if x != nil {
-		return x.GroupId
 	}
 	return ""
 }
@@ -6726,10 +6727,12 @@ func (x *GetResoniteUserRequest) GetResoniteId() string {
 }
 
 type GetResoniteUserResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	IconUrl       string                 `protobuf:"bytes,3,opt,name=icon_url,json=iconUrl,proto3" json:"icon_url,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Id      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name    string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	IconUrl string                 `protobuf:"bytes,3,opt,name=icon_url,json=iconUrl,proto3" json:"icon_url,omitempty"`
+	// メール認証済みか.
+	IsVerified    bool `protobuf:"varint,4,opt,name=is_verified,json=isVerified,proto3" json:"is_verified,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6783,6 +6786,13 @@ func (x *GetResoniteUserResponse) GetIconUrl() string {
 		return x.IconUrl
 	}
 	return ""
+}
+
+func (x *GetResoniteUserResponse) GetIsVerified() bool {
+	if x != nil {
+		return x.IsVerified
+	}
+	return false
 }
 
 // Resonite Cloud の GET /users?name=<query> を叩く公開検索.
@@ -9292,13 +9302,14 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x05_memoB\v\n" +
 	"\t_group_id\"8\n" +
 	"\x19StartHeadlessHostResponse\x12\x15\n" +
-	"\x06job_id\x18\x02 \x01(\tR\x05jobIdJ\x04\b\x01\x10\x02\"\x8d\x01\n" +
+	"\x06job_id\x18\x02 \x01(\tR\x05jobIdJ\x04\b\x01\x10\x02\"\xaa\x01\n" +
 	"\x1cCreateHeadlessAccountRequest\x12\x1e\n" +
 	"\n" +
 	"credential\x18\x02 \x01(\tR\n" +
 	"credential\x12\x1a\n" +
 	"\bpassword\x18\x03 \x01(\tR\bpassword\x12\x1e\n" +
-	"\bgroup_id\x18\x04 \x01(\tH\x00R\agroupId\x88\x01\x01B\v\n" +
+	"\bgroup_id\x18\x04 \x01(\tH\x00R\agroupId\x88\x01\x01\x12\x1b\n" +
+	"\ticon_data\x18\x05 \x01(\fR\biconDataB\v\n" +
 	"\t_group_idJ\x04\b\x01\x10\x02\"\x1f\n" +
 	"\x1dCreateHeadlessAccountResponse\"\xbf\x01\n" +
 	"\x1eRegisterHeadlessAccountRequest\x12\x1a\n" +
@@ -9307,11 +9318,10 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\bpassword\x18\x03 \x01(\tR\bpassword\x12\"\n" +
 	"\rdate_of_birth\x18\x04 \x01(\tR\vdateOfBirth\x12\x1e\n" +
 	"\bgroup_id\x18\x05 \x01(\tH\x00R\agroupId\x88\x01\x01B\v\n" +
-	"\t_group_id\"[\n" +
+	"\t_group_id\"@\n" +
 	"\x1fRegisterHeadlessAccountResponse\x12\x1d\n" +
 	"\n" +
-	"account_id\x18\x01 \x01(\tR\taccountId\x12\x19\n" +
-	"\bgroup_id\x18\x02 \x01(\tR\agroupId\"w\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\"w\n" +
 	"\x1bListHeadlessAccountsRequest\x12+\n" +
 	"\x04page\x18\x01 \x01(\v2\x17.hdlctrl.v1.PageRequestR\x04page\x12\x1e\n" +
 	"\bgroup_id\x18\x02 \x01(\tH\x00R\agroupId\x88\x01\x01B\v\n" +
@@ -9723,11 +9733,13 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\bicon_url\x18\x03 \x01(\tR\aiconUrl\"9\n" +
 	"\x16GetResoniteUserRequest\x12\x1f\n" +
 	"\vresonite_id\x18\x01 \x01(\tR\n" +
-	"resoniteId\"X\n" +
+	"resoniteId\"y\n" +
 	"\x17GetResoniteUserResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x19\n" +
-	"\bicon_url\x18\x03 \x01(\tR\aiconUrl\"0\n" +
+	"\bicon_url\x18\x03 \x01(\tR\aiconUrl\x12\x1f\n" +
+	"\vis_verified\x18\x04 \x01(\bR\n" +
+	"isVerified\"0\n" +
 	"\x1aSearchResoniteUsersRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"I\n" +
 	"\x1bSearchResoniteUsersResponse\x12*\n" +

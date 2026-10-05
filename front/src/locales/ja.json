@@ -248,7 +248,8 @@
     "selectAnotherImage": "別の画像を選択",
     "cropHint": "ドラッグして切り抜き範囲を調整できます（256x256にリサイズされます）",
     "uploading": "アップロード中...",
-    "change": "変更"
+    "change": "変更",
+    "skip": "スキップ"
   },
   "hostLogViewer": {
     "downloadFailed": "ログのダウンロードに失敗しました",
@@ -373,15 +374,19 @@
       "ageRule": "16歳以上である必要があります",
       "submit": "登録",
       "registering": "登録中...",
-      "registered": "Resonite アカウントを登録しました",
       "failed": "Resonite アカウントの登録に失敗しました",
       "iconTitle": "アイコンを設定",
-      "iconDescription": "アカウントを登録しました。登録したメールアドレスに届く確認メールから認証を完了してください。メール認証前はアイコンを設定できない場合があります。その場合は認証後にメニューの「アイコンを変更」から設定してください。",
-      "skipIcon": "スキップ",
+      "iconDescription": "アイコンを設定するか、スキップするとヘッドレスアカウントの一覧に追加されます。",
       "resoniteSection": "Resonite に登録する情報",
       "resoniteSectionCaption": "Resonite に送信され、アカウントの登録に使われます。",
       "appSection": "このアプリでの設定",
-      "appSectionCaption": "Resonite には送信されません。"
+      "appSectionCaption": "Resonite には送信されません。",
+      "verifyEmailTitle": "メールアドレスの認証",
+      "verifyEmailDescription": "{{email}} 宛に Resonite から確認メールが送信されているはずです。メール内のリンクから認証を済ませてから「完了した」を押してください。",
+      "verifyEmailCancelNote": "キャンセルしても Resonite アカウントは登録済みのままです。認証後に「既存アカウントの追加」から追加できます。",
+      "verifyEmailDone": "完了した",
+      "notVerifiedYet": "まだメールアドレスの認証が確認できません。認証を済ませてから再度押してください。",
+      "added": "ヘッドレスアカウントを追加しました"
     }
   },
   "permissionUtils": {

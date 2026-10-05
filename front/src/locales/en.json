@@ -248,7 +248,8 @@
     "selectAnotherImage": "Choose another image",
     "cropHint": "Drag to adjust the crop area (resized to 256x256)",
     "uploading": "Uploading...",
-    "change": "Change"
+    "change": "Change",
+    "skip": "Skip"
   },
   "hostLogViewer": {
     "downloadFailed": "Failed to download logs",
@@ -373,15 +374,19 @@
       "ageRule": "You must be at least 16 years old",
       "submit": "Register",
       "registering": "Registering...",
-      "registered": "Resonite account registered",
       "failed": "Failed to register Resonite account",
       "iconTitle": "Set Icon",
-      "iconDescription": "The account has been registered. Please complete verification from the email sent to the registered address. Setting an icon may fail before the email is verified; in that case, set it later from \"Change icon\" in the menu.",
-      "skipIcon": "Skip",
+      "iconDescription": "Set an icon or skip to add the account to the headless account list.",
       "resoniteSection": "Sent to Resonite",
       "resoniteSectionCaption": "Sent to Resonite and used to register the account.",
       "appSection": "Settings in this app",
-      "appSectionCaption": "Not sent to Resonite."
+      "appSectionCaption": "Not sent to Resonite.",
+      "verifyEmailTitle": "Verify Email",
+      "verifyEmailDescription": "Resonite should have sent a verification email to {{email}}. Verify it from the link in the email, then press \"Done\".",
+      "verifyEmailCancelNote": "Even if you cancel, the Resonite account stays registered. You can add it from \"Add Existing Account\" after verifying.",
+      "verifyEmailDone": "Done",
+      "notVerifiedYet": "The email has not been verified yet. Verify it and press the button again.",
+      "added": "Headless account added"
     }
   },
   "permissionUtils": {

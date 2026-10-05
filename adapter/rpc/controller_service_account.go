@@ -31,7 +31,7 @@ func (c *ControllerService) CreateHeadlessAccount(ctx context.Context, req *conn
 	}
 
 	userID := claims.UserID
-	if err := c.hauc.CreateHeadlessAccount(ctx, req.Msg.GetCredential(), req.Msg.GetPassword(), groupID, &userID); err != nil {
+	if err := c.hauc.CreateHeadlessAccount(ctx, req.Msg.GetCredential(), req.Msg.GetPassword(), groupID, req.Msg.GetIconData(), &userID); err != nil {
 		return nil, convertErr(err)
 	}
 
@@ -58,16 +58,13 @@ func (c *ControllerService) RegisterHeadlessAccount(ctx context.Context, req *co
 		return nil, convertErr(err)
 	}
 
-	userID := claims.UserID
-
-	resoniteID, err := c.hauc.RegisterHeadlessAccount(ctx, req.Msg.GetUsername(), req.Msg.GetEmail(), req.Msg.GetPassword(), req.Msg.GetDateOfBirth(), groupID, &userID)
+	resoniteID, err := c.hauc.RegisterHeadlessAccount(ctx, req.Msg.GetUsername(), req.Msg.GetEmail(), req.Msg.GetPassword(), req.Msg.GetDateOfBirth(), groupID)
 	if err != nil {
 		return nil, convertErr(err)
 	}
 
 	res := connect.NewResponse(&hdlctrlv1.RegisterHeadlessAccountResponse{
 		AccountId: resoniteID,
-		GroupId:   groupID,
 	})
 
 	return res, nil
@@ -178,7 +175,7 @@ func (c *ControllerService) GetHeadlessAccountStorageInfo(ctx context.Context, r
 
 	storageInfo, err := c.skyfrostClient.GetStorageInfo(ctx, account.Credential, account.Password, account.ResoniteID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to get storage info for user: %w", err))
+		return nil, convertErr(fmt.Errorf("failed to get storage info for user: %w", err))
 	}
 
 	res := connect.NewResponse(&hdlctrlv1.GetHeadlessAccountStorageInfoResponse{
