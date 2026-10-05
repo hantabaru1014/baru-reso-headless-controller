@@ -33,6 +33,17 @@ type Trigger interface {
 	Marshal() (json.RawMessage, error)
 }
 
+// RecurringTrigger は繰り返し発火する trigger が実装する.
+// executor は Action の実行後 (成否を問わず) Next(now) で PENDING に戻す.
+// next_fire_at が来た行は claim された時点で ready なので、Evaluate は常に ready=true を返し、
+// nextCheck に次回の発火時刻 (登録時の next_fire_at になる) を返す.
+type RecurringTrigger interface {
+	Trigger
+	// Next は after より後 (after 自身は含まない) の最初の発火時刻を返す.
+	// 発火し得ない設定なら error.
+	Next(after time.Time) (time.Time, error)
+}
+
 type TriggerFactory func(json.RawMessage) (Trigger, error)
 
 var (

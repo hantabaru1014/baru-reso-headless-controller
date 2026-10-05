@@ -4,7 +4,6 @@ import {
   listScheduledSessionOperations,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import {
-  ScheduledOperation,
   ScheduledSessionOperation,
   ScheduledOperationStatus,
 } from "../../pbgen/hdlctrl/v1/controller_pb";
@@ -19,7 +18,9 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { currentGroupIdAtom } from "../atoms/currentGroupAtom";
 import {
+  describeCronTrigger,
   formatScheduled,
+  operationCaseToKind,
   operationKindLabel,
   scheduledOperationStatusToLabel,
 } from "../libs/scheduledOperationUtils";
@@ -32,28 +33,6 @@ import { useTranslation } from "react-i18next";
 type Props = {
   /** session 詳細から開く場合は session_id でフィルタする */
   sessionId?: string;
-};
-
-const operationCaseToKind = (
-  op?: ScheduledOperation,
-):
-  | "START_SESSION"
-  | "STOP_SESSION"
-  | "UPDATE_PARAMETERS"
-  | "UPDATE_EXTRA_SETTINGS"
-  | "UNKNOWN" => {
-  switch (op?.operation.case) {
-    case "startSession":
-      return "START_SESSION";
-    case "stopSession":
-      return "STOP_SESSION";
-    case "updateParameters":
-      return "UPDATE_PARAMETERS";
-    case "updateExtraSettings":
-      return "UPDATE_EXTRA_SETTINGS";
-    default:
-      return "UNKNOWN";
-  }
 };
 
 export default function ScheduledOperationList({ sessionId }: Props) {
@@ -104,7 +83,7 @@ export default function ScheduledOperationList({ sessionId }: Props) {
         header: t("scheduledOperationList.columnKind"),
         cell: ({ row }) => {
           const kind = operationCaseToKind(row.original.operation);
-          return kind === "UNKNOWN" ? "(unknown)" : operationKindLabel(kind);
+          return kind ? operationKindLabel(kind) : "(unknown)";
         },
       },
       {
@@ -127,6 +106,22 @@ export default function ScheduledOperationList({ sessionId }: Props) {
           const trig = row.original.trigger?.trigger;
           if (trig?.case === "time") {
             return formatScheduled(trig.value.scheduledAt);
+          }
+          if (trig?.case === "cron") {
+            const pending =
+              row.original.status === ScheduledOperationStatus.PENDING;
+            return (
+              <span className="inline-flex flex-col">
+                <span>{describeCronTrigger(trig.value)}</span>
+                {pending && (
+                  <span className="text-xs text-muted-foreground">
+                    {t("scheduledOperationList.nextFireAt", {
+                      time: formatScheduled(row.original.nextFireAt),
+                    })}
+                  </span>
+                )}
+              </span>
+            );
           }
           if (trig?.case === "sessionUserCount") {
             const v = trig.value;
@@ -156,6 +151,11 @@ export default function ScheduledOperationList({ sessionId }: Props) {
         cell: ({ row }) => scheduledOperationStatusToLabel(row.original.status),
       },
       {
+        id: "executedAt",
+        header: t("scheduledOperationList.columnExecutedAt"),
+        cell: ({ row }) => formatScheduled(row.original.executedAt) || "-",
+      },
+      {
         id: "lastError",
         header: t("scheduledOperationList.columnError"),
         cell: ({ row }) => row.original.lastError ?? "",
@@ -180,8 +180,8 @@ export default function ScheduledOperationList({ sessionId }: Props) {
   );
 
   const newHref = sessionId
-    ? `/sessions/scheduled/new?sessionId=${sessionId}`
-    : "/sessions/scheduled/new";
+    ? `/scheduled/new?sessionId=${sessionId}`
+    : "/scheduled/new";
 
   return (
     <div className="space-y-4">

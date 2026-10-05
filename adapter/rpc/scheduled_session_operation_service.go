@@ -265,6 +265,63 @@ func buildActionFromProto(op *hdlctrlv1.ScheduledOperation) (scheduled_op.Action
 		act := actions.NewUpdateExtraSettingsAction(sid, autoUpgrade, memo)
 
 		return act, nil, &sid, nil
+	case *hdlctrlv1.ScheduledOperation_StartHost:
+		start := x.StartHost
+
+		hostID := start.GetHostId()
+		if hostID == "" {
+			return nil, nil, nil, errors.New("start_host: host_id is required")
+		}
+
+		act := actions.NewStartHostAction(hostID, start.GetWithWorldRestart())
+
+		return act, &hostID, nil, nil
+	case *hdlctrlv1.ScheduledOperation_RestartHost:
+		restart := x.RestartHost
+
+		hostID := restart.GetHostId()
+		if hostID == "" {
+			return nil, nil, nil, errors.New("restart_host: host_id is required")
+		}
+
+		act, err := actions.NewRestartHostAction(restart)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		return act, &hostID, nil, nil
+	case *hdlctrlv1.ScheduledOperation_ShutdownHost:
+		hostID := x.ShutdownHost.GetHostId()
+		if hostID == "" {
+			return nil, nil, nil, errors.New("shutdown_host: host_id is required")
+		}
+
+		act := actions.NewShutdownHostAction(hostID)
+
+		return act, &hostID, nil, nil
+	case *hdlctrlv1.ScheduledOperation_SendDynamicImpulse:
+		inner := x.SendDynamicImpulse.GetParameters()
+		if inner == nil {
+			return nil, nil, nil, errors.New("send_dynamic_impulse: parameters is required")
+		}
+
+		sid := inner.GetSessionId()
+		if sid == "" {
+			return nil, nil, nil, errors.New("send_dynamic_impulse: parameters.session_id is required")
+		}
+
+		if inner.GetTag() == "" {
+			return nil, nil, nil, errors.New("send_dynamic_impulse: parameters.tag is required")
+		}
+
+		paramsJSON, err := protojson.Marshal(inner)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		act := actions.NewSendDynamicImpulseAction(sid, paramsJSON)
+
+		return act, nil, &sid, nil
 	default:
 		return nil, nil, nil, errors.New("operation oneof is not set")
 	}
@@ -306,6 +363,19 @@ func buildTriggerFromProto(tr *hdlctrlv1.ScheduledTrigger) (scheduled_op.Trigger
 		}
 
 		return triggers.NewSessionUserCountTrigger(sid, cmp, threshold), nil
+	case *hdlctrlv1.ScheduledTrigger_Cron:
+		c := x.Cron
+
+		// proto の Frequency と triggers.CronFrequency は同じ値. 不正値は NewCronTrigger が弾く.
+		return triggers.NewCronTrigger(triggers.CronTrigger{
+			Frequency:  triggers.CronFrequency(c.GetFrequency()),
+			Hour:       c.GetHour(),
+			Minute:     c.GetMinute(),
+			Weekdays:   c.GetWeekdays(),
+			DayOfMonth: c.GetDayOfMonth(),
+			Month:      c.GetMonth(),
+			Timezone:   c.GetTimezone(),
+		})
 	default:
 		return nil, errors.New("trigger oneof is not set")
 	}
@@ -401,6 +471,20 @@ func triggerToProto(t scheduled_op.Trigger) (*hdlctrlv1.ScheduledTrigger, error)
 				},
 			},
 		}, nil
+	case *triggers.CronTrigger:
+		return &hdlctrlv1.ScheduledTrigger{
+			Trigger: &hdlctrlv1.ScheduledTrigger_Cron{
+				Cron: &hdlctrlv1.CronTrigger{
+					Frequency:  hdlctrlv1.CronTrigger_Frequency(v.Frequency),
+					Hour:       v.Hour,
+					Minute:     v.Minute,
+					Weekdays:   v.Weekdays,
+					DayOfMonth: v.DayOfMonth,
+					Month:      v.Month,
+					Timezone:   v.Timezone,
+				},
+			},
+		}, nil
 	default:
 		return nil, errors.New("unknown trigger type")
 	}
@@ -454,6 +538,43 @@ func actionToProto(a scheduled_op.Action) (*hdlctrlv1.ScheduledOperation, error)
 
 		return &hdlctrlv1.ScheduledOperation{
 			Operation: &hdlctrlv1.ScheduledOperation_UpdateExtraSettings{UpdateExtraSettings: req},
+		}, nil
+	case *actions.StartHostAction:
+		return &hdlctrlv1.ScheduledOperation{
+			Operation: &hdlctrlv1.ScheduledOperation_StartHost{
+				StartHost: &hdlctrlv1.ScheduledStartHostOperation{
+					HostId:           v.HostID,
+					WithWorldRestart: v.WithWorldRestart,
+				},
+			},
+		}, nil
+	case *actions.RestartHostAction:
+		req, err := v.Request()
+		if err != nil {
+			// 表示用なので、復元に失敗しても host_id だけは返す.
+			req = &hdlctrlv1.RestartHeadlessHostRequest{HostId: v.HostID}
+		}
+
+		return &hdlctrlv1.ScheduledOperation{
+			Operation: &hdlctrlv1.ScheduledOperation_RestartHost{RestartHost: req},
+		}, nil
+	case *actions.ShutdownHostAction:
+		return &hdlctrlv1.ScheduledOperation{
+			Operation: &hdlctrlv1.ScheduledOperation_ShutdownHost{
+				ShutdownHost: &hdlctrlv1.ShutdownHeadlessHostRequest{HostId: v.HostID},
+			},
+		}, nil
+	case *actions.SendDynamicImpulseAction:
+		inner, err := v.Request()
+		if err != nil {
+			// 表示用なので、復元に失敗しても session_id だけは返す.
+			inner = &headlessv1.SendDynamicImpulseRequest{SessionId: v.SessionID}
+		}
+
+		return &hdlctrlv1.ScheduledOperation{
+			Operation: &hdlctrlv1.ScheduledOperation_SendDynamicImpulse{
+				SendDynamicImpulse: &hdlctrlv1.SendDynamicImpulseRequest{Parameters: inner},
+			},
 		}, nil
 	default:
 		return nil, errors.New("unknown action type")

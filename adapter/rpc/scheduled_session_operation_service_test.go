@@ -8,6 +8,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	hdlctrlv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1"
+	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
 	"github.com/hantabaru1014/baru-reso-headless-controller/testutil"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
@@ -17,8 +18,8 @@ import (
 
 // setupScheduledOpTarget は scheduled-op テストのために、権限解決対象として
 // 必要な host + session を作る. session.id は明示的に指定する (CreateTestSession は
-// ID をランダム生成するため使わない).
-func setupScheduledOpTarget(t *testing.T, queries *db.Queries, sessionID string) {
+// ID をランダム生成するため使わない). 作成した host の ID を返す.
+func setupScheduledOpTarget(t *testing.T, queries *db.Queries, sessionID string) string {
 	t.Helper()
 	testutil.CreateTestHeadlessAccount(t, queries, "U-sched-acc", "sched@example.test", "p")
 	h := testutil.CreateTestHeadlessHost(t, queries, "U-sched-acc", "sched-host", entity.HeadlessHostStatus_RUNNING)
@@ -37,6 +38,8 @@ func setupScheduledOpTarget(t *testing.T, queries *db.Queries, sessionID string)
 		Memo:                           pgtype.Text{Valid: false},
 	})
 	require.NoError(t, err)
+
+	return h.ID
 }
 
 func TestControllerService_ScheduledSessionOperations(t *testing.T) {
@@ -177,6 +180,200 @@ func TestControllerService_ScheduledSessionOperations(t *testing.T) {
 		connectErr := &connect.Error{}
 		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
+	})
+
+	t.Run("成功: RESTART_HOST を週次 Cron trigger で予約 → キャンセル", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		hostID := setupScheduledOpTarget(t, setup.queries, "S-host")
+
+		createReq := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateScheduledSessionOperationRequest{
+			Operation: &hdlctrlv1.ScheduledOperation{
+				Operation: &hdlctrlv1.ScheduledOperation_RestartHost{
+					RestartHost: &hdlctrlv1.RestartHeadlessHostRequest{
+						HostId:           hostID,
+						WithUpdate:       true,
+						WithWorldRestart: true,
+					},
+				},
+			},
+			Trigger: &hdlctrlv1.ScheduledTrigger{
+				Trigger: &hdlctrlv1.ScheduledTrigger_Cron{
+					Cron: &hdlctrlv1.CronTrigger{
+						Frequency: hdlctrlv1.CronTrigger_FREQUENCY_WEEKLY,
+						Hour:      4,
+						Minute:    30,
+						Weekdays:  []int32{1, 4},
+						// 週次以外のフィールドは保存されない.
+						DayOfMonth: 10,
+						Timezone:   "Asia/Tokyo",
+					},
+				},
+			},
+		})
+		createRes, err := client.CreateScheduledSessionOperation(t.Context(), createReq)
+		require.NoError(t, err)
+
+		got := createRes.Msg.GetScheduledOperation()
+		assert.Equal(t, hostID, got.GetHostId())
+		assert.Nil(t, got.SessionId)
+		assert.Equal(t, hdlctrlv1.ScheduledOperationStatus_SCHEDULED_OPERATION_STATUS_PENDING, got.GetStatus())
+
+		restart := got.GetOperation().GetRestartHost()
+		require.NotNil(t, restart)
+		assert.Equal(t, hostID, restart.GetHostId())
+		assert.True(t, restart.GetWithUpdate())
+		assert.True(t, restart.GetWithWorldRestart())
+
+		cron := got.GetTrigger().GetCron()
+		require.NotNil(t, cron)
+		assert.Equal(t, hdlctrlv1.CronTrigger_FREQUENCY_WEEKLY, cron.GetFrequency())
+		assert.Equal(t, []int32{1, 4}, cron.GetWeekdays())
+		assert.Equal(t, int32(0), cron.GetDayOfMonth())
+		assert.Equal(t, "Asia/Tokyo", cron.GetTimezone())
+
+		// 初回の発火時刻は直近の月曜 / 木曜の 04:30 (Asia/Tokyo).
+		tokyo, err := time.LoadLocation("Asia/Tokyo")
+		require.NoError(t, err)
+
+		next := got.GetNextFireAt().AsTime().In(tokyo)
+		assert.True(t, next.After(time.Now()))
+		assert.True(t, next.Before(time.Now().Add(7*24*time.Hour)))
+		assert.Contains(t, []time.Weekday{time.Monday, time.Thursday}, next.Weekday())
+		assert.Equal(t, 4, next.Hour())
+		assert.Equal(t, 30, next.Minute())
+
+		// List - host_id フィルタ
+		listReq := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListScheduledSessionOperationsRequest{
+			HostId: &hostID,
+		})
+		listRes, err := client.ListScheduledSessionOperations(t.Context(), listReq)
+		require.NoError(t, err)
+		assert.Len(t, listRes.Msg.GetScheduledOperations(), 1)
+
+		cancelReq := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CancelScheduledSessionOperationRequest{Id: got.GetId()})
+		_, err = client.CancelScheduledSessionOperation(t.Context(), cancelReq)
+		require.NoError(t, err)
+	})
+
+	t.Run("成功: START_HOST / SHUTDOWN_HOST / SEND_DYNAMIC_IMPULSE を予約", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		hostID := setupScheduledOpTarget(t, setup.queries, "S-impulse")
+		trigger := &hdlctrlv1.ScheduledTrigger{
+			Trigger: &hdlctrlv1.ScheduledTrigger_Cron{
+				Cron: &hdlctrlv1.CronTrigger{Frequency: hdlctrlv1.CronTrigger_FREQUENCY_DAILY, Hour: 0, Minute: 0},
+			},
+		}
+
+		create := func(op *hdlctrlv1.ScheduledOperation) *hdlctrlv1.ScheduledSessionOperation {
+			t.Helper()
+
+			res, err := client.CreateScheduledSessionOperation(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateScheduledSessionOperationRequest{
+				Operation: op,
+				Trigger:   trigger,
+			}))
+			require.NoError(t, err)
+
+			return res.Msg.GetScheduledOperation()
+		}
+
+		start := create(&hdlctrlv1.ScheduledOperation{
+			Operation: &hdlctrlv1.ScheduledOperation_StartHost{
+				StartHost: &hdlctrlv1.ScheduledStartHostOperation{HostId: hostID, WithWorldRestart: true},
+			},
+		})
+		assert.Equal(t, hostID, start.GetHostId())
+		assert.Equal(t, hostID, start.GetOperation().GetStartHost().GetHostId())
+		assert.True(t, start.GetOperation().GetStartHost().GetWithWorldRestart())
+
+		shutdown := create(&hdlctrlv1.ScheduledOperation{
+			Operation: &hdlctrlv1.ScheduledOperation_ShutdownHost{
+				ShutdownHost: &hdlctrlv1.ShutdownHeadlessHostRequest{HostId: hostID},
+			},
+		})
+		assert.Equal(t, hostID, shutdown.GetHostId())
+		assert.Equal(t, hostID, shutdown.GetOperation().GetShutdownHost().GetHostId())
+
+		impulse := create(&hdlctrlv1.ScheduledOperation{
+			Operation: &hdlctrlv1.ScheduledOperation_SendDynamicImpulse{
+				SendDynamicImpulse: &hdlctrlv1.SendDynamicImpulseRequest{
+					Parameters: &headlessv1.SendDynamicImpulseRequest{
+						SessionId: "S-impulse",
+						Tag:       "daily",
+						Value:     &headlessv1.SendDynamicImpulseRequest_IntValue{IntValue: 3},
+					},
+				},
+			},
+		})
+		assert.Equal(t, "S-impulse", impulse.GetSessionId())
+
+		params := impulse.GetOperation().GetSendDynamicImpulse().GetParameters()
+		require.NotNil(t, params)
+		assert.Equal(t, "S-impulse", params.GetSessionId())
+		assert.Equal(t, "daily", params.GetTag())
+		assert.Equal(t, int32(3), params.GetIntValue())
+	})
+
+	t.Run("失敗: 不正な Cron trigger / tag 未指定の dynamic impulse で InvalidArgument", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		stopOp := &hdlctrlv1.ScheduledOperation{
+			Operation: &hdlctrlv1.ScheduledOperation_StopSession{
+				StopSession: &hdlctrlv1.StopSessionRequest{SessionId: "S-x"},
+			},
+		}
+		dailyTrigger := &hdlctrlv1.ScheduledTrigger{
+			Trigger: &hdlctrlv1.ScheduledTrigger_Cron{
+				Cron: &hdlctrlv1.CronTrigger{Frequency: hdlctrlv1.CronTrigger_FREQUENCY_DAILY},
+			},
+		}
+
+		cases := []struct {
+			name    string
+			op      *hdlctrlv1.ScheduledOperation
+			trigger *hdlctrlv1.ScheduledTrigger
+		}{
+			{"frequency 未指定", stopOp, &hdlctrlv1.ScheduledTrigger{
+				Trigger: &hdlctrlv1.ScheduledTrigger_Cron{Cron: &hdlctrlv1.CronTrigger{Hour: 1}},
+			}},
+			{"週次で曜日なし", stopOp, &hdlctrlv1.ScheduledTrigger{
+				Trigger: &hdlctrlv1.ScheduledTrigger_Cron{Cron: &hdlctrlv1.CronTrigger{Frequency: hdlctrlv1.CronTrigger_FREQUENCY_WEEKLY}},
+			}},
+			{"年次で存在しない日", stopOp, &hdlctrlv1.ScheduledTrigger{
+				Trigger: &hdlctrlv1.ScheduledTrigger_Cron{Cron: &hdlctrlv1.CronTrigger{
+					Frequency: hdlctrlv1.CronTrigger_FREQUENCY_YEARLY, Month: 2, DayOfMonth: 30,
+				}},
+			}},
+			{"dynamic impulse の tag 未指定", &hdlctrlv1.ScheduledOperation{
+				Operation: &hdlctrlv1.ScheduledOperation_SendDynamicImpulse{
+					SendDynamicImpulse: &hdlctrlv1.SendDynamicImpulseRequest{
+						Parameters: &headlessv1.SendDynamicImpulseRequest{SessionId: "S-x"},
+					},
+				},
+			}, dailyTrigger},
+		}
+
+		for _, c := range cases {
+			_, err := client.CreateScheduledSessionOperation(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateScheduledSessionOperationRequest{
+				Operation: c.op,
+				Trigger:   c.trigger,
+			}))
+			require.Error(t, err, c.name)
+
+			connectErr := &connect.Error{}
+			require.ErrorAs(t, err, &connectErr, c.name)
+			assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code(), c.name)
+		}
 	})
 
 	t.Run("失敗: operation 未指定で InvalidArgument", func(t *testing.T) {

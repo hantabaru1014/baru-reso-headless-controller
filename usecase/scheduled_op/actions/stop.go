@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	scheduled_op.RegisterAction(entity.ScheduledOperationType_STOP_SESSION, decodeStopSession)
+	scheduled_op.RegisterAction(entity.ScheduledOperationType_STOP_SESSION, entity.PermKey_SessionWrite, decodeStopSession)
 }
 
 type StopSessionAction struct {

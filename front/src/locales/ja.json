@@ -316,7 +316,8 @@
     "createdBy": "作成者",
     "autoUpgrade": "自動アップグレード",
     "autoUpgradeHelper": "新しいバージョンがリリースされたら、セッション参加者が 0 人になった瞬間に自動で最新バージョンへ再起動します",
-    "autoUpgradeEnabled": "有効 (ユーザが 0 人のとき)"
+    "autoUpgradeEnabled": "有効 (ユーザが 0 人のとき)",
+    "scheduleOperation": "操作を予約"
   },
   "headlessAccountList": {
     "icon": "アイコン",
@@ -605,7 +606,9 @@
     "columnError": "エラー",
     "cancel": "キャンセル",
     "title": "予約操作",
-    "newSchedule": "新規予約"
+    "newSchedule": "新規予約",
+    "nextFireAt": "次回: {{time}}",
+    "columnExecutedAt": "最終実行"
   },
   "asyncJobList": {
     "columnJob": "ジョブ",
@@ -678,11 +681,16 @@
       "startSession": "セッション開始",
       "stopSession": "セッション終了",
       "updateParameters": "セッション設定変更",
-      "updateExtraSettings": "追加設定変更"
+      "updateExtraSettings": "追加設定変更",
+      "sendDynamicImpulse": "DynamicImpulse 送信",
+      "startHost": "ホスト起動",
+      "restartHost": "ホスト再起動",
+      "shutdownHost": "ホスト停止"
     },
     "triggerKind": {
       "time": "指定日時",
-      "sessionUserCount": "セッションのユーザー数"
+      "sessionUserCount": "セッションのユーザー数",
+      "cron": "繰り返し"
     },
     "comparator": {
       "lessOrEqual": "以下になった時",
@@ -695,6 +703,19 @@
       "failed": "失敗",
       "canceled": "キャンセル",
       "unknown": "不明"
+    },
+    "cronFrequency": {
+      "daily": "毎日",
+      "weekly": "毎週",
+      "monthly": "毎月",
+      "yearly": "毎年"
+    },
+    "cronDescription": {
+      "daily": "毎日 {{time}}",
+      "weekly": "毎週 {{weekdays}} {{time}}",
+      "monthly": "毎月 {{day}}日 {{time}}",
+      "yearly": "毎年 {{month}}{{day}}日 {{time}}",
+      "separator": "・"
     }
   },
   "asyncJobUtils": {
@@ -843,7 +864,24 @@
     "autoSleep": "オートスリープ",
     "autoUpgrade": "自動アップデート",
     "adminMemo": "管理者メモ",
-    "createSchedule": "予約を作成"
+    "createSchedule": "予約を作成",
+    "specifyTime": "時刻を指定してください",
+    "selectWeekdays": "曜日を 1 つ以上選択してください",
+    "frequency": "頻度",
+    "month": "月",
+    "dayOfMonth": "日",
+    "dayOfMonthOption": "{{day}}日",
+    "time": "時刻",
+    "weekdays": "曜日",
+    "cronNote": "時刻はこのブラウザのタイムゾーン ({{timeZone}}) で解釈されます。キャンセルするまで繰り返し実行され、失敗しても次回以降は実行されます。",
+    "cronSkipNote": "指定した日が無い月はスキップされます。",
+    "targetHost": "操作対象ホスト",
+    "selectTargetHost": "操作対象ホストを選択してください",
+    "withWorldRestart": "停止時に開いていたワールドを復元する",
+    "startHostNote": "実行時にホストが停止中の場合のみ、最新版で起動します。起動中なら何もしません。",
+    "restartHostNote": "最新版に更新して再起動します。停止中のホストは起動します。",
+    "shutdownHostNote": "実行中のセッションはすべて終了します。",
+    "specifyImpulseTag": "Tag を入力してください"
   },
   "invitedBadge": {
     "invited": "招待中",

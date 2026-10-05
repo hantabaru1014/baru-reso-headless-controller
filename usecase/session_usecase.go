@@ -452,6 +452,30 @@ func (u *SessionUsecase) UpdateSessionParameters(ctx context.Context, id string,
 	return nil
 }
 
+// SendDynamicImpulse は req.session_id のセッションに dynamic impulse を送出する.
+// 送出先ホストはセッションから解決する.
+func (u *SessionUsecase) SendDynamicImpulse(ctx context.Context, req *headlessv1.SendDynamicImpulseRequest) error {
+	s, err := u.sessionRepo.Get(ctx, req.GetSessionId())
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	if err := u.permUC.RequirePermissionForGroup(ctx, s.GroupID, entity.PermKey_SessionWrite); err != nil {
+		return err
+	}
+
+	client, err := u.hostRepo.GetRpcClient(ctx, s.HostID)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	if _, err := client.SendDynamicImpulse(ctx, req); err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	return nil
+}
+
 func (u *SessionUsecase) DeleteSession(ctx context.Context, id string) error {
 	s, err := u.sessionRepo.Get(ctx, id)
 	if err != nil {

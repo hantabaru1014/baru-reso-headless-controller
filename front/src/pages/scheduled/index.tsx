@@ -1,4 +1,4 @@
-import ScheduledOperationList from "../../../components/ScheduledOperationList";
+import ScheduledOperationList from "../../components/ScheduledOperationList";
 
 export default function ScheduledOperationsIndex() {
   return (

@@ -5,13 +5,19 @@ import {
   searchSessions,
 } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import {
+  CronTrigger_Frequency,
+  CronTriggerSchema,
   HeadlessHostStatus,
+  RestartHeadlessHostRequestSchema,
   ScheduledOperationSchema,
+  ScheduledStartHostOperationSchema,
   ScheduledTrigger,
   ScheduledTriggerSchema,
+  SendDynamicImpulseRequestSchema as HdlSendDynamicImpulseRequestSchema,
   SessionStatus,
   SessionUserCountTriggerSchema,
   SessionUserCountTrigger_Comparator,
+  ShutdownHeadlessHostRequestSchema,
   StartWorldRequestSchema,
   StopSessionRequestSchema,
   TimeTriggerSchema,
@@ -20,6 +26,7 @@ import {
 } from "../../pbgen/hdlctrl/v1/controller_pb";
 import {
   AccessLevel,
+  SendDynamicImpulseRequestSchema,
   UpdateSessionParametersRequestSchema,
 } from "../../pbgen/headless/v1/headless_pb";
 import { create } from "@bufbuild/protobuf";
@@ -30,18 +37,39 @@ import { toast } from "sonner";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { RadioGroupField, SelectField, TextField, TextareaField } from "./base";
 import {
+  CheckboxField,
+  RadioGroupField,
+  SelectField,
+  TextField,
+  TextareaField,
+} from "./base";
+import { Checkbox, Label } from "./ui";
+import {
+  browserTimeZone,
+  CRON_FREQUENCIES,
+  CronFrequency,
+  cronFrequencyLabel,
   dateToTimestamp,
   defaultScheduledAtInputValue,
+  HostOperationKind,
+  isHostOperationKind,
   localDateTimeStringToDate,
+  monthLabel,
+  OPERATION_KINDS,
   operationKindLabel,
   OperationKind,
+  TRIGGER_KINDS,
   TriggerKind,
   triggerKindLabel,
   UserCountComparator,
   userCountComparatorLabel,
+  weekdayShortLabel,
 } from "../libs/scheduledOperationUtils";
+import { hostStatusToLabel } from "../libs/hostUtils";
+import { buildImpulseValue, IMPULSE_VALUE_TYPES } from "../libs/sessionUtils";
+import { usePermissions } from "../hooks/usePermissions";
+import { PERMISSION_KEYS } from "../libs/permissionUtils";
 import { AccessLevels } from "../constants";
 import {
   buildStartWorldParameters,
@@ -56,6 +84,8 @@ import type { TFunction } from "i18next";
 type Props = {
   /** プリセレクト用: セッション詳細から開いたとき (トリガー監視/操作対象の両方の初期値になる) */
   defaultSessionId?: string;
+  /** プリセレクト用: ホスト詳細から開いたとき (ホスト操作の対象の初期値になる) */
+  defaultHostId?: string;
   /** トリガー / アクション種別の初期値. セッション詳細の「ユーザー0人で停止」から開かれた場合等. */
   defaultTrigger?: TriggerKind;
   defaultOperation?: OperationKind;
@@ -70,19 +100,14 @@ const makeTriBoolOptions = (t: TFunction) => [
   { id: "false", label: t("common.no") },
 ];
 
-const TRIGGER_KINDS: TriggerKind[] = ["TIME", "SESSION_USER_COUNT"];
-
 const COMPARATOR_KINDS: UserCountComparator[] = [
   "LESS_OR_EQUAL",
   "GREATER_OR_EQUAL",
 ];
 
-const ACTION_KINDS: OperationKind[] = [
-  "START_SESSION",
-  "STOP_SESSION",
-  "UPDATE_PARAMETERS",
-  "UPDATE_EXTRA_SETTINGS",
-];
+const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
+const DAYS_OF_MONTH = Array.from({ length: 31 }, (_, i) => i + 1);
+const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 type SessionOption = { id: string; label: string };
 
@@ -120,6 +145,7 @@ function useSessionOptions(defaultSessionId: string | undefined): {
 
 export default function ScheduledOperationForm({
   defaultSessionId,
+  defaultHostId,
   defaultTrigger,
   defaultOperation,
   defaultUserCountComparator,
@@ -130,18 +156,41 @@ export default function ScheduledOperationForm({
   const { t } = useTranslation();
   const [trigger, setTrigger] = useState<TriggerKind>(defaultTrigger ?? "TIME");
   const [kind, setKind] = useState<OperationKind>(
-    defaultOperation ?? (defaultSessionId ? "STOP_SESSION" : "START_SESSION"),
+    defaultOperation ??
+      (defaultHostId
+        ? "RESTART_HOST"
+        : defaultSessionId
+          ? "STOP_SESSION"
+          : "START_SESSION"),
   );
 
   const triggerOptions = TRIGGER_KINDS.map((k) => ({
     label: triggerKindLabel(k),
     value: k,
   }));
+  // t は言語切替で参照が変わるので、言語ごとに 1 度だけ組み立てる.
+  const { cronFrequencyOptions, dayOfMonthOptions, monthOptions } = useMemo(
+    () => ({
+      cronFrequencyOptions: CRON_FREQUENCIES.map((f) => ({
+        id: f,
+        label: cronFrequencyLabel(f),
+      })),
+      dayOfMonthOptions: DAYS_OF_MONTH.map((d) => ({
+        id: String(d),
+        label: t("scheduledOperationForm.dayOfMonthOption", { day: d }),
+      })),
+      monthOptions: MONTHS.map((m) => ({
+        id: String(m),
+        label: monthLabel(m),
+      })),
+    }),
+    [t],
+  );
   const comparatorOptions = COMPARATOR_KINDS.map((c) => ({
     id: c,
     label: userCountComparatorLabel(c),
   }));
-  const actionOptions = ACTION_KINDS.map((k) => ({
+  const actionOptions = OPERATION_KINDS.map((k) => ({
     label: operationKindLabel(k),
     value: k,
   }));
@@ -161,6 +210,14 @@ export default function ScheduledOperationForm({
       ? String(defaultUserCountThreshold)
       : "0",
   );
+  const [cronFrequency, setCronFrequency] = useState<CronFrequency>("DAILY");
+  const [cronTime, setCronTime] = useState("04:00");
+  const [cronWeekdays, setCronWeekdays] = useState<number[]>([1]);
+  const [cronDayOfMonth, setCronDayOfMonth] = useState("1");
+  const [cronMonth, setCronMonth] = useState("1");
+  const timeZone = useMemo(() => browserTimeZone(), []);
+  const usesDayOfMonth =
+    cronFrequency === "MONTHLY" || cronFrequency === "YEARLY";
 
   const { options: sessionOptions, hasRunningSessions } =
     useSessionOptions(defaultSessionId);
@@ -185,6 +242,32 @@ export default function ScheduledOperationForm({
           case: "time",
           value: create(TimeTriggerSchema, {
             scheduledAt: dateToTimestamp(at),
+          }),
+        },
+      });
+    }
+    if (trigger === "CRON") {
+      const [hour, minute] = cronTime.split(":").map((v) => parseInt(v, 10));
+      if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+        toast.error(t("scheduledOperationForm.specifyTime"));
+        return null;
+      }
+      if (cronFrequency === "WEEKLY" && cronWeekdays.length === 0) {
+        toast.error(t("scheduledOperationForm.selectWeekdays"));
+        return null;
+      }
+      // 頻度に関係のないフィールドはサーバー側で捨てられる.
+      return create(ScheduledTriggerSchema, {
+        trigger: {
+          case: "cron",
+          value: create(CronTriggerSchema, {
+            frequency: CronTrigger_Frequency[cronFrequency],
+            hour,
+            minute,
+            weekdays: cronWeekdays,
+            dayOfMonth: parseInt(cronDayOfMonth, 10),
+            month: parseInt(cronMonth, 10),
+            timezone: timeZone,
           }),
         },
       });
@@ -234,6 +317,73 @@ export default function ScheduledOperationForm({
             value={scheduledAt}
             onChange={(e) => setScheduledAt(e.target.value)}
           />
+        ) : trigger === "CRON" ? (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <SelectField
+                label={t("scheduledOperationForm.frequency")}
+                options={cronFrequencyOptions}
+                selectedId={cronFrequency}
+                onChange={(o) => setCronFrequency(o.id as CronFrequency)}
+              />
+              {cronFrequency === "YEARLY" && (
+                <SelectField
+                  label={t("scheduledOperationForm.month")}
+                  options={monthOptions}
+                  selectedId={cronMonth}
+                  onChange={(o) => setCronMonth(o.id)}
+                />
+              )}
+              {usesDayOfMonth && (
+                <SelectField
+                  label={t("scheduledOperationForm.dayOfMonth")}
+                  options={dayOfMonthOptions}
+                  selectedId={cronDayOfMonth}
+                  onChange={(o) => setCronDayOfMonth(o.id)}
+                />
+              )}
+              <TextField
+                label={t("scheduledOperationForm.time")}
+                type="time"
+                className="w-32"
+                value={cronTime}
+                onChange={(e) => setCronTime(e.target.value)}
+              />
+            </div>
+            {cronFrequency === "WEEKLY" && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">
+                  {t("scheduledOperationForm.weekdays")}
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  {WEEKDAYS.map((w) => (
+                    <div key={w} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`cron-weekday-${w}`}
+                        checked={cronWeekdays.includes(w)}
+                        onCheckedChange={(checked) =>
+                          setCronWeekdays((prev) =>
+                            checked
+                              ? [...prev, w].sort((a, b) => a - b)
+                              : prev.filter((v) => v !== w),
+                          )
+                        }
+                      />
+                      <Label htmlFor={`cron-weekday-${w}`}>
+                        {weekdayShortLabel(w)}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <p className="text-sm text-muted-foreground">
+              {t("scheduledOperationForm.cronNote", { timeZone })}
+              {usesDayOfMonth &&
+                Number(cronDayOfMonth) >= 29 &&
+                ` ${t("scheduledOperationForm.cronSkipNote")}`}
+            </p>
+          </div>
         ) : (
           <div className="space-y-3">
             <SelectField
@@ -280,6 +430,12 @@ export default function ScheduledOperationForm({
 
         {kind === "START_SESSION" ? (
           <StartSessionActionForm buildTrigger={buildTrigger} />
+        ) : isHostOperationKind(kind) ? (
+          <HostActionForm
+            kind={kind}
+            defaultHostId={defaultHostId}
+            buildTrigger={buildTrigger}
+          />
         ) : (
           <OtherKindActionForm
             kind={kind}
@@ -352,7 +508,7 @@ function StartSessionActionForm({
       });
       await mutateAsync({ operation, trigger: triggerMsg });
       toast.success(t("scheduledOperationForm.scheduleCreated"));
-      navigate("/sessions/scheduled");
+      navigate("/scheduled");
     } catch (err) {
       toast.error(
         t("scheduledOperationForm.createError", {
@@ -399,7 +555,136 @@ function StartSessionActionForm({
 }
 
 /* ============================================================
- * STOP / UPDATE_* action: target session + 任意の update params
+ * START_HOST / RESTART_HOST / SHUTDOWN_HOST action: 対象ホスト
+ * ============================================================ */
+
+function HostActionForm({
+  kind,
+  defaultHostId,
+  buildTrigger,
+}: {
+  kind: HostOperationKind;
+  defaultHostId?: string;
+  buildTrigger: () => ScheduledTrigger | null;
+}) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { mutateAsync, isPending } = useMutation(
+    createScheduledSessionOperation,
+  );
+  const [hostId, setHostId] = useState(defaultHostId ?? "");
+  const [withWorldRestart, setWithWorldRestart] = useState(true);
+
+  const { data: hostList } = useQuery(listHeadlessHost);
+  const { hasPermission } = usePermissions();
+  const hostOptions = useMemo(
+    () =>
+      [
+        { id: "_", label: t("scheduledOperationForm.selectPlaceholder") },
+      ].concat(
+        hostList?.hosts
+          .filter((h) => hasPermission(h.groupId, PERMISSION_KEYS.HOST_WRITE))
+          .map((h) => ({
+            id: h.id,
+            label: `${h.name} (${h.id.slice(0, 6)}) - ${hostStatusToLabel(h.status)}`,
+          })) ?? [],
+      ),
+    [hostList, hasPermission, t],
+  );
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hostId) {
+      toast.error(t("scheduledOperationForm.selectTargetHost"));
+      return;
+    }
+    const triggerMsg = buildTrigger();
+    if (!triggerMsg) return;
+
+    let operation;
+    switch (kind) {
+      case "START_HOST":
+        operation = create(ScheduledOperationSchema, {
+          operation: {
+            case: "startHost",
+            value: create(ScheduledStartHostOperationSchema, {
+              hostId,
+              withWorldRestart,
+            }),
+          },
+        });
+        break;
+      case "RESTART_HOST":
+        // ホスト詳細の「再起動」と同じく、最新版に更新して再起動する.
+        operation = create(ScheduledOperationSchema, {
+          operation: {
+            case: "restartHost",
+            value: create(RestartHeadlessHostRequestSchema, {
+              hostId,
+              withUpdate: true,
+              withWorldRestart,
+            }),
+          },
+        });
+        break;
+      case "SHUTDOWN_HOST":
+        operation = create(ScheduledOperationSchema, {
+          operation: {
+            case: "shutdownHost",
+            value: create(ShutdownHeadlessHostRequestSchema, { hostId }),
+          },
+        });
+        break;
+    }
+
+    try {
+      await mutateAsync({ operation, trigger: triggerMsg });
+      toast.success(t("scheduledOperationForm.scheduleCreated"));
+      navigate("/scheduled");
+    } catch (err) {
+      toast.error(
+        t("scheduledOperationForm.createError", {
+          message: (err as Error).message,
+        }),
+      );
+    }
+  };
+
+  return (
+    <form className="space-y-4" onSubmit={onSubmit}>
+      <SelectField
+        label={t("scheduledOperationForm.targetHost")}
+        options={hostOptions}
+        selectedId={hostId || "_"}
+        onChange={(o) => setHostId(o.id === "_" ? "" : o.id)}
+      />
+      {kind !== "SHUTDOWN_HOST" && (
+        <CheckboxField
+          label={t("scheduledOperationForm.withWorldRestart")}
+          checked={withWorldRestart}
+          onCheckedChange={(v) => setWithWorldRestart(v === true)}
+        />
+      )}
+      <p className="text-sm text-muted-foreground">
+        {t(
+          kind === "START_HOST"
+            ? "scheduledOperationForm.startHostNote"
+            : kind === "RESTART_HOST"
+              ? "scheduledOperationForm.restartHostNote"
+              : "scheduledOperationForm.shutdownHostNote",
+        )}
+      </p>
+      <FormFooter
+        navigate={navigate}
+        disabled={isPending}
+        cancelDisabled={isPending}
+      />
+    </form>
+  );
+}
+
+/* ============================================================
+ * STOP / UPDATE_* / SEND_DYNAMIC_IMPULSE action: target session + 操作ごとのフィールド
  * ============================================================ */
 
 const makeOtherFormSchema = (t: TFunction) =>
@@ -425,6 +710,11 @@ const makeOtherFormSchema = (t: TFunction) =>
     // UPDATE_EXTRA_SETTINGS
     extraAutoUpgrade: z.string().optional(),
     extraMemo: z.string().optional(),
+
+    // SEND_DYNAMIC_IMPULSE
+    impulseTag: z.string().optional(),
+    impulseValueType: z.enum(IMPULSE_VALUE_TYPES).optional(),
+    impulseValue: z.string().optional(),
   });
 
 type OtherFormValues = z.infer<ReturnType<typeof makeOtherFormSchema>>;
@@ -454,7 +744,7 @@ function OtherKindActionForm({
   defaultSessionId,
   buildTrigger,
 }: {
-  kind: Exclude<OperationKind, "START_SESSION">;
+  kind: Exclude<OperationKind, "START_SESSION" | HostOperationKind>;
   sessionOptions: SessionOption[];
   hasRunningSessions: boolean;
   defaultSessionId?: string;
@@ -471,14 +761,17 @@ function OtherKindActionForm({
   const {
     control,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<OtherFormValues>({
     resolver: zodResolver(otherFormSchema),
     mode: "onBlur",
     defaultValues: {
       sessionId: defaultSessionId ?? "",
+      impulseValueType: "none",
     },
   });
+  const impulseValueType = watch("impulseValueType") ?? "none";
 
   const onSubmit = handleSubmit(async (values) => {
     const triggerMsg = buildTrigger();
@@ -554,6 +847,30 @@ function OtherKindActionForm({
           });
           break;
         }
+        case "SEND_DYNAMIC_IMPULSE": {
+          const tag = values.impulseTag?.trim();
+          if (!tag) {
+            toast.error(t("scheduledOperationForm.specifyImpulseTag"));
+            return;
+          }
+          const value = buildImpulseValue(
+            values.impulseValueType ?? "none",
+            values.impulseValue ?? "",
+          );
+          operation = create(ScheduledOperationSchema, {
+            operation: {
+              case: "sendDynamicImpulse",
+              value: create(HdlSendDynamicImpulseRequestSchema, {
+                parameters: create(SendDynamicImpulseRequestSchema, {
+                  sessionId: values.sessionId,
+                  tag,
+                  value,
+                }),
+              }),
+            },
+          });
+          break;
+        }
         case "UPDATE_EXTRA_SETTINGS": {
           const autoUpgrade = parseBoolOrUndef(values.extraAutoUpgrade);
           operation = create(ScheduledOperationSchema, {
@@ -572,7 +889,7 @@ function OtherKindActionForm({
 
       await mutateAsync({ operation, trigger: triggerMsg });
       toast.success(t("scheduledOperationForm.scheduleCreated"));
-      navigate("/sessions/scheduled");
+      navigate("/scheduled");
     } catch (err) {
       toast.error(
         t("scheduledOperationForm.createError", {
@@ -745,6 +1062,55 @@ function OtherKindActionForm({
               />
             )}
           />
+        </div>
+      )}
+
+      {kind === "SEND_DYNAMIC_IMPULSE" && (
+        <div className="space-y-4 border-t pt-4">
+          <Controller
+            name="impulseTag"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                label="Tag"
+                placeholder={t("sessionOpsMenu.tagPlaceholder")}
+                {...field}
+                value={field.value ?? ""}
+              />
+            )}
+          />
+          <Controller
+            name="impulseValueType"
+            control={control}
+            render={({ field }) => (
+              <RadioGroupField
+                label={t("sessionOpsMenu.valueTypeLabel")}
+                options={IMPULSE_VALUE_TYPES.map((v) => ({
+                  label: v,
+                  value: v,
+                }))}
+                value={field.value ?? "none"}
+                onValueChange={field.onChange}
+                className="flex flex-row flex-wrap gap-4"
+              />
+            )}
+          />
+          {impulseValueType !== "none" && (
+            <Controller
+              name="impulseValue"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  label={t("sessionOpsMenu.valueLabel", {
+                    type: impulseValueType,
+                  })}
+                  type={impulseValueType === "string" ? "text" : "number"}
+                  {...field}
+                  value={field.value ?? ""}
+                />
+              )}
+            />
+          )}
         </div>
       )}
 

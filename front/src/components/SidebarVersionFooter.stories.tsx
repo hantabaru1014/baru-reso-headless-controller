@@ -20,7 +20,7 @@ const navigation = [
   { title: "Headless Accounts", href: "/headlessAccounts", icon: Users },
   { title: "Hosts", href: "/hosts", icon: Server },
   { title: "Sessions", href: "/sessions", icon: Earth, active: true },
-  { title: "Scheduled Ops", href: "/sessions/scheduled", icon: Clock },
+  { title: "Scheduled Ops", href: "/scheduled", icon: Clock },
 ];
 
 const meta = {
