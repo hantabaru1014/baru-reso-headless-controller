@@ -107,6 +107,7 @@ func allKnownProcedures() []string {
 		// ===== ControllerService: アカウント系 =====
 		hdlctrlv1connect.ControllerServiceListHeadlessAccountsProcedure,
 		hdlctrlv1connect.ControllerServiceCreateHeadlessAccountProcedure,
+		hdlctrlv1connect.ControllerServiceRegisterHeadlessAccountProcedure,
 		hdlctrlv1connect.ControllerServiceDeleteHeadlessAccountProcedure,
 		hdlctrlv1connect.ControllerServiceUpdateHeadlessAccountCredentialsProcedure,
 		hdlctrlv1connect.ControllerServiceGetHeadlessAccountStorageInfoProcedure,
@@ -620,9 +621,10 @@ func checkBuildResoniteImage(ctx context.Context, req connect.AnyRequest, deps *
 	return permissionDenied(entity.PermKey_HostWrite)
 }
 
-// checkCreateHeadlessAccount: アカウント作成. group_id 未指定なら personal group.
+// checkCreateHeadlessAccount: アカウント作成 (既存アカウントの追加 / Resonite アカウントの新規登録).
+// group_id 未指定なら personal group.
 func checkCreateHeadlessAccount(ctx context.Context, req connect.AnyRequest, _ *PermissionDeps, permUC *usecase.PermissionUsecase) error {
-	msg, ok := req.Any().(*hdlctrlv1.CreateHeadlessAccountRequest)
+	msg, ok := req.Any().(interface{ GetGroupId() string })
 	if !ok {
 		return connect.NewError(connect.CodeInternal, errors.New("unexpected request type"))
 	}

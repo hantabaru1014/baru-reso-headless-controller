@@ -40,6 +40,39 @@ func (c *ControllerService) CreateHeadlessAccount(ctx context.Context, req *conn
 	return res, nil
 }
 
+// RegisterHeadlessAccount implements hdlctrlv1connect.ControllerServiceHandler.
+// 権限: 解決後の group_id に対して account:write.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.ControllerServiceRegisterHeadlessAccountProcedure,
+	checkCreateHeadlessAccount,
+)
+
+func (c *ControllerService) RegisterHeadlessAccount(ctx context.Context, req *connect.Request[hdlctrlv1.RegisterHeadlessAccountRequest]) (*connect.Response[hdlctrlv1.RegisterHeadlessAccountResponse], error) {
+	claims, err := auth.GetAuthClaimsFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	groupID, err := c.permUC.ResolveGroupIDForUser(ctx, claims.UserID, req.Msg.GetGroupId())
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	userID := claims.UserID
+
+	resoniteID, err := c.hauc.RegisterHeadlessAccount(ctx, req.Msg.GetUsername(), req.Msg.GetEmail(), req.Msg.GetPassword(), req.Msg.GetDateOfBirth(), groupID, &userID)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	res := connect.NewResponse(&hdlctrlv1.RegisterHeadlessAccountResponse{
+		AccountId: resoniteID,
+		GroupId:   groupID,
+	})
+
+	return res, nil
+}
+
 // ListHeadlessAccounts implements hdlctrlv1connect.ControllerServiceHandler.
 // 権限: handler 側で resolveListGroupFilter により認可する (interceptor は通過のみ).
 var _ = registerRPCPermission(

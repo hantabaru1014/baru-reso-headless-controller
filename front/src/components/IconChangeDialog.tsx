@@ -3,6 +3,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
   Button,
   DialogClose,
@@ -21,6 +22,9 @@ interface IconChangeDialogProps {
   currentIconUrl?: string;
   onUpload: (iconData: Uint8Array) => Promise<void>;
   isUploading?: boolean;
+  title?: string;
+  description?: string;
+  cancelLabel?: string;
 }
 
 export function IconChangeDialog({
@@ -29,6 +33,9 @@ export function IconChangeDialog({
   currentIconUrl,
   onUpload,
   isUploading = false,
+  title,
+  description,
+  cancelLabel,
 }: IconChangeDialogProps) {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -150,7 +157,10 @@ export function IconChangeDialog({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose?.()}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>{t("iconChangeDialog.changeIconTitle")}</DialogTitle>
+          <DialogTitle>
+            {title ?? t("iconChangeDialog.changeIconTitle")}
+          </DialogTitle>
+          {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
 
         <div className="space-y-4">
@@ -270,7 +280,7 @@ export function IconChangeDialog({
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="outline" disabled={isUploading}>
-              {t("common.cancel")}
+              {cancelLabel ?? t("common.cancel")}
             </Button>
           </DialogClose>
           <Button

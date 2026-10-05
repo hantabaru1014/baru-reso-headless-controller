@@ -3,12 +3,15 @@ package skyfrost
 import (
 	"context"
 	"sync"
+	"time"
 )
 
 // Client is an interface for Resonite API client operations.
 type Client interface {
 	// UserLogin logs in with the given credentials and returns a user session
 	UserLogin(ctx context.Context, credential, password string) (*UserSession, error)
+	// RegisterUser registers a new Resonite account and returns its Resonite ID once the registration is processed
+	RegisterUser(ctx context.Context, username, email, password string, dateOfBirth time.Time) (string, error)
 	// FetchUserInfo fetches user information by Resonite ID
 	FetchUserInfo(ctx context.Context, resoniteID string) (*UserInfo, error)
 	// SearchUsersByName searches Resonite users by partial (case-insensitive) name
@@ -44,6 +47,11 @@ func NewDefaultClient() *DefaultClient {
 // UserLogin implements Client.UserLogin.
 func (c *DefaultClient) UserLogin(ctx context.Context, credential, password string) (*UserSession, error) {
 	return UserLogin(ctx, credential, password)
+}
+
+// RegisterUser implements Client.RegisterUser.
+func (c *DefaultClient) RegisterUser(ctx context.Context, username, email, password string, dateOfBirth time.Time) (string, error) {
+	return RegisterUser(ctx, username, email, password, dateOfBirth)
 }
 
 // FetchUserInfo implements Client.FetchUserInfo.

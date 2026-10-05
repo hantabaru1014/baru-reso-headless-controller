@@ -37,6 +37,7 @@ const (
 	ControllerService_ListResoniteVersions_FullMethodName             = "/hdlctrl.v1.ControllerService/ListResoniteVersions"
 	ControllerService_BuildResoniteImage_FullMethodName               = "/hdlctrl.v1.ControllerService/BuildResoniteImage"
 	ControllerService_CreateHeadlessAccount_FullMethodName            = "/hdlctrl.v1.ControllerService/CreateHeadlessAccount"
+	ControllerService_RegisterHeadlessAccount_FullMethodName          = "/hdlctrl.v1.ControllerService/RegisterHeadlessAccount"
 	ControllerService_ListHeadlessAccounts_FullMethodName             = "/hdlctrl.v1.ControllerService/ListHeadlessAccounts"
 	ControllerService_DeleteHeadlessAccount_FullMethodName            = "/hdlctrl.v1.ControllerService/DeleteHeadlessAccount"
 	ControllerService_UpdateHeadlessAccountCredentials_FullMethodName = "/hdlctrl.v1.ControllerService/UpdateHeadlessAccountCredentials"
@@ -107,6 +108,8 @@ type ControllerServiceClient interface {
 	BuildResoniteImage(ctx context.Context, in *BuildResoniteImageRequest, opts ...grpc.CallOption) (*BuildResoniteImageResponse, error)
 	// アカウント系
 	CreateHeadlessAccount(ctx context.Context, in *CreateHeadlessAccountRequest, opts ...grpc.CallOption) (*CreateHeadlessAccountResponse, error)
+	// Resonite アカウントを新規登録し、ヘッドレスアカウントとして追加する.
+	RegisterHeadlessAccount(ctx context.Context, in *RegisterHeadlessAccountRequest, opts ...grpc.CallOption) (*RegisterHeadlessAccountResponse, error)
 	ListHeadlessAccounts(ctx context.Context, in *ListHeadlessAccountsRequest, opts ...grpc.CallOption) (*ListHeadlessAccountsResponse, error)
 	DeleteHeadlessAccount(ctx context.Context, in *DeleteHeadlessAccountRequest, opts ...grpc.CallOption) (*DeleteHeadlessAccountResponse, error)
 	UpdateHeadlessAccountCredentials(ctx context.Context, in *UpdateHeadlessAccountCredentialsRequest, opts ...grpc.CallOption) (*UpdateHeadlessAccountCredentialsResponse, error)
@@ -332,6 +335,16 @@ func (c *controllerServiceClient) CreateHeadlessAccount(ctx context.Context, in 
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateHeadlessAccountResponse)
 	err := c.cc.Invoke(ctx, ControllerService_CreateHeadlessAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) RegisterHeadlessAccount(ctx context.Context, in *RegisterHeadlessAccountRequest, opts ...grpc.CallOption) (*RegisterHeadlessAccountResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RegisterHeadlessAccountResponse)
+	err := c.cc.Invoke(ctx, ControllerService_RegisterHeadlessAccount_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -811,6 +824,8 @@ type ControllerServiceServer interface {
 	BuildResoniteImage(context.Context, *BuildResoniteImageRequest) (*BuildResoniteImageResponse, error)
 	// アカウント系
 	CreateHeadlessAccount(context.Context, *CreateHeadlessAccountRequest) (*CreateHeadlessAccountResponse, error)
+	// Resonite アカウントを新規登録し、ヘッドレスアカウントとして追加する.
+	RegisterHeadlessAccount(context.Context, *RegisterHeadlessAccountRequest) (*RegisterHeadlessAccountResponse, error)
 	ListHeadlessAccounts(context.Context, *ListHeadlessAccountsRequest) (*ListHeadlessAccountsResponse, error)
 	DeleteHeadlessAccount(context.Context, *DeleteHeadlessAccountRequest) (*DeleteHeadlessAccountResponse, error)
 	UpdateHeadlessAccountCredentials(context.Context, *UpdateHeadlessAccountCredentialsRequest) (*UpdateHeadlessAccountCredentialsResponse, error)
@@ -922,6 +937,9 @@ func (UnimplementedControllerServiceServer) BuildResoniteImage(context.Context, 
 }
 func (UnimplementedControllerServiceServer) CreateHeadlessAccount(context.Context, *CreateHeadlessAccountRequest) (*CreateHeadlessAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateHeadlessAccount not implemented")
+}
+func (UnimplementedControllerServiceServer) RegisterHeadlessAccount(context.Context, *RegisterHeadlessAccountRequest) (*RegisterHeadlessAccountResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RegisterHeadlessAccount not implemented")
 }
 func (UnimplementedControllerServiceServer) ListHeadlessAccounts(context.Context, *ListHeadlessAccountsRequest) (*ListHeadlessAccountsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListHeadlessAccounts not implemented")
@@ -1381,6 +1399,24 @@ func _ControllerService_CreateHeadlessAccount_Handler(srv interface{}, ctx conte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).CreateHeadlessAccount(ctx, req.(*CreateHeadlessAccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_RegisterHeadlessAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterHeadlessAccountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).RegisterHeadlessAccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_RegisterHeadlessAccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).RegisterHeadlessAccount(ctx, req.(*RegisterHeadlessAccountRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2269,6 +2305,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateHeadlessAccount",
 			Handler:    _ControllerService_CreateHeadlessAccount_Handler,
+		},
+		{
+			MethodName: "RegisterHeadlessAccount",
+			Handler:    _ControllerService_RegisterHeadlessAccount_Handler,
 		},
 		{
 			MethodName: "ListHeadlessAccounts",

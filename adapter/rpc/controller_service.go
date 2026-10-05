@@ -153,7 +153,8 @@ func convertErr(err error) error {
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 
-	if errors.Is(err, usecase.ErrHeadlessAccountGroupAmbiguous) || errors.Is(err, usecase.ErrInvalidTransferTarget) {
+	if errors.Is(err, usecase.ErrHeadlessAccountGroupAmbiguous) || errors.Is(err, usecase.ErrInvalidTransferTarget) ||
+		errors.Is(err, usecase.ErrInvalidAccountRegistration) {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
 

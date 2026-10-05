@@ -3,7 +3,9 @@ package rpc
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
@@ -278,6 +280,114 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 		ok := errors.As(err, &connectErr)
 		require.True(t, ok, "expected connect.Error")
 		assert.Equal(t, connect.CodeAlreadyExists, connectErr.Code())
+	})
+}
+
+func TestControllerService_RegisterHeadlessAccount(t *testing.T) {
+	t.Run("成功: Resonite アカウントを登録し、指定グループのアカウントとして追加", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		setup.mockSkyfrost.EXPECT().
+			RegisterUser(gomock.Any(), "NewUser", "newuser@example.test", "Passw0rd", time.Date(2000, 1, 2, 0, 0, 0, 0, time.UTC)).
+			Return("U-newuser", nil)
+
+		const groupID = "g-mp-registeracc"
+
+		gid := groupID
+		req := authAsMinPerm(t, setup.queries, &hdlctrlv1.RegisterHeadlessAccountRequest{
+			Username:    " NewUser ",
+			Email:       "NewUser@Example.test",
+			Password:    "Passw0rd",
+			DateOfBirth: "2000-01-02",
+			GroupId:     &gid,
+		}, "U-mp-registeracc", groupID, []string{entity.PermKey_AccountWrite})
+
+		res, err := client.RegisterHeadlessAccount(t.Context(), req)
+		require.NoError(t, err)
+		assert.Equal(t, "U-newuser", res.Msg.GetAccountId())
+		assert.Equal(t, groupID, res.Msg.GetGroupId())
+
+		acc := testutil.GetOnlyHeadlessAccount(t, setup.queries, "U-newuser")
+		assert.Equal(t, groupID, acc.GroupID)
+		assert.Equal(t, "newuser@example.test", acc.Credential)
+		assert.Equal(t, "Passw0rd", acc.Password)
+		assert.Equal(t, "NewUser", acc.LastDisplayName.String)
+	})
+
+	t.Run("失敗: 入力が Resonite の登録条件を満たさない場合は InvalidArgument (Resonite に送らない)", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		tooYoung := time.Now().AddDate(-15, 0, 0).Format(time.DateOnly)
+
+		cases := map[string]*hdlctrlv1.RegisterHeadlessAccountRequest{
+			"ユーザー名なし":      {Username: " ", Email: "a@example.test", Password: "Passw0rd", DateOfBirth: "2000-01-01"},
+			"メールアドレス不正":    {Username: "a", Email: "invalid", Password: "Passw0rd", DateOfBirth: "2000-01-01"},
+			"表示名付きメールアドレス": {Username: "a", Email: "A <a@example.test>", Password: "Passw0rd", DateOfBirth: "2000-01-01"},
+			"150 歳超":       {Username: "a", Email: "a@example.test", Password: "Passw0rd", DateOfBirth: "1800-01-01"},
+			"パスワードが短い":     {Username: "a", Email: "a@example.test", Password: "Pass0rd", DateOfBirth: "2000-01-01"},
+			"パスワードに大文字がない": {Username: "a", Email: "a@example.test", Password: "passw0rd", DateOfBirth: "2000-01-01"},
+			"パスワードに数字がない":  {Username: "a", Email: "a@example.test", Password: "Password", DateOfBirth: "2000-01-01"},
+			"生年月日の形式不正":    {Username: "a", Email: "a@example.test", Password: "Passw0rd", DateOfBirth: "2000/01/01"},
+			"16 歳未満":       {Username: "a", Email: "a@example.test", Password: "Passw0rd", DateOfBirth: tooYoung},
+		}
+		for name, msg := range cases {
+			_, err := client.RegisterHeadlessAccount(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, msg))
+			require.Error(t, err, name)
+			assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err), name)
+		}
+	})
+
+	t.Run("失敗: Resonite 側の登録エラーではアカウントを追加しない (4xx は InvalidArgument)", func(t *testing.T) {
+		setup := setupControllerServiceTest(t)
+		defer setup.Cleanup()
+
+		client := setupAuthenticatedClient(t, setup.service)
+
+		setup.mockSkyfrost.EXPECT().
+			RegisterUser(gomock.Any(), "Taken", "taken@example.test", "Passw0rd", gomock.Any()).
+			Return("", fmt.Errorf("failed to register: %w", &skyfrost.APIError{StatusCode: 409, Body: "Username is already taken"}))
+		setup.mockSkyfrost.EXPECT().
+			RegisterUser(gomock.Any(), "Unavailable", "unavailable@example.test", "Passw0rd", gomock.Any()).
+			Return("", &skyfrost.APIError{StatusCode: 503, Body: "Service Unavailable"})
+		setup.mockSkyfrost.EXPECT().
+			RegisterUser(gomock.Any(), "Pending", "pending@example.test", "Passw0rd", gomock.Any()).
+			Return("", fmt.Errorf("%w (U-pending): timed out", skyfrost.ErrRegistrationNotConfirmed))
+
+		register := func(username string) error {
+			_, err := client.RegisterHeadlessAccount(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.RegisterHeadlessAccountRequest{
+				Username:    username,
+				Email:       strings.ToLower(username) + "@example.test",
+				Password:    "Passw0rd",
+				DateOfBirth: "2000-01-01",
+			}))
+
+			return err
+		}
+
+		err := register("Taken")
+		require.Error(t, err)
+		assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+		assert.Contains(t, err.Error(), "Username is already taken")
+
+		err = register("Unavailable")
+		require.Error(t, err)
+		assert.Equal(t, connect.CodeInternal, connect.CodeOf(err))
+
+		// 受け付け後に完了を確認できなかった場合は、既存アカウントとして追加するよう案内する.
+		err = register("Pending")
+		require.Error(t, err)
+		assert.Equal(t, connect.CodeInternal, connect.CodeOf(err))
+		assert.Contains(t, err.Error(), "add it as an existing account")
+
+		accounts, err := setup.queries.ListHeadlessAccounts(t.Context())
+		require.NoError(t, err)
+		assert.Empty(t, accounts)
 	})
 }
 

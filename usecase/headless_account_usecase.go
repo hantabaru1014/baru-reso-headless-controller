@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+	"strings"
+	"time"
 
 	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
@@ -21,6 +23,8 @@ var (
 	ErrHeadlessAccountAlreadyExists = errors.New("headless account is already registered in this group")
 	// ErrHeadlessAccountGroupAmbiguous は group_id 未指定のアカウント指定が複数グループの登録に該当した.
 	ErrHeadlessAccountGroupAmbiguous = errors.New("headless account is registered in multiple groups; group_id is required")
+	// ErrInvalidAccountRegistration は Resonite アカウント新規登録の入力が不正.
+	ErrInvalidAccountRegistration = errors.New("invalid account registration")
 )
 
 type HeadlessAccountUsecase struct {
@@ -52,31 +56,54 @@ func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, cred
 		return errors.Wrap(err, 0)
 	}
 
-	createdByText := pgtype.Text{}
-	if createdBy != nil {
-		createdByText = pgtype.Text{String: *createdBy, Valid: true}
+	return u.insertHeadlessAccount(ctx, userInfo, credential, password, groupID, createdBy)
+}
+
+// RegisterHeadlessAccount は Resonite アカウントを新規登録し、groupID のヘッドレスアカウントとして追加する.
+// dateOfBirth は YYYY-MM-DD. 戻り値は登録された Resonite ID.
+func (u *HeadlessAccountUsecase) RegisterHeadlessAccount(ctx context.Context, username, email, password, dateOfBirth, groupID string, createdBy *string) (string, error) {
+	if err := u.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_AccountWrite); err != nil {
+		return "", err
 	}
 
-	err = u.queries.CreateHeadlessAccount(ctx, db.CreateHeadlessAccountParams{
-		ResoniteID:      userSession.UserId,
-		Credential:      credential,
-		Password:        password,
-		LastDisplayName: pgtype.Text{String: userInfo.UserName, Valid: true},
-		LastIconUrl:     pgtype.Text{String: userInfo.IconUrl, Valid: true},
-		GroupID:         groupID,
-		CreatedBy:       createdByText,
-	})
+	username = strings.TrimSpace(username)
+	email = strings.ToLower(strings.TrimSpace(email))
+
+	dob, err := time.Parse(time.DateOnly, dateOfBirth)
 	if err != nil {
-		// アカウントは (group_id, resonite_id) で一意. 別グループへの登録は重複にならない.
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
-			return errors.Wrap(ErrHeadlessAccountAlreadyExists, 0)
+		return "", errors.Errorf("%w: invalid date of birth", ErrInvalidAccountRegistration)
+	}
+
+	// Resonite に拒否される入力は送る前に弾く.
+	if err := skyfrost.ValidateRegistration(username, email, password, dob, time.Now()); err != nil {
+		return "", errors.Errorf("%w: %w", ErrInvalidAccountRegistration, err)
+	}
+
+	// Resonite 側でアカウントが作られた後に DB へ保存し損ねないよう、リクエストが
+	// キャンセルされても (タブを閉じた / プロキシのタイムアウト等) 最後まで処理する.
+	ctx = context.WithoutCancel(ctx)
+
+	resoniteID, err := u.skyfrostClient.RegisterUser(ctx, username, email, password, dob)
+	if err != nil {
+		var apiErr *skyfrost.APIError
+		if errors.As(err, &apiErr) && apiErr.IsClientError() {
+			return "", errors.Errorf("%w: %w", ErrInvalidAccountRegistration, err)
 		}
 
-		return errors.Wrap(err, 0)
+		if errors.Is(err, skyfrost.ErrRegistrationNotConfirmed) {
+			return "", errors.Errorf("%w. if the account is created, add it as an existing account", err)
+		}
+
+		return "", errors.Errorf("failed to register resonite account: %w", err)
 	}
 
-	return nil
+	// 登録直後でアイコンは未設定なので、ユーザー情報を取り直さずに保存する.
+	userInfo := &skyfrost.UserInfo{ID: resoniteID, UserName: username}
+	if err := u.insertHeadlessAccount(ctx, userInfo, email, password, groupID, createdBy); err != nil {
+		return "", err
+	}
+
+	return resoniteID, nil
 }
 
 func (u *HeadlessAccountUsecase) UpdateHeadlessAccountCredentials(ctx context.Context, groupID, resoniteID, credential, password string) error {
@@ -317,4 +344,32 @@ func (u *HeadlessAccountUsecase) requireAccountWrite(ctx context.Context, groupI
 	}
 
 	return account, nil
+}
+
+func (u *HeadlessAccountUsecase) insertHeadlessAccount(ctx context.Context, userInfo *skyfrost.UserInfo, credential, password, groupID string, createdBy *string) error {
+	createdByText := pgtype.Text{}
+	if createdBy != nil {
+		createdByText = pgtype.Text{String: *createdBy, Valid: true}
+	}
+
+	err := u.queries.CreateHeadlessAccount(ctx, db.CreateHeadlessAccountParams{
+		ResoniteID:      userInfo.ID,
+		Credential:      credential,
+		Password:        password,
+		LastDisplayName: pgtype.Text{String: userInfo.UserName, Valid: true},
+		LastIconUrl:     pgtype.Text{String: userInfo.IconUrl, Valid: true},
+		GroupID:         groupID,
+		CreatedBy:       createdByText,
+	})
+	if err != nil {
+		// アカウントは (group_id, resonite_id) で一意. 別グループへの登録は重複にならない.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
+			return errors.Wrap(ErrHeadlessAccountAlreadyExists, 0)
+		}
+
+		return errors.Wrap(err, 0)
+	}
+
+	return nil
 }

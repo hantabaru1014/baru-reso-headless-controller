@@ -338,7 +338,7 @@
     "alreadyFriendExcluded": " (existing friends are excluded)",
     "friendRequestSent": "Friend request sent",
     "friendRequestSendFailed": "Failed to send friend request",
-    "addAccountTitle": "Add headless account",
+    "addAccountTitle": "Add Existing Account",
     "accountGroupHelper": "The group the account belongs to",
     "accountAdded": "Account added",
     "accountAddFailed": "Failed to add account",
@@ -358,7 +358,31 @@
     "updateCredentials": "Update login credentials",
     "changeIcon": "Change icon",
     "refetchNameIcon": "Refresh name and icon",
-    "noCreatePermission": "You have no group with permission to create accounts"
+    "noCreatePermission": "You have no group with permission to create accounts",
+    "register": {
+      "open": "Register New",
+      "title": "Register Resonite Account",
+      "description": "Registers a new Resonite account and adds it as a headless account.",
+      "username": "Username",
+      "email": "Email",
+      "password": "Password",
+      "passwordConfirm": "Confirm Password",
+      "dateOfBirth": "Date of Birth",
+      "passwordRule": "Use at least 8 characters including a digit, a lowercase and an uppercase letter",
+      "passwordMismatch": "Passwords do not match",
+      "ageRule": "You must be at least 16 years old",
+      "submit": "Register",
+      "registering": "Registering...",
+      "registered": "Resonite account registered",
+      "failed": "Failed to register Resonite account",
+      "iconTitle": "Set Icon",
+      "iconDescription": "The account has been registered. Please complete verification from the email sent to the registered address. Setting an icon may fail before the email is verified; in that case, set it later from \"Change icon\" in the menu.",
+      "skipIcon": "Skip",
+      "resoniteSection": "Sent to Resonite",
+      "resoniteSectionCaption": "Sent to Resonite and used to register the account.",
+      "appSection": "Settings in this app",
+      "appSectionCaption": "Not sent to Resonite."
+    }
   },
   "permissionUtils": {
     "groupType": {

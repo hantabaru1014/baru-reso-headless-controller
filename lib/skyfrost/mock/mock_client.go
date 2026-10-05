@@ -12,6 +12,7 @@ package mock
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	skyfrost "github.com/hantabaru1014/baru-reso-headless-controller/lib/skyfrost"
 	gomock "go.uber.org/mock/gomock"
@@ -99,6 +100,21 @@ func (m *MockClient) GetStorageInfo(ctx context.Context, credential, password, o
 func (mr *MockClientMockRecorder) GetStorageInfo(ctx, credential, password, ownerId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStorageInfo", reflect.TypeOf((*MockClient)(nil).GetStorageInfo), ctx, credential, password, ownerId)
+}
+
+// RegisterUser mocks base method.
+func (m *MockClient) RegisterUser(ctx context.Context, username, email, password string, dateOfBirth time.Time) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RegisterUser", ctx, username, email, password, dateOfBirth)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RegisterUser indicates an expected call of RegisterUser.
+func (mr *MockClientMockRecorder) RegisterUser(ctx, username, email, password, dateOfBirth any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterUser", reflect.TypeOf((*MockClient)(nil).RegisterUser), ctx, username, email, password, dateOfBirth)
 }
 
 // SearchUsersByName mocks base method.

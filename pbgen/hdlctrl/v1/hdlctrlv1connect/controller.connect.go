@@ -85,6 +85,9 @@ const (
 	// ControllerServiceCreateHeadlessAccountProcedure is the fully-qualified name of the
 	// ControllerService's CreateHeadlessAccount RPC.
 	ControllerServiceCreateHeadlessAccountProcedure = "/hdlctrl.v1.ControllerService/CreateHeadlessAccount"
+	// ControllerServiceRegisterHeadlessAccountProcedure is the fully-qualified name of the
+	// ControllerService's RegisterHeadlessAccount RPC.
+	ControllerServiceRegisterHeadlessAccountProcedure = "/hdlctrl.v1.ControllerService/RegisterHeadlessAccount"
 	// ControllerServiceListHeadlessAccountsProcedure is the fully-qualified name of the
 	// ControllerService's ListHeadlessAccounts RPC.
 	ControllerServiceListHeadlessAccountsProcedure = "/hdlctrl.v1.ControllerService/ListHeadlessAccounts"
@@ -243,6 +246,8 @@ type ControllerServiceClient interface {
 	BuildResoniteImage(context.Context, *connect.Request[v1.BuildResoniteImageRequest]) (*connect.Response[v1.BuildResoniteImageResponse], error)
 	// アカウント系
 	CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error)
+	// Resonite アカウントを新規登録し、ヘッドレスアカウントとして追加する.
+	RegisterHeadlessAccount(context.Context, *connect.Request[v1.RegisterHeadlessAccountRequest]) (*connect.Response[v1.RegisterHeadlessAccountResponse], error)
 	ListHeadlessAccounts(context.Context, *connect.Request[v1.ListHeadlessAccountsRequest]) (*connect.Response[v1.ListHeadlessAccountsResponse], error)
 	DeleteHeadlessAccount(context.Context, *connect.Request[v1.DeleteHeadlessAccountRequest]) (*connect.Response[v1.DeleteHeadlessAccountResponse], error)
 	UpdateHeadlessAccountCredentials(context.Context, *connect.Request[v1.UpdateHeadlessAccountCredentialsRequest]) (*connect.Response[v1.UpdateHeadlessAccountCredentialsResponse], error)
@@ -407,6 +412,12 @@ func NewControllerServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+ControllerServiceCreateHeadlessAccountProcedure,
 			connect.WithSchema(controllerServiceMethods.ByName("CreateHeadlessAccount")),
+			connect.WithClientOptions(opts...),
+		),
+		registerHeadlessAccount: connect.NewClient[v1.RegisterHeadlessAccountRequest, v1.RegisterHeadlessAccountResponse](
+			httpClient,
+			baseURL+ControllerServiceRegisterHeadlessAccountProcedure,
+			connect.WithSchema(controllerServiceMethods.ByName("RegisterHeadlessAccount")),
 			connect.WithClientOptions(opts...),
 		),
 		listHeadlessAccounts: connect.NewClient[v1.ListHeadlessAccountsRequest, v1.ListHeadlessAccountsResponse](
@@ -701,6 +712,7 @@ type controllerServiceClient struct {
 	listResoniteVersions             *connect.Client[v1.ListResoniteVersionsRequest, v1.ListResoniteVersionsResponse]
 	buildResoniteImage               *connect.Client[v1.BuildResoniteImageRequest, v1.BuildResoniteImageResponse]
 	createHeadlessAccount            *connect.Client[v1.CreateHeadlessAccountRequest, v1.CreateHeadlessAccountResponse]
+	registerHeadlessAccount          *connect.Client[v1.RegisterHeadlessAccountRequest, v1.RegisterHeadlessAccountResponse]
 	listHeadlessAccounts             *connect.Client[v1.ListHeadlessAccountsRequest, v1.ListHeadlessAccountsResponse]
 	deleteHeadlessAccount            *connect.Client[v1.DeleteHeadlessAccountRequest, v1.DeleteHeadlessAccountResponse]
 	updateHeadlessAccountCredentials *connect.Client[v1.UpdateHeadlessAccountCredentialsRequest, v1.UpdateHeadlessAccountCredentialsResponse]
@@ -831,6 +843,11 @@ func (c *controllerServiceClient) BuildResoniteImage(ctx context.Context, req *c
 // CreateHeadlessAccount calls hdlctrl.v1.ControllerService.CreateHeadlessAccount.
 func (c *controllerServiceClient) CreateHeadlessAccount(ctx context.Context, req *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error) {
 	return c.createHeadlessAccount.CallUnary(ctx, req)
+}
+
+// RegisterHeadlessAccount calls hdlctrl.v1.ControllerService.RegisterHeadlessAccount.
+func (c *controllerServiceClient) RegisterHeadlessAccount(ctx context.Context, req *connect.Request[v1.RegisterHeadlessAccountRequest]) (*connect.Response[v1.RegisterHeadlessAccountResponse], error) {
+	return c.registerHeadlessAccount.CallUnary(ctx, req)
 }
 
 // ListHeadlessAccounts calls hdlctrl.v1.ControllerService.ListHeadlessAccounts.
@@ -1082,6 +1099,8 @@ type ControllerServiceHandler interface {
 	BuildResoniteImage(context.Context, *connect.Request[v1.BuildResoniteImageRequest]) (*connect.Response[v1.BuildResoniteImageResponse], error)
 	// アカウント系
 	CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error)
+	// Resonite アカウントを新規登録し、ヘッドレスアカウントとして追加する.
+	RegisterHeadlessAccount(context.Context, *connect.Request[v1.RegisterHeadlessAccountRequest]) (*connect.Response[v1.RegisterHeadlessAccountResponse], error)
 	ListHeadlessAccounts(context.Context, *connect.Request[v1.ListHeadlessAccountsRequest]) (*connect.Response[v1.ListHeadlessAccountsResponse], error)
 	DeleteHeadlessAccount(context.Context, *connect.Request[v1.DeleteHeadlessAccountRequest]) (*connect.Response[v1.DeleteHeadlessAccountResponse], error)
 	UpdateHeadlessAccountCredentials(context.Context, *connect.Request[v1.UpdateHeadlessAccountCredentialsRequest]) (*connect.Response[v1.UpdateHeadlessAccountCredentialsResponse], error)
@@ -1242,6 +1261,12 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 		ControllerServiceCreateHeadlessAccountProcedure,
 		svc.CreateHeadlessAccount,
 		connect.WithSchema(controllerServiceMethods.ByName("CreateHeadlessAccount")),
+		connect.WithHandlerOptions(opts...),
+	)
+	controllerServiceRegisterHeadlessAccountHandler := connect.NewUnaryHandler(
+		ControllerServiceRegisterHeadlessAccountProcedure,
+		svc.RegisterHeadlessAccount,
+		connect.WithSchema(controllerServiceMethods.ByName("RegisterHeadlessAccount")),
 		connect.WithHandlerOptions(opts...),
 	)
 	controllerServiceListHeadlessAccountsHandler := connect.NewUnaryHandler(
@@ -1550,6 +1575,8 @@ func NewControllerServiceHandler(svc ControllerServiceHandler, opts ...connect.H
 			controllerServiceBuildResoniteImageHandler.ServeHTTP(w, r)
 		case ControllerServiceCreateHeadlessAccountProcedure:
 			controllerServiceCreateHeadlessAccountHandler.ServeHTTP(w, r)
+		case ControllerServiceRegisterHeadlessAccountProcedure:
+			controllerServiceRegisterHeadlessAccountHandler.ServeHTTP(w, r)
 		case ControllerServiceListHeadlessAccountsProcedure:
 			controllerServiceListHeadlessAccountsHandler.ServeHTTP(w, r)
 		case ControllerServiceDeleteHeadlessAccountProcedure:
@@ -1715,6 +1742,10 @@ func (UnimplementedControllerServiceHandler) BuildResoniteImage(context.Context,
 
 func (UnimplementedControllerServiceHandler) CreateHeadlessAccount(context.Context, *connect.Request[v1.CreateHeadlessAccountRequest]) (*connect.Response[v1.CreateHeadlessAccountResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.CreateHeadlessAccount is not implemented"))
+}
+
+func (UnimplementedControllerServiceHandler) RegisterHeadlessAccount(context.Context, *connect.Request[v1.RegisterHeadlessAccountRequest]) (*connect.Response[v1.RegisterHeadlessAccountResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.ControllerService.RegisterHeadlessAccount is not implemented"))
 }
 
 func (UnimplementedControllerServiceHandler) ListHeadlessAccounts(context.Context, *connect.Request[v1.ListHeadlessAccountsRequest]) (*connect.Response[v1.ListHeadlessAccountsResponse], error) {
