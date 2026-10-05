@@ -77,6 +77,21 @@ type GroupMember struct {
 
 type GroupMemberList []*GroupMember
 
+// InvitedGroupMember は招待中 (未登録) ユーザーのグループ参加予定.
+// 招待を使って登録した時点で GroupMember になる.
+type InvitedGroupMember struct {
+	GroupID      string
+	InvitationID string
+	ResoniteID   string
+	RoleID       string
+	AddedBy      *string
+	AddedAt      time.Time
+	// 招待リンクの有効期限.
+	ExpiresAt time.Time
+}
+
+type InvitedGroupMemberList []*InvitedGroupMember
+
 // Role はパーミッション集合.
 type Role struct {
 	ID             string

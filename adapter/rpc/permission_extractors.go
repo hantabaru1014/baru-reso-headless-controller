@@ -118,3 +118,12 @@ func groupIDFromAddMember(r *hdlctrlv1.AddGroupMemberRequest) string {
 func groupIDFromRemoveMember(r *hdlctrlv1.RemoveGroupMemberRequest) string {
 	return r.GetGroupId()
 }
+func groupIDFromAddInvitedMember(r *hdlctrlv1.AddInvitedGroupMemberRequest) string {
+	return r.GetGroupId()
+}
+func groupIDFromRemoveInvitedMember(r *hdlctrlv1.RemoveInvitedGroupMemberRequest) string {
+	return r.GetGroupId()
+}
+func groupIDFromUpdateInvitedMemberRole(r *hdlctrlv1.UpdateInvitedGroupMemberRoleRequest) string {
+	return r.GetGroupId()
+}

@@ -21,6 +21,11 @@ service GroupService {
   rpc AddGroupMember(AddGroupMemberRequest) returns (AddGroupMemberResponse);
   rpc RemoveGroupMember(RemoveGroupMemberRequest) returns (RemoveGroupMemberResponse);
   rpc UpdateGroupMemberRole(UpdateGroupMemberRoleRequest) returns (UpdateGroupMemberRoleResponse);
+
+  // 招待中 (未登録) ユーザーのグループ参加予定. 登録時に正式なメンバーになる.
+  rpc AddInvitedGroupMember(AddInvitedGroupMemberRequest) returns (AddInvitedGroupMemberResponse);
+  rpc RemoveInvitedGroupMember(RemoveInvitedGroupMemberRequest) returns (RemoveInvitedGroupMemberResponse);
+  rpc UpdateInvitedGroupMemberRole(UpdateInvitedGroupMemberRoleRequest) returns (UpdateInvitedGroupMemberRoleResponse);
 }
 
 // ロール (パーミッション集合) と利用可能パーミッションを管理する.
@@ -79,6 +84,18 @@ message GroupMember {
   // メンバーを追加したユーザー. NULL の場合はシステム自動作成 (personal 自動登録等).
   optional string added_by = 4;
   google.protobuf.Timestamp joined_at = 5;
+}
+
+// 招待中 (未登録) ユーザーのグループ参加予定.
+message InvitedGroupMember {
+  string group_id = 1;
+  string invitation_id = 2;
+  string resonite_id = 3;
+  string role_id = 4;
+  optional string added_by = 5;
+  google.protobuf.Timestamp added_at = 6;
+  // 招待リンクの有効期限.
+  google.protobuf.Timestamp expires_at = 7;
 }
 
 message Role {
@@ -171,6 +188,7 @@ message ListGroupMembersRequest {
 
 message ListGroupMembersResponse {
   repeated GroupMember members = 1;
+  repeated InvitedGroupMember invited_members = 2;
 }
 
 message AddGroupMemberRequest {
@@ -198,6 +216,33 @@ message UpdateGroupMemberRoleRequest {
 
 message UpdateGroupMemberRoleResponse {
   GroupMember member = 1;
+}
+
+message AddInvitedGroupMemberRequest {
+  string group_id = 1;
+  string invitation_id = 2;
+  string role_id = 3;
+}
+
+message AddInvitedGroupMemberResponse {
+  InvitedGroupMember member = 1;
+}
+
+message RemoveInvitedGroupMemberRequest {
+  string group_id = 1;
+  string invitation_id = 2;
+}
+
+message RemoveInvitedGroupMemberResponse {}
+
+message UpdateInvitedGroupMemberRoleRequest {
+  string group_id = 1;
+  string invitation_id = 2;
+  string role_id = 3;
+}
+
+message UpdateInvitedGroupMemberRoleResponse {
+  InvitedGroupMember member = 1;
 }
 
 // --- Role RPC messages ---

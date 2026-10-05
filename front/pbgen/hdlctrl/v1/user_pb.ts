@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hdlctrl/v1/user.proto.
  */
 export const file_hdlctrl_v1_user: GenFile = /*@__PURE__*/
-  fileDesc("ChVoZGxjdHJsL3YxL3VzZXIucHJvdG8SCmhkbGN0cmwudjEiOAoQVG9rZW5TZXRSZXNwb25zZRINCgV0b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJIjkKGUdldFRva2VuQnlQYXNzd29yZFJlcXVlc3QSCgoCaWQYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiFQoTUmVmcmVzaFRva2VuUmVxdWVzdCIxCiBWYWxpZGF0ZVJlZ2lzdHJhdGlvblRva2VuUmVxdWVzdBINCgV0b2tlbhgBIAEoCSJ1CiFWYWxpZGF0ZVJlZ2lzdHJhdGlvblRva2VuUmVzcG9uc2USDQoFdmFsaWQYASABKAgSEwoLcmVzb25pdGVfaWQYAiABKAkSGgoScmVzb25pdGVfdXNlcl9uYW1lGAMgASgJEhAKCGljb25fdXJsGAQgASgJImQKGFJlZ2lzdGVyV2l0aFRva2VuUmVxdWVzdBINCgV0b2tlbhgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEhAKCHBhc3N3b3JkGAMgASgJSgQIBBAFUhBwZXJzb25hbF9yb2xlX2lkIkcKFUNoYW5nZVBhc3N3b3JkUmVxdWVzdBIYChBjdXJyZW50X3Bhc3N3b3JkGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSIYChZDaGFuZ2VQYXNzd29yZFJlc3BvbnNlIpkBCgRVc2VyEgoKAmlkGAEgASgJEhMKC3Jlc29uaXRlX2lkGAIgASgJEhAKCGljb25fdXJsGAMgASgJEi4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIhIKEExpc3RVc2Vyc1JlcXVlc3QiNAoRTGlzdFVzZXJzUmVzcG9uc2USHwoFdXNlcnMYASADKAsyEC5oZGxjdHJsLnYxLlVzZXIiIQoOR2V0VXNlclJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSIxCg9HZXRVc2VyUmVzcG9uc2USHgoEdXNlchgBIAEoCzIQLmhkbGN0cmwudjEuVXNlciJpCh5DcmVhdGVSZWdpc3RyYXRpb25Ub2tlblJlcXVlc3QSEwoLcmVzb25pdGVfaWQYASABKAkSHQoQcGVyc29uYWxfcm9sZV9pZBgCIAEoCUgAiAEBQhMKEV9wZXJzb25hbF9yb2xlX2lkIo4BCh9DcmVhdGVSZWdpc3RyYXRpb25Ub2tlblJlc3BvbnNlEg0KBXRva2VuGAEgASgJEi4KCmV4cGlyZXNfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEnJlc29uaXRlX3VzZXJfbmFtZRgDIAEoCRIQCghpY29uX3VybBgEIAEoCSIkChFEZWxldGVVc2VyUmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJIhQKEkRlbGV0ZVVzZXJSZXNwb25zZTLEBgoLVXNlclNlcnZpY2USWwoSR2V0VG9rZW5CeVBhc3N3b3JkEiUuaGRsY3RybC52MS5HZXRUb2tlbkJ5UGFzc3dvcmRSZXF1ZXN0GhwuaGRsY3RybC52MS5Ub2tlblNldFJlc3BvbnNlIgASegoZVmFsaWRhdGVSZWdpc3RyYXRpb25Ub2tlbhIsLmhkbGN0cmwudjEuVmFsaWRhdGVSZWdpc3RyYXRpb25Ub2tlblJlcXVlc3QaLS5oZGxjdHJsLnYxLlZhbGlkYXRlUmVnaXN0cmF0aW9uVG9rZW5SZXNwb25zZSIAElkKEVJlZ2lzdGVyV2l0aFRva2VuEiQuaGRsY3RybC52MS5SZWdpc3RlcldpdGhUb2tlblJlcXVlc3QaHC5oZGxjdHJsLnYxLlRva2VuU2V0UmVzcG9uc2UiABJPCgxSZWZyZXNoVG9rZW4SHy5oZGxjdHJsLnYxLlJlZnJlc2hUb2tlblJlcXVlc3QaHC5oZGxjdHJsLnYxLlRva2VuU2V0UmVzcG9uc2UiABJZCg5DaGFuZ2VQYXNzd29yZBIhLmhkbGN0cmwudjEuQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0GiIuaGRsY3RybC52MS5DaGFuZ2VQYXNzd29yZFJlc3BvbnNlIgASSgoJTGlzdFVzZXJzEhwuaGRsY3RybC52MS5MaXN0VXNlcnNSZXF1ZXN0Gh0uaGRsY3RybC52MS5MaXN0VXNlcnNSZXNwb25zZSIAEkQKB0dldFVzZXISGi5oZGxjdHJsLnYxLkdldFVzZXJSZXF1ZXN0GhsuaGRsY3RybC52MS5HZXRVc2VyUmVzcG9uc2UiABJ0ChdDcmVhdGVSZWdpc3RyYXRpb25Ub2tlbhIqLmhkbGN0cmwudjEuQ3JlYXRlUmVnaXN0cmF0aW9uVG9rZW5SZXF1ZXN0GisuaGRsY3RybC52MS5DcmVhdGVSZWdpc3RyYXRpb25Ub2tlblJlc3BvbnNlIgASTQoKRGVsZXRlVXNlchIdLmhkbGN0cmwudjEuRGVsZXRlVXNlclJlcXVlc3QaHi5oZGxjdHJsLnYxLkRlbGV0ZVVzZXJSZXNwb25zZSIAQrcBCg5jb20uaGRsY3RybC52MUIJVXNlclByb3RvUAFaUWdpdGh1Yi5jb20vaGFudGFiYXJ1MTAxNC9iYXJ1LXJlc28taGVhZGxlc3MtY29udHJvbGxlci9wYmdlbi9oZGxjdHJsL3YxO2hkbGN0cmx2MaICA0hYWKoCCkhkbGN0cmwuVjHKAgpIZGxjdHJsXFYx4gIWSGRsY3RybFxWMVxHUEJNZXRhZGF0YeoCC0hkbGN0cmw6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("ChVoZGxjdHJsL3YxL3VzZXIucHJvdG8SCmhkbGN0cmwudjEiOAoQVG9rZW5TZXRSZXNwb25zZRINCgV0b2tlbhgBIAEoCRIVCg1yZWZyZXNoX3Rva2VuGAIgASgJIjkKGUdldFRva2VuQnlQYXNzd29yZFJlcXVlc3QSCgoCaWQYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiFQoTUmVmcmVzaFRva2VuUmVxdWVzdCIxCiBWYWxpZGF0ZVJlZ2lzdHJhdGlvblRva2VuUmVxdWVzdBINCgV0b2tlbhgBIAEoCSJ1CiFWYWxpZGF0ZVJlZ2lzdHJhdGlvblRva2VuUmVzcG9uc2USDQoFdmFsaWQYASABKAgSEwoLcmVzb25pdGVfaWQYAiABKAkSGgoScmVzb25pdGVfdXNlcl9uYW1lGAMgASgJEhAKCGljb25fdXJsGAQgASgJImQKGFJlZ2lzdGVyV2l0aFRva2VuUmVxdWVzdBINCgV0b2tlbhgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEhAKCHBhc3N3b3JkGAMgASgJSgQIBBAFUhBwZXJzb25hbF9yb2xlX2lkIkcKFUNoYW5nZVBhc3N3b3JkUmVxdWVzdBIYChBjdXJyZW50X3Bhc3N3b3JkGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSIYChZDaGFuZ2VQYXNzd29yZFJlc3BvbnNlIpkBCgRVc2VyEgoKAmlkGAEgASgJEhMKC3Jlc29uaXRlX2lkGAIgASgJEhAKCGljb25fdXJsGAMgASgJEi4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIhIKEExpc3RVc2Vyc1JlcXVlc3QiNAoRTGlzdFVzZXJzUmVzcG9uc2USHwoFdXNlcnMYASADKAsyEC5oZGxjdHJsLnYxLlVzZXIiIQoOR2V0VXNlclJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSIxCg9HZXRVc2VyUmVzcG9uc2USHgoEdXNlchgBIAEoCzIQLmhkbGN0cmwudjEuVXNlciJpCh5DcmVhdGVSZWdpc3RyYXRpb25Ub2tlblJlcXVlc3QSEwoLcmVzb25pdGVfaWQYASABKAkSHQoQcGVyc29uYWxfcm9sZV9pZBgCIAEoCUgAiAEBQhMKEV9wZXJzb25hbF9yb2xlX2lkIqUBCh9DcmVhdGVSZWdpc3RyYXRpb25Ub2tlblJlc3BvbnNlEg0KBXRva2VuGAEgASgJEi4KCmV4cGlyZXNfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEnJlc29uaXRlX3VzZXJfbmFtZRgDIAEoCRIQCghpY29uX3VybBgEIAEoCRIVCg1pbnZpdGF0aW9uX2lkGAUgASgJIiQKEURlbGV0ZVVzZXJSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkiFAoSRGVsZXRlVXNlclJlc3BvbnNlIsEBCgpJbnZpdGF0aW9uEgoKAmlkGAEgASgJEhMKC3Jlc29uaXRlX2lkGAIgASgJEh0KEHBlcnNvbmFsX3JvbGVfaWQYAyABKAlIAIgBARIuCgpleHBpcmVzX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpjcmVhdGVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEITChFfcGVyc29uYWxfcm9sZV9pZCIYChZMaXN0SW52aXRhdGlvbnNSZXF1ZXN0IkYKF0xpc3RJbnZpdGF0aW9uc1Jlc3BvbnNlEisKC2ludml0YXRpb25zGAEgAygLMhYuaGRsY3RybC52MS5JbnZpdGF0aW9uIjEKGFJlaXNzdWVJbnZpdGF0aW9uUmVxdWVzdBIVCg1pbnZpdGF0aW9uX2lkGAEgASgJIloKGVJlaXNzdWVJbnZpdGF0aW9uUmVzcG9uc2USDQoFdG9rZW4YASABKAkSLgoKZXhwaXJlc19hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiMAoXUmV2b2tlSW52aXRhdGlvblJlcXVlc3QSFQoNaW52aXRhdGlvbl9pZBgBIAEoCSIaChhSZXZva2VJbnZpdGF0aW9uUmVzcG9uc2Uy5wgKC1VzZXJTZXJ2aWNlElsKEkdldFRva2VuQnlQYXNzd29yZBIlLmhkbGN0cmwudjEuR2V0VG9rZW5CeVBhc3N3b3JkUmVxdWVzdBocLmhkbGN0cmwudjEuVG9rZW5TZXRSZXNwb25zZSIAEnoKGVZhbGlkYXRlUmVnaXN0cmF0aW9uVG9rZW4SLC5oZGxjdHJsLnYxLlZhbGlkYXRlUmVnaXN0cmF0aW9uVG9rZW5SZXF1ZXN0Gi0uaGRsY3RybC52MS5WYWxpZGF0ZVJlZ2lzdHJhdGlvblRva2VuUmVzcG9uc2UiABJZChFSZWdpc3RlcldpdGhUb2tlbhIkLmhkbGN0cmwudjEuUmVnaXN0ZXJXaXRoVG9rZW5SZXF1ZXN0GhwuaGRsY3RybC52MS5Ub2tlblNldFJlc3BvbnNlIgASTwoMUmVmcmVzaFRva2VuEh8uaGRsY3RybC52MS5SZWZyZXNoVG9rZW5SZXF1ZXN0GhwuaGRsY3RybC52MS5Ub2tlblNldFJlc3BvbnNlIgASWQoOQ2hhbmdlUGFzc3dvcmQSIS5oZGxjdHJsLnYxLkNoYW5nZVBhc3N3b3JkUmVxdWVzdBoiLmhkbGN0cmwudjEuQ2hhbmdlUGFzc3dvcmRSZXNwb25zZSIAEkoKCUxpc3RVc2VycxIcLmhkbGN0cmwudjEuTGlzdFVzZXJzUmVxdWVzdBodLmhkbGN0cmwudjEuTGlzdFVzZXJzUmVzcG9uc2UiABJECgdHZXRVc2VyEhouaGRsY3RybC52MS5HZXRVc2VyUmVxdWVzdBobLmhkbGN0cmwudjEuR2V0VXNlclJlc3BvbnNlIgASdAoXQ3JlYXRlUmVnaXN0cmF0aW9uVG9rZW4SKi5oZGxjdHJsLnYxLkNyZWF0ZVJlZ2lzdHJhdGlvblRva2VuUmVxdWVzdBorLmhkbGN0cmwudjEuQ3JlYXRlUmVnaXN0cmF0aW9uVG9rZW5SZXNwb25zZSIAEk0KCkRlbGV0ZVVzZXISHS5oZGxjdHJsLnYxLkRlbGV0ZVVzZXJSZXF1ZXN0Gh4uaGRsY3RybC52MS5EZWxldGVVc2VyUmVzcG9uc2UiABJcCg9MaXN0SW52aXRhdGlvbnMSIi5oZGxjdHJsLnYxLkxpc3RJbnZpdGF0aW9uc1JlcXVlc3QaIy5oZGxjdHJsLnYxLkxpc3RJbnZpdGF0aW9uc1Jlc3BvbnNlIgASYgoRUmVpc3N1ZUludml0YXRpb24SJC5oZGxjdHJsLnYxLlJlaXNzdWVJbnZpdGF0aW9uUmVxdWVzdBolLmhkbGN0cmwudjEuUmVpc3N1ZUludml0YXRpb25SZXNwb25zZSIAEl8KEFJldm9rZUludml0YXRpb24SIy5oZGxjdHJsLnYxLlJldm9rZUludml0YXRpb25SZXF1ZXN0GiQuaGRsY3RybC52MS5SZXZva2VJbnZpdGF0aW9uUmVzcG9uc2UiAEK3AQoOY29tLmhkbGN0cmwudjFCCVVzZXJQcm90b1ABWlFnaXRodWIuY29tL2hhbnRhYmFydTEwMTQvYmFydS1yZXNvLWhlYWRsZXNzLWNvbnRyb2xsZXIvcGJnZW4vaGRsY3RybC92MTtoZGxjdHJsdjGiAgNIWFiqAgpIZGxjdHJsLlYxygIKSGRsY3RybFxWMeICFkhkbGN0cmxcVjFcR1BCTWV0YWRhdGHqAgtIZGxjdHJsOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message hdlctrl.v1.TokenSetResponse
@@ -335,6 +335,11 @@ export type CreateRegistrationTokenResponse = Message<"hdlctrl.v1.CreateRegistra
    * @generated from field: string icon_url = 4;
    */
   iconUrl: string;
+
+  /**
+   * @generated from field: string invitation_id = 5;
+   */
+  invitationId: string;
 };
 
 /**
@@ -373,6 +378,148 @@ export type DeleteUserResponse = Message<"hdlctrl.v1.DeleteUserResponse"> & {
  */
 export const DeleteUserResponseSchema: GenMessage<DeleteUserResponse> = /*@__PURE__*/
   messageDesc(file_hdlctrl_v1_user, 16);
+
+/**
+ * 登録が済んでいない招待. 登録されるまでの間もグループ参加予定を持てる.
+ *
+ * @generated from message hdlctrl.v1.Invitation
+ */
+export type Invitation = Message<"hdlctrl.v1.Invitation"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string resonite_id = 2;
+   */
+  resoniteId: string;
+
+  /**
+   * 個人グループに付与するロールID. 未設定なら seed-admin.
+   *
+   * @generated from field: optional string personal_role_id = 3;
+   */
+  personalRoleId?: string;
+
+  /**
+   * 招待リンクの有効期限. 過ぎたら再発行が必要.
+   *
+   * @generated from field: google.protobuf.Timestamp expires_at = 4;
+   */
+  expiresAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 5;
+   */
+  createdAt?: Timestamp;
+};
+
+/**
+ * Describes the message hdlctrl.v1.Invitation.
+ * Use `create(InvitationSchema)` to create a new message.
+ */
+export const InvitationSchema: GenMessage<Invitation> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 17);
+
+/**
+ * @generated from message hdlctrl.v1.ListInvitationsRequest
+ */
+export type ListInvitationsRequest = Message<"hdlctrl.v1.ListInvitationsRequest"> & {
+};
+
+/**
+ * Describes the message hdlctrl.v1.ListInvitationsRequest.
+ * Use `create(ListInvitationsRequestSchema)` to create a new message.
+ */
+export const ListInvitationsRequestSchema: GenMessage<ListInvitationsRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 18);
+
+/**
+ * @generated from message hdlctrl.v1.ListInvitationsResponse
+ */
+export type ListInvitationsResponse = Message<"hdlctrl.v1.ListInvitationsResponse"> & {
+  /**
+   * @generated from field: repeated hdlctrl.v1.Invitation invitations = 1;
+   */
+  invitations: Invitation[];
+};
+
+/**
+ * Describes the message hdlctrl.v1.ListInvitationsResponse.
+ * Use `create(ListInvitationsResponseSchema)` to create a new message.
+ */
+export const ListInvitationsResponseSchema: GenMessage<ListInvitationsResponse> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 19);
+
+/**
+ * @generated from message hdlctrl.v1.ReissueInvitationRequest
+ */
+export type ReissueInvitationRequest = Message<"hdlctrl.v1.ReissueInvitationRequest"> & {
+  /**
+   * @generated from field: string invitation_id = 1;
+   */
+  invitationId: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.ReissueInvitationRequest.
+ * Use `create(ReissueInvitationRequestSchema)` to create a new message.
+ */
+export const ReissueInvitationRequestSchema: GenMessage<ReissueInvitationRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 20);
+
+/**
+ * @generated from message hdlctrl.v1.ReissueInvitationResponse
+ */
+export type ReissueInvitationResponse = Message<"hdlctrl.v1.ReissueInvitationResponse"> & {
+  /**
+   * @generated from field: string token = 1;
+   */
+  token: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp expires_at = 2;
+   */
+  expiresAt?: Timestamp;
+};
+
+/**
+ * Describes the message hdlctrl.v1.ReissueInvitationResponse.
+ * Use `create(ReissueInvitationResponseSchema)` to create a new message.
+ */
+export const ReissueInvitationResponseSchema: GenMessage<ReissueInvitationResponse> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 21);
+
+/**
+ * @generated from message hdlctrl.v1.RevokeInvitationRequest
+ */
+export type RevokeInvitationRequest = Message<"hdlctrl.v1.RevokeInvitationRequest"> & {
+  /**
+   * @generated from field: string invitation_id = 1;
+   */
+  invitationId: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.RevokeInvitationRequest.
+ * Use `create(RevokeInvitationRequestSchema)` to create a new message.
+ */
+export const RevokeInvitationRequestSchema: GenMessage<RevokeInvitationRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 22);
+
+/**
+ * @generated from message hdlctrl.v1.RevokeInvitationResponse
+ */
+export type RevokeInvitationResponse = Message<"hdlctrl.v1.RevokeInvitationResponse"> & {
+};
+
+/**
+ * Describes the message hdlctrl.v1.RevokeInvitationResponse.
+ * Use `create(RevokeInvitationResponseSchema)` to create a new message.
+ */
+export const RevokeInvitationResponseSchema: GenMessage<RevokeInvitationResponse> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_user, 23);
 
 /**
  * @generated from service hdlctrl.v1.UserService
@@ -464,6 +611,37 @@ export const UserService: GenService<{
     methodKind: "unary";
     input: typeof DeleteUserRequestSchema;
     output: typeof DeleteUserResponseSchema;
+  },
+  /**
+   * 登録が済んでいない招待の一覧を返す (期限切れを含む). 認証済みなら誰でも呼べる
+   * (グループメンバー追加モーダルで招待中ユーザーを選ぶため).
+   *
+   * @generated from rpc hdlctrl.v1.UserService.ListInvitations
+   */
+  listInvitations: {
+    methodKind: "unary";
+    input: typeof ListInvitationsRequestSchema;
+    output: typeof ListInvitationsResponseSchema;
+  },
+  /**
+   * 招待リンクを再発行する. 旧リンクは無効になり、グループ参加予定は引き継がれる.
+   *
+   * @generated from rpc hdlctrl.v1.UserService.ReissueInvitation
+   */
+  reissueInvitation: {
+    methodKind: "unary";
+    input: typeof ReissueInvitationRequestSchema;
+    output: typeof ReissueInvitationResponseSchema;
+  },
+  /**
+   * 招待を取り消す. グループ参加予定も削除される.
+   *
+   * @generated from rpc hdlctrl.v1.UserService.RevokeInvitation
+   */
+  revokeInvitation: {
+    methodKind: "unary";
+    input: typeof RevokeInvitationRequestSchema;
+    output: typeof RevokeInvitationResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_hdlctrl_v1_user, 0);

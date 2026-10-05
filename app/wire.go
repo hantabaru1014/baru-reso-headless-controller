@@ -214,6 +214,8 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		adapter.NewRoleRepository,
 		wire.Bind(new(port.GroupMemberRepository), new(*adapter.GroupMemberRepository)),
 		adapter.NewGroupMemberRepository,
+		wire.Bind(new(port.InvitedGroupMemberRepository), new(*adapter.InvitedGroupMemberRepository)),
+		adapter.NewInvitedGroupMemberRepository,
 		wire.Bind(new(port.MessageRepository), new(*adapter.MessageRepository)),
 		adapter.NewMessageRepository,
 
@@ -311,6 +313,8 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 		adapter.NewRoleRepository,
 		wire.Bind(new(port.GroupMemberRepository), new(*adapter.GroupMemberRepository)),
 		adapter.NewGroupMemberRepository,
+		wire.Bind(new(port.InvitedGroupMemberRepository), new(*adapter.InvitedGroupMemberRepository)),
+		adapter.NewInvitedGroupMemberRepository,
 
 		// CLI has no upgrade orchestrator running, so SessionUsecase
 		// gets a no-op drainer.

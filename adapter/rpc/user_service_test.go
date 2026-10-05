@@ -216,6 +216,7 @@ func newGroupUsecaseForTest(queries *db.Queries, permUC *usecase.PermissionUseca
 	return usecase.NewGroupUsecase(
 		adapter.NewGroupRepository(queries),
 		adapter.NewGroupMemberRepository(queries),
+		adapter.NewInvitedGroupMemberRepository(queries),
 		adapter.NewRoleRepository(queries),
 		permUC,
 	)
@@ -451,6 +452,13 @@ func TestUserService_CreateRegistrationToken(t *testing.T) {
 		diff := gotExpires.Sub(expectedExpires)
 		assert.Less(t, diff.Abs(), 5*time.Minute, "expires_at out of expected window")
 
+		// 登録前は招待中として一覧に出る.
+		invitationsRes, err := client.ListInvitations(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListInvitationsRequest{}))
+		require.NoError(t, err)
+		require.Len(t, invitationsRes.Msg.GetInvitations(), 1)
+		assert.Equal(t, res.Msg.GetInvitationId(), invitationsRes.Msg.GetInvitations()[0].GetId())
+		assert.Equal(t, resoniteID, invitationsRes.Msg.GetInvitations()[0].GetResoniteId())
+
 		// 発行したトークンが DB に保存されており、ValidateRegistrationToken も通る.
 		setup.mockSkyfrost.EXPECT().
 			FetchUserInfo(gomock.Any(), resoniteID).
@@ -474,6 +482,10 @@ func TestUserService_CreateRegistrationToken(t *testing.T) {
 			Password: "password123",
 		}))
 		require.NoError(t, err)
+
+		invitationsRes, err = client.ListInvitations(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListInvitationsRequest{}))
+		require.NoError(t, err)
+		assert.Empty(t, invitationsRes.Msg.GetInvitations(), "登録済みの招待は一覧に出ない")
 
 		// single-use: 同じトークンで 2 人目は登録できない.
 		_, err = client.RegisterWithToken(t.Context(), connect.NewRequest(&hdlctrlv1.RegisterWithTokenRequest{
@@ -726,5 +738,43 @@ func TestUserService_DeleteUser(t *testing.T) {
 		connectErr := &connect.Error{}
 		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
+	})
+}
+
+func TestUserService_ReissueAndRevokeInvitation(t *testing.T) {
+	t.Run("失敗: system:user.create 権限なし → PermissionDenied", func(t *testing.T) {
+		s := setupGroupServiceTest(t)
+
+		invitationID, _ := s.createInvitation(t)
+		createNormalUser(t, s.queries, "alice@example.test")
+
+		_, err := s.userClient.ReissueInvitation(t.Context(), testutil.CreateAuthenticatedRequest(t,
+			&hdlctrlv1.ReissueInvitationRequest{InvitationId: invitationID},
+			"alice@example.test", "U-alice", ""))
+		assertConnectCode(t, err, connect.CodePermissionDenied)
+
+		_, err = s.userClient.RevokeInvitation(t.Context(), testutil.CreateAuthenticatedRequest(t,
+			&hdlctrlv1.RevokeInvitationRequest{InvitationId: invitationID},
+			"alice@example.test", "U-alice", ""))
+		assertConnectCode(t, err, connect.CodePermissionDenied)
+
+		// 一覧は認証済みなら誰でも見られる (メンバー追加の候補選択用).
+		res, err := s.userClient.ListInvitations(t.Context(), testutil.CreateAuthenticatedRequest(t,
+			&hdlctrlv1.ListInvitationsRequest{},
+			"alice@example.test", "U-alice", ""))
+		require.NoError(t, err)
+		assert.Len(t, res.Msg.GetInvitations(), 1)
+	})
+
+	t.Run("失敗: 存在しない招待 → NotFound", func(t *testing.T) {
+		s := setupGroupServiceTest(t)
+
+		_, err := s.userClient.ReissueInvitation(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t,
+			&hdlctrlv1.ReissueInvitationRequest{InvitationId: "no-such-invitation"}))
+		assertConnectCode(t, err, connect.CodeNotFound)
+
+		_, err = s.userClient.RevokeInvitation(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t,
+			&hdlctrlv1.RevokeInvitationRequest{InvitationId: "no-such-invitation"}))
+		assertConnectCode(t, err, connect.CodeNotFound)
 	})
 }

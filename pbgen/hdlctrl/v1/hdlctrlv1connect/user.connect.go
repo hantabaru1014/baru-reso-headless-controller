@@ -57,6 +57,15 @@ const (
 	UserServiceCreateRegistrationTokenProcedure = "/hdlctrl.v1.UserService/CreateRegistrationToken"
 	// UserServiceDeleteUserProcedure is the fully-qualified name of the UserService's DeleteUser RPC.
 	UserServiceDeleteUserProcedure = "/hdlctrl.v1.UserService/DeleteUser"
+	// UserServiceListInvitationsProcedure is the fully-qualified name of the UserService's
+	// ListInvitations RPC.
+	UserServiceListInvitationsProcedure = "/hdlctrl.v1.UserService/ListInvitations"
+	// UserServiceReissueInvitationProcedure is the fully-qualified name of the UserService's
+	// ReissueInvitation RPC.
+	UserServiceReissueInvitationProcedure = "/hdlctrl.v1.UserService/ReissueInvitation"
+	// UserServiceRevokeInvitationProcedure is the fully-qualified name of the UserService's
+	// RevokeInvitation RPC.
+	UserServiceRevokeInvitationProcedure = "/hdlctrl.v1.UserService/RevokeInvitation"
 )
 
 // UserServiceClient is a client for the hdlctrl.v1.UserService service.
@@ -79,6 +88,13 @@ type UserServiceClient interface {
 	CreateRegistrationToken(context.Context, *connect.Request[v1.CreateRegistrationTokenRequest]) (*connect.Response[v1.CreateRegistrationTokenResponse], error)
 	// 指定 user_id のユーザーを削除する. 自分自身は削除できない.
 	DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error)
+	// 登録が済んでいない招待の一覧を返す (期限切れを含む). 認証済みなら誰でも呼べる
+	// (グループメンバー追加モーダルで招待中ユーザーを選ぶため).
+	ListInvitations(context.Context, *connect.Request[v1.ListInvitationsRequest]) (*connect.Response[v1.ListInvitationsResponse], error)
+	// 招待リンクを再発行する. 旧リンクは無効になり、グループ参加予定は引き継がれる.
+	ReissueInvitation(context.Context, *connect.Request[v1.ReissueInvitationRequest]) (*connect.Response[v1.ReissueInvitationResponse], error)
+	// 招待を取り消す. グループ参加予定も削除される.
+	RevokeInvitation(context.Context, *connect.Request[v1.RevokeInvitationRequest]) (*connect.Response[v1.RevokeInvitationResponse], error)
 }
 
 // NewUserServiceClient constructs a client for the hdlctrl.v1.UserService service. By default, it
@@ -146,6 +162,24 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(userServiceMethods.ByName("DeleteUser")),
 			connect.WithClientOptions(opts...),
 		),
+		listInvitations: connect.NewClient[v1.ListInvitationsRequest, v1.ListInvitationsResponse](
+			httpClient,
+			baseURL+UserServiceListInvitationsProcedure,
+			connect.WithSchema(userServiceMethods.ByName("ListInvitations")),
+			connect.WithClientOptions(opts...),
+		),
+		reissueInvitation: connect.NewClient[v1.ReissueInvitationRequest, v1.ReissueInvitationResponse](
+			httpClient,
+			baseURL+UserServiceReissueInvitationProcedure,
+			connect.WithSchema(userServiceMethods.ByName("ReissueInvitation")),
+			connect.WithClientOptions(opts...),
+		),
+		revokeInvitation: connect.NewClient[v1.RevokeInvitationRequest, v1.RevokeInvitationResponse](
+			httpClient,
+			baseURL+UserServiceRevokeInvitationProcedure,
+			connect.WithSchema(userServiceMethods.ByName("RevokeInvitation")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -160,6 +194,9 @@ type userServiceClient struct {
 	getUser                   *connect.Client[v1.GetUserRequest, v1.GetUserResponse]
 	createRegistrationToken   *connect.Client[v1.CreateRegistrationTokenRequest, v1.CreateRegistrationTokenResponse]
 	deleteUser                *connect.Client[v1.DeleteUserRequest, v1.DeleteUserResponse]
+	listInvitations           *connect.Client[v1.ListInvitationsRequest, v1.ListInvitationsResponse]
+	reissueInvitation         *connect.Client[v1.ReissueInvitationRequest, v1.ReissueInvitationResponse]
+	revokeInvitation          *connect.Client[v1.RevokeInvitationRequest, v1.RevokeInvitationResponse]
 }
 
 // GetTokenByPassword calls hdlctrl.v1.UserService.GetTokenByPassword.
@@ -207,6 +244,21 @@ func (c *userServiceClient) DeleteUser(ctx context.Context, req *connect.Request
 	return c.deleteUser.CallUnary(ctx, req)
 }
 
+// ListInvitations calls hdlctrl.v1.UserService.ListInvitations.
+func (c *userServiceClient) ListInvitations(ctx context.Context, req *connect.Request[v1.ListInvitationsRequest]) (*connect.Response[v1.ListInvitationsResponse], error) {
+	return c.listInvitations.CallUnary(ctx, req)
+}
+
+// ReissueInvitation calls hdlctrl.v1.UserService.ReissueInvitation.
+func (c *userServiceClient) ReissueInvitation(ctx context.Context, req *connect.Request[v1.ReissueInvitationRequest]) (*connect.Response[v1.ReissueInvitationResponse], error) {
+	return c.reissueInvitation.CallUnary(ctx, req)
+}
+
+// RevokeInvitation calls hdlctrl.v1.UserService.RevokeInvitation.
+func (c *userServiceClient) RevokeInvitation(ctx context.Context, req *connect.Request[v1.RevokeInvitationRequest]) (*connect.Response[v1.RevokeInvitationResponse], error) {
+	return c.revokeInvitation.CallUnary(ctx, req)
+}
+
 // UserServiceHandler is an implementation of the hdlctrl.v1.UserService service.
 type UserServiceHandler interface {
 	// 認証なしRPC
@@ -227,6 +279,13 @@ type UserServiceHandler interface {
 	CreateRegistrationToken(context.Context, *connect.Request[v1.CreateRegistrationTokenRequest]) (*connect.Response[v1.CreateRegistrationTokenResponse], error)
 	// 指定 user_id のユーザーを削除する. 自分自身は削除できない.
 	DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error)
+	// 登録が済んでいない招待の一覧を返す (期限切れを含む). 認証済みなら誰でも呼べる
+	// (グループメンバー追加モーダルで招待中ユーザーを選ぶため).
+	ListInvitations(context.Context, *connect.Request[v1.ListInvitationsRequest]) (*connect.Response[v1.ListInvitationsResponse], error)
+	// 招待リンクを再発行する. 旧リンクは無効になり、グループ参加予定は引き継がれる.
+	ReissueInvitation(context.Context, *connect.Request[v1.ReissueInvitationRequest]) (*connect.Response[v1.ReissueInvitationResponse], error)
+	// 招待を取り消す. グループ参加予定も削除される.
+	RevokeInvitation(context.Context, *connect.Request[v1.RevokeInvitationRequest]) (*connect.Response[v1.RevokeInvitationResponse], error)
 }
 
 // NewUserServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -290,6 +349,24 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(userServiceMethods.ByName("DeleteUser")),
 		connect.WithHandlerOptions(opts...),
 	)
+	userServiceListInvitationsHandler := connect.NewUnaryHandler(
+		UserServiceListInvitationsProcedure,
+		svc.ListInvitations,
+		connect.WithSchema(userServiceMethods.ByName("ListInvitations")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userServiceReissueInvitationHandler := connect.NewUnaryHandler(
+		UserServiceReissueInvitationProcedure,
+		svc.ReissueInvitation,
+		connect.WithSchema(userServiceMethods.ByName("ReissueInvitation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userServiceRevokeInvitationHandler := connect.NewUnaryHandler(
+		UserServiceRevokeInvitationProcedure,
+		svc.RevokeInvitation,
+		connect.WithSchema(userServiceMethods.ByName("RevokeInvitation")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/hdlctrl.v1.UserService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UserServiceGetTokenByPasswordProcedure:
@@ -310,6 +387,12 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 			userServiceCreateRegistrationTokenHandler.ServeHTTP(w, r)
 		case UserServiceDeleteUserProcedure:
 			userServiceDeleteUserHandler.ServeHTTP(w, r)
+		case UserServiceListInvitationsProcedure:
+			userServiceListInvitationsHandler.ServeHTTP(w, r)
+		case UserServiceReissueInvitationProcedure:
+			userServiceReissueInvitationHandler.ServeHTTP(w, r)
+		case UserServiceRevokeInvitationProcedure:
+			userServiceRevokeInvitationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -353,4 +436,16 @@ func (UnimplementedUserServiceHandler) CreateRegistrationToken(context.Context, 
 
 func (UnimplementedUserServiceHandler) DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.UserService.DeleteUser is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) ListInvitations(context.Context, *connect.Request[v1.ListInvitationsRequest]) (*connect.Response[v1.ListInvitationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.UserService.ListInvitations is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) ReissueInvitation(context.Context, *connect.Request[v1.ReissueInvitationRequest]) (*connect.Response[v1.ReissueInvitationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.UserService.ReissueInvitation is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) RevokeInvitation(context.Context, *connect.Request[v1.RevokeInvitationRequest]) (*connect.Response[v1.RevokeInvitationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.UserService.RevokeInvitation is not implemented"))
 }

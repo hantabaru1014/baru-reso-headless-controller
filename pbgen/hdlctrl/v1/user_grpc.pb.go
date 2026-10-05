@@ -28,6 +28,9 @@ const (
 	UserService_GetUser_FullMethodName                   = "/hdlctrl.v1.UserService/GetUser"
 	UserService_CreateRegistrationToken_FullMethodName   = "/hdlctrl.v1.UserService/CreateRegistrationToken"
 	UserService_DeleteUser_FullMethodName                = "/hdlctrl.v1.UserService/DeleteUser"
+	UserService_ListInvitations_FullMethodName           = "/hdlctrl.v1.UserService/ListInvitations"
+	UserService_ReissueInvitation_FullMethodName         = "/hdlctrl.v1.UserService/ReissueInvitation"
+	UserService_RevokeInvitation_FullMethodName          = "/hdlctrl.v1.UserService/RevokeInvitation"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -52,6 +55,13 @@ type UserServiceClient interface {
 	CreateRegistrationToken(ctx context.Context, in *CreateRegistrationTokenRequest, opts ...grpc.CallOption) (*CreateRegistrationTokenResponse, error)
 	// 指定 user_id のユーザーを削除する. 自分自身は削除できない.
 	DeleteUser(ctx context.Context, in *DeleteUserRequest, opts ...grpc.CallOption) (*DeleteUserResponse, error)
+	// 登録が済んでいない招待の一覧を返す (期限切れを含む). 認証済みなら誰でも呼べる
+	// (グループメンバー追加モーダルで招待中ユーザーを選ぶため).
+	ListInvitations(ctx context.Context, in *ListInvitationsRequest, opts ...grpc.CallOption) (*ListInvitationsResponse, error)
+	// 招待リンクを再発行する. 旧リンクは無効になり、グループ参加予定は引き継がれる.
+	ReissueInvitation(ctx context.Context, in *ReissueInvitationRequest, opts ...grpc.CallOption) (*ReissueInvitationResponse, error)
+	// 招待を取り消す. グループ参加予定も削除される.
+	RevokeInvitation(ctx context.Context, in *RevokeInvitationRequest, opts ...grpc.CallOption) (*RevokeInvitationResponse, error)
 }
 
 type userServiceClient struct {
@@ -152,6 +162,36 @@ func (c *userServiceClient) DeleteUser(ctx context.Context, in *DeleteUserReques
 	return out, nil
 }
 
+func (c *userServiceClient) ListInvitations(ctx context.Context, in *ListInvitationsRequest, opts ...grpc.CallOption) (*ListInvitationsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListInvitationsResponse)
+	err := c.cc.Invoke(ctx, UserService_ListInvitations_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ReissueInvitation(ctx context.Context, in *ReissueInvitationRequest, opts ...grpc.CallOption) (*ReissueInvitationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReissueInvitationResponse)
+	err := c.cc.Invoke(ctx, UserService_ReissueInvitation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) RevokeInvitation(ctx context.Context, in *RevokeInvitationRequest, opts ...grpc.CallOption) (*RevokeInvitationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevokeInvitationResponse)
+	err := c.cc.Invoke(ctx, UserService_RevokeInvitation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -174,6 +214,13 @@ type UserServiceServer interface {
 	CreateRegistrationToken(context.Context, *CreateRegistrationTokenRequest) (*CreateRegistrationTokenResponse, error)
 	// 指定 user_id のユーザーを削除する. 自分自身は削除できない.
 	DeleteUser(context.Context, *DeleteUserRequest) (*DeleteUserResponse, error)
+	// 登録が済んでいない招待の一覧を返す (期限切れを含む). 認証済みなら誰でも呼べる
+	// (グループメンバー追加モーダルで招待中ユーザーを選ぶため).
+	ListInvitations(context.Context, *ListInvitationsRequest) (*ListInvitationsResponse, error)
+	// 招待リンクを再発行する. 旧リンクは無効になり、グループ参加予定は引き継がれる.
+	ReissueInvitation(context.Context, *ReissueInvitationRequest) (*ReissueInvitationResponse, error)
+	// 招待を取り消す. グループ参加予定も削除される.
+	RevokeInvitation(context.Context, *RevokeInvitationRequest) (*RevokeInvitationResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -210,6 +257,15 @@ func (UnimplementedUserServiceServer) CreateRegistrationToken(context.Context, *
 }
 func (UnimplementedUserServiceServer) DeleteUser(context.Context, *DeleteUserRequest) (*DeleteUserResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteUser not implemented")
+}
+func (UnimplementedUserServiceServer) ListInvitations(context.Context, *ListInvitationsRequest) (*ListInvitationsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListInvitations not implemented")
+}
+func (UnimplementedUserServiceServer) ReissueInvitation(context.Context, *ReissueInvitationRequest) (*ReissueInvitationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReissueInvitation not implemented")
+}
+func (UnimplementedUserServiceServer) RevokeInvitation(context.Context, *RevokeInvitationRequest) (*RevokeInvitationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokeInvitation not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -394,6 +450,60 @@ func _UserService_DeleteUser_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ListInvitations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListInvitationsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListInvitations(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListInvitations_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListInvitations(ctx, req.(*ListInvitationsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ReissueInvitation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReissueInvitationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ReissueInvitation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ReissueInvitation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ReissueInvitation(ctx, req.(*ReissueInvitationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_RevokeInvitation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeInvitationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).RevokeInvitation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_RevokeInvitation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).RevokeInvitation(ctx, req.(*RevokeInvitationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -436,6 +546,18 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteUser",
 			Handler:    _UserService_DeleteUser_Handler,
+		},
+		{
+			MethodName: "ListInvitations",
+			Handler:    _UserService_ListInvitations_Handler,
+		},
+		{
+			MethodName: "ReissueInvitation",
+			Handler:    _UserService_ReissueInvitation_Handler,
+		},
+		{
+			MethodName: "RevokeInvitation",
+			Handler:    _UserService_RevokeInvitation_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

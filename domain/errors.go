@@ -6,6 +6,7 @@ var (
 	ErrNotFound         = errors.New("not found")
 	ErrUnauthenticated  = errors.New("unauthenticated")
 	ErrPermissionDenied = errors.New("permission denied")
+	ErrAlreadyExists    = errors.New("already exists")
 )
 
 // DetailedError は「一行のエラーメッセージとは別に、長い詳細 (ビルドログ等) を

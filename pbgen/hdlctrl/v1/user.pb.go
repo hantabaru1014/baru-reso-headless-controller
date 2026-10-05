@@ -728,6 +728,7 @@ type CreateRegistrationTokenResponse struct {
 	ExpiresAt        *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	ResoniteUserName string                 `protobuf:"bytes,3,opt,name=resonite_user_name,json=resoniteUserName,proto3" json:"resonite_user_name,omitempty"`
 	IconUrl          string                 `protobuf:"bytes,4,opt,name=icon_url,json=iconUrl,proto3" json:"icon_url,omitempty"`
+	InvitationId     string                 `protobuf:"bytes,5,opt,name=invitation_id,json=invitationId,proto3" json:"invitation_id,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -786,6 +787,13 @@ func (x *CreateRegistrationTokenResponse) GetResoniteUserName() string {
 func (x *CreateRegistrationTokenResponse) GetIconUrl() string {
 	if x != nil {
 		return x.IconUrl
+	}
+	return ""
+}
+
+func (x *CreateRegistrationTokenResponse) GetInvitationId() string {
+	if x != nil {
+		return x.InvitationId
 	}
 	return ""
 }
@@ -870,6 +878,341 @@ func (*DeleteUserResponse) Descriptor() ([]byte, []int) {
 	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{16}
 }
 
+// 登録が済んでいない招待. 登録されるまでの間もグループ参加予定を持てる.
+type Invitation struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ResoniteId string                 `protobuf:"bytes,2,opt,name=resonite_id,json=resoniteId,proto3" json:"resonite_id,omitempty"`
+	// 個人グループに付与するロールID. 未設定なら seed-admin.
+	PersonalRoleId *string `protobuf:"bytes,3,opt,name=personal_role_id,json=personalRoleId,proto3,oneof" json:"personal_role_id,omitempty"`
+	// 招待リンクの有効期限. 過ぎたら再発行が必要.
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Invitation) Reset() {
+	*x = Invitation{}
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Invitation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Invitation) ProtoMessage() {}
+
+func (x *Invitation) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Invitation.ProtoReflect.Descriptor instead.
+func (*Invitation) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *Invitation) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Invitation) GetResoniteId() string {
+	if x != nil {
+		return x.ResoniteId
+	}
+	return ""
+}
+
+func (x *Invitation) GetPersonalRoleId() string {
+	if x != nil && x.PersonalRoleId != nil {
+		return *x.PersonalRoleId
+	}
+	return ""
+}
+
+func (x *Invitation) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+func (x *Invitation) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+type ListInvitationsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListInvitationsRequest) Reset() {
+	*x = ListInvitationsRequest{}
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListInvitationsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListInvitationsRequest) ProtoMessage() {}
+
+func (x *ListInvitationsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListInvitationsRequest.ProtoReflect.Descriptor instead.
+func (*ListInvitationsRequest) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{18}
+}
+
+type ListInvitationsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invitations   []*Invitation          `protobuf:"bytes,1,rep,name=invitations,proto3" json:"invitations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListInvitationsResponse) Reset() {
+	*x = ListInvitationsResponse{}
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListInvitationsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListInvitationsResponse) ProtoMessage() {}
+
+func (x *ListInvitationsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListInvitationsResponse.ProtoReflect.Descriptor instead.
+func (*ListInvitationsResponse) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *ListInvitationsResponse) GetInvitations() []*Invitation {
+	if x != nil {
+		return x.Invitations
+	}
+	return nil
+}
+
+type ReissueInvitationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	InvitationId  string                 `protobuf:"bytes,1,opt,name=invitation_id,json=invitationId,proto3" json:"invitation_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReissueInvitationRequest) Reset() {
+	*x = ReissueInvitationRequest{}
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReissueInvitationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReissueInvitationRequest) ProtoMessage() {}
+
+func (x *ReissueInvitationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReissueInvitationRequest.ProtoReflect.Descriptor instead.
+func (*ReissueInvitationRequest) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *ReissueInvitationRequest) GetInvitationId() string {
+	if x != nil {
+		return x.InvitationId
+	}
+	return ""
+}
+
+type ReissueInvitationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReissueInvitationResponse) Reset() {
+	*x = ReissueInvitationResponse{}
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReissueInvitationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReissueInvitationResponse) ProtoMessage() {}
+
+func (x *ReissueInvitationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReissueInvitationResponse.ProtoReflect.Descriptor instead.
+func (*ReissueInvitationResponse) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ReissueInvitationResponse) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *ReissueInvitationResponse) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+type RevokeInvitationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	InvitationId  string                 `protobuf:"bytes,1,opt,name=invitation_id,json=invitationId,proto3" json:"invitation_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeInvitationRequest) Reset() {
+	*x = RevokeInvitationRequest{}
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeInvitationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeInvitationRequest) ProtoMessage() {}
+
+func (x *RevokeInvitationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeInvitationRequest.ProtoReflect.Descriptor instead.
+func (*RevokeInvitationRequest) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *RevokeInvitationRequest) GetInvitationId() string {
+	if x != nil {
+		return x.InvitationId
+	}
+	return ""
+}
+
+type RevokeInvitationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeInvitationResponse) Reset() {
+	*x = RevokeInvitationResponse{}
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeInvitationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeInvitationResponse) ProtoMessage() {}
+
+func (x *RevokeInvitationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_user_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeInvitationResponse.ProtoReflect.Descriptor instead.
+func (*RevokeInvitationResponse) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_user_proto_rawDescGZIP(), []int{23}
+}
+
 var File_hdlctrl_v1_user_proto protoreflect.FileDescriptor
 
 const file_hdlctrl_v1_user_proto_rawDesc = "" +
@@ -919,16 +1262,40 @@ const file_hdlctrl_v1_user_proto_rawDesc = "" +
 	"\vresonite_id\x18\x01 \x01(\tR\n" +
 	"resoniteId\x12-\n" +
 	"\x10personal_role_id\x18\x02 \x01(\tH\x00R\x0epersonalRoleId\x88\x01\x01B\x13\n" +
-	"\x11_personal_role_id\"\xbb\x01\n" +
+	"\x11_personal_role_id\"\xe0\x01\n" +
 	"\x1fCreateRegistrationTokenResponse\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x129\n" +
 	"\n" +
 	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12,\n" +
 	"\x12resonite_user_name\x18\x03 \x01(\tR\x10resoniteUserName\x12\x19\n" +
-	"\bicon_url\x18\x04 \x01(\tR\aiconUrl\",\n" +
+	"\bicon_url\x18\x04 \x01(\tR\aiconUrl\x12#\n" +
+	"\rinvitation_id\x18\x05 \x01(\tR\finvitationId\",\n" +
 	"\x11DeleteUserRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x14\n" +
-	"\x12DeleteUserResponse2\xc4\x06\n" +
+	"\x12DeleteUserResponse\"\xf7\x01\n" +
+	"\n" +
+	"Invitation\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
+	"\vresonite_id\x18\x02 \x01(\tR\n" +
+	"resoniteId\x12-\n" +
+	"\x10personal_role_id\x18\x03 \x01(\tH\x00R\x0epersonalRoleId\x88\x01\x01\x129\n" +
+	"\n" +
+	"expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x129\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAtB\x13\n" +
+	"\x11_personal_role_id\"\x18\n" +
+	"\x16ListInvitationsRequest\"S\n" +
+	"\x17ListInvitationsResponse\x128\n" +
+	"\vinvitations\x18\x01 \x03(\v2\x16.hdlctrl.v1.InvitationR\vinvitations\"?\n" +
+	"\x18ReissueInvitationRequest\x12#\n" +
+	"\rinvitation_id\x18\x01 \x01(\tR\finvitationId\"l\n" +
+	"\x19ReissueInvitationResponse\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x129\n" +
+	"\n" +
+	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\">\n" +
+	"\x17RevokeInvitationRequest\x12#\n" +
+	"\rinvitation_id\x18\x01 \x01(\tR\finvitationId\"\x1a\n" +
+	"\x18RevokeInvitationResponse2\xe7\b\n" +
 	"\vUserService\x12[\n" +
 	"\x12GetTokenByPassword\x12%.hdlctrl.v1.GetTokenByPasswordRequest\x1a\x1c.hdlctrl.v1.TokenSetResponse\"\x00\x12z\n" +
 	"\x19ValidateRegistrationToken\x12,.hdlctrl.v1.ValidateRegistrationTokenRequest\x1a-.hdlctrl.v1.ValidateRegistrationTokenResponse\"\x00\x12Y\n" +
@@ -939,7 +1306,10 @@ const file_hdlctrl_v1_user_proto_rawDesc = "" +
 	"\aGetUser\x12\x1a.hdlctrl.v1.GetUserRequest\x1a\x1b.hdlctrl.v1.GetUserResponse\"\x00\x12t\n" +
 	"\x17CreateRegistrationToken\x12*.hdlctrl.v1.CreateRegistrationTokenRequest\x1a+.hdlctrl.v1.CreateRegistrationTokenResponse\"\x00\x12M\n" +
 	"\n" +
-	"DeleteUser\x12\x1d.hdlctrl.v1.DeleteUserRequest\x1a\x1e.hdlctrl.v1.DeleteUserResponse\"\x00B\xb7\x01\n" +
+	"DeleteUser\x12\x1d.hdlctrl.v1.DeleteUserRequest\x1a\x1e.hdlctrl.v1.DeleteUserResponse\"\x00\x12\\\n" +
+	"\x0fListInvitations\x12\".hdlctrl.v1.ListInvitationsRequest\x1a#.hdlctrl.v1.ListInvitationsResponse\"\x00\x12b\n" +
+	"\x11ReissueInvitation\x12$.hdlctrl.v1.ReissueInvitationRequest\x1a%.hdlctrl.v1.ReissueInvitationResponse\"\x00\x12_\n" +
+	"\x10RevokeInvitation\x12#.hdlctrl.v1.RevokeInvitationRequest\x1a$.hdlctrl.v1.RevokeInvitationResponse\"\x00B\xb7\x01\n" +
 	"\x0ecom.hdlctrl.v1B\tUserProtoP\x01ZQgithub.com/hantabaru1014/baru-reso-headless-controller/pbgen/hdlctrl/v1;hdlctrlv1\xa2\x02\x03HXX\xaa\x02\n" +
 	"Hdlctrl.V1\xca\x02\n" +
 	"Hdlctrl\\V1\xe2\x02\x16Hdlctrl\\V1\\GPBMetadata\xea\x02\vHdlctrl::V1b\x06proto3"
@@ -956,7 +1326,7 @@ func file_hdlctrl_v1_user_proto_rawDescGZIP() []byte {
 	return file_hdlctrl_v1_user_proto_rawDescData
 }
 
-var file_hdlctrl_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_hdlctrl_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_hdlctrl_v1_user_proto_goTypes = []any{
 	(*TokenSetResponse)(nil),                  // 0: hdlctrl.v1.TokenSetResponse
 	(*GetTokenByPasswordRequest)(nil),         // 1: hdlctrl.v1.GetTokenByPasswordRequest
@@ -975,37 +1345,54 @@ var file_hdlctrl_v1_user_proto_goTypes = []any{
 	(*CreateRegistrationTokenResponse)(nil),   // 14: hdlctrl.v1.CreateRegistrationTokenResponse
 	(*DeleteUserRequest)(nil),                 // 15: hdlctrl.v1.DeleteUserRequest
 	(*DeleteUserResponse)(nil),                // 16: hdlctrl.v1.DeleteUserResponse
-	(*timestamppb.Timestamp)(nil),             // 17: google.protobuf.Timestamp
+	(*Invitation)(nil),                        // 17: hdlctrl.v1.Invitation
+	(*ListInvitationsRequest)(nil),            // 18: hdlctrl.v1.ListInvitationsRequest
+	(*ListInvitationsResponse)(nil),           // 19: hdlctrl.v1.ListInvitationsResponse
+	(*ReissueInvitationRequest)(nil),          // 20: hdlctrl.v1.ReissueInvitationRequest
+	(*ReissueInvitationResponse)(nil),         // 21: hdlctrl.v1.ReissueInvitationResponse
+	(*RevokeInvitationRequest)(nil),           // 22: hdlctrl.v1.RevokeInvitationRequest
+	(*RevokeInvitationResponse)(nil),          // 23: hdlctrl.v1.RevokeInvitationResponse
+	(*timestamppb.Timestamp)(nil),             // 24: google.protobuf.Timestamp
 }
 var file_hdlctrl_v1_user_proto_depIdxs = []int32{
-	17, // 0: hdlctrl.v1.User.created_at:type_name -> google.protobuf.Timestamp
-	17, // 1: hdlctrl.v1.User.updated_at:type_name -> google.protobuf.Timestamp
+	24, // 0: hdlctrl.v1.User.created_at:type_name -> google.protobuf.Timestamp
+	24, // 1: hdlctrl.v1.User.updated_at:type_name -> google.protobuf.Timestamp
 	8,  // 2: hdlctrl.v1.ListUsersResponse.users:type_name -> hdlctrl.v1.User
 	8,  // 3: hdlctrl.v1.GetUserResponse.user:type_name -> hdlctrl.v1.User
-	17, // 4: hdlctrl.v1.CreateRegistrationTokenResponse.expires_at:type_name -> google.protobuf.Timestamp
-	1,  // 5: hdlctrl.v1.UserService.GetTokenByPassword:input_type -> hdlctrl.v1.GetTokenByPasswordRequest
-	3,  // 6: hdlctrl.v1.UserService.ValidateRegistrationToken:input_type -> hdlctrl.v1.ValidateRegistrationTokenRequest
-	5,  // 7: hdlctrl.v1.UserService.RegisterWithToken:input_type -> hdlctrl.v1.RegisterWithTokenRequest
-	2,  // 8: hdlctrl.v1.UserService.RefreshToken:input_type -> hdlctrl.v1.RefreshTokenRequest
-	6,  // 9: hdlctrl.v1.UserService.ChangePassword:input_type -> hdlctrl.v1.ChangePasswordRequest
-	9,  // 10: hdlctrl.v1.UserService.ListUsers:input_type -> hdlctrl.v1.ListUsersRequest
-	11, // 11: hdlctrl.v1.UserService.GetUser:input_type -> hdlctrl.v1.GetUserRequest
-	13, // 12: hdlctrl.v1.UserService.CreateRegistrationToken:input_type -> hdlctrl.v1.CreateRegistrationTokenRequest
-	15, // 13: hdlctrl.v1.UserService.DeleteUser:input_type -> hdlctrl.v1.DeleteUserRequest
-	0,  // 14: hdlctrl.v1.UserService.GetTokenByPassword:output_type -> hdlctrl.v1.TokenSetResponse
-	4,  // 15: hdlctrl.v1.UserService.ValidateRegistrationToken:output_type -> hdlctrl.v1.ValidateRegistrationTokenResponse
-	0,  // 16: hdlctrl.v1.UserService.RegisterWithToken:output_type -> hdlctrl.v1.TokenSetResponse
-	0,  // 17: hdlctrl.v1.UserService.RefreshToken:output_type -> hdlctrl.v1.TokenSetResponse
-	7,  // 18: hdlctrl.v1.UserService.ChangePassword:output_type -> hdlctrl.v1.ChangePasswordResponse
-	10, // 19: hdlctrl.v1.UserService.ListUsers:output_type -> hdlctrl.v1.ListUsersResponse
-	12, // 20: hdlctrl.v1.UserService.GetUser:output_type -> hdlctrl.v1.GetUserResponse
-	14, // 21: hdlctrl.v1.UserService.CreateRegistrationToken:output_type -> hdlctrl.v1.CreateRegistrationTokenResponse
-	16, // 22: hdlctrl.v1.UserService.DeleteUser:output_type -> hdlctrl.v1.DeleteUserResponse
-	14, // [14:23] is the sub-list for method output_type
-	5,  // [5:14] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	24, // 4: hdlctrl.v1.CreateRegistrationTokenResponse.expires_at:type_name -> google.protobuf.Timestamp
+	24, // 5: hdlctrl.v1.Invitation.expires_at:type_name -> google.protobuf.Timestamp
+	24, // 6: hdlctrl.v1.Invitation.created_at:type_name -> google.protobuf.Timestamp
+	17, // 7: hdlctrl.v1.ListInvitationsResponse.invitations:type_name -> hdlctrl.v1.Invitation
+	24, // 8: hdlctrl.v1.ReissueInvitationResponse.expires_at:type_name -> google.protobuf.Timestamp
+	1,  // 9: hdlctrl.v1.UserService.GetTokenByPassword:input_type -> hdlctrl.v1.GetTokenByPasswordRequest
+	3,  // 10: hdlctrl.v1.UserService.ValidateRegistrationToken:input_type -> hdlctrl.v1.ValidateRegistrationTokenRequest
+	5,  // 11: hdlctrl.v1.UserService.RegisterWithToken:input_type -> hdlctrl.v1.RegisterWithTokenRequest
+	2,  // 12: hdlctrl.v1.UserService.RefreshToken:input_type -> hdlctrl.v1.RefreshTokenRequest
+	6,  // 13: hdlctrl.v1.UserService.ChangePassword:input_type -> hdlctrl.v1.ChangePasswordRequest
+	9,  // 14: hdlctrl.v1.UserService.ListUsers:input_type -> hdlctrl.v1.ListUsersRequest
+	11, // 15: hdlctrl.v1.UserService.GetUser:input_type -> hdlctrl.v1.GetUserRequest
+	13, // 16: hdlctrl.v1.UserService.CreateRegistrationToken:input_type -> hdlctrl.v1.CreateRegistrationTokenRequest
+	15, // 17: hdlctrl.v1.UserService.DeleteUser:input_type -> hdlctrl.v1.DeleteUserRequest
+	18, // 18: hdlctrl.v1.UserService.ListInvitations:input_type -> hdlctrl.v1.ListInvitationsRequest
+	20, // 19: hdlctrl.v1.UserService.ReissueInvitation:input_type -> hdlctrl.v1.ReissueInvitationRequest
+	22, // 20: hdlctrl.v1.UserService.RevokeInvitation:input_type -> hdlctrl.v1.RevokeInvitationRequest
+	0,  // 21: hdlctrl.v1.UserService.GetTokenByPassword:output_type -> hdlctrl.v1.TokenSetResponse
+	4,  // 22: hdlctrl.v1.UserService.ValidateRegistrationToken:output_type -> hdlctrl.v1.ValidateRegistrationTokenResponse
+	0,  // 23: hdlctrl.v1.UserService.RegisterWithToken:output_type -> hdlctrl.v1.TokenSetResponse
+	0,  // 24: hdlctrl.v1.UserService.RefreshToken:output_type -> hdlctrl.v1.TokenSetResponse
+	7,  // 25: hdlctrl.v1.UserService.ChangePassword:output_type -> hdlctrl.v1.ChangePasswordResponse
+	10, // 26: hdlctrl.v1.UserService.ListUsers:output_type -> hdlctrl.v1.ListUsersResponse
+	12, // 27: hdlctrl.v1.UserService.GetUser:output_type -> hdlctrl.v1.GetUserResponse
+	14, // 28: hdlctrl.v1.UserService.CreateRegistrationToken:output_type -> hdlctrl.v1.CreateRegistrationTokenResponse
+	16, // 29: hdlctrl.v1.UserService.DeleteUser:output_type -> hdlctrl.v1.DeleteUserResponse
+	19, // 30: hdlctrl.v1.UserService.ListInvitations:output_type -> hdlctrl.v1.ListInvitationsResponse
+	21, // 31: hdlctrl.v1.UserService.ReissueInvitation:output_type -> hdlctrl.v1.ReissueInvitationResponse
+	23, // 32: hdlctrl.v1.UserService.RevokeInvitation:output_type -> hdlctrl.v1.RevokeInvitationResponse
+	21, // [21:33] is the sub-list for method output_type
+	9,  // [9:21] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_hdlctrl_v1_user_proto_init() }
@@ -1014,13 +1401,14 @@ func file_hdlctrl_v1_user_proto_init() {
 		return
 	}
 	file_hdlctrl_v1_user_proto_msgTypes[13].OneofWrappers = []any{}
+	file_hdlctrl_v1_user_proto_msgTypes[17].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hdlctrl_v1_user_proto_rawDesc), len(file_hdlctrl_v1_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -19,15 +19,18 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	GroupService_CreateGroup_FullMethodName           = "/hdlctrl.v1.GroupService/CreateGroup"
-	GroupService_GetGroup_FullMethodName              = "/hdlctrl.v1.GroupService/GetGroup"
-	GroupService_ListGroups_FullMethodName            = "/hdlctrl.v1.GroupService/ListGroups"
-	GroupService_UpdateGroup_FullMethodName           = "/hdlctrl.v1.GroupService/UpdateGroup"
-	GroupService_DeleteGroup_FullMethodName           = "/hdlctrl.v1.GroupService/DeleteGroup"
-	GroupService_ListGroupMembers_FullMethodName      = "/hdlctrl.v1.GroupService/ListGroupMembers"
-	GroupService_AddGroupMember_FullMethodName        = "/hdlctrl.v1.GroupService/AddGroupMember"
-	GroupService_RemoveGroupMember_FullMethodName     = "/hdlctrl.v1.GroupService/RemoveGroupMember"
-	GroupService_UpdateGroupMemberRole_FullMethodName = "/hdlctrl.v1.GroupService/UpdateGroupMemberRole"
+	GroupService_CreateGroup_FullMethodName                  = "/hdlctrl.v1.GroupService/CreateGroup"
+	GroupService_GetGroup_FullMethodName                     = "/hdlctrl.v1.GroupService/GetGroup"
+	GroupService_ListGroups_FullMethodName                   = "/hdlctrl.v1.GroupService/ListGroups"
+	GroupService_UpdateGroup_FullMethodName                  = "/hdlctrl.v1.GroupService/UpdateGroup"
+	GroupService_DeleteGroup_FullMethodName                  = "/hdlctrl.v1.GroupService/DeleteGroup"
+	GroupService_ListGroupMembers_FullMethodName             = "/hdlctrl.v1.GroupService/ListGroupMembers"
+	GroupService_AddGroupMember_FullMethodName               = "/hdlctrl.v1.GroupService/AddGroupMember"
+	GroupService_RemoveGroupMember_FullMethodName            = "/hdlctrl.v1.GroupService/RemoveGroupMember"
+	GroupService_UpdateGroupMemberRole_FullMethodName        = "/hdlctrl.v1.GroupService/UpdateGroupMemberRole"
+	GroupService_AddInvitedGroupMember_FullMethodName        = "/hdlctrl.v1.GroupService/AddInvitedGroupMember"
+	GroupService_RemoveInvitedGroupMember_FullMethodName     = "/hdlctrl.v1.GroupService/RemoveInvitedGroupMember"
+	GroupService_UpdateInvitedGroupMemberRole_FullMethodName = "/hdlctrl.v1.GroupService/UpdateInvitedGroupMemberRole"
 )
 
 // GroupServiceClient is the client API for GroupService service.
@@ -50,6 +53,10 @@ type GroupServiceClient interface {
 	AddGroupMember(ctx context.Context, in *AddGroupMemberRequest, opts ...grpc.CallOption) (*AddGroupMemberResponse, error)
 	RemoveGroupMember(ctx context.Context, in *RemoveGroupMemberRequest, opts ...grpc.CallOption) (*RemoveGroupMemberResponse, error)
 	UpdateGroupMemberRole(ctx context.Context, in *UpdateGroupMemberRoleRequest, opts ...grpc.CallOption) (*UpdateGroupMemberRoleResponse, error)
+	// 招待中 (未登録) ユーザーのグループ参加予定. 登録時に正式なメンバーになる.
+	AddInvitedGroupMember(ctx context.Context, in *AddInvitedGroupMemberRequest, opts ...grpc.CallOption) (*AddInvitedGroupMemberResponse, error)
+	RemoveInvitedGroupMember(ctx context.Context, in *RemoveInvitedGroupMemberRequest, opts ...grpc.CallOption) (*RemoveInvitedGroupMemberResponse, error)
+	UpdateInvitedGroupMemberRole(ctx context.Context, in *UpdateInvitedGroupMemberRoleRequest, opts ...grpc.CallOption) (*UpdateInvitedGroupMemberRoleResponse, error)
 }
 
 type groupServiceClient struct {
@@ -150,6 +157,36 @@ func (c *groupServiceClient) UpdateGroupMemberRole(ctx context.Context, in *Upda
 	return out, nil
 }
 
+func (c *groupServiceClient) AddInvitedGroupMember(ctx context.Context, in *AddInvitedGroupMemberRequest, opts ...grpc.CallOption) (*AddInvitedGroupMemberResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddInvitedGroupMemberResponse)
+	err := c.cc.Invoke(ctx, GroupService_AddInvitedGroupMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupServiceClient) RemoveInvitedGroupMember(ctx context.Context, in *RemoveInvitedGroupMemberRequest, opts ...grpc.CallOption) (*RemoveInvitedGroupMemberResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveInvitedGroupMemberResponse)
+	err := c.cc.Invoke(ctx, GroupService_RemoveInvitedGroupMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupServiceClient) UpdateInvitedGroupMemberRole(ctx context.Context, in *UpdateInvitedGroupMemberRoleRequest, opts ...grpc.CallOption) (*UpdateInvitedGroupMemberRoleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateInvitedGroupMemberRoleResponse)
+	err := c.cc.Invoke(ctx, GroupService_UpdateInvitedGroupMemberRole_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GroupServiceServer is the server API for GroupService service.
 // All implementations must embed UnimplementedGroupServiceServer
 // for forward compatibility.
@@ -170,6 +207,10 @@ type GroupServiceServer interface {
 	AddGroupMember(context.Context, *AddGroupMemberRequest) (*AddGroupMemberResponse, error)
 	RemoveGroupMember(context.Context, *RemoveGroupMemberRequest) (*RemoveGroupMemberResponse, error)
 	UpdateGroupMemberRole(context.Context, *UpdateGroupMemberRoleRequest) (*UpdateGroupMemberRoleResponse, error)
+	// 招待中 (未登録) ユーザーのグループ参加予定. 登録時に正式なメンバーになる.
+	AddInvitedGroupMember(context.Context, *AddInvitedGroupMemberRequest) (*AddInvitedGroupMemberResponse, error)
+	RemoveInvitedGroupMember(context.Context, *RemoveInvitedGroupMemberRequest) (*RemoveInvitedGroupMemberResponse, error)
+	UpdateInvitedGroupMemberRole(context.Context, *UpdateInvitedGroupMemberRoleRequest) (*UpdateInvitedGroupMemberRoleResponse, error)
 	mustEmbedUnimplementedGroupServiceServer()
 }
 
@@ -206,6 +247,15 @@ func (UnimplementedGroupServiceServer) RemoveGroupMember(context.Context, *Remov
 }
 func (UnimplementedGroupServiceServer) UpdateGroupMemberRole(context.Context, *UpdateGroupMemberRoleRequest) (*UpdateGroupMemberRoleResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateGroupMemberRole not implemented")
+}
+func (UnimplementedGroupServiceServer) AddInvitedGroupMember(context.Context, *AddInvitedGroupMemberRequest) (*AddInvitedGroupMemberResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddInvitedGroupMember not implemented")
+}
+func (UnimplementedGroupServiceServer) RemoveInvitedGroupMember(context.Context, *RemoveInvitedGroupMemberRequest) (*RemoveInvitedGroupMemberResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveInvitedGroupMember not implemented")
+}
+func (UnimplementedGroupServiceServer) UpdateInvitedGroupMemberRole(context.Context, *UpdateInvitedGroupMemberRoleRequest) (*UpdateInvitedGroupMemberRoleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateInvitedGroupMemberRole not implemented")
 }
 func (UnimplementedGroupServiceServer) mustEmbedUnimplementedGroupServiceServer() {}
 func (UnimplementedGroupServiceServer) testEmbeddedByValue()                      {}
@@ -390,6 +440,60 @@ func _GroupService_UpdateGroupMemberRole_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GroupService_AddInvitedGroupMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddInvitedGroupMemberRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupServiceServer).AddInvitedGroupMember(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupService_AddInvitedGroupMember_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupServiceServer).AddInvitedGroupMember(ctx, req.(*AddInvitedGroupMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupService_RemoveInvitedGroupMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveInvitedGroupMemberRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupServiceServer).RemoveInvitedGroupMember(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupService_RemoveInvitedGroupMember_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupServiceServer).RemoveInvitedGroupMember(ctx, req.(*RemoveInvitedGroupMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupService_UpdateInvitedGroupMemberRole_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateInvitedGroupMemberRoleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupServiceServer).UpdateInvitedGroupMemberRole(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupService_UpdateInvitedGroupMemberRole_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupServiceServer).UpdateInvitedGroupMemberRole(ctx, req.(*UpdateInvitedGroupMemberRoleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // GroupService_ServiceDesc is the grpc.ServiceDesc for GroupService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -432,6 +536,18 @@ var GroupService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateGroupMemberRole",
 			Handler:    _GroupService_UpdateGroupMemberRole_Handler,
+		},
+		{
+			MethodName: "AddInvitedGroupMember",
+			Handler:    _GroupService_AddInvitedGroupMember_Handler,
+		},
+		{
+			MethodName: "RemoveInvitedGroupMember",
+			Handler:    _GroupService_RemoveInvitedGroupMember_Handler,
+		},
+		{
+			MethodName: "UpdateInvitedGroupMemberRole",
+			Handler:    _GroupService_UpdateInvitedGroupMemberRole_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

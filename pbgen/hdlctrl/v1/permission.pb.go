@@ -283,6 +283,100 @@ func (x *GroupMember) GetJoinedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// 招待中 (未登録) ユーザーのグループ参加予定.
+type InvitedGroupMember struct {
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	GroupId      string                 `protobuf:"bytes,1,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	InvitationId string                 `protobuf:"bytes,2,opt,name=invitation_id,json=invitationId,proto3" json:"invitation_id,omitempty"`
+	ResoniteId   string                 `protobuf:"bytes,3,opt,name=resonite_id,json=resoniteId,proto3" json:"resonite_id,omitempty"`
+	RoleId       string                 `protobuf:"bytes,4,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	AddedBy      *string                `protobuf:"bytes,5,opt,name=added_by,json=addedBy,proto3,oneof" json:"added_by,omitempty"`
+	AddedAt      *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
+	// 招待リンクの有効期限.
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InvitedGroupMember) Reset() {
+	*x = InvitedGroupMember{}
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InvitedGroupMember) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InvitedGroupMember) ProtoMessage() {}
+
+func (x *InvitedGroupMember) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InvitedGroupMember.ProtoReflect.Descriptor instead.
+func (*InvitedGroupMember) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *InvitedGroupMember) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
+func (x *InvitedGroupMember) GetInvitationId() string {
+	if x != nil {
+		return x.InvitationId
+	}
+	return ""
+}
+
+func (x *InvitedGroupMember) GetResoniteId() string {
+	if x != nil {
+		return x.ResoniteId
+	}
+	return ""
+}
+
+func (x *InvitedGroupMember) GetRoleId() string {
+	if x != nil {
+		return x.RoleId
+	}
+	return ""
+}
+
+func (x *InvitedGroupMember) GetAddedBy() string {
+	if x != nil && x.AddedBy != nil {
+		return *x.AddedBy
+	}
+	return ""
+}
+
+func (x *InvitedGroupMember) GetAddedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.AddedAt
+	}
+	return nil
+}
+
+func (x *InvitedGroupMember) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
 type Role struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -302,7 +396,7 @@ type Role struct {
 
 func (x *Role) Reset() {
 	*x = Role{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[2]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -314,7 +408,7 @@ func (x *Role) String() string {
 func (*Role) ProtoMessage() {}
 
 func (x *Role) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[2]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -327,7 +421,7 @@ func (x *Role) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Role.ProtoReflect.Descriptor instead.
 func (*Role) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{2}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Role) GetId() string {
@@ -400,7 +494,7 @@ type PermissionKey struct {
 
 func (x *PermissionKey) Reset() {
 	*x = PermissionKey{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[3]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -412,7 +506,7 @@ func (x *PermissionKey) String() string {
 func (*PermissionKey) ProtoMessage() {}
 
 func (x *PermissionKey) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[3]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -425,7 +519,7 @@ func (x *PermissionKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PermissionKey.ProtoReflect.Descriptor instead.
 func (*PermissionKey) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{3}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *PermissionKey) GetKey() string {
@@ -462,7 +556,7 @@ type GroupPermissions struct {
 
 func (x *GroupPermissions) Reset() {
 	*x = GroupPermissions{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[4]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -474,7 +568,7 @@ func (x *GroupPermissions) String() string {
 func (*GroupPermissions) ProtoMessage() {}
 
 func (x *GroupPermissions) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[4]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -487,7 +581,7 @@ func (x *GroupPermissions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupPermissions.ProtoReflect.Descriptor instead.
 func (*GroupPermissions) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{4}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GroupPermissions) GetGroupId() string {
@@ -524,7 +618,7 @@ type MyPermissions struct {
 
 func (x *MyPermissions) Reset() {
 	*x = MyPermissions{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[5]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -536,7 +630,7 @@ func (x *MyPermissions) String() string {
 func (*MyPermissions) ProtoMessage() {}
 
 func (x *MyPermissions) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[5]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -549,7 +643,7 @@ func (x *MyPermissions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MyPermissions.ProtoReflect.Descriptor instead.
 func (*MyPermissions) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{5}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *MyPermissions) GetGroups() []*GroupPermissions {
@@ -577,7 +671,7 @@ type PermissionKeyList struct {
 
 func (x *PermissionKeyList) Reset() {
 	*x = PermissionKeyList{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[6]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -589,7 +683,7 @@ func (x *PermissionKeyList) String() string {
 func (*PermissionKeyList) ProtoMessage() {}
 
 func (x *PermissionKeyList) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[6]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -602,7 +696,7 @@ func (x *PermissionKeyList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PermissionKeyList.ProtoReflect.Descriptor instead.
 func (*PermissionKeyList) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{6}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *PermissionKeyList) GetKeys() []string {
@@ -621,7 +715,7 @@ type CreateGroupRequest struct {
 
 func (x *CreateGroupRequest) Reset() {
 	*x = CreateGroupRequest{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[7]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -633,7 +727,7 @@ func (x *CreateGroupRequest) String() string {
 func (*CreateGroupRequest) ProtoMessage() {}
 
 func (x *CreateGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[7]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -646,7 +740,7 @@ func (x *CreateGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateGroupRequest.ProtoReflect.Descriptor instead.
 func (*CreateGroupRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{7}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CreateGroupRequest) GetName() string {
@@ -665,7 +759,7 @@ type CreateGroupResponse struct {
 
 func (x *CreateGroupResponse) Reset() {
 	*x = CreateGroupResponse{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[8]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -677,7 +771,7 @@ func (x *CreateGroupResponse) String() string {
 func (*CreateGroupResponse) ProtoMessage() {}
 
 func (x *CreateGroupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[8]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -690,7 +784,7 @@ func (x *CreateGroupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateGroupResponse.ProtoReflect.Descriptor instead.
 func (*CreateGroupResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{8}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *CreateGroupResponse) GetGroup() *Group {
@@ -709,7 +803,7 @@ type GetGroupRequest struct {
 
 func (x *GetGroupRequest) Reset() {
 	*x = GetGroupRequest{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[9]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -721,7 +815,7 @@ func (x *GetGroupRequest) String() string {
 func (*GetGroupRequest) ProtoMessage() {}
 
 func (x *GetGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[9]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -734,7 +828,7 @@ func (x *GetGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupRequest.ProtoReflect.Descriptor instead.
 func (*GetGroupRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{9}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetGroupRequest) GetGroupId() string {
@@ -753,7 +847,7 @@ type GetGroupResponse struct {
 
 func (x *GetGroupResponse) Reset() {
 	*x = GetGroupResponse{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[10]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -765,7 +859,7 @@ func (x *GetGroupResponse) String() string {
 func (*GetGroupResponse) ProtoMessage() {}
 
 func (x *GetGroupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[10]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -778,7 +872,7 @@ func (x *GetGroupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupResponse.ProtoReflect.Descriptor instead.
 func (*GetGroupResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{10}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetGroupResponse) GetGroup() *Group {
@@ -796,7 +890,7 @@ type ListGroupsRequest struct {
 
 func (x *ListGroupsRequest) Reset() {
 	*x = ListGroupsRequest{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[11]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -808,7 +902,7 @@ func (x *ListGroupsRequest) String() string {
 func (*ListGroupsRequest) ProtoMessage() {}
 
 func (x *ListGroupsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[11]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -821,7 +915,7 @@ func (x *ListGroupsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGroupsRequest.ProtoReflect.Descriptor instead.
 func (*ListGroupsRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{11}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{12}
 }
 
 type ListGroupsResponse struct {
@@ -833,7 +927,7 @@ type ListGroupsResponse struct {
 
 func (x *ListGroupsResponse) Reset() {
 	*x = ListGroupsResponse{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[12]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -845,7 +939,7 @@ func (x *ListGroupsResponse) String() string {
 func (*ListGroupsResponse) ProtoMessage() {}
 
 func (x *ListGroupsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[12]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -858,7 +952,7 @@ func (x *ListGroupsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGroupsResponse.ProtoReflect.Descriptor instead.
 func (*ListGroupsResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{12}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListGroupsResponse) GetGroups() []*Group {
@@ -878,7 +972,7 @@ type UpdateGroupRequest struct {
 
 func (x *UpdateGroupRequest) Reset() {
 	*x = UpdateGroupRequest{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[13]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -890,7 +984,7 @@ func (x *UpdateGroupRequest) String() string {
 func (*UpdateGroupRequest) ProtoMessage() {}
 
 func (x *UpdateGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[13]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -903,7 +997,7 @@ func (x *UpdateGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateGroupRequest.ProtoReflect.Descriptor instead.
 func (*UpdateGroupRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{13}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *UpdateGroupRequest) GetGroupId() string {
@@ -929,7 +1023,7 @@ type UpdateGroupResponse struct {
 
 func (x *UpdateGroupResponse) Reset() {
 	*x = UpdateGroupResponse{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[14]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -941,7 +1035,7 @@ func (x *UpdateGroupResponse) String() string {
 func (*UpdateGroupResponse) ProtoMessage() {}
 
 func (x *UpdateGroupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[14]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -954,7 +1048,7 @@ func (x *UpdateGroupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateGroupResponse.ProtoReflect.Descriptor instead.
 func (*UpdateGroupResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{14}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *UpdateGroupResponse) GetGroup() *Group {
@@ -973,7 +1067,7 @@ type DeleteGroupRequest struct {
 
 func (x *DeleteGroupRequest) Reset() {
 	*x = DeleteGroupRequest{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[15]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -985,7 +1079,7 @@ func (x *DeleteGroupRequest) String() string {
 func (*DeleteGroupRequest) ProtoMessage() {}
 
 func (x *DeleteGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[15]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -998,7 +1092,7 @@ func (x *DeleteGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteGroupRequest.ProtoReflect.Descriptor instead.
 func (*DeleteGroupRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{15}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *DeleteGroupRequest) GetGroupId() string {
@@ -1016,7 +1110,7 @@ type DeleteGroupResponse struct {
 
 func (x *DeleteGroupResponse) Reset() {
 	*x = DeleteGroupResponse{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[16]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1028,7 +1122,7 @@ func (x *DeleteGroupResponse) String() string {
 func (*DeleteGroupResponse) ProtoMessage() {}
 
 func (x *DeleteGroupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[16]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1041,7 +1135,7 @@ func (x *DeleteGroupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteGroupResponse.ProtoReflect.Descriptor instead.
 func (*DeleteGroupResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{16}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{17}
 }
 
 type ListGroupMembersRequest struct {
@@ -1053,7 +1147,7 @@ type ListGroupMembersRequest struct {
 
 func (x *ListGroupMembersRequest) Reset() {
 	*x = ListGroupMembersRequest{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[17]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1065,7 +1159,7 @@ func (x *ListGroupMembersRequest) String() string {
 func (*ListGroupMembersRequest) ProtoMessage() {}
 
 func (x *ListGroupMembersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[17]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1078,7 +1172,7 @@ func (x *ListGroupMembersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGroupMembersRequest.ProtoReflect.Descriptor instead.
 func (*ListGroupMembersRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{17}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ListGroupMembersRequest) GetGroupId() string {
@@ -1089,15 +1183,16 @@ func (x *ListGroupMembersRequest) GetGroupId() string {
 }
 
 type ListGroupMembersResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Members       []*GroupMember         `protobuf:"bytes,1,rep,name=members,proto3" json:"members,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Members        []*GroupMember         `protobuf:"bytes,1,rep,name=members,proto3" json:"members,omitempty"`
+	InvitedMembers []*InvitedGroupMember  `protobuf:"bytes,2,rep,name=invited_members,json=invitedMembers,proto3" json:"invited_members,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ListGroupMembersResponse) Reset() {
 	*x = ListGroupMembersResponse{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[18]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1109,7 +1204,7 @@ func (x *ListGroupMembersResponse) String() string {
 func (*ListGroupMembersResponse) ProtoMessage() {}
 
 func (x *ListGroupMembersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[18]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1122,12 +1217,19 @@ func (x *ListGroupMembersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGroupMembersResponse.ProtoReflect.Descriptor instead.
 func (*ListGroupMembersResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{18}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ListGroupMembersResponse) GetMembers() []*GroupMember {
 	if x != nil {
 		return x.Members
+	}
+	return nil
+}
+
+func (x *ListGroupMembersResponse) GetInvitedMembers() []*InvitedGroupMember {
+	if x != nil {
+		return x.InvitedMembers
 	}
 	return nil
 }
@@ -1143,7 +1245,7 @@ type AddGroupMemberRequest struct {
 
 func (x *AddGroupMemberRequest) Reset() {
 	*x = AddGroupMemberRequest{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[19]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1155,7 +1257,7 @@ func (x *AddGroupMemberRequest) String() string {
 func (*AddGroupMemberRequest) ProtoMessage() {}
 
 func (x *AddGroupMemberRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[19]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1168,7 +1270,7 @@ func (x *AddGroupMemberRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddGroupMemberRequest.ProtoReflect.Descriptor instead.
 func (*AddGroupMemberRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{19}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *AddGroupMemberRequest) GetGroupId() string {
@@ -1201,7 +1303,7 @@ type AddGroupMemberResponse struct {
 
 func (x *AddGroupMemberResponse) Reset() {
 	*x = AddGroupMemberResponse{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[20]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1213,7 +1315,7 @@ func (x *AddGroupMemberResponse) String() string {
 func (*AddGroupMemberResponse) ProtoMessage() {}
 
 func (x *AddGroupMemberResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[20]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1226,7 +1328,7 @@ func (x *AddGroupMemberResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddGroupMemberResponse.ProtoReflect.Descriptor instead.
 func (*AddGroupMemberResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{20}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AddGroupMemberResponse) GetMember() *GroupMember {
@@ -1246,7 +1348,7 @@ type RemoveGroupMemberRequest struct {
 
 func (x *RemoveGroupMemberRequest) Reset() {
 	*x = RemoveGroupMemberRequest{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[21]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1258,7 +1360,7 @@ func (x *RemoveGroupMemberRequest) String() string {
 func (*RemoveGroupMemberRequest) ProtoMessage() {}
 
 func (x *RemoveGroupMemberRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[21]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1271,7 +1373,7 @@ func (x *RemoveGroupMemberRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveGroupMemberRequest.ProtoReflect.Descriptor instead.
 func (*RemoveGroupMemberRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{21}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *RemoveGroupMemberRequest) GetGroupId() string {
@@ -1296,7 +1398,7 @@ type RemoveGroupMemberResponse struct {
 
 func (x *RemoveGroupMemberResponse) Reset() {
 	*x = RemoveGroupMemberResponse{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[22]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1308,7 +1410,7 @@ func (x *RemoveGroupMemberResponse) String() string {
 func (*RemoveGroupMemberResponse) ProtoMessage() {}
 
 func (x *RemoveGroupMemberResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[22]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1321,7 +1423,7 @@ func (x *RemoveGroupMemberResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveGroupMemberResponse.ProtoReflect.Descriptor instead.
 func (*RemoveGroupMemberResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{22}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{23}
 }
 
 type UpdateGroupMemberRoleRequest struct {
@@ -1335,7 +1437,7 @@ type UpdateGroupMemberRoleRequest struct {
 
 func (x *UpdateGroupMemberRoleRequest) Reset() {
 	*x = UpdateGroupMemberRoleRequest{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[23]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1347,7 +1449,7 @@ func (x *UpdateGroupMemberRoleRequest) String() string {
 func (*UpdateGroupMemberRoleRequest) ProtoMessage() {}
 
 func (x *UpdateGroupMemberRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[23]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1360,7 +1462,7 @@ func (x *UpdateGroupMemberRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateGroupMemberRoleRequest.ProtoReflect.Descriptor instead.
 func (*UpdateGroupMemberRoleRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{23}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *UpdateGroupMemberRoleRequest) GetGroupId() string {
@@ -1393,7 +1495,7 @@ type UpdateGroupMemberRoleResponse struct {
 
 func (x *UpdateGroupMemberRoleResponse) Reset() {
 	*x = UpdateGroupMemberRoleResponse{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[24]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1405,7 +1507,7 @@ func (x *UpdateGroupMemberRoleResponse) String() string {
 func (*UpdateGroupMemberRoleResponse) ProtoMessage() {}
 
 func (x *UpdateGroupMemberRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[24]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1418,10 +1520,306 @@ func (x *UpdateGroupMemberRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateGroupMemberRoleResponse.ProtoReflect.Descriptor instead.
 func (*UpdateGroupMemberRoleResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{24}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *UpdateGroupMemberRoleResponse) GetMember() *GroupMember {
+	if x != nil {
+		return x.Member
+	}
+	return nil
+}
+
+type AddInvitedGroupMemberRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GroupId       string                 `protobuf:"bytes,1,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	InvitationId  string                 `protobuf:"bytes,2,opt,name=invitation_id,json=invitationId,proto3" json:"invitation_id,omitempty"`
+	RoleId        string                 `protobuf:"bytes,3,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddInvitedGroupMemberRequest) Reset() {
+	*x = AddInvitedGroupMemberRequest{}
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddInvitedGroupMemberRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddInvitedGroupMemberRequest) ProtoMessage() {}
+
+func (x *AddInvitedGroupMemberRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddInvitedGroupMemberRequest.ProtoReflect.Descriptor instead.
+func (*AddInvitedGroupMemberRequest) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *AddInvitedGroupMemberRequest) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
+func (x *AddInvitedGroupMemberRequest) GetInvitationId() string {
+	if x != nil {
+		return x.InvitationId
+	}
+	return ""
+}
+
+func (x *AddInvitedGroupMemberRequest) GetRoleId() string {
+	if x != nil {
+		return x.RoleId
+	}
+	return ""
+}
+
+type AddInvitedGroupMemberResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Member        *InvitedGroupMember    `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddInvitedGroupMemberResponse) Reset() {
+	*x = AddInvitedGroupMemberResponse{}
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddInvitedGroupMemberResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddInvitedGroupMemberResponse) ProtoMessage() {}
+
+func (x *AddInvitedGroupMemberResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddInvitedGroupMemberResponse.ProtoReflect.Descriptor instead.
+func (*AddInvitedGroupMemberResponse) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *AddInvitedGroupMemberResponse) GetMember() *InvitedGroupMember {
+	if x != nil {
+		return x.Member
+	}
+	return nil
+}
+
+type RemoveInvitedGroupMemberRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GroupId       string                 `protobuf:"bytes,1,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	InvitationId  string                 `protobuf:"bytes,2,opt,name=invitation_id,json=invitationId,proto3" json:"invitation_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveInvitedGroupMemberRequest) Reset() {
+	*x = RemoveInvitedGroupMemberRequest{}
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveInvitedGroupMemberRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveInvitedGroupMemberRequest) ProtoMessage() {}
+
+func (x *RemoveInvitedGroupMemberRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveInvitedGroupMemberRequest.ProtoReflect.Descriptor instead.
+func (*RemoveInvitedGroupMemberRequest) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *RemoveInvitedGroupMemberRequest) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
+func (x *RemoveInvitedGroupMemberRequest) GetInvitationId() string {
+	if x != nil {
+		return x.InvitationId
+	}
+	return ""
+}
+
+type RemoveInvitedGroupMemberResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveInvitedGroupMemberResponse) Reset() {
+	*x = RemoveInvitedGroupMemberResponse{}
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveInvitedGroupMemberResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveInvitedGroupMemberResponse) ProtoMessage() {}
+
+func (x *RemoveInvitedGroupMemberResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveInvitedGroupMemberResponse.ProtoReflect.Descriptor instead.
+func (*RemoveInvitedGroupMemberResponse) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{29}
+}
+
+type UpdateInvitedGroupMemberRoleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GroupId       string                 `protobuf:"bytes,1,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	InvitationId  string                 `protobuf:"bytes,2,opt,name=invitation_id,json=invitationId,proto3" json:"invitation_id,omitempty"`
+	RoleId        string                 `protobuf:"bytes,3,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateInvitedGroupMemberRoleRequest) Reset() {
+	*x = UpdateInvitedGroupMemberRoleRequest{}
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateInvitedGroupMemberRoleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateInvitedGroupMemberRoleRequest) ProtoMessage() {}
+
+func (x *UpdateInvitedGroupMemberRoleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateInvitedGroupMemberRoleRequest.ProtoReflect.Descriptor instead.
+func (*UpdateInvitedGroupMemberRoleRequest) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *UpdateInvitedGroupMemberRoleRequest) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
+func (x *UpdateInvitedGroupMemberRoleRequest) GetInvitationId() string {
+	if x != nil {
+		return x.InvitationId
+	}
+	return ""
+}
+
+func (x *UpdateInvitedGroupMemberRoleRequest) GetRoleId() string {
+	if x != nil {
+		return x.RoleId
+	}
+	return ""
+}
+
+type UpdateInvitedGroupMemberRoleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Member        *InvitedGroupMember    `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateInvitedGroupMemberRoleResponse) Reset() {
+	*x = UpdateInvitedGroupMemberRoleResponse{}
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateInvitedGroupMemberRoleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateInvitedGroupMemberRoleResponse) ProtoMessage() {}
+
+func (x *UpdateInvitedGroupMemberRoleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateInvitedGroupMemberRoleResponse.ProtoReflect.Descriptor instead.
+func (*UpdateInvitedGroupMemberRoleResponse) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *UpdateInvitedGroupMemberRoleResponse) GetMember() *InvitedGroupMember {
 	if x != nil {
 		return x.Member
 	}
@@ -1439,7 +1837,7 @@ type ListRolesRequest struct {
 
 func (x *ListRolesRequest) Reset() {
 	*x = ListRolesRequest{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[25]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1451,7 +1849,7 @@ func (x *ListRolesRequest) String() string {
 func (*ListRolesRequest) ProtoMessage() {}
 
 func (x *ListRolesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[25]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1464,7 +1862,7 @@ func (x *ListRolesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRolesRequest.ProtoReflect.Descriptor instead.
 func (*ListRolesRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{25}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *ListRolesRequest) GetGroupId() string {
@@ -1483,7 +1881,7 @@ type ListRolesResponse struct {
 
 func (x *ListRolesResponse) Reset() {
 	*x = ListRolesResponse{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[26]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1495,7 +1893,7 @@ func (x *ListRolesResponse) String() string {
 func (*ListRolesResponse) ProtoMessage() {}
 
 func (x *ListRolesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[26]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1508,7 +1906,7 @@ func (x *ListRolesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRolesResponse.ProtoReflect.Descriptor instead.
 func (*ListRolesResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{26}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ListRolesResponse) GetRoles() []*Role {
@@ -1531,7 +1929,7 @@ type CreateRoleRequest struct {
 
 func (x *CreateRoleRequest) Reset() {
 	*x = CreateRoleRequest{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[27]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1543,7 +1941,7 @@ func (x *CreateRoleRequest) String() string {
 func (*CreateRoleRequest) ProtoMessage() {}
 
 func (x *CreateRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[27]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1556,7 +1954,7 @@ func (x *CreateRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRoleRequest.ProtoReflect.Descriptor instead.
 func (*CreateRoleRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{27}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *CreateRoleRequest) GetGroupId() string {
@@ -1596,7 +1994,7 @@ type CreateRoleResponse struct {
 
 func (x *CreateRoleResponse) Reset() {
 	*x = CreateRoleResponse{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[28]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1608,7 +2006,7 @@ func (x *CreateRoleResponse) String() string {
 func (*CreateRoleResponse) ProtoMessage() {}
 
 func (x *CreateRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[28]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1621,7 +2019,7 @@ func (x *CreateRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRoleResponse.ProtoReflect.Descriptor instead.
 func (*CreateRoleResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{28}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *CreateRoleResponse) GetRole() *Role {
@@ -1644,7 +2042,7 @@ type UpdateRoleRequest struct {
 
 func (x *UpdateRoleRequest) Reset() {
 	*x = UpdateRoleRequest{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[29]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1656,7 +2054,7 @@ func (x *UpdateRoleRequest) String() string {
 func (*UpdateRoleRequest) ProtoMessage() {}
 
 func (x *UpdateRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[29]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1669,7 +2067,7 @@ func (x *UpdateRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateRoleRequest.ProtoReflect.Descriptor instead.
 func (*UpdateRoleRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{29}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *UpdateRoleRequest) GetRoleId() string {
@@ -1702,7 +2100,7 @@ type UpdateRoleResponse struct {
 
 func (x *UpdateRoleResponse) Reset() {
 	*x = UpdateRoleResponse{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[30]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1714,7 +2112,7 @@ func (x *UpdateRoleResponse) String() string {
 func (*UpdateRoleResponse) ProtoMessage() {}
 
 func (x *UpdateRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[30]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1727,7 +2125,7 @@ func (x *UpdateRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateRoleResponse.ProtoReflect.Descriptor instead.
 func (*UpdateRoleResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{30}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *UpdateRoleResponse) GetRole() *Role {
@@ -1746,7 +2144,7 @@ type DeleteRoleRequest struct {
 
 func (x *DeleteRoleRequest) Reset() {
 	*x = DeleteRoleRequest{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[31]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1758,7 +2156,7 @@ func (x *DeleteRoleRequest) String() string {
 func (*DeleteRoleRequest) ProtoMessage() {}
 
 func (x *DeleteRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[31]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1771,7 +2169,7 @@ func (x *DeleteRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRoleRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRoleRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{31}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *DeleteRoleRequest) GetRoleId() string {
@@ -1789,7 +2187,7 @@ type DeleteRoleResponse struct {
 
 func (x *DeleteRoleResponse) Reset() {
 	*x = DeleteRoleResponse{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[32]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1801,7 +2199,7 @@ func (x *DeleteRoleResponse) String() string {
 func (*DeleteRoleResponse) ProtoMessage() {}
 
 func (x *DeleteRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[32]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1814,7 +2212,7 @@ func (x *DeleteRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRoleResponse.ProtoReflect.Descriptor instead.
 func (*DeleteRoleResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{32}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{39}
 }
 
 type ListPermissionsRequest struct {
@@ -1827,7 +2225,7 @@ type ListPermissionsRequest struct {
 
 func (x *ListPermissionsRequest) Reset() {
 	*x = ListPermissionsRequest{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[33]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1839,7 +2237,7 @@ func (x *ListPermissionsRequest) String() string {
 func (*ListPermissionsRequest) ProtoMessage() {}
 
 func (x *ListPermissionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[33]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1852,7 +2250,7 @@ func (x *ListPermissionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPermissionsRequest.ProtoReflect.Descriptor instead.
 func (*ListPermissionsRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{33}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *ListPermissionsRequest) GetScope() RoleScope {
@@ -1871,7 +2269,7 @@ type ListPermissionsResponse struct {
 
 func (x *ListPermissionsResponse) Reset() {
 	*x = ListPermissionsResponse{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[34]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1883,7 +2281,7 @@ func (x *ListPermissionsResponse) String() string {
 func (*ListPermissionsResponse) ProtoMessage() {}
 
 func (x *ListPermissionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[34]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1896,7 +2294,7 @@ func (x *ListPermissionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPermissionsResponse.ProtoReflect.Descriptor instead.
 func (*ListPermissionsResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{34}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *ListPermissionsResponse) GetPermissions() []*PermissionKey {
@@ -1914,7 +2312,7 @@ type GetMyPermissionsRequest struct {
 
 func (x *GetMyPermissionsRequest) Reset() {
 	*x = GetMyPermissionsRequest{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[35]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1926,7 +2324,7 @@ func (x *GetMyPermissionsRequest) String() string {
 func (*GetMyPermissionsRequest) ProtoMessage() {}
 
 func (x *GetMyPermissionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[35]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1939,7 +2337,7 @@ func (x *GetMyPermissionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyPermissionsRequest.ProtoReflect.Descriptor instead.
 func (*GetMyPermissionsRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{35}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{42}
 }
 
 type GetMyPermissionsResponse struct {
@@ -1951,7 +2349,7 @@ type GetMyPermissionsResponse struct {
 
 func (x *GetMyPermissionsResponse) Reset() {
 	*x = GetMyPermissionsResponse{}
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[36]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1963,7 +2361,7 @@ func (x *GetMyPermissionsResponse) String() string {
 func (*GetMyPermissionsResponse) ProtoMessage() {}
 
 func (x *GetMyPermissionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_permission_proto_msgTypes[36]
+	mi := &file_hdlctrl_v1_permission_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1976,7 +2374,7 @@ func (x *GetMyPermissionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyPermissionsResponse.ProtoReflect.Descriptor instead.
 func (*GetMyPermissionsResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{36}
+	return file_hdlctrl_v1_permission_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *GetMyPermissionsResponse) GetPermissions() *MyPermissions {
@@ -2006,6 +2404,17 @@ const file_hdlctrl_v1_permission_proto_rawDesc = "" +
 	"\arole_id\x18\x03 \x01(\tR\x06roleId\x12\x1e\n" +
 	"\badded_by\x18\x04 \x01(\tH\x00R\aaddedBy\x88\x01\x01\x127\n" +
 	"\tjoined_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAtB\v\n" +
+	"\t_added_by\"\xad\x02\n" +
+	"\x12InvitedGroupMember\x12\x19\n" +
+	"\bgroup_id\x18\x01 \x01(\tR\agroupId\x12#\n" +
+	"\rinvitation_id\x18\x02 \x01(\tR\finvitationId\x12\x1f\n" +
+	"\vresonite_id\x18\x03 \x01(\tR\n" +
+	"resoniteId\x12\x17\n" +
+	"\arole_id\x18\x04 \x01(\tR\x06roleId\x12\x1e\n" +
+	"\badded_by\x18\x05 \x01(\tH\x00R\aaddedBy\x88\x01\x01\x125\n" +
+	"\badded_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\x129\n" +
+	"\n" +
+	"expires_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAtB\v\n" +
 	"\t_added_by\"\xc2\x02\n" +
 	"\x04Role\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1e\n" +
@@ -2054,9 +2463,10 @@ const file_hdlctrl_v1_permission_proto_rawDesc = "" +
 	"\bgroup_id\x18\x01 \x01(\tR\agroupId\"\x15\n" +
 	"\x13DeleteGroupResponse\"4\n" +
 	"\x17ListGroupMembersRequest\x12\x19\n" +
-	"\bgroup_id\x18\x01 \x01(\tR\agroupId\"M\n" +
+	"\bgroup_id\x18\x01 \x01(\tR\agroupId\"\x96\x01\n" +
 	"\x18ListGroupMembersResponse\x121\n" +
-	"\amembers\x18\x01 \x03(\v2\x17.hdlctrl.v1.GroupMemberR\amembers\"d\n" +
+	"\amembers\x18\x01 \x03(\v2\x17.hdlctrl.v1.GroupMemberR\amembers\x12G\n" +
+	"\x0finvited_members\x18\x02 \x03(\v2\x1e.hdlctrl.v1.InvitedGroupMemberR\x0einvitedMembers\"d\n" +
 	"\x15AddGroupMemberRequest\x12\x19\n" +
 	"\bgroup_id\x18\x01 \x01(\tR\agroupId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x17\n" +
@@ -2072,7 +2482,23 @@ const file_hdlctrl_v1_permission_proto_rawDesc = "" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x17\n" +
 	"\arole_id\x18\x03 \x01(\tR\x06roleId\"P\n" +
 	"\x1dUpdateGroupMemberRoleResponse\x12/\n" +
-	"\x06member\x18\x01 \x01(\v2\x17.hdlctrl.v1.GroupMemberR\x06member\"?\n" +
+	"\x06member\x18\x01 \x01(\v2\x17.hdlctrl.v1.GroupMemberR\x06member\"w\n" +
+	"\x1cAddInvitedGroupMemberRequest\x12\x19\n" +
+	"\bgroup_id\x18\x01 \x01(\tR\agroupId\x12#\n" +
+	"\rinvitation_id\x18\x02 \x01(\tR\finvitationId\x12\x17\n" +
+	"\arole_id\x18\x03 \x01(\tR\x06roleId\"W\n" +
+	"\x1dAddInvitedGroupMemberResponse\x126\n" +
+	"\x06member\x18\x01 \x01(\v2\x1e.hdlctrl.v1.InvitedGroupMemberR\x06member\"a\n" +
+	"\x1fRemoveInvitedGroupMemberRequest\x12\x19\n" +
+	"\bgroup_id\x18\x01 \x01(\tR\agroupId\x12#\n" +
+	"\rinvitation_id\x18\x02 \x01(\tR\finvitationId\"\"\n" +
+	" RemoveInvitedGroupMemberResponse\"~\n" +
+	"#UpdateInvitedGroupMemberRoleRequest\x12\x19\n" +
+	"\bgroup_id\x18\x01 \x01(\tR\agroupId\x12#\n" +
+	"\rinvitation_id\x18\x02 \x01(\tR\finvitationId\x12\x17\n" +
+	"\arole_id\x18\x03 \x01(\tR\x06roleId\"^\n" +
+	"$UpdateInvitedGroupMemberRoleResponse\x126\n" +
+	"\x06member\x18\x01 \x01(\v2\x1e.hdlctrl.v1.InvitedGroupMemberR\x06member\"?\n" +
 	"\x10ListRolesRequest\x12\x1e\n" +
 	"\bgroup_id\x18\x01 \x01(\tH\x00R\agroupId\x88\x01\x01B\v\n" +
 	"\t_group_id\";\n" +
@@ -2112,7 +2538,7 @@ const file_hdlctrl_v1_permission_proto_rawDesc = "" +
 	"\tRoleScope\x12\x1a\n" +
 	"\x16ROLE_SCOPE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11ROLE_SCOPE_NORMAL\x10\x01\x12\x15\n" +
-	"\x11ROLE_SCOPE_SYSTEM\x10\x022\x9a\x06\n" +
+	"\x11ROLE_SCOPE_SYSTEM\x10\x022\x83\t\n" +
 	"\fGroupService\x12N\n" +
 	"\vCreateGroup\x12\x1e.hdlctrl.v1.CreateGroupRequest\x1a\x1f.hdlctrl.v1.CreateGroupResponse\x12E\n" +
 	"\bGetGroup\x12\x1b.hdlctrl.v1.GetGroupRequest\x1a\x1c.hdlctrl.v1.GetGroupResponse\x12K\n" +
@@ -2123,7 +2549,10 @@ const file_hdlctrl_v1_permission_proto_rawDesc = "" +
 	"\x10ListGroupMembers\x12#.hdlctrl.v1.ListGroupMembersRequest\x1a$.hdlctrl.v1.ListGroupMembersResponse\x12W\n" +
 	"\x0eAddGroupMember\x12!.hdlctrl.v1.AddGroupMemberRequest\x1a\".hdlctrl.v1.AddGroupMemberResponse\x12`\n" +
 	"\x11RemoveGroupMember\x12$.hdlctrl.v1.RemoveGroupMemberRequest\x1a%.hdlctrl.v1.RemoveGroupMemberResponse\x12l\n" +
-	"\x15UpdateGroupMemberRole\x12(.hdlctrl.v1.UpdateGroupMemberRoleRequest\x1a).hdlctrl.v1.UpdateGroupMemberRoleResponse2\xf9\x03\n" +
+	"\x15UpdateGroupMemberRole\x12(.hdlctrl.v1.UpdateGroupMemberRoleRequest\x1a).hdlctrl.v1.UpdateGroupMemberRoleResponse\x12l\n" +
+	"\x15AddInvitedGroupMember\x12(.hdlctrl.v1.AddInvitedGroupMemberRequest\x1a).hdlctrl.v1.AddInvitedGroupMemberResponse\x12u\n" +
+	"\x18RemoveInvitedGroupMember\x12+.hdlctrl.v1.RemoveInvitedGroupMemberRequest\x1a,.hdlctrl.v1.RemoveInvitedGroupMemberResponse\x12\x81\x01\n" +
+	"\x1cUpdateInvitedGroupMemberRole\x12/.hdlctrl.v1.UpdateInvitedGroupMemberRoleRequest\x1a0.hdlctrl.v1.UpdateInvitedGroupMemberRoleResponse2\xf9\x03\n" +
 	"\vRoleService\x12H\n" +
 	"\tListRoles\x12\x1c.hdlctrl.v1.ListRolesRequest\x1a\x1d.hdlctrl.v1.ListRolesResponse\x12K\n" +
 	"\n" +
@@ -2151,109 +2580,127 @@ func file_hdlctrl_v1_permission_proto_rawDescGZIP() []byte {
 }
 
 var file_hdlctrl_v1_permission_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_hdlctrl_v1_permission_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
+var file_hdlctrl_v1_permission_proto_msgTypes = make([]protoimpl.MessageInfo, 44)
 var file_hdlctrl_v1_permission_proto_goTypes = []any{
-	(GroupType)(0),                        // 0: hdlctrl.v1.GroupType
-	(RoleScope)(0),                        // 1: hdlctrl.v1.RoleScope
-	(*Group)(nil),                         // 2: hdlctrl.v1.Group
-	(*GroupMember)(nil),                   // 3: hdlctrl.v1.GroupMember
-	(*Role)(nil),                          // 4: hdlctrl.v1.Role
-	(*PermissionKey)(nil),                 // 5: hdlctrl.v1.PermissionKey
-	(*GroupPermissions)(nil),              // 6: hdlctrl.v1.GroupPermissions
-	(*MyPermissions)(nil),                 // 7: hdlctrl.v1.MyPermissions
-	(*PermissionKeyList)(nil),             // 8: hdlctrl.v1.PermissionKeyList
-	(*CreateGroupRequest)(nil),            // 9: hdlctrl.v1.CreateGroupRequest
-	(*CreateGroupResponse)(nil),           // 10: hdlctrl.v1.CreateGroupResponse
-	(*GetGroupRequest)(nil),               // 11: hdlctrl.v1.GetGroupRequest
-	(*GetGroupResponse)(nil),              // 12: hdlctrl.v1.GetGroupResponse
-	(*ListGroupsRequest)(nil),             // 13: hdlctrl.v1.ListGroupsRequest
-	(*ListGroupsResponse)(nil),            // 14: hdlctrl.v1.ListGroupsResponse
-	(*UpdateGroupRequest)(nil),            // 15: hdlctrl.v1.UpdateGroupRequest
-	(*UpdateGroupResponse)(nil),           // 16: hdlctrl.v1.UpdateGroupResponse
-	(*DeleteGroupRequest)(nil),            // 17: hdlctrl.v1.DeleteGroupRequest
-	(*DeleteGroupResponse)(nil),           // 18: hdlctrl.v1.DeleteGroupResponse
-	(*ListGroupMembersRequest)(nil),       // 19: hdlctrl.v1.ListGroupMembersRequest
-	(*ListGroupMembersResponse)(nil),      // 20: hdlctrl.v1.ListGroupMembersResponse
-	(*AddGroupMemberRequest)(nil),         // 21: hdlctrl.v1.AddGroupMemberRequest
-	(*AddGroupMemberResponse)(nil),        // 22: hdlctrl.v1.AddGroupMemberResponse
-	(*RemoveGroupMemberRequest)(nil),      // 23: hdlctrl.v1.RemoveGroupMemberRequest
-	(*RemoveGroupMemberResponse)(nil),     // 24: hdlctrl.v1.RemoveGroupMemberResponse
-	(*UpdateGroupMemberRoleRequest)(nil),  // 25: hdlctrl.v1.UpdateGroupMemberRoleRequest
-	(*UpdateGroupMemberRoleResponse)(nil), // 26: hdlctrl.v1.UpdateGroupMemberRoleResponse
-	(*ListRolesRequest)(nil),              // 27: hdlctrl.v1.ListRolesRequest
-	(*ListRolesResponse)(nil),             // 28: hdlctrl.v1.ListRolesResponse
-	(*CreateRoleRequest)(nil),             // 29: hdlctrl.v1.CreateRoleRequest
-	(*CreateRoleResponse)(nil),            // 30: hdlctrl.v1.CreateRoleResponse
-	(*UpdateRoleRequest)(nil),             // 31: hdlctrl.v1.UpdateRoleRequest
-	(*UpdateRoleResponse)(nil),            // 32: hdlctrl.v1.UpdateRoleResponse
-	(*DeleteRoleRequest)(nil),             // 33: hdlctrl.v1.DeleteRoleRequest
-	(*DeleteRoleResponse)(nil),            // 34: hdlctrl.v1.DeleteRoleResponse
-	(*ListPermissionsRequest)(nil),        // 35: hdlctrl.v1.ListPermissionsRequest
-	(*ListPermissionsResponse)(nil),       // 36: hdlctrl.v1.ListPermissionsResponse
-	(*GetMyPermissionsRequest)(nil),       // 37: hdlctrl.v1.GetMyPermissionsRequest
-	(*GetMyPermissionsResponse)(nil),      // 38: hdlctrl.v1.GetMyPermissionsResponse
-	(*timestamppb.Timestamp)(nil),         // 39: google.protobuf.Timestamp
+	(GroupType)(0),                               // 0: hdlctrl.v1.GroupType
+	(RoleScope)(0),                               // 1: hdlctrl.v1.RoleScope
+	(*Group)(nil),                                // 2: hdlctrl.v1.Group
+	(*GroupMember)(nil),                          // 3: hdlctrl.v1.GroupMember
+	(*InvitedGroupMember)(nil),                   // 4: hdlctrl.v1.InvitedGroupMember
+	(*Role)(nil),                                 // 5: hdlctrl.v1.Role
+	(*PermissionKey)(nil),                        // 6: hdlctrl.v1.PermissionKey
+	(*GroupPermissions)(nil),                     // 7: hdlctrl.v1.GroupPermissions
+	(*MyPermissions)(nil),                        // 8: hdlctrl.v1.MyPermissions
+	(*PermissionKeyList)(nil),                    // 9: hdlctrl.v1.PermissionKeyList
+	(*CreateGroupRequest)(nil),                   // 10: hdlctrl.v1.CreateGroupRequest
+	(*CreateGroupResponse)(nil),                  // 11: hdlctrl.v1.CreateGroupResponse
+	(*GetGroupRequest)(nil),                      // 12: hdlctrl.v1.GetGroupRequest
+	(*GetGroupResponse)(nil),                     // 13: hdlctrl.v1.GetGroupResponse
+	(*ListGroupsRequest)(nil),                    // 14: hdlctrl.v1.ListGroupsRequest
+	(*ListGroupsResponse)(nil),                   // 15: hdlctrl.v1.ListGroupsResponse
+	(*UpdateGroupRequest)(nil),                   // 16: hdlctrl.v1.UpdateGroupRequest
+	(*UpdateGroupResponse)(nil),                  // 17: hdlctrl.v1.UpdateGroupResponse
+	(*DeleteGroupRequest)(nil),                   // 18: hdlctrl.v1.DeleteGroupRequest
+	(*DeleteGroupResponse)(nil),                  // 19: hdlctrl.v1.DeleteGroupResponse
+	(*ListGroupMembersRequest)(nil),              // 20: hdlctrl.v1.ListGroupMembersRequest
+	(*ListGroupMembersResponse)(nil),             // 21: hdlctrl.v1.ListGroupMembersResponse
+	(*AddGroupMemberRequest)(nil),                // 22: hdlctrl.v1.AddGroupMemberRequest
+	(*AddGroupMemberResponse)(nil),               // 23: hdlctrl.v1.AddGroupMemberResponse
+	(*RemoveGroupMemberRequest)(nil),             // 24: hdlctrl.v1.RemoveGroupMemberRequest
+	(*RemoveGroupMemberResponse)(nil),            // 25: hdlctrl.v1.RemoveGroupMemberResponse
+	(*UpdateGroupMemberRoleRequest)(nil),         // 26: hdlctrl.v1.UpdateGroupMemberRoleRequest
+	(*UpdateGroupMemberRoleResponse)(nil),        // 27: hdlctrl.v1.UpdateGroupMemberRoleResponse
+	(*AddInvitedGroupMemberRequest)(nil),         // 28: hdlctrl.v1.AddInvitedGroupMemberRequest
+	(*AddInvitedGroupMemberResponse)(nil),        // 29: hdlctrl.v1.AddInvitedGroupMemberResponse
+	(*RemoveInvitedGroupMemberRequest)(nil),      // 30: hdlctrl.v1.RemoveInvitedGroupMemberRequest
+	(*RemoveInvitedGroupMemberResponse)(nil),     // 31: hdlctrl.v1.RemoveInvitedGroupMemberResponse
+	(*UpdateInvitedGroupMemberRoleRequest)(nil),  // 32: hdlctrl.v1.UpdateInvitedGroupMemberRoleRequest
+	(*UpdateInvitedGroupMemberRoleResponse)(nil), // 33: hdlctrl.v1.UpdateInvitedGroupMemberRoleResponse
+	(*ListRolesRequest)(nil),                     // 34: hdlctrl.v1.ListRolesRequest
+	(*ListRolesResponse)(nil),                    // 35: hdlctrl.v1.ListRolesResponse
+	(*CreateRoleRequest)(nil),                    // 36: hdlctrl.v1.CreateRoleRequest
+	(*CreateRoleResponse)(nil),                   // 37: hdlctrl.v1.CreateRoleResponse
+	(*UpdateRoleRequest)(nil),                    // 38: hdlctrl.v1.UpdateRoleRequest
+	(*UpdateRoleResponse)(nil),                   // 39: hdlctrl.v1.UpdateRoleResponse
+	(*DeleteRoleRequest)(nil),                    // 40: hdlctrl.v1.DeleteRoleRequest
+	(*DeleteRoleResponse)(nil),                   // 41: hdlctrl.v1.DeleteRoleResponse
+	(*ListPermissionsRequest)(nil),               // 42: hdlctrl.v1.ListPermissionsRequest
+	(*ListPermissionsResponse)(nil),              // 43: hdlctrl.v1.ListPermissionsResponse
+	(*GetMyPermissionsRequest)(nil),              // 44: hdlctrl.v1.GetMyPermissionsRequest
+	(*GetMyPermissionsResponse)(nil),             // 45: hdlctrl.v1.GetMyPermissionsResponse
+	(*timestamppb.Timestamp)(nil),                // 46: google.protobuf.Timestamp
 }
 var file_hdlctrl_v1_permission_proto_depIdxs = []int32{
 	0,  // 0: hdlctrl.v1.Group.type:type_name -> hdlctrl.v1.GroupType
-	39, // 1: hdlctrl.v1.Group.created_at:type_name -> google.protobuf.Timestamp
-	39, // 2: hdlctrl.v1.Group.updated_at:type_name -> google.protobuf.Timestamp
-	39, // 3: hdlctrl.v1.GroupMember.joined_at:type_name -> google.protobuf.Timestamp
-	1,  // 4: hdlctrl.v1.Role.scope:type_name -> hdlctrl.v1.RoleScope
-	39, // 5: hdlctrl.v1.Role.created_at:type_name -> google.protobuf.Timestamp
-	39, // 6: hdlctrl.v1.Role.updated_at:type_name -> google.protobuf.Timestamp
-	1,  // 7: hdlctrl.v1.PermissionKey.scope:type_name -> hdlctrl.v1.RoleScope
-	6,  // 8: hdlctrl.v1.MyPermissions.groups:type_name -> hdlctrl.v1.GroupPermissions
-	2,  // 9: hdlctrl.v1.CreateGroupResponse.group:type_name -> hdlctrl.v1.Group
-	2,  // 10: hdlctrl.v1.GetGroupResponse.group:type_name -> hdlctrl.v1.Group
-	2,  // 11: hdlctrl.v1.ListGroupsResponse.groups:type_name -> hdlctrl.v1.Group
-	2,  // 12: hdlctrl.v1.UpdateGroupResponse.group:type_name -> hdlctrl.v1.Group
-	3,  // 13: hdlctrl.v1.ListGroupMembersResponse.members:type_name -> hdlctrl.v1.GroupMember
-	3,  // 14: hdlctrl.v1.AddGroupMemberResponse.member:type_name -> hdlctrl.v1.GroupMember
-	3,  // 15: hdlctrl.v1.UpdateGroupMemberRoleResponse.member:type_name -> hdlctrl.v1.GroupMember
-	4,  // 16: hdlctrl.v1.ListRolesResponse.roles:type_name -> hdlctrl.v1.Role
-	1,  // 17: hdlctrl.v1.CreateRoleRequest.scope:type_name -> hdlctrl.v1.RoleScope
-	4,  // 18: hdlctrl.v1.CreateRoleResponse.role:type_name -> hdlctrl.v1.Role
-	8,  // 19: hdlctrl.v1.UpdateRoleRequest.permission_keys:type_name -> hdlctrl.v1.PermissionKeyList
-	4,  // 20: hdlctrl.v1.UpdateRoleResponse.role:type_name -> hdlctrl.v1.Role
-	1,  // 21: hdlctrl.v1.ListPermissionsRequest.scope:type_name -> hdlctrl.v1.RoleScope
-	5,  // 22: hdlctrl.v1.ListPermissionsResponse.permissions:type_name -> hdlctrl.v1.PermissionKey
-	7,  // 23: hdlctrl.v1.GetMyPermissionsResponse.permissions:type_name -> hdlctrl.v1.MyPermissions
-	9,  // 24: hdlctrl.v1.GroupService.CreateGroup:input_type -> hdlctrl.v1.CreateGroupRequest
-	11, // 25: hdlctrl.v1.GroupService.GetGroup:input_type -> hdlctrl.v1.GetGroupRequest
-	13, // 26: hdlctrl.v1.GroupService.ListGroups:input_type -> hdlctrl.v1.ListGroupsRequest
-	15, // 27: hdlctrl.v1.GroupService.UpdateGroup:input_type -> hdlctrl.v1.UpdateGroupRequest
-	17, // 28: hdlctrl.v1.GroupService.DeleteGroup:input_type -> hdlctrl.v1.DeleteGroupRequest
-	19, // 29: hdlctrl.v1.GroupService.ListGroupMembers:input_type -> hdlctrl.v1.ListGroupMembersRequest
-	21, // 30: hdlctrl.v1.GroupService.AddGroupMember:input_type -> hdlctrl.v1.AddGroupMemberRequest
-	23, // 31: hdlctrl.v1.GroupService.RemoveGroupMember:input_type -> hdlctrl.v1.RemoveGroupMemberRequest
-	25, // 32: hdlctrl.v1.GroupService.UpdateGroupMemberRole:input_type -> hdlctrl.v1.UpdateGroupMemberRoleRequest
-	27, // 33: hdlctrl.v1.RoleService.ListRoles:input_type -> hdlctrl.v1.ListRolesRequest
-	29, // 34: hdlctrl.v1.RoleService.CreateRole:input_type -> hdlctrl.v1.CreateRoleRequest
-	31, // 35: hdlctrl.v1.RoleService.UpdateRole:input_type -> hdlctrl.v1.UpdateRoleRequest
-	33, // 36: hdlctrl.v1.RoleService.DeleteRole:input_type -> hdlctrl.v1.DeleteRoleRequest
-	35, // 37: hdlctrl.v1.RoleService.ListPermissions:input_type -> hdlctrl.v1.ListPermissionsRequest
-	37, // 38: hdlctrl.v1.RoleService.GetMyPermissions:input_type -> hdlctrl.v1.GetMyPermissionsRequest
-	10, // 39: hdlctrl.v1.GroupService.CreateGroup:output_type -> hdlctrl.v1.CreateGroupResponse
-	12, // 40: hdlctrl.v1.GroupService.GetGroup:output_type -> hdlctrl.v1.GetGroupResponse
-	14, // 41: hdlctrl.v1.GroupService.ListGroups:output_type -> hdlctrl.v1.ListGroupsResponse
-	16, // 42: hdlctrl.v1.GroupService.UpdateGroup:output_type -> hdlctrl.v1.UpdateGroupResponse
-	18, // 43: hdlctrl.v1.GroupService.DeleteGroup:output_type -> hdlctrl.v1.DeleteGroupResponse
-	20, // 44: hdlctrl.v1.GroupService.ListGroupMembers:output_type -> hdlctrl.v1.ListGroupMembersResponse
-	22, // 45: hdlctrl.v1.GroupService.AddGroupMember:output_type -> hdlctrl.v1.AddGroupMemberResponse
-	24, // 46: hdlctrl.v1.GroupService.RemoveGroupMember:output_type -> hdlctrl.v1.RemoveGroupMemberResponse
-	26, // 47: hdlctrl.v1.GroupService.UpdateGroupMemberRole:output_type -> hdlctrl.v1.UpdateGroupMemberRoleResponse
-	28, // 48: hdlctrl.v1.RoleService.ListRoles:output_type -> hdlctrl.v1.ListRolesResponse
-	30, // 49: hdlctrl.v1.RoleService.CreateRole:output_type -> hdlctrl.v1.CreateRoleResponse
-	32, // 50: hdlctrl.v1.RoleService.UpdateRole:output_type -> hdlctrl.v1.UpdateRoleResponse
-	34, // 51: hdlctrl.v1.RoleService.DeleteRole:output_type -> hdlctrl.v1.DeleteRoleResponse
-	36, // 52: hdlctrl.v1.RoleService.ListPermissions:output_type -> hdlctrl.v1.ListPermissionsResponse
-	38, // 53: hdlctrl.v1.RoleService.GetMyPermissions:output_type -> hdlctrl.v1.GetMyPermissionsResponse
-	39, // [39:54] is the sub-list for method output_type
-	24, // [24:39] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	46, // 1: hdlctrl.v1.Group.created_at:type_name -> google.protobuf.Timestamp
+	46, // 2: hdlctrl.v1.Group.updated_at:type_name -> google.protobuf.Timestamp
+	46, // 3: hdlctrl.v1.GroupMember.joined_at:type_name -> google.protobuf.Timestamp
+	46, // 4: hdlctrl.v1.InvitedGroupMember.added_at:type_name -> google.protobuf.Timestamp
+	46, // 5: hdlctrl.v1.InvitedGroupMember.expires_at:type_name -> google.protobuf.Timestamp
+	1,  // 6: hdlctrl.v1.Role.scope:type_name -> hdlctrl.v1.RoleScope
+	46, // 7: hdlctrl.v1.Role.created_at:type_name -> google.protobuf.Timestamp
+	46, // 8: hdlctrl.v1.Role.updated_at:type_name -> google.protobuf.Timestamp
+	1,  // 9: hdlctrl.v1.PermissionKey.scope:type_name -> hdlctrl.v1.RoleScope
+	7,  // 10: hdlctrl.v1.MyPermissions.groups:type_name -> hdlctrl.v1.GroupPermissions
+	2,  // 11: hdlctrl.v1.CreateGroupResponse.group:type_name -> hdlctrl.v1.Group
+	2,  // 12: hdlctrl.v1.GetGroupResponse.group:type_name -> hdlctrl.v1.Group
+	2,  // 13: hdlctrl.v1.ListGroupsResponse.groups:type_name -> hdlctrl.v1.Group
+	2,  // 14: hdlctrl.v1.UpdateGroupResponse.group:type_name -> hdlctrl.v1.Group
+	3,  // 15: hdlctrl.v1.ListGroupMembersResponse.members:type_name -> hdlctrl.v1.GroupMember
+	4,  // 16: hdlctrl.v1.ListGroupMembersResponse.invited_members:type_name -> hdlctrl.v1.InvitedGroupMember
+	3,  // 17: hdlctrl.v1.AddGroupMemberResponse.member:type_name -> hdlctrl.v1.GroupMember
+	3,  // 18: hdlctrl.v1.UpdateGroupMemberRoleResponse.member:type_name -> hdlctrl.v1.GroupMember
+	4,  // 19: hdlctrl.v1.AddInvitedGroupMemberResponse.member:type_name -> hdlctrl.v1.InvitedGroupMember
+	4,  // 20: hdlctrl.v1.UpdateInvitedGroupMemberRoleResponse.member:type_name -> hdlctrl.v1.InvitedGroupMember
+	5,  // 21: hdlctrl.v1.ListRolesResponse.roles:type_name -> hdlctrl.v1.Role
+	1,  // 22: hdlctrl.v1.CreateRoleRequest.scope:type_name -> hdlctrl.v1.RoleScope
+	5,  // 23: hdlctrl.v1.CreateRoleResponse.role:type_name -> hdlctrl.v1.Role
+	9,  // 24: hdlctrl.v1.UpdateRoleRequest.permission_keys:type_name -> hdlctrl.v1.PermissionKeyList
+	5,  // 25: hdlctrl.v1.UpdateRoleResponse.role:type_name -> hdlctrl.v1.Role
+	1,  // 26: hdlctrl.v1.ListPermissionsRequest.scope:type_name -> hdlctrl.v1.RoleScope
+	6,  // 27: hdlctrl.v1.ListPermissionsResponse.permissions:type_name -> hdlctrl.v1.PermissionKey
+	8,  // 28: hdlctrl.v1.GetMyPermissionsResponse.permissions:type_name -> hdlctrl.v1.MyPermissions
+	10, // 29: hdlctrl.v1.GroupService.CreateGroup:input_type -> hdlctrl.v1.CreateGroupRequest
+	12, // 30: hdlctrl.v1.GroupService.GetGroup:input_type -> hdlctrl.v1.GetGroupRequest
+	14, // 31: hdlctrl.v1.GroupService.ListGroups:input_type -> hdlctrl.v1.ListGroupsRequest
+	16, // 32: hdlctrl.v1.GroupService.UpdateGroup:input_type -> hdlctrl.v1.UpdateGroupRequest
+	18, // 33: hdlctrl.v1.GroupService.DeleteGroup:input_type -> hdlctrl.v1.DeleteGroupRequest
+	20, // 34: hdlctrl.v1.GroupService.ListGroupMembers:input_type -> hdlctrl.v1.ListGroupMembersRequest
+	22, // 35: hdlctrl.v1.GroupService.AddGroupMember:input_type -> hdlctrl.v1.AddGroupMemberRequest
+	24, // 36: hdlctrl.v1.GroupService.RemoveGroupMember:input_type -> hdlctrl.v1.RemoveGroupMemberRequest
+	26, // 37: hdlctrl.v1.GroupService.UpdateGroupMemberRole:input_type -> hdlctrl.v1.UpdateGroupMemberRoleRequest
+	28, // 38: hdlctrl.v1.GroupService.AddInvitedGroupMember:input_type -> hdlctrl.v1.AddInvitedGroupMemberRequest
+	30, // 39: hdlctrl.v1.GroupService.RemoveInvitedGroupMember:input_type -> hdlctrl.v1.RemoveInvitedGroupMemberRequest
+	32, // 40: hdlctrl.v1.GroupService.UpdateInvitedGroupMemberRole:input_type -> hdlctrl.v1.UpdateInvitedGroupMemberRoleRequest
+	34, // 41: hdlctrl.v1.RoleService.ListRoles:input_type -> hdlctrl.v1.ListRolesRequest
+	36, // 42: hdlctrl.v1.RoleService.CreateRole:input_type -> hdlctrl.v1.CreateRoleRequest
+	38, // 43: hdlctrl.v1.RoleService.UpdateRole:input_type -> hdlctrl.v1.UpdateRoleRequest
+	40, // 44: hdlctrl.v1.RoleService.DeleteRole:input_type -> hdlctrl.v1.DeleteRoleRequest
+	42, // 45: hdlctrl.v1.RoleService.ListPermissions:input_type -> hdlctrl.v1.ListPermissionsRequest
+	44, // 46: hdlctrl.v1.RoleService.GetMyPermissions:input_type -> hdlctrl.v1.GetMyPermissionsRequest
+	11, // 47: hdlctrl.v1.GroupService.CreateGroup:output_type -> hdlctrl.v1.CreateGroupResponse
+	13, // 48: hdlctrl.v1.GroupService.GetGroup:output_type -> hdlctrl.v1.GetGroupResponse
+	15, // 49: hdlctrl.v1.GroupService.ListGroups:output_type -> hdlctrl.v1.ListGroupsResponse
+	17, // 50: hdlctrl.v1.GroupService.UpdateGroup:output_type -> hdlctrl.v1.UpdateGroupResponse
+	19, // 51: hdlctrl.v1.GroupService.DeleteGroup:output_type -> hdlctrl.v1.DeleteGroupResponse
+	21, // 52: hdlctrl.v1.GroupService.ListGroupMembers:output_type -> hdlctrl.v1.ListGroupMembersResponse
+	23, // 53: hdlctrl.v1.GroupService.AddGroupMember:output_type -> hdlctrl.v1.AddGroupMemberResponse
+	25, // 54: hdlctrl.v1.GroupService.RemoveGroupMember:output_type -> hdlctrl.v1.RemoveGroupMemberResponse
+	27, // 55: hdlctrl.v1.GroupService.UpdateGroupMemberRole:output_type -> hdlctrl.v1.UpdateGroupMemberRoleResponse
+	29, // 56: hdlctrl.v1.GroupService.AddInvitedGroupMember:output_type -> hdlctrl.v1.AddInvitedGroupMemberResponse
+	31, // 57: hdlctrl.v1.GroupService.RemoveInvitedGroupMember:output_type -> hdlctrl.v1.RemoveInvitedGroupMemberResponse
+	33, // 58: hdlctrl.v1.GroupService.UpdateInvitedGroupMemberRole:output_type -> hdlctrl.v1.UpdateInvitedGroupMemberRoleResponse
+	35, // 59: hdlctrl.v1.RoleService.ListRoles:output_type -> hdlctrl.v1.ListRolesResponse
+	37, // 60: hdlctrl.v1.RoleService.CreateRole:output_type -> hdlctrl.v1.CreateRoleResponse
+	39, // 61: hdlctrl.v1.RoleService.UpdateRole:output_type -> hdlctrl.v1.UpdateRoleResponse
+	41, // 62: hdlctrl.v1.RoleService.DeleteRole:output_type -> hdlctrl.v1.DeleteRoleResponse
+	43, // 63: hdlctrl.v1.RoleService.ListPermissions:output_type -> hdlctrl.v1.ListPermissionsResponse
+	45, // 64: hdlctrl.v1.RoleService.GetMyPermissions:output_type -> hdlctrl.v1.GetMyPermissionsResponse
+	47, // [47:65] is the sub-list for method output_type
+	29, // [29:47] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_hdlctrl_v1_permission_proto_init() }
@@ -2263,17 +2710,18 @@ func file_hdlctrl_v1_permission_proto_init() {
 	}
 	file_hdlctrl_v1_permission_proto_msgTypes[1].OneofWrappers = []any{}
 	file_hdlctrl_v1_permission_proto_msgTypes[2].OneofWrappers = []any{}
-	file_hdlctrl_v1_permission_proto_msgTypes[13].OneofWrappers = []any{}
-	file_hdlctrl_v1_permission_proto_msgTypes[25].OneofWrappers = []any{}
-	file_hdlctrl_v1_permission_proto_msgTypes[27].OneofWrappers = []any{}
-	file_hdlctrl_v1_permission_proto_msgTypes[29].OneofWrappers = []any{}
+	file_hdlctrl_v1_permission_proto_msgTypes[3].OneofWrappers = []any{}
+	file_hdlctrl_v1_permission_proto_msgTypes[14].OneofWrappers = []any{}
+	file_hdlctrl_v1_permission_proto_msgTypes[32].OneofWrappers = []any{}
+	file_hdlctrl_v1_permission_proto_msgTypes[34].OneofWrappers = []any{}
+	file_hdlctrl_v1_permission_proto_msgTypes[36].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hdlctrl_v1_permission_proto_rawDesc), len(file_hdlctrl_v1_permission_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   37,
+			NumMessages:   44,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

@@ -63,3 +63,25 @@ export const createRegistrationToken = UserService.method.createRegistrationToke
  * @generated from rpc hdlctrl.v1.UserService.DeleteUser
  */
 export const deleteUser = UserService.method.deleteUser;
+
+/**
+ * 登録が済んでいない招待の一覧を返す (期限切れを含む). 認証済みなら誰でも呼べる
+ * (グループメンバー追加モーダルで招待中ユーザーを選ぶため).
+ *
+ * @generated from rpc hdlctrl.v1.UserService.ListInvitations
+ */
+export const listInvitations = UserService.method.listInvitations;
+
+/**
+ * 招待リンクを再発行する. 旧リンクは無効になり、グループ参加予定は引き継がれる.
+ *
+ * @generated from rpc hdlctrl.v1.UserService.ReissueInvitation
+ */
+export const reissueInvitation = UserService.method.reissueInvitation;
+
+/**
+ * 招待を取り消す. グループ参加予定も削除される.
+ *
+ * @generated from rpc hdlctrl.v1.UserService.RevokeInvitation
+ */
+export const revokeInvitation = UserService.method.revokeInvitation;

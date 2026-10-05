@@ -11,9 +11,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createRegistrationToken = `-- name: CreateRegistrationToken :exec
+const createRegistrationToken = `-- name: CreateRegistrationToken :one
 INSERT INTO registration_tokens (token, resonite_id, expires_at, personal_role_id)
 VALUES ($1, $2, $3, $4)
+RETURNING id
 `
 
 type CreateRegistrationTokenParams struct {
@@ -23,14 +24,16 @@ type CreateRegistrationTokenParams struct {
 	PersonalRoleID pgtype.Text
 }
 
-func (q *Queries) CreateRegistrationToken(ctx context.Context, arg CreateRegistrationTokenParams) error {
-	_, err := q.db.Exec(ctx, createRegistrationToken,
+func (q *Queries) CreateRegistrationToken(ctx context.Context, arg CreateRegistrationTokenParams) (string, error) {
+	row := q.db.QueryRow(ctx, createRegistrationToken,
 		arg.Token,
 		arg.ResoniteID,
 		arg.ExpiresAt,
 		arg.PersonalRoleID,
 	)
-	return err
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const deleteExpiredRegistrationTokens = `-- name: DeleteExpiredRegistrationTokens :exec
@@ -42,8 +45,20 @@ func (q *Queries) DeleteExpiredRegistrationTokens(ctx context.Context) error {
 	return err
 }
 
+const deletePendingRegistrationToken = `-- name: DeletePendingRegistrationToken :execrows
+DELETE FROM registration_tokens WHERE id = $1 AND used_at IS NULL
+`
+
+func (q *Queries) DeletePendingRegistrationToken(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deletePendingRegistrationToken, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getRegistrationToken = `-- name: GetRegistrationToken :one
-SELECT token, resonite_id, expires_at, used_at, created_at, personal_role_id FROM registration_tokens WHERE token = $1
+SELECT token, resonite_id, expires_at, used_at, created_at, personal_role_id, id FROM registration_tokens WHERE token = $1
 `
 
 func (q *Queries) GetRegistrationToken(ctx context.Context, token string) (RegistrationToken, error) {
@@ -56,12 +71,13 @@ func (q *Queries) GetRegistrationToken(ctx context.Context, token string) (Regis
 		&i.UsedAt,
 		&i.CreatedAt,
 		&i.PersonalRoleID,
+		&i.ID,
 	)
 	return i, err
 }
 
 const getValidRegistrationToken = `-- name: GetValidRegistrationToken :one
-SELECT token, resonite_id, expires_at, used_at, created_at, personal_role_id FROM registration_tokens
+SELECT token, resonite_id, expires_at, used_at, created_at, personal_role_id, id FROM registration_tokens
 WHERE token = $1
   AND expires_at > NOW()
   AND used_at IS NULL
@@ -77,8 +93,42 @@ func (q *Queries) GetValidRegistrationToken(ctx context.Context, token string) (
 		&i.UsedAt,
 		&i.CreatedAt,
 		&i.PersonalRoleID,
+		&i.ID,
 	)
 	return i, err
+}
+
+const listPendingRegistrationTokens = `-- name: ListPendingRegistrationTokens :many
+SELECT token, resonite_id, expires_at, used_at, created_at, personal_role_id, id FROM registration_tokens WHERE used_at IS NULL ORDER BY created_at
+`
+
+// 未使用の招待一覧 (期限切れを含む). 再発行 / 取消の対象.
+func (q *Queries) ListPendingRegistrationTokens(ctx context.Context) ([]RegistrationToken, error) {
+	rows, err := q.db.Query(ctx, listPendingRegistrationTokens)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RegistrationToken
+	for rows.Next() {
+		var i RegistrationToken
+		if err := rows.Scan(
+			&i.Token,
+			&i.ResoniteID,
+			&i.ExpiresAt,
+			&i.UsedAt,
+			&i.CreatedAt,
+			&i.PersonalRoleID,
+			&i.ID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const markRegistrationTokenUsed = `-- name: MarkRegistrationTokenUsed :execrows
@@ -87,6 +137,25 @@ UPDATE registration_tokens SET used_at = NOW() WHERE token = $1 AND used_at IS N
 
 func (q *Queries) MarkRegistrationTokenUsed(ctx context.Context, token string) (int64, error) {
 	result, err := q.db.Exec(ctx, markRegistrationTokenUsed, token)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const reissueRegistrationToken = `-- name: ReissueRegistrationToken :execrows
+UPDATE registration_tokens SET token = $2, expires_at = $3
+WHERE id = $1 AND used_at IS NULL
+`
+
+type ReissueRegistrationTokenParams struct {
+	ID        string
+	Token     string
+	ExpiresAt pgtype.Timestamptz
+}
+
+func (q *Queries) ReissueRegistrationToken(ctx context.Context, arg ReissueRegistrationTokenParams) (int64, error) {
+	result, err := q.db.Exec(ctx, reissueRegistrationToken, arg.ID, arg.Token, arg.ExpiresAt)
 	if err != nil {
 		return 0, err
 	}

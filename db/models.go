@@ -91,6 +91,14 @@ type HostEventCheckpoint struct {
 	UpdatedAt   pgtype.Timestamptz
 }
 
+type InvitationGroupMember struct {
+	InvitationID string
+	GroupID      string
+	RoleID       string
+	AddedBy      pgtype.Text
+	AddedAt      pgtype.Timestamptz
+}
+
 type Message struct {
 	ID            string
 	Title         string
@@ -109,6 +117,7 @@ type RegistrationToken struct {
 	UsedAt         pgtype.Timestamptz
 	CreatedAt      pgtype.Timestamptz
 	PersonalRoleID pgtype.Text
+	ID             string
 }
 
 type ResoniteVersion struct {

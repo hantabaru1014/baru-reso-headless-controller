@@ -60,6 +60,15 @@ const (
 	// GroupServiceUpdateGroupMemberRoleProcedure is the fully-qualified name of the GroupService's
 	// UpdateGroupMemberRole RPC.
 	GroupServiceUpdateGroupMemberRoleProcedure = "/hdlctrl.v1.GroupService/UpdateGroupMemberRole"
+	// GroupServiceAddInvitedGroupMemberProcedure is the fully-qualified name of the GroupService's
+	// AddInvitedGroupMember RPC.
+	GroupServiceAddInvitedGroupMemberProcedure = "/hdlctrl.v1.GroupService/AddInvitedGroupMember"
+	// GroupServiceRemoveInvitedGroupMemberProcedure is the fully-qualified name of the GroupService's
+	// RemoveInvitedGroupMember RPC.
+	GroupServiceRemoveInvitedGroupMemberProcedure = "/hdlctrl.v1.GroupService/RemoveInvitedGroupMember"
+	// GroupServiceUpdateInvitedGroupMemberRoleProcedure is the fully-qualified name of the
+	// GroupService's UpdateInvitedGroupMemberRole RPC.
+	GroupServiceUpdateInvitedGroupMemberRoleProcedure = "/hdlctrl.v1.GroupService/UpdateInvitedGroupMemberRole"
 	// RoleServiceListRolesProcedure is the fully-qualified name of the RoleService's ListRoles RPC.
 	RoleServiceListRolesProcedure = "/hdlctrl.v1.RoleService/ListRoles"
 	// RoleServiceCreateRoleProcedure is the fully-qualified name of the RoleService's CreateRole RPC.
@@ -91,6 +100,10 @@ type GroupServiceClient interface {
 	AddGroupMember(context.Context, *connect.Request[v1.AddGroupMemberRequest]) (*connect.Response[v1.AddGroupMemberResponse], error)
 	RemoveGroupMember(context.Context, *connect.Request[v1.RemoveGroupMemberRequest]) (*connect.Response[v1.RemoveGroupMemberResponse], error)
 	UpdateGroupMemberRole(context.Context, *connect.Request[v1.UpdateGroupMemberRoleRequest]) (*connect.Response[v1.UpdateGroupMemberRoleResponse], error)
+	// 招待中 (未登録) ユーザーのグループ参加予定. 登録時に正式なメンバーになる.
+	AddInvitedGroupMember(context.Context, *connect.Request[v1.AddInvitedGroupMemberRequest]) (*connect.Response[v1.AddInvitedGroupMemberResponse], error)
+	RemoveInvitedGroupMember(context.Context, *connect.Request[v1.RemoveInvitedGroupMemberRequest]) (*connect.Response[v1.RemoveInvitedGroupMemberResponse], error)
+	UpdateInvitedGroupMemberRole(context.Context, *connect.Request[v1.UpdateInvitedGroupMemberRoleRequest]) (*connect.Response[v1.UpdateInvitedGroupMemberRoleResponse], error)
 }
 
 // NewGroupServiceClient constructs a client for the hdlctrl.v1.GroupService service. By default, it
@@ -158,20 +171,41 @@ func NewGroupServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(groupServiceMethods.ByName("UpdateGroupMemberRole")),
 			connect.WithClientOptions(opts...),
 		),
+		addInvitedGroupMember: connect.NewClient[v1.AddInvitedGroupMemberRequest, v1.AddInvitedGroupMemberResponse](
+			httpClient,
+			baseURL+GroupServiceAddInvitedGroupMemberProcedure,
+			connect.WithSchema(groupServiceMethods.ByName("AddInvitedGroupMember")),
+			connect.WithClientOptions(opts...),
+		),
+		removeInvitedGroupMember: connect.NewClient[v1.RemoveInvitedGroupMemberRequest, v1.RemoveInvitedGroupMemberResponse](
+			httpClient,
+			baseURL+GroupServiceRemoveInvitedGroupMemberProcedure,
+			connect.WithSchema(groupServiceMethods.ByName("RemoveInvitedGroupMember")),
+			connect.WithClientOptions(opts...),
+		),
+		updateInvitedGroupMemberRole: connect.NewClient[v1.UpdateInvitedGroupMemberRoleRequest, v1.UpdateInvitedGroupMemberRoleResponse](
+			httpClient,
+			baseURL+GroupServiceUpdateInvitedGroupMemberRoleProcedure,
+			connect.WithSchema(groupServiceMethods.ByName("UpdateInvitedGroupMemberRole")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // groupServiceClient implements GroupServiceClient.
 type groupServiceClient struct {
-	createGroup           *connect.Client[v1.CreateGroupRequest, v1.CreateGroupResponse]
-	getGroup              *connect.Client[v1.GetGroupRequest, v1.GetGroupResponse]
-	listGroups            *connect.Client[v1.ListGroupsRequest, v1.ListGroupsResponse]
-	updateGroup           *connect.Client[v1.UpdateGroupRequest, v1.UpdateGroupResponse]
-	deleteGroup           *connect.Client[v1.DeleteGroupRequest, v1.DeleteGroupResponse]
-	listGroupMembers      *connect.Client[v1.ListGroupMembersRequest, v1.ListGroupMembersResponse]
-	addGroupMember        *connect.Client[v1.AddGroupMemberRequest, v1.AddGroupMemberResponse]
-	removeGroupMember     *connect.Client[v1.RemoveGroupMemberRequest, v1.RemoveGroupMemberResponse]
-	updateGroupMemberRole *connect.Client[v1.UpdateGroupMemberRoleRequest, v1.UpdateGroupMemberRoleResponse]
+	createGroup                  *connect.Client[v1.CreateGroupRequest, v1.CreateGroupResponse]
+	getGroup                     *connect.Client[v1.GetGroupRequest, v1.GetGroupResponse]
+	listGroups                   *connect.Client[v1.ListGroupsRequest, v1.ListGroupsResponse]
+	updateGroup                  *connect.Client[v1.UpdateGroupRequest, v1.UpdateGroupResponse]
+	deleteGroup                  *connect.Client[v1.DeleteGroupRequest, v1.DeleteGroupResponse]
+	listGroupMembers             *connect.Client[v1.ListGroupMembersRequest, v1.ListGroupMembersResponse]
+	addGroupMember               *connect.Client[v1.AddGroupMemberRequest, v1.AddGroupMemberResponse]
+	removeGroupMember            *connect.Client[v1.RemoveGroupMemberRequest, v1.RemoveGroupMemberResponse]
+	updateGroupMemberRole        *connect.Client[v1.UpdateGroupMemberRoleRequest, v1.UpdateGroupMemberRoleResponse]
+	addInvitedGroupMember        *connect.Client[v1.AddInvitedGroupMemberRequest, v1.AddInvitedGroupMemberResponse]
+	removeInvitedGroupMember     *connect.Client[v1.RemoveInvitedGroupMemberRequest, v1.RemoveInvitedGroupMemberResponse]
+	updateInvitedGroupMemberRole *connect.Client[v1.UpdateInvitedGroupMemberRoleRequest, v1.UpdateInvitedGroupMemberRoleResponse]
 }
 
 // CreateGroup calls hdlctrl.v1.GroupService.CreateGroup.
@@ -219,6 +253,21 @@ func (c *groupServiceClient) UpdateGroupMemberRole(ctx context.Context, req *con
 	return c.updateGroupMemberRole.CallUnary(ctx, req)
 }
 
+// AddInvitedGroupMember calls hdlctrl.v1.GroupService.AddInvitedGroupMember.
+func (c *groupServiceClient) AddInvitedGroupMember(ctx context.Context, req *connect.Request[v1.AddInvitedGroupMemberRequest]) (*connect.Response[v1.AddInvitedGroupMemberResponse], error) {
+	return c.addInvitedGroupMember.CallUnary(ctx, req)
+}
+
+// RemoveInvitedGroupMember calls hdlctrl.v1.GroupService.RemoveInvitedGroupMember.
+func (c *groupServiceClient) RemoveInvitedGroupMember(ctx context.Context, req *connect.Request[v1.RemoveInvitedGroupMemberRequest]) (*connect.Response[v1.RemoveInvitedGroupMemberResponse], error) {
+	return c.removeInvitedGroupMember.CallUnary(ctx, req)
+}
+
+// UpdateInvitedGroupMemberRole calls hdlctrl.v1.GroupService.UpdateInvitedGroupMemberRole.
+func (c *groupServiceClient) UpdateInvitedGroupMemberRole(ctx context.Context, req *connect.Request[v1.UpdateInvitedGroupMemberRoleRequest]) (*connect.Response[v1.UpdateInvitedGroupMemberRoleResponse], error) {
+	return c.updateInvitedGroupMemberRole.CallUnary(ctx, req)
+}
+
 // GroupServiceHandler is an implementation of the hdlctrl.v1.GroupService service.
 type GroupServiceHandler interface {
 	// グループ系
@@ -234,6 +283,10 @@ type GroupServiceHandler interface {
 	AddGroupMember(context.Context, *connect.Request[v1.AddGroupMemberRequest]) (*connect.Response[v1.AddGroupMemberResponse], error)
 	RemoveGroupMember(context.Context, *connect.Request[v1.RemoveGroupMemberRequest]) (*connect.Response[v1.RemoveGroupMemberResponse], error)
 	UpdateGroupMemberRole(context.Context, *connect.Request[v1.UpdateGroupMemberRoleRequest]) (*connect.Response[v1.UpdateGroupMemberRoleResponse], error)
+	// 招待中 (未登録) ユーザーのグループ参加予定. 登録時に正式なメンバーになる.
+	AddInvitedGroupMember(context.Context, *connect.Request[v1.AddInvitedGroupMemberRequest]) (*connect.Response[v1.AddInvitedGroupMemberResponse], error)
+	RemoveInvitedGroupMember(context.Context, *connect.Request[v1.RemoveInvitedGroupMemberRequest]) (*connect.Response[v1.RemoveInvitedGroupMemberResponse], error)
+	UpdateInvitedGroupMemberRole(context.Context, *connect.Request[v1.UpdateInvitedGroupMemberRoleRequest]) (*connect.Response[v1.UpdateInvitedGroupMemberRoleResponse], error)
 }
 
 // NewGroupServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -297,6 +350,24 @@ func NewGroupServiceHandler(svc GroupServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(groupServiceMethods.ByName("UpdateGroupMemberRole")),
 		connect.WithHandlerOptions(opts...),
 	)
+	groupServiceAddInvitedGroupMemberHandler := connect.NewUnaryHandler(
+		GroupServiceAddInvitedGroupMemberProcedure,
+		svc.AddInvitedGroupMember,
+		connect.WithSchema(groupServiceMethods.ByName("AddInvitedGroupMember")),
+		connect.WithHandlerOptions(opts...),
+	)
+	groupServiceRemoveInvitedGroupMemberHandler := connect.NewUnaryHandler(
+		GroupServiceRemoveInvitedGroupMemberProcedure,
+		svc.RemoveInvitedGroupMember,
+		connect.WithSchema(groupServiceMethods.ByName("RemoveInvitedGroupMember")),
+		connect.WithHandlerOptions(opts...),
+	)
+	groupServiceUpdateInvitedGroupMemberRoleHandler := connect.NewUnaryHandler(
+		GroupServiceUpdateInvitedGroupMemberRoleProcedure,
+		svc.UpdateInvitedGroupMemberRole,
+		connect.WithSchema(groupServiceMethods.ByName("UpdateInvitedGroupMemberRole")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/hdlctrl.v1.GroupService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case GroupServiceCreateGroupProcedure:
@@ -317,6 +388,12 @@ func NewGroupServiceHandler(svc GroupServiceHandler, opts ...connect.HandlerOpti
 			groupServiceRemoveGroupMemberHandler.ServeHTTP(w, r)
 		case GroupServiceUpdateGroupMemberRoleProcedure:
 			groupServiceUpdateGroupMemberRoleHandler.ServeHTTP(w, r)
+		case GroupServiceAddInvitedGroupMemberProcedure:
+			groupServiceAddInvitedGroupMemberHandler.ServeHTTP(w, r)
+		case GroupServiceRemoveInvitedGroupMemberProcedure:
+			groupServiceRemoveInvitedGroupMemberHandler.ServeHTTP(w, r)
+		case GroupServiceUpdateInvitedGroupMemberRoleProcedure:
+			groupServiceUpdateInvitedGroupMemberRoleHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -360,6 +437,18 @@ func (UnimplementedGroupServiceHandler) RemoveGroupMember(context.Context, *conn
 
 func (UnimplementedGroupServiceHandler) UpdateGroupMemberRole(context.Context, *connect.Request[v1.UpdateGroupMemberRoleRequest]) (*connect.Response[v1.UpdateGroupMemberRoleResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.GroupService.UpdateGroupMemberRole is not implemented"))
+}
+
+func (UnimplementedGroupServiceHandler) AddInvitedGroupMember(context.Context, *connect.Request[v1.AddInvitedGroupMemberRequest]) (*connect.Response[v1.AddInvitedGroupMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.GroupService.AddInvitedGroupMember is not implemented"))
+}
+
+func (UnimplementedGroupServiceHandler) RemoveInvitedGroupMember(context.Context, *connect.Request[v1.RemoveInvitedGroupMemberRequest]) (*connect.Response[v1.RemoveInvitedGroupMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.GroupService.RemoveInvitedGroupMember is not implemented"))
+}
+
+func (UnimplementedGroupServiceHandler) UpdateInvitedGroupMemberRole(context.Context, *connect.Request[v1.UpdateInvitedGroupMemberRoleRequest]) (*connect.Response[v1.UpdateInvitedGroupMemberRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hdlctrl.v1.GroupService.UpdateInvitedGroupMemberRole is not implemented"))
 }
 
 // RoleServiceClient is a client for the hdlctrl.v1.RoleService service.

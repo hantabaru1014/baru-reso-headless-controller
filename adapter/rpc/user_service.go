@@ -213,7 +213,72 @@ func (u *UserService) CreateRegistrationToken(ctx context.Context, req *connect.
 		ExpiresAt:        timestamppb.New(info.ExpiresAt),
 		ResoniteUserName: info.ResoniteUserName,
 		IconUrl:          info.IconUrl,
+		InvitationId:     info.InvitationID,
 	}), nil
+}
+
+// ListInvitations implements hdlctrlv1connect.UserServiceHandler.
+// 権限: 認証済みなら誰でも (ListUsers と同様、グループ管理者が招待中ユーザーを
+// メンバー追加の候補として選ぶため). トークン自体は返さない.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.UserServiceListInvitationsProcedure,
+	requireAuthenticated,
+)
+
+func (u *UserService) ListInvitations(ctx context.Context, _ *connect.Request[hdlctrlv1.ListInvitationsRequest]) (*connect.Response[hdlctrlv1.ListInvitationsResponse], error) {
+	invitations, err := u.uu.ListInvitations(ctx)
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	protoInvitations := make([]*hdlctrlv1.Invitation, 0, len(invitations))
+	for i := range invitations {
+		protoInvitations = append(protoInvitations, invitationToProto(&invitations[i]))
+	}
+
+	return connect.NewResponse(&hdlctrlv1.ListInvitationsResponse{Invitations: protoInvitations}), nil
+}
+
+// ReissueInvitation implements hdlctrlv1connect.UserServiceHandler.
+// 権限: system:user.create.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.UserServiceReissueInvitationProcedure,
+	requireSystemPerm(entity.PermKey_SystemUserCreate),
+)
+
+func (u *UserService) ReissueInvitation(ctx context.Context, req *connect.Request[hdlctrlv1.ReissueInvitationRequest]) (*connect.Response[hdlctrlv1.ReissueInvitationResponse], error) {
+	if req.Msg.GetInvitationId() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invitation_id is required"))
+	}
+
+	issued, err := u.uu.ReissueInvitation(ctx, req.Msg.GetInvitationId())
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.ReissueInvitationResponse{
+		Token:     issued.Token,
+		ExpiresAt: timestamppb.New(issued.ExpiresAt),
+	}), nil
+}
+
+// RevokeInvitation implements hdlctrlv1connect.UserServiceHandler.
+// 権限: system:user.create (招待を発行できる者が取り消せる).
+var _ = registerRPCPermission(
+	hdlctrlv1connect.UserServiceRevokeInvitationProcedure,
+	requireSystemPerm(entity.PermKey_SystemUserCreate),
+)
+
+func (u *UserService) RevokeInvitation(ctx context.Context, req *connect.Request[hdlctrlv1.RevokeInvitationRequest]) (*connect.Response[hdlctrlv1.RevokeInvitationResponse], error) {
+	if req.Msg.GetInvitationId() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invitation_id is required"))
+	}
+
+	if err := u.uu.RevokeInvitation(ctx, req.Msg.GetInvitationId()); err != nil {
+		return nil, convertErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.RevokeInvitationResponse{}), nil
 }
 
 // DeleteUser implements hdlctrlv1connect.UserServiceHandler.
@@ -263,11 +328,32 @@ func userToProto(u *db.User) *hdlctrlv1.User {
 	return p
 }
 
+func invitationToProto(t *db.RegistrationToken) *hdlctrlv1.Invitation {
+	p := &hdlctrlv1.Invitation{
+		Id:         t.ID,
+		ResoniteId: t.ResoniteID,
+	}
+
+	if t.PersonalRoleID.Valid {
+		p.PersonalRoleId = &t.PersonalRoleID.String
+	}
+
+	if t.ExpiresAt.Valid {
+		p.ExpiresAt = timestamppb.New(t.ExpiresAt.Time)
+	}
+
+	if t.CreatedAt.Valid {
+		p.CreatedAt = timestamppb.New(t.CreatedAt.Time)
+	}
+
+	return p
+}
+
 func (u *UserService) NewHandler() (string, http.Handler) {
 	interceptors := connect.WithInterceptors(
 		logging.NewErrorLogInterceptor(),
 		auth.NewOptionalAuthInterceptor(),
-		// 管理用 RPC (ListUsers / GetUser / CreateRegistrationToken / DeleteUser) の
+		// 管理用 RPC (ListUsers / GetUser / CreateRegistrationToken / DeleteUser / 招待管理) の
 		// 権限チェック. 公開 RPC は rpcPermissionRules に登録されていないので pass-through.
 		NewPermissionInterceptor(u.permUC, PermissionDeps{}),
 	)

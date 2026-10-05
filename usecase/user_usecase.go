@@ -150,18 +150,27 @@ func (u *UserUsecase) CreateRegistrationToken(ctx context.Context, resoniteId, p
 		return "", err
 	}
 
-	token, _, err := u.createRegistrationToken(ctx, resoniteId, personalRoleID)
+	issued, err := u.createRegistrationToken(ctx, resoniteId, personalRoleID)
+	if err != nil {
+		return "", err
+	}
 
-	return token, err
+	return issued.Token, nil
 }
 
 // RegistrationTokenWithInfo は CreateRegistrationTokenWithInfo の戻り値.
 // RPC ハンドラで招待リンク表示用に Resonite ユーザー情報も含めて返す.
 type RegistrationTokenWithInfo struct {
-	Token            string
-	ExpiresAt        time.Time
+	issuedRegistrationToken
 	ResoniteUserName string
 	IconUrl          string
+}
+
+// issuedRegistrationToken は発行 / 再発行した招待トークン (平文) とその招待 ID.
+type issuedRegistrationToken struct {
+	InvitationID string
+	Token        string
+	ExpiresAt    time.Time
 }
 
 // CreateRegistrationTokenWithInfo は Resonite ID の有効性を skyfrost で検証してから
@@ -179,53 +188,124 @@ func (u *UserUsecase) CreateRegistrationTokenWithInfo(ctx context.Context, reson
 		return nil, errors.WrapPrefix(err, "invalid resonite id", 0)
 	}
 
-	token, expiresAt, err := u.createRegistrationToken(ctx, resoniteId, personalRoleID)
+	issued, err := u.createRegistrationToken(ctx, resoniteId, personalRoleID)
 	if err != nil {
 		return nil, err
 	}
 
 	return &RegistrationTokenWithInfo{
-		Token:            token,
-		ExpiresAt:        expiresAt,
-		ResoniteUserName: userInfo.UserName,
-		IconUrl:          userInfo.IconUrl,
+		issuedRegistrationToken: *issued,
+		ResoniteUserName:        userInfo.UserName,
+		IconUrl:                 userInfo.IconUrl,
 	}, nil
 }
 
 //nolint:funcorder // CreateRegistrationToken / WithInfo のヘルパー. 直下に置く方が読みやすい
-func (u *UserUsecase) createRegistrationToken(ctx context.Context, resoniteId, personalRoleID string) (string, time.Time, error) {
+func (u *UserUsecase) createRegistrationToken(ctx context.Context, resoniteId, personalRoleID string) (*issuedRegistrationToken, error) {
 	// 発行時に personal role を検証する. 不正な role id / scope 違反 /
 	// グループ内ロールを招待に載せられないようにする (登録時の FK エラーや
 	// 無効な membership を防ぐ).
 	if personalRoleID != "" {
 		if err := u.validatePersonalRole(ctx, personalRoleID); err != nil {
-			return "", time.Time{}, err
+			return nil, err
 		}
 	}
 
-	token, err := generateSecureToken(registrationTokenLength)
+	issued, tokenHash, err := newRegistrationToken()
 	if err != nil {
-		return "", time.Time{}, errors.Wrap(err, 0)
+		return nil, err
 	}
-
-	expiresAt := time.Now().Add(registrationTokenTTL)
 
 	personalRole := pgtype.Text{Valid: false}
 	if personalRoleID != "" {
 		personalRole = pgtype.Text{String: personalRoleID, Valid: true}
 	}
 
-	err = u.queries.CreateRegistrationToken(ctx, db.CreateRegistrationTokenParams{
-		Token:          hashRegistrationToken(token),
+	issued.InvitationID, err = u.queries.CreateRegistrationToken(ctx, db.CreateRegistrationTokenParams{
+		Token:          tokenHash,
 		ResoniteID:     resoniteId,
-		ExpiresAt:      pgtype.Timestamptz{Time: expiresAt, Valid: true},
+		ExpiresAt:      pgtype.Timestamptz{Time: issued.ExpiresAt, Valid: true},
 		PersonalRoleID: personalRole,
 	})
 	if err != nil {
-		return "", time.Time{}, errors.Wrap(err, 0)
+		return nil, errors.Wrap(err, 0)
 	}
 
-	return token, expiresAt, nil
+	return issued, nil
+}
+
+// newRegistrationToken は新しい平文トークンと有効期限 (InvitationID 未設定) および保存用ハッシュを返す.
+func newRegistrationToken() (*issuedRegistrationToken, string, error) {
+	token, err := generateSecureToken(registrationTokenLength)
+	if err != nil {
+		return nil, "", errors.Wrap(err, 0)
+	}
+
+	return &issuedRegistrationToken{
+		Token:     token,
+		ExpiresAt: time.Now().Add(registrationTokenTTL),
+	}, hashRegistrationToken(token), nil
+}
+
+// ListInvitations は登録が済んでいない招待を作成順に返す (期限切れを含む).
+// グループメンバー追加で招待中ユーザーを選ぶために認証済みなら誰でも呼べる.
+func (u *UserUsecase) ListInvitations(ctx context.Context) ([]db.RegistrationToken, error) {
+	invitations, err := u.queries.ListPendingRegistrationTokens(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	return invitations, nil
+}
+
+// ReissueInvitation は招待トークンを作り直して有効期限を延ばす. 旧トークンは無効になる.
+// 招待 ID は変わらないため、グループ参加予定はそのまま引き継がれる.
+// 権限要件: system:user.create.
+func (u *UserUsecase) ReissueInvitation(ctx context.Context, invitationID string) (*issuedRegistrationToken, error) {
+	if err := u.permUC.RequireSystemPermission(ctx, entity.PermKey_SystemUserCreate); err != nil {
+		return nil, err
+	}
+
+	issued, tokenHash, err := newRegistrationToken()
+	if err != nil {
+		return nil, err
+	}
+
+	issued.InvitationID = invitationID
+
+	rows, err := u.queries.ReissueRegistrationToken(ctx, db.ReissueRegistrationTokenParams{
+		ID:        invitationID,
+		Token:     tokenHash,
+		ExpiresAt: pgtype.Timestamptz{Time: issued.ExpiresAt, Valid: true},
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	if rows == 0 {
+		return nil, domain.ErrNotFound
+	}
+
+	return issued, nil
+}
+
+// RevokeInvitation は登録前の招待を取り消す. グループ参加予定も併せて削除される.
+// 権限要件: system:user.create.
+func (u *UserUsecase) RevokeInvitation(ctx context.Context, invitationID string) error {
+	if err := u.permUC.RequireSystemPermission(ctx, entity.PermKey_SystemUserCreate); err != nil {
+		return err
+	}
+
+	rows, err := u.queries.DeletePendingRegistrationToken(ctx, invitationID)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	if rows == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
 }
 
 // ListUsers は全ユーザーを id 昇順で返す. (認証済みなら誰でも呼べる).
@@ -272,9 +352,9 @@ func (u *UserUsecase) ValidateRegistrationToken(ctx context.Context, token strin
 }
 
 // RegisterWithToken registers a new user using a registration token.
-// CreateUser + personal group 作成 + MarkRegistrationTokenUsed は単一トランザクション
-// で実行する. 途中で失敗すれば全てロールバックされ、orphan user / 未使用 token /
-// 個人グループ無しユーザー といった不整合状態を残さない.
+// CreateUser + personal group 作成 + MarkRegistrationTokenUsed + 招待中に予定された
+// グループへの参加は単一トランザクションで実行する. 途中で失敗すれば全てロールバックされ、
+// orphan user / 未使用 token / 個人グループ無しユーザー といった不整合状態を残さない.
 // personal グループに付与するロールは registration_tokens.personal_role_id から取得する
 // (改竄不能、admin が発行時に指定). NULL なら seed-admin.
 func (u *UserUsecase) RegisterWithToken(ctx context.Context, token, userId, password string) (*db.User, error) {
@@ -346,6 +426,15 @@ func (u *UserUsecase) RegisterWithToken(ctx context.Context, token, userId, pass
 
 		if rows != 1 {
 			return errors.New("registration token is already used")
+		}
+
+		// 招待中に予定されたグループ参加を反映する. 参加予定の追加は招待行を FOR SHARE で
+		// ロックするため、上の UPDATE (行ロック) 後に移せば並行追加の取りこぼしは起きない.
+		if err := qtx.MoveInvitationGroupMembersToUser(ctx, db.MoveInvitationGroupMembersToUserParams{
+			InvitationID: regToken.ID,
+			UserID:       userId,
+		}); err != nil {
+			return errors.WrapPrefix(err, "add invited group members", 0)
 		}
 
 		u, err := qtx.GetUser(ctx, userId)
