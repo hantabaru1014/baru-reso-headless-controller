@@ -198,8 +198,6 @@ message CreateHeadlessAccountRequest {
   string password = 3;
   // 作成するアカウントの所属グループ. 未指定の場合は呼び出しユーザーの personal グループ.
   optional string group_id = 4;
-  // 指定した場合はアイコンを設定してから追加する (PNG, JPG, GIF, WebP).
-  bytes icon_data = 5;
 }
 
 message CreateHeadlessAccountResponse {}

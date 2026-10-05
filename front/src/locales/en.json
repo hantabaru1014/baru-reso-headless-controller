@@ -248,8 +248,7 @@
     "selectAnotherImage": "Choose another image",
     "cropHint": "Drag to adjust the crop area (resized to 256x256)",
     "uploading": "Uploading...",
-    "change": "Change",
-    "skip": "Skip"
+    "change": "Change"
   },
   "hostLogViewer": {
     "downloadFailed": "Failed to download logs",
@@ -375,8 +374,6 @@
       "submit": "Register",
       "registering": "Registering...",
       "failed": "Failed to register Resonite account",
-      "iconTitle": "Set Icon",
-      "iconDescription": "Set an icon or skip to add the account to the headless account list.",
       "resoniteSection": "Sent to Resonite",
       "resoniteSectionCaption": "Sent to Resonite and used to register the account.",
       "appSection": "Settings in this app",

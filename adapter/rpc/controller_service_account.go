@@ -31,7 +31,7 @@ func (c *ControllerService) CreateHeadlessAccount(ctx context.Context, req *conn
 	}
 
 	userID := claims.UserID
-	if err := c.hauc.CreateHeadlessAccount(ctx, req.Msg.GetCredential(), req.Msg.GetPassword(), groupID, req.Msg.GetIconData(), &userID); err != nil {
+	if err := c.hauc.CreateHeadlessAccount(ctx, req.Msg.GetCredential(), req.Msg.GetPassword(), groupID, &userID); err != nil {
 		return nil, convertErr(err)
 	}
 

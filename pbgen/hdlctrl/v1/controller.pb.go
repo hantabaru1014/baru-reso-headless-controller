@@ -1502,9 +1502,7 @@ type CreateHeadlessAccountRequest struct {
 	Credential string                 `protobuf:"bytes,2,opt,name=credential,proto3" json:"credential,omitempty"` // email or userId
 	Password   string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
 	// 作成するアカウントの所属グループ. 未指定の場合は呼び出しユーザーの personal グループ.
-	GroupId *string `protobuf:"bytes,4,opt,name=group_id,json=groupId,proto3,oneof" json:"group_id,omitempty"`
-	// 指定した場合はアイコンを設定してから追加する (PNG, JPG, GIF, WebP).
-	IconData      []byte `protobuf:"bytes,5,opt,name=icon_data,json=iconData,proto3" json:"icon_data,omitempty"`
+	GroupId       *string `protobuf:"bytes,4,opt,name=group_id,json=groupId,proto3,oneof" json:"group_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1558,13 +1556,6 @@ func (x *CreateHeadlessAccountRequest) GetGroupId() string {
 		return *x.GroupId
 	}
 	return ""
-}
-
-func (x *CreateHeadlessAccountRequest) GetIconData() []byte {
-	if x != nil {
-		return x.IconData
-	}
-	return nil
 }
 
 type CreateHeadlessAccountResponse struct {
@@ -9302,14 +9293,13 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\x05_memoB\v\n" +
 	"\t_group_id\"8\n" +
 	"\x19StartHeadlessHostResponse\x12\x15\n" +
-	"\x06job_id\x18\x02 \x01(\tR\x05jobIdJ\x04\b\x01\x10\x02\"\xaa\x01\n" +
+	"\x06job_id\x18\x02 \x01(\tR\x05jobIdJ\x04\b\x01\x10\x02\"\x8d\x01\n" +
 	"\x1cCreateHeadlessAccountRequest\x12\x1e\n" +
 	"\n" +
 	"credential\x18\x02 \x01(\tR\n" +
 	"credential\x12\x1a\n" +
 	"\bpassword\x18\x03 \x01(\tR\bpassword\x12\x1e\n" +
-	"\bgroup_id\x18\x04 \x01(\tH\x00R\agroupId\x88\x01\x01\x12\x1b\n" +
-	"\ticon_data\x18\x05 \x01(\fR\biconDataB\v\n" +
+	"\bgroup_id\x18\x04 \x01(\tH\x00R\agroupId\x88\x01\x01B\v\n" +
 	"\t_group_idJ\x04\b\x01\x10\x02\"\x1f\n" +
 	"\x1dCreateHeadlessAccountResponse\"\xbf\x01\n" +
 	"\x1eRegisterHeadlessAccountRequest\x12\x1a\n" +

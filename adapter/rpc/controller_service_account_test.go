@@ -1,11 +1,8 @@
 package rpc
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"image"
-	"image/png"
 	"strings"
 	"testing"
 	"time"
@@ -204,41 +201,6 @@ func TestControllerService_CreateHeadlessAccount(t *testing.T) {
 		// 作成された account は指定 group_id に所属している.
 		acc := testutil.GetOnlyHeadlessAccount(t, setup.queries, "U-mp-newacc")
 		assert.Equal(t, groupID, acc.GroupID)
-	})
-
-	t.Run("成功: アイコンを指定するとアイコンを設定してから追加する", func(t *testing.T) {
-		setup := setupControllerServiceTest(t)
-		defer setup.Cleanup()
-
-		client := setupAuthenticatedClient(t, setup.service)
-
-		setup.mockSkyfrost.EXPECT().
-			UserLogin(gomock.Any(), "icon@example.test", "p").
-			Return(&skyfrost.UserSession{UserId: "U-icon"}, nil)
-		setup.mockSkyfrost.EXPECT().
-			FetchUserInfo(gomock.Any(), "U-icon").
-			Return(&skyfrost.UserInfo{ID: "U-icon", UserName: "IconUser"}, nil)
-		setup.mockSkyfrost.EXPECT().
-			UploadTextureRecord(gomock.Any(), "icon@example.test", "p", "Profile Icon", "Inventory", gomock.Any()).
-			Return("R-icon", "resdb:///icon.webp", nil)
-		setup.mockSkyfrost.EXPECT().
-			UpdateUserProfile(gomock.Any(), "icon@example.test", "p", &skyfrost.UserProfile{IconUrl: "resdb:///icon.webp"}).
-			Return(nil)
-
-		var iconData bytes.Buffer
-		require.NoError(t, png.Encode(&iconData, image.NewRGBA(image.Rect(0, 0, 8, 8))))
-
-		req := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CreateHeadlessAccountRequest{ //nolint:gosec // G101: テスト用のダミー認証情報
-			Credential: "icon@example.test",
-			Password:   "p",
-			IconData:   iconData.Bytes(),
-		})
-
-		_, err := client.CreateHeadlessAccount(t.Context(), req)
-		require.NoError(t, err)
-
-		acc := testutil.GetOnlyHeadlessAccount(t, setup.queries, "U-icon")
-		assert.Equal(t, "resdb:///icon.webp", acc.LastIconUrl.String)
 	})
 
 	t.Run("失敗: 無効な認証情報でアカウント作成", func(t *testing.T) {

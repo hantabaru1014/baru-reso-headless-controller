@@ -248,8 +248,7 @@
     "selectAnotherImage": "別の画像を選択",
     "cropHint": "ドラッグして切り抜き範囲を調整できます（256x256にリサイズされます）",
     "uploading": "アップロード中...",
-    "change": "変更",
-    "skip": "スキップ"
+    "change": "変更"
   },
   "hostLogViewer": {
     "downloadFailed": "ログのダウンロードに失敗しました",
@@ -375,8 +374,6 @@
       "submit": "登録",
       "registering": "登録中...",
       "failed": "Resonite アカウントの登録に失敗しました",
-      "iconTitle": "アイコンを設定",
-      "iconDescription": "アイコンを設定するか、スキップするとヘッドレスアカウントの一覧に追加されます。",
       "resoniteSection": "Resonite に登録する情報",
       "resoniteSectionCaption": "Resonite に送信され、アカウントの登録に使われます。",
       "appSection": "このアプリでの設定",

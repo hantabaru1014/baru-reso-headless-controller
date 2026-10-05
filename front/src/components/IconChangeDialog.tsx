@@ -3,7 +3,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
   Button,
   DialogClose,
@@ -22,13 +21,6 @@ interface IconChangeDialogProps {
   currentIconUrl?: string;
   onUpload: (iconData: Uint8Array) => Promise<void>;
   isUploading?: boolean;
-  title?: string;
-  description?: string;
-  /**
-   * 指定するとキャンセルの代わりに「スキップ」を表示する. 設定かスキップのどちらかを
-   * 選ばせるため、閉じるボタン・ESC・外側クリックでは閉じない.
-   */
-  onSkip?: () => Promise<void>;
 }
 
 export function IconChangeDialog({
@@ -37,9 +29,6 @@ export function IconChangeDialog({
   currentIconUrl,
   onUpload,
   isUploading = false,
-  title,
-  description,
-  onSkip,
 }: IconChangeDialogProps) {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -157,25 +146,11 @@ export function IconChangeDialog({
     }
   }, [imageUrl, croppedAreaPixels, onUpload, onClose, t]);
 
-  const handleSkip = useCallback(async () => {
-    try {
-      await onSkip?.();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, [onSkip]);
-
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(isOpen) => !isOpen && !onSkip && onClose?.()}
-    >
-      <DialogContent className="sm:max-w-[480px]" showCloseButton={!onSkip}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose?.()}>
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>
-            {title ?? t("iconChangeDialog.changeIconTitle")}
-          </DialogTitle>
-          {description && <DialogDescription>{description}</DialogDescription>}
+          <DialogTitle>{t("iconChangeDialog.changeIconTitle")}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -293,21 +268,11 @@ export function IconChangeDialog({
         </div>
 
         <DialogFooter>
-          {onSkip ? (
-            <Button
-              variant="outline"
-              disabled={isUploading}
-              onClick={handleSkip}
-            >
-              {t("iconChangeDialog.skip")}
+          <DialogClose asChild>
+            <Button variant="outline" disabled={isUploading}>
+              {t("common.cancel")}
             </Button>
-          ) : (
-            <DialogClose asChild>
-              <Button variant="outline" disabled={isUploading}>
-                {t("common.cancel")}
-              </Button>
-            </DialogClose>
-          )}
+          </DialogClose>
           <Button
             onClick={handleUpload}
             disabled={!imageUrl || !croppedAreaPixels || isUploading}

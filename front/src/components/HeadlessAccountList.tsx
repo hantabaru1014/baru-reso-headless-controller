@@ -553,14 +553,13 @@ const isOldEnoughForResonite = (dateOfBirth: string) => {
   return new Date(dateOfBirth) <= limit;
 };
 
-// Resonite に登録済みでメール認証・アイコン設定を待っているアカウント.
-// 一覧への追加 (CreateHeadlessAccount) はアイコン設定ステップの最後に行う.
+// Resonite に登録済みでメール認証を待っているアカウント.
+// 未認証のアカウントはログインできないので、一覧への追加 (CreateHeadlessAccount) は認証後に行う.
 type PendingRegistration = {
   accountId: string;
   email: string;
   password: string;
   groupId: string;
-  step: "verifyEmail" | "icon";
 };
 
 // 開くたびに入力をリセットするため、呼び出し側は開いている間だけマウントする.
@@ -693,7 +692,6 @@ function RegisterAccountDialog({
                   email,
                   password,
                   groupId,
-                  step: "verifyEmail",
                 });
               } catch (e) {
                 toast.error(
@@ -720,19 +718,23 @@ function RegisterAccountDialog({
   );
 }
 
-// 未認証のアカウントはログインできず、ログインを試みるたびに確認メールが再送されるので、
-// 認証状態はログイン不要の公開プロフィールで確認する.
+// メール認証を確認できたら一覧に追加する.
+// 未認証のアカウントへのログイン試行のたびに確認メールが再送されるので、
+// 認証状態はログイン不要の公開プロフィールで確認してからログイン (追加) する.
 function EmailVerificationDialog({
   registration,
-  onVerified,
+  onAdded,
   onCancel,
 }: {
   registration?: PendingRegistration;
-  onVerified: () => void;
+  onAdded: () => void;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const transport = useTransport();
+  const { mutateAsync: mutateCreateAccount } = useMutation(
+    createHeadlessAccount,
+  );
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -744,11 +746,17 @@ function EmailVerificationDialog({
       const user = await callUnaryMethod(transport, getResoniteUser, {
         resoniteId: registration.accountId,
       });
-      if (user.isVerified) {
-        onVerified();
-      } else {
+      if (!user.isVerified) {
         setError(t("headlessAccountList.register.notVerifiedYet"));
+        return;
       }
+      await mutateCreateAccount({
+        credential: registration.email,
+        password: registration.password,
+        groupId: registration.groupId || undefined,
+      });
+      toast.success(t("headlessAccountList.register.added"));
+      onAdded();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -758,7 +766,7 @@ function EmailVerificationDialog({
 
   return (
     <Dialog
-      open={registration?.step === "verifyEmail"}
+      open={!!registration}
       onOpenChange={(open) => {
         if (!open && !isChecking) {
           setError(undefined);
@@ -930,8 +938,6 @@ export default function HeadlessAccountList() {
   const [isOpenRegisterDialog, setIsOpenRegisterDialog] = useState(false);
   const [pendingRegistration, setPendingRegistration] =
     useState<PendingRegistration>();
-  const { mutateAsync: mutateCreateAccount, isPending: isAddingRegistered } =
-    useMutation(createHeadlessAccount);
   const [actionAccount, setActionAccount] = useState<AccountRef | null>(null);
   const [iconChangeAccount, setIconChangeAccount] = useState<
     AccountRef & { iconUrl: string }
@@ -963,23 +969,6 @@ export default function HeadlessAccountList() {
       refetch();
     },
     [iconChangeAccount, mutateUpdateIcon, refetch, t],
-  );
-
-  // 新規登録したアカウントを一覧に追加する. アイコン設定ステップの最後に呼ぶ.
-  const addRegisteredAccount = useCallback(
-    async (iconData?: Uint8Array) => {
-      if (!pendingRegistration) return;
-      await mutateCreateAccount({
-        credential: pendingRegistration.email,
-        password: pendingRegistration.password,
-        groupId: pendingRegistration.groupId || undefined,
-        iconData,
-      });
-      toast.success(t("headlessAccountList.register.added"));
-      setPendingRegistration(undefined);
-      refetch();
-    },
-    [pendingRegistration, mutateCreateAccount, refetch, t],
   );
 
   const handleRefetchInfo = useCallback(
@@ -1222,18 +1211,11 @@ export default function HeadlessAccountList() {
       )}
       <EmailVerificationDialog
         registration={pendingRegistration}
-        onVerified={() =>
-          setPendingRegistration((r) => r && { ...r, step: "icon" })
-        }
+        onAdded={() => {
+          setPendingRegistration(undefined);
+          refetch();
+        }}
         onCancel={() => setPendingRegistration(undefined)}
-      />
-      <IconChangeDialog
-        open={pendingRegistration?.step === "icon"}
-        onUpload={addRegisteredAccount}
-        onSkip={() => addRegisteredAccount()}
-        isUploading={isAddingRegistered}
-        title={t("headlessAccountList.register.iconTitle")}
-        description={t("headlessAccountList.register.iconDescription")}
       />
       <UpdateAccountCredentialsDialog
         groupId={updateDialogAccount?.groupId ?? ""}
