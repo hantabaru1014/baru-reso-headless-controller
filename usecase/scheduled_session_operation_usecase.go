@@ -80,13 +80,18 @@ func (u *ScheduledSessionOperationUsecase) Create(ctx context.Context, params Cr
 		return nil, errors.New("create scheduled operation: trigger is required")
 	}
 
-	// 対象 host/session の group に対して session:write を要求する.
+	// 対象 host/session の group に対して action ごとの permission (session:write / host:write) を要求する.
 	groupID, err := u.resolveTargetGroupID(ctx, params.HostID, params.SessionID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := u.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_SessionWrite); err != nil {
+	permKey, err := scheduled_op.RequiredPermission(params.Action.Type())
+	if err != nil {
+		return nil, err
+	}
+
+	if err := u.permUC.RequirePermissionForGroup(ctx, groupID, permKey); err != nil {
 		return nil, err
 	}
 
@@ -243,7 +248,7 @@ func (u *ScheduledSessionOperationUsecase) listFilteredByGroups(ctx context.Cont
 var ErrScheduledOperationNotCancelable = errors.New("scheduled operation cannot be canceled in its current status")
 
 func (u *ScheduledSessionOperationUsecase) Cancel(ctx context.Context, id string) error {
-	// 対象 op を引いて group_id を導出し session:write を要求.
+	// 対象 op を引いて group_id を導出し、登録時と同じ permission を要求.
 	op, err := u.repo.Get(ctx, id)
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -254,7 +259,12 @@ func (u *ScheduledSessionOperationUsecase) Cancel(ctx context.Context, id string
 		return err
 	}
 
-	if err := u.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_SessionWrite); err != nil {
+	permKey, err := scheduled_op.RequiredPermission(op.OperationType)
+	if err != nil {
+		return err
+	}
+
+	if err := u.permUC.RequirePermissionForGroup(ctx, groupID, permKey); err != nil {
 		return err
 	}
 

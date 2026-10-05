@@ -102,10 +102,11 @@ const navigation: NavItem[] = [
   },
   {
     titleKey: "routes.scheduledOps",
-    href: "/sessions/scheduled",
+    href: "/scheduled",
     icon: Clock,
     visible: (p) =>
       p.groupsWithPermission(PERMISSION_KEYS.SESSION_WRITE).length > 0 ||
+      p.groupsWithPermission(PERMISSION_KEYS.HOST_WRITE).length > 0 ||
       p.hasSystemPermission(PERMISSION_KEYS.SYSTEM_GROUP_MANAGE),
   },
   {
@@ -222,7 +223,7 @@ function AppSidebar() {
   }, [perms]);
 
   // 最も長く一致した href のみを active にする。
-  // 例: pathname=/sessions/scheduled では /sessions ではなく /sessions/scheduled が選ばれる。
+  // 例: href が /sessions と /sessions/xxx の項目があれば、pathname=/sessions/xxx では後者が選ばれる。
   const activeHref = useMemo(() => {
     const path = location.pathname;
     let best: string | undefined;

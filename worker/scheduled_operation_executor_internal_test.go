@@ -15,6 +15,7 @@ import (
 	_ "github.com/hantabaru1014/baru-reso-headless-controller/usecase/scheduled_op/actions"
 	_ "github.com/hantabaru1014/baru-reso-headless-controller/usecase/scheduled_op/triggers"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // stubScheduledRepo は ScheduledOperationExecutor.executeOne の unit テスト用.
@@ -24,6 +25,9 @@ type stubScheduledRepo struct {
 	failedID  string
 	failedMsg string
 	succeeded bool
+
+	rescheduledAt  time.Time
+	rescheduledErr *string
 }
 
 func (r *stubScheduledRepo) MarkFailed(_ context.Context, id, msg string) error {
@@ -40,6 +44,13 @@ func (r *stubScheduledRepo) MarkSucceeded(_ context.Context, _ string) error {
 }
 
 func (r *stubScheduledRepo) Requeue(_ context.Context, _ string, _ time.Time) error {
+	return nil
+}
+
+func (r *stubScheduledRepo) Reschedule(_ context.Context, _ string, nextFireAt time.Time, lastError *string) error {
+	r.rescheduledAt = nextFireAt
+	r.rescheduledErr = lastError
+
 	return nil
 }
 
@@ -68,8 +79,12 @@ func (s *scheduledSessionOpStub) UpdateSessionExtraSettings(_ context.Context, _
 	return nil
 }
 
+func (s *scheduledSessionOpStub) SendDynamicImpulse(_ context.Context, _ *headlessv1.SendDynamicImpulseRequest) error {
+	return nil
+}
+
 func newScheduledExecutor(repo port.ScheduledSessionOperationRepository, checker UserExistenceChecker, sessOp scheduled_op.SessionOperator) *ScheduledOperationExecutor {
-	return NewScheduledOperationExecutor(repo, sessOp, nil, nil, checker, ScheduledOperationExecutorOptions{})
+	return NewScheduledOperationExecutor(repo, sessOp, nil, nil, nil, checker, ScheduledOperationExecutorOptions{})
 }
 
 // newStopSessionOp は STOP_SESSION + TIME trigger (期日 1 時間前) の op を作る.
@@ -168,4 +183,50 @@ func TestScheduledOperationExecutor_ExecuteOne_SetsActAsUserCtx(t *testing.T) {
 
 	assert.Equal(t, "user-A", claims.UserID)
 	assert.True(t, repo.succeeded, "successful stop should mark op succeeded")
+}
+
+// newCronStopSessionOp は STOP_SESSION + 日次 Cron trigger (UTC 03:00) の op を作る.
+func newCronStopSessionOp(createdBy *string) *entity.ScheduledSessionOperation {
+	op := newStopSessionOp(createdBy)
+	op.TriggerType = entity.ScheduledTriggerType_CRON
+	op.TriggerConfig, _ = json.Marshal(map[string]any{"frequency": 1, "hour": 3, "minute": 0}) //nolint:errchkjson // test fixture
+
+	return op
+}
+
+func TestScheduledOperationExecutor_ExecuteOne_Recurring_Reschedules(t *testing.T) {
+	t.Parallel()
+
+	t.Run("成功: 次回の発火時刻で PENDING に戻し、SUCCEEDED にしない", func(t *testing.T) {
+		t.Parallel()
+
+		repo := &stubScheduledRepo{}
+		sessOp := &scheduledSessionOpStub{}
+		exe := newScheduledExecutor(repo, &stubUserChecker{exists: true}, sessOp)
+
+		exe.executeOne(context.Background(), newCronStopSessionOp(new("user-A")))
+
+		assert.NotNil(t, sessOp.gotCtx, "action should be invoked")
+		assert.False(t, repo.succeeded)
+		assert.Empty(t, repo.failedID)
+		assert.Nil(t, repo.rescheduledErr)
+		assert.True(t, repo.rescheduledAt.After(time.Now()))
+		assert.Equal(t, 3, repo.rescheduledAt.UTC().Hour())
+		assert.Equal(t, 0, repo.rescheduledAt.UTC().Minute())
+	})
+
+	t.Run("失敗: エラーを記録しつつ次回の発火時刻で PENDING に戻す", func(t *testing.T) {
+		t.Parallel()
+
+		repo := &stubScheduledRepo{}
+		sessOp := &scheduledSessionOpStub{stopErr: domain.ErrPermissionDenied}
+		exe := newScheduledExecutor(repo, &stubUserChecker{exists: true}, sessOp)
+
+		exe.executeOne(context.Background(), newCronStopSessionOp(new("user-A")))
+
+		assert.Empty(t, repo.failedID, "recurring op must not be marked failed by an action error")
+		require.NotNil(t, repo.rescheduledErr)
+		assert.Contains(t, *repo.rescheduledErr, domain.ErrPermissionDenied.Error())
+		assert.True(t, repo.rescheduledAt.After(time.Now()))
+	})
 }

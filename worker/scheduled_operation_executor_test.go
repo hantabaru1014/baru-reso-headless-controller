@@ -324,6 +324,129 @@ func TestSessionUserCountTrigger_DecodeRejectsInvalid(t *testing.T) {
 	}
 }
 
+func TestCronTrigger_Next(t *testing.T) {
+	tokyo, err := time.LoadLocation("Asia/Tokyo")
+	require.NoError(t, err)
+
+	cases := []struct {
+		name  string
+		trig  triggers.CronTrigger
+		after time.Time
+		want  time.Time
+	}{
+		{
+			name:  "日次: 当日の時刻前なら当日",
+			trig:  triggers.CronTrigger{Frequency: triggers.CronFrequency_DAILY, Hour: 3, Minute: 30, Timezone: "Asia/Tokyo"},
+			after: time.Date(2026, 10, 5, 1, 0, 0, 0, tokyo),
+			want:  time.Date(2026, 10, 5, 3, 30, 0, 0, tokyo),
+		},
+		{
+			name:  "日次: 発火時刻ちょうどは含まず翌日",
+			trig:  triggers.CronTrigger{Frequency: triggers.CronFrequency_DAILY, Hour: 3, Minute: 30, Timezone: "Asia/Tokyo"},
+			after: time.Date(2026, 10, 5, 3, 30, 0, 0, tokyo),
+			want:  time.Date(2026, 10, 6, 3, 30, 0, 0, tokyo),
+		},
+		{
+			name:  "日次: timezone 未指定は UTC",
+			trig:  triggers.CronTrigger{Frequency: triggers.CronFrequency_DAILY, Hour: 0, Minute: 0},
+			after: time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC),
+			want:  time.Date(2026, 10, 6, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			// 2026-10-05 は月曜日.
+			name:  "週次: 指定曜日のうち直近 (月曜 → 水曜)",
+			trig:  triggers.CronTrigger{Frequency: triggers.CronFrequency_WEEKLY, Hour: 12, Minute: 0, Weekdays: []int32{0, 3}, Timezone: "Asia/Tokyo"},
+			after: time.Date(2026, 10, 5, 13, 0, 0, 0, tokyo),
+			want:  time.Date(2026, 10, 7, 12, 0, 0, 0, tokyo),
+		},
+		{
+			name:  "週次: 当日の曜日で時刻を過ぎていれば翌週",
+			trig:  triggers.CronTrigger{Frequency: triggers.CronFrequency_WEEKLY, Hour: 12, Minute: 0, Weekdays: []int32{1}, Timezone: "Asia/Tokyo"},
+			after: time.Date(2026, 10, 5, 13, 0, 0, 0, tokyo),
+			want:  time.Date(2026, 10, 12, 12, 0, 0, 0, tokyo),
+		},
+		{
+			name:  "月次: 31 日指定は 31 日の無い月をスキップ",
+			trig:  triggers.CronTrigger{Frequency: triggers.CronFrequency_MONTHLY, Hour: 0, Minute: 0, DayOfMonth: 31, Timezone: "Asia/Tokyo"},
+			after: time.Date(2026, 10, 31, 1, 0, 0, 0, tokyo),
+			want:  time.Date(2026, 12, 31, 0, 0, 0, 0, tokyo),
+		},
+		{
+			name:  "年次: 2/29 は次の閏年",
+			trig:  triggers.CronTrigger{Frequency: triggers.CronFrequency_YEARLY, Hour: 9, Minute: 0, Month: 2, DayOfMonth: 29, Timezone: "Asia/Tokyo"},
+			after: time.Date(2026, 10, 5, 0, 0, 0, 0, tokyo),
+			want:  time.Date(2028, 2, 29, 9, 0, 0, 0, tokyo),
+		},
+		{
+			name:  "timezone 基準で日付を判定する (UTC では前日)",
+			trig:  triggers.CronTrigger{Frequency: triggers.CronFrequency_MONTHLY, Hour: 8, Minute: 0, DayOfMonth: 1, Timezone: "Asia/Tokyo"},
+			after: time.Date(2026, 10, 15, 0, 0, 0, 0, time.UTC),
+			want:  time.Date(2026, 11, 1, 8, 0, 0, 0, tokyo),
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			trig, err := triggers.NewCronTrigger(c.trig)
+			require.NoError(t, err)
+
+			got, err := trig.Next(c.after)
+			require.NoError(t, err)
+			assert.True(t, c.want.Equal(got), "want %s, got %s", c.want, got)
+		})
+	}
+}
+
+func TestCronTrigger_RoundTrip(t *testing.T) {
+	original, err := triggers.NewCronTrigger(triggers.CronTrigger{
+		Frequency: triggers.CronFrequency_WEEKLY,
+		Hour:      23,
+		Minute:    59,
+		Weekdays:  []int32{1, 5},
+		Timezone:  "Asia/Tokyo",
+	})
+	require.NoError(t, err)
+
+	raw, err := original.Marshal()
+	require.NoError(t, err)
+
+	decoded, err := scheduled_op.DecodeTrigger(entity.ScheduledTriggerType_CRON, raw)
+	require.NoError(t, err)
+
+	ct, ok := decoded.(*triggers.CronTrigger)
+	require.True(t, ok)
+	assert.Equal(t, original, ct)
+
+	// 繰り返し trigger は claim された時点で常に ready.
+	ready, _, err := ct.Evaluate(t.Context(), scheduled_op.TriggerEvalDeps{Now: time.Now})
+	require.NoError(t, err)
+	assert.True(t, ready)
+}
+
+func TestCronTrigger_DecodeRejectsInvalid(t *testing.T) {
+	cases := []struct {
+		name string
+		cfg  string
+	}{
+		{"frequency 不正", `{"frequency":99,"hour":0,"minute":0}`},
+		{"hour 範囲外", `{"frequency":1,"hour":24,"minute":0}`},
+		{"minute 範囲外", `{"frequency":1,"hour":0,"minute":60}`},
+		{"timezone 不正", `{"frequency":1,"hour":0,"minute":0,"timezone":"Invalid/Zone"}`},
+		{"週次で曜日なし", `{"frequency":2,"hour":0,"minute":0}`},
+		{"週次で曜日範囲外", `{"frequency":2,"hour":0,"minute":0,"weekdays":[7]}`},
+		{"月次で日なし", `{"frequency":3,"hour":0,"minute":0}`},
+		{"年次で存在しない日 (4/31)", `{"frequency":4,"hour":0,"minute":0,"month":4,"day_of_month":31}`},
+		{"年次で月なし", `{"frequency":4,"hour":0,"minute":0,"day_of_month":1}`},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := scheduled_op.DecodeTrigger(entity.ScheduledTriggerType_CRON, json.RawMessage(c.cfg))
+			require.Error(t, err)
+		})
+	}
+}
+
 func uniqueSuffix(i int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyz"
 	return string(letters[i%26]) + string(letters[(i/26)%26]) + string(letters[(i/676)%26])

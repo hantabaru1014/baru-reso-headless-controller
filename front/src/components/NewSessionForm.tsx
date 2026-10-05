@@ -219,7 +219,7 @@ export default function NewSessionForm() {
       await mutateSchedule({ operation, trigger });
       toast.success(t("newSessionForm.scheduleCreated"));
       setScheduleOpen(false);
-      navigate("/sessions/scheduled");
+      navigate("/scheduled");
     } catch (e) {
       toast.error(
         t("newSessionForm.scheduleError", {

@@ -188,7 +188,7 @@ export default function SessionControlButtons({
               {t("sessionControlButtons.stopWhenEmpty")}
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to={`/sessions/scheduled/new?sessionId=${sessionId}`}>
+              <Link to={`/scheduled/new?sessionId=${sessionId}`}>
                 {t("sessionControlButtons.createOtherSchedule")}
               </Link>
             </DropdownMenuItem>

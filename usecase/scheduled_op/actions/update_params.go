@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	scheduled_op.RegisterAction(entity.ScheduledOperationType_UPDATE_PARAMETERS, decodeUpdateParameters)
+	scheduled_op.RegisterAction(entity.ScheduledOperationType_UPDATE_PARAMETERS, entity.PermKey_SessionWrite, decodeUpdateParameters)
 }
 
 // UpdateParametersAction は UPDATE_PARAMETERS 予約用.

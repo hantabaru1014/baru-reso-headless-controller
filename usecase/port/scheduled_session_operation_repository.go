@@ -53,6 +53,9 @@ type ScheduledSessionOperationRepository interface {
 	// Requeue は trigger.Evaluate が "未だ ready ではない" を返した場合に呼ぶ。
 	// RUNNING の行を PENDING に戻し、次回再評価時刻を設定する。後続 PR の condition 系で使用。
 	Requeue(ctx context.Context, id string, nextFireAt time.Time) error
+	// Reschedule は繰り返し trigger の実行後に呼ぶ。RUNNING の行に実行結果 (executed_at と
+	// lastError, 成功なら nil) を記録し、nextFireAt で PENDING に戻す。
+	Reschedule(ctx context.Context, id string, nextFireAt time.Time, lastError *string) error
 	// Cancel は PENDING の行のみを CANCELED にする。RUNNING / SUCCEEDED / FAILED / CANCELED で
 	// 呼ばれた場合は ok=false を返す。
 	Cancel(ctx context.Context, id string) (ok bool, err error)

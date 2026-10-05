@@ -54,6 +54,10 @@ func (s *stubPermChecker) RequireSystemPermission(_ context.Context, permKey str
 	return nil
 }
 
+func (s *stubPermChecker) RequirePermissionForGroup(ctx context.Context, _ string, permKey string) error {
+	return s.RequireSystemPermission(ctx, permKey)
+}
+
 const callerID = "caller@example.test"
 
 // actAsCaller は認可の caller を埋め込んだ ctx を返す.

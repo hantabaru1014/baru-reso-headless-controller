@@ -22,10 +22,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// PermissionChecker は「他ユーザーの job 履歴も見てよいか」だけを判定する narrow interface.
+// PermissionChecker は async_job が使う権限判定の narrow interface.
 // handler.go の HostOperator 等と同様、usecase パッケージ全体への依存を避けるためのもの.
 type PermissionChecker interface {
+	// RequireSystemPermission は「他ユーザーの job 履歴も見てよいか」の判定に使う.
 	RequireSystemPermission(ctx context.Context, permKey string) error
+	// RequirePermissionForGroup は ScheduledHostOperator が job 投入前に host:write を確かめるのに使う.
+	RequirePermissionForGroup(ctx context.Context, groupID string, permKey string) error
 }
 
 // ListFilter は job 履歴一覧の絞り込み条件.

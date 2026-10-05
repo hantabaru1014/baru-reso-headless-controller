@@ -105,14 +105,19 @@ func ProvideImageBuildOperator(rvuc *usecase.ResoniteVersionUsecase) async_job.I
 // ProvideScheduledOperationExecutor は scheduled session operation worker を
 // 構築する. SessionUsecase をそのまま SessionOperator として渡し、interface
 // 経由で worker パッケージから usecase パッケージへの依存を切る.
+// ホスト操作は時間がかかるので、async job として投入する HostOperator を渡す.
 func ProvideScheduledOperationExecutor(
 	repo port.ScheduledSessionOperationRepository,
 	suc *usecase.SessionUsecase,
+	ajuc *async_job.Usecase,
+	hhrepo port.HeadlessHostRepository,
 	srepo port.SessionRepository,
 	stateCache port.SessionStateCache,
 	userChecker worker.UserExistenceChecker,
 ) *worker.ScheduledOperationExecutor {
-	return worker.NewScheduledOperationExecutor(repo, suc, srepo, stateCache, userChecker, worker.ScheduledOperationExecutorOptions{})
+	hostOp := async_job.NewScheduledHostOperator(ajuc, hhrepo)
+
+	return worker.NewScheduledOperationExecutor(repo, suc, hostOp, srepo, stateCache, userChecker, worker.ScheduledOperationExecutorOptions{})
 }
 
 // ProvideAsyncJobDispatcher はホスト/セッションの非同期 job を実行する dispatcher を

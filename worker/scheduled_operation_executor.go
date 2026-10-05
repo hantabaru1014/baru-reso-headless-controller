@@ -21,6 +21,7 @@ import (
 type ScheduledOperationExecutor struct {
 	repo        port.ScheduledSessionOperationRepository
 	sessionOp   scheduled_op.SessionOperator
+	hostOp      scheduled_op.HostOperator
 	sessionRepo port.SessionRepository
 	stateCache  port.SessionStateCache
 	userChecker UserExistenceChecker
@@ -55,6 +56,7 @@ type ScheduledOperationExecutorOptions struct {
 func NewScheduledOperationExecutor(
 	repo port.ScheduledSessionOperationRepository,
 	sessionOp scheduled_op.SessionOperator,
+	hostOp scheduled_op.HostOperator,
 	sessionRepo port.SessionRepository,
 	stateCache port.SessionStateCache,
 	userChecker UserExistenceChecker,
@@ -92,6 +94,7 @@ func NewScheduledOperationExecutor(
 	return &ScheduledOperationExecutor{
 		repo:           repo,
 		sessionOp:      sessionOp,
+		hostOp:         hostOp,
 		sessionRepo:    sessionRepo,
 		stateCache:     stateCache,
 		userChecker:    userChecker,
@@ -256,9 +259,17 @@ func (e *ScheduledOperationExecutor) executeOne(ctx context.Context, op *entity.
 	// 自然に FAILED に倒れる.
 	actCtx = auth.WithActAsUser(actCtx, *op.CreatedBy)
 
-	if err := act.Execute(actCtx, scheduled_op.ActionExecDeps{Session: e.sessionOp}); err != nil {
-		logger.Error("scheduled-operation-executor: execute failed", "error", err)
-		e.markFailed(ctx, op.ID, err)
+	execErr := act.Execute(actCtx, scheduled_op.ActionExecDeps{Session: e.sessionOp, Host: e.hostOp})
+
+	if rt, ok := trig.(scheduled_op.RecurringTrigger); ok {
+		e.reschedule(ctx, logger, op.ID, rt, execErr)
+
+		return
+	}
+
+	if execErr != nil {
+		logger.Error("scheduled-operation-executor: execute failed", "error", execErr)
+		e.markFailed(ctx, op.ID, execErr)
 
 		return
 	}
@@ -275,6 +286,38 @@ func (e *ScheduledOperationExecutor) executeOne(ctx context.Context, op *entity.
 	}
 
 	logger.Info("scheduled-operation-executor: succeeded")
+}
+
+// reschedule は繰り返し trigger の op に実行結果を記録し、次回の発火時刻で PENDING に戻す.
+// 実行に失敗しても次回以降は実行する (キャンセルされるまで繰り返す).
+func (e *ScheduledOperationExecutor) reschedule(ctx context.Context, logger *slog.Logger, id string, rt scheduled_op.RecurringTrigger, execErr error) {
+	var lastError *string
+
+	if execErr != nil {
+		logger.Error("scheduled-operation-executor: execute failed; will retry at next fire time", "error", execErr)
+
+		msg := execErr.Error()
+		lastError = &msg
+	}
+
+	next, err := rt.Next(time.Now())
+	if err != nil {
+		logger.Error("scheduled-operation-executor: compute next fire time failed", "error", err)
+		e.markFailed(ctx, id, errors.WrapPrefix(err, "compute next fire time", 0))
+
+		return
+	}
+
+	// MarkSucceeded と同じ理由で、永続化は worker shutdown の ctx cancel と独立に行う.
+	persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), persistTimeout)
+	defer cancel()
+
+	if err := e.repo.Reschedule(persistCtx, id, next, lastError); err != nil {
+		logger.Error("scheduled-operation-executor: reschedule failed", "error", err)
+		return
+	}
+
+	logger.Info("scheduled-operation-executor: rescheduled", "next_fire_at", next)
 }
 
 func (e *ScheduledOperationExecutor) markFailed(ctx context.Context, id string, runErr error) {

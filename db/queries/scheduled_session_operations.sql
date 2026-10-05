@@ -64,6 +64,14 @@ UPDATE scheduled_session_operations
 SET status = 0, next_fire_at = @next_fire_at::timestamptz, claimed_by = NULL, claimed_at = NULL
 WHERE id = $1 AND status = 1;
 
+-- name: RescheduleScheduledSessionOperation :execrows
+-- 繰り返し trigger の実行後に、実行結果を記録して次回の発火時刻で PENDING に戻す。
+-- last_error は成功時 NULL、失敗時はそのエラー (次回の実行結果で上書きされる)。
+UPDATE scheduled_session_operations
+SET status = 0, next_fire_at = @next_fire_at::timestamptz, executed_at = NOW(),
+    last_error = sqlc.narg('last_error')::text, claimed_by = NULL, claimed_at = NULL
+WHERE id = $1 AND status = 1;
+
 -- name: CancelScheduledSessionOperation :execrows
 -- PENDING のみキャンセル可能。RUNNING / SUCCEEDED / FAILED / CANCELED は呼び出し側で FailedPrecondition。
 UPDATE scheduled_session_operations

@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	scheduled_op.RegisterAction(entity.ScheduledOperationType_START_SESSION, decodeStartSession)
+	scheduled_op.RegisterAction(entity.ScheduledOperationType_START_SESSION, entity.PermKey_SessionWrite, decodeStartSession)
 }
 
 // StartSessionAction は START_SESSION 予約用. payload は WorldStartupParameters の protojson.
