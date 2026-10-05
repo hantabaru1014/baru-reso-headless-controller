@@ -9,13 +9,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { TFunction } from "i18next";
 import { Copy, Loader2 } from "lucide-react";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import {
   createRegistrationToken,
   deleteUser,
+  listInvitations,
   listUsers,
+  reissueInvitation,
+  revokeInvitation,
 } from "../../../pbgen/hdlctrl/v1/user-UserService_connectquery";
 import {
   CreateRegistrationTokenResponse,
+  Invitation,
   User,
 } from "../../../pbgen/hdlctrl/v1/user_pb";
 import { listRoles } from "../../../pbgen/hdlctrl/v1/permission-RoleService_connectquery";
@@ -39,7 +44,9 @@ import {
 } from "../../components/ui";
 import {
   DataTable,
+  InvitedBadge,
   RefetchButton,
+  ResoniteUserCell,
   ResoniteUserPicker,
   SelectField,
 } from "../../components/base";
@@ -62,6 +69,56 @@ type InviteFormSchema = ReturnType<typeof makeInviteFormSchema>;
 // resoniteUser は未選択 (null) を入力として許し、バリデーション後は non-null になる.
 type InviteFormInput = z.input<InviteFormSchema>;
 type InviteFormData = z.output<InviteFormSchema>;
+
+function InviteLinkView({
+  token,
+  expiresAt,
+}: {
+  token: string;
+  expiresAt?: Timestamp;
+}) {
+  const { t } = useTranslation();
+  // 招待 URL: personal_role_id は token と紐付けて永続化済なので URL には載せない.
+  const inviteUrl = `${window.location.origin}/register/${token}`;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      toast.success(t("adminUsersPage.urlCopied"));
+    } catch {
+      toast.error(t("adminUsersPage.copyError"));
+    }
+  };
+
+  return (
+    <>
+      <div className="space-y-1">
+        <label className="text-sm font-medium">
+          {t("adminUsersPage.inviteUrl")}
+        </label>
+        <div className="flex gap-2">
+          <input
+            readOnly
+            value={inviteUrl}
+            className="flex-1 rounded-md border bg-muted px-3 py-2 text-xs font-mono"
+            onFocus={(e) => e.target.select()}
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleCopy}
+            title={t("adminUsersPage.copyUrl")}
+          >
+            <Copy />
+          </Button>
+        </div>
+      </div>
+      <div className="text-muted-foreground text-xs">
+        {t("adminUsersPage.expiresAt")} {formatTimestamp(expiresAt)}
+      </div>
+    </>
+  );
+}
 
 function InviteUserDialog({
   open,
@@ -123,20 +180,6 @@ function InviteUserDialog({
     }
   };
 
-  // 招待 URL: personal_role_id は token と紐付けて永続化済なので URL には載せない.
-  const inviteUrl = issued
-    ? `${window.location.origin}/register/${issued.token}`
-    : "";
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(inviteUrl);
-      toast.success(t("adminUsersPage.urlCopied"));
-    } catch {
-      toast.error(t("adminUsersPage.copyError"));
-    }
-  };
-
   return (
     <Dialog
       open={open}
@@ -163,31 +206,10 @@ function InviteUserDialog({
                 </div>
               </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium">
-                {t("adminUsersPage.inviteUrl")}
-              </label>
-              <div className="flex gap-2">
-                <input
-                  readOnly
-                  value={inviteUrl}
-                  className="flex-1 rounded-md border bg-muted px-3 py-2 text-xs font-mono"
-                  onFocus={(e) => e.target.select()}
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleCopy}
-                  title={t("adminUsersPage.copyUrl")}
-                >
-                  <Copy />
-                </Button>
-              </div>
-            </div>
-            <div className="text-muted-foreground text-xs">
-              {t("adminUsersPage.expiresAt")}{" "}
-              {formatTimestamp(issued.expiresAt)}
-            </div>
+            <InviteLinkView token={issued.token} expiresAt={issued.expiresAt} />
+            <p className="text-muted-foreground text-xs">
+              {t("adminUsersPage.invitedGroupHint")}
+            </p>
             <DialogFooter>
               <DialogClose asChild>
                 <Button variant="outline">{t("common.close")}</Button>
@@ -245,6 +267,248 @@ function InviteUserDialog({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ReissueInvitationDialog({
+  invitation,
+  onClose,
+  onReissued,
+}: {
+  invitation: Invitation | undefined;
+  onClose: () => void;
+  onReissued: () => void;
+}) {
+  const { t } = useTranslation();
+  const { mutateAsync, isPending } = useMutation(reissueInvitation);
+  const [issued, setIssued] = useState<
+    { token: string; expiresAt?: Timestamp } | undefined
+  >(undefined);
+
+  const handleClose = () => {
+    setIssued(undefined);
+    onClose();
+  };
+
+  const handleReissue = async () => {
+    if (!invitation) return;
+    try {
+      const res = await mutateAsync({ invitationId: invitation.id });
+      setIssued({ token: res.token, expiresAt: res.expiresAt });
+      onReissued();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : t("adminUsersPage.tokenIssueError"),
+      );
+    }
+  };
+
+  return (
+    <Dialog
+      open={!!invitation}
+      onOpenChange={(o) => {
+        if (!o) handleClose();
+      }}
+    >
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>{t("adminUsersPage.reissueTitle")}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          {invitation && (
+            <ResoniteUserCell
+              resoniteId={invitation.resoniteId}
+              iconClassName="size-10"
+            />
+          )}
+          {issued ? (
+            <InviteLinkView token={issued.token} expiresAt={issued.expiresAt} />
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              {t("adminUsersPage.reissueDescription")}
+            </p>
+          )}
+        </div>
+        <DialogFooter>
+          {!issued && (
+            <Button onClick={handleReissue} disabled={isPending}>
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t("adminUsersPage.reissue")}
+            </Button>
+          )}
+          <DialogClose asChild>
+            <Button variant="outline">{t("common.close")}</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RevokeInvitationDialog({
+  invitation,
+  onClose,
+  onRevoked,
+}: {
+  invitation: Invitation | undefined;
+  onClose: () => void;
+  onRevoked: () => void;
+}) {
+  const { t } = useTranslation();
+  const { mutateAsync, isPending } = useMutation(revokeInvitation);
+
+  const handleConfirm = async () => {
+    if (!invitation) return;
+    try {
+      await mutateAsync({ invitationId: invitation.id });
+      toast.success(t("adminUsersPage.revokeSuccess"));
+      onRevoked();
+      onClose();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : t("adminUsersPage.revokeError"),
+      );
+    }
+  };
+
+  return (
+    <AlertDialog
+      open={!!invitation}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("adminUsersPage.revokeTitle")}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("adminUsersPage.revokeDescription", {
+              resoniteId: invitation?.resoniteId,
+            })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>
+            {t("common.cancel")}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isPending}
+            onClick={(e) => {
+              e.preventDefault();
+              handleConfirm();
+            }}
+            className="bg-destructive text-white hover:bg-destructive/90"
+          >
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {t("adminUsersPage.revoke")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function InvitationList({
+  invitations,
+  canManage,
+  onChanged,
+}: {
+  invitations: Invitation[];
+  canManage: boolean;
+  onChanged: () => void;
+}) {
+  const { t } = useTranslation();
+  const [reissueTarget, setReissueTarget] = useState<Invitation | undefined>(
+    undefined,
+  );
+  const [revokeTarget, setRevokeTarget] = useState<Invitation | undefined>(
+    undefined,
+  );
+  const { data: rolesData } = useQuery(listRoles, {});
+  const roleNameById = useMemo(
+    () => new Map((rolesData?.roles ?? []).map((r) => [r.id, r.name])),
+    [rolesData?.roles],
+  );
+
+  const columns: ColumnDef<Invitation>[] = [
+    {
+      id: "resoniteUser",
+      header: t("adminUsersPage.resoniteUserLabel"),
+      cell: ({ row }) => (
+        <ResoniteUserCell
+          resoniteId={row.original.resoniteId}
+          iconClassName="size-8"
+          badge={<InvitedBadge expiresAt={row.original.expiresAt} />}
+        />
+      ),
+    },
+    {
+      id: "personalRole",
+      header: t("adminUsersPage.personalRoleLabel"),
+      cell: ({ row }) => {
+        const roleId = row.original.personalRoleId ?? "seed-admin";
+        return (
+          <span className="text-xs">{roleNameById.get(roleId) ?? roleId}</span>
+        );
+      },
+    },
+    {
+      id: "expiresAt",
+      header: t("adminUsersPage.expiresAtColumn"),
+      cell: ({ row }) => (
+        <span className="text-xs">
+          {formatTimestamp(row.original.expiresAt)}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: t("common.actions"),
+      cell: ({ row }) => (
+        <div className="flex gap-1">
+          <PermissionGuardedButton
+            allowed={canManage}
+            disabledReason={t("adminUsersPage.noCreatePermission")}
+            variant="ghost"
+            size="sm"
+            onClick={() => setReissueTarget(row.original)}
+          >
+            {t("adminUsersPage.reissue")}
+          </PermissionGuardedButton>
+          <PermissionGuardedButton
+            allowed={canManage}
+            disabledReason={t("adminUsersPage.noCreatePermission")}
+            variant="ghost"
+            size="sm"
+            onClick={() => setRevokeTarget(row.original)}
+          >
+            {t("adminUsersPage.revoke")}
+          </PermissionGuardedButton>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="space-y-2">
+      <h2 className="text-lg font-semibold">
+        {t("adminUsersPage.invitationsTitle")}
+      </h2>
+      <p className="text-muted-foreground text-sm">
+        {t("adminUsersPage.invitationsDescription")}
+      </p>
+      <DataTable columns={columns} data={invitations} />
+      <ReissueInvitationDialog
+        invitation={reissueTarget}
+        onClose={() => setReissueTarget(undefined)}
+        onReissued={onChanged}
+      />
+      <RevokeInvitationDialog
+        invitation={revokeTarget}
+        onClose={() => setRevokeTarget(undefined)}
+        onRevoked={onChanged}
+      />
+    </div>
   );
 }
 
@@ -334,6 +598,12 @@ export default function AdminUsersPage() {
     {},
     { enabled: canAccess },
   );
+  const { data: invitationsData, refetch: refetchInvitations } = useQuery(
+    listInvitations,
+    {},
+    { enabled: canAccess },
+  );
+  const invitations = invitationsData?.invitations ?? [];
   const [inviteOpen, setInviteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<User | undefined>(undefined);
 
@@ -421,7 +691,9 @@ export default function AdminUsersPage() {
         {t("adminUsersPage.description")}
       </p>
       <div className="flex justify-end gap-2">
-        <RefetchButton refetch={refetch} />
+        <RefetchButton
+          refetch={() => Promise.all([refetch(), refetchInvitations()])}
+        />
         <PermissionGuardedButton
           allowed={canCreate}
           disabledReason={t("adminUsersPage.noCreatePermission")}
@@ -435,11 +707,19 @@ export default function AdminUsersPage() {
         data={data?.users ?? []}
         isLoading={isPending}
       />
+      {invitations.length > 0 && (
+        <InvitationList
+          invitations={invitations}
+          canManage={canCreate}
+          onChanged={() => refetchInvitations()}
+        />
+      )}
       <InviteUserDialog
         open={inviteOpen}
         onClose={() => {
           setInviteOpen(false);
           refetch();
+          refetchInvitations();
         }}
       />
       <DeleteUserDialog

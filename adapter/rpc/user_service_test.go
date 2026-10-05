@@ -216,6 +216,7 @@ func newGroupUsecaseForTest(queries *db.Queries, permUC *usecase.PermissionUseca
 	return usecase.NewGroupUsecase(
 		adapter.NewGroupRepository(queries),
 		adapter.NewGroupMemberRepository(queries),
+		adapter.NewInvitedGroupMemberRepository(queries),
 		adapter.NewRoleRepository(queries),
 		permUC,
 	)
@@ -451,6 +452,13 @@ func TestUserService_CreateRegistrationToken(t *testing.T) {
 		diff := gotExpires.Sub(expectedExpires)
 		assert.Less(t, diff.Abs(), 5*time.Minute, "expires_at out of expected window")
 
+		// 登録前は招待中として一覧に出る.
+		invitationsRes, err := client.ListInvitations(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListInvitationsRequest{}))
+		require.NoError(t, err)
+		require.Len(t, invitationsRes.Msg.GetInvitations(), 1)
+		assert.Equal(t, res.Msg.GetInvitationId(), invitationsRes.Msg.GetInvitations()[0].GetId())
+		assert.Equal(t, resoniteID, invitationsRes.Msg.GetInvitations()[0].GetResoniteId())
+
 		// 発行したトークンが DB に保存されており、ValidateRegistrationToken も通る.
 		setup.mockSkyfrost.EXPECT().
 			FetchUserInfo(gomock.Any(), resoniteID).
@@ -474,6 +482,10 @@ func TestUserService_CreateRegistrationToken(t *testing.T) {
 			Password: "password123",
 		}))
 		require.NoError(t, err)
+
+		invitationsRes, err = client.ListInvitations(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListInvitationsRequest{}))
+		require.NoError(t, err)
+		assert.Empty(t, invitationsRes.Msg.GetInvitations(), "登録済みの招待は一覧に出ない")
 
 		// single-use: 同じトークンで 2 人目は登録できない.
 		_, err = client.RegisterWithToken(t.Context(), connect.NewRequest(&hdlctrlv1.RegisterWithTokenRequest{

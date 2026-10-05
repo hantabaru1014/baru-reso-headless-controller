@@ -55,3 +55,20 @@ export const removeGroupMember = GroupService.method.removeGroupMember;
  * @generated from rpc hdlctrl.v1.GroupService.UpdateGroupMemberRole
  */
 export const updateGroupMemberRole = GroupService.method.updateGroupMemberRole;
+
+/**
+ * 招待中 (未登録) ユーザーのグループ参加予定. 登録時に正式なメンバーになる.
+ *
+ * @generated from rpc hdlctrl.v1.GroupService.AddInvitedGroupMember
+ */
+export const addInvitedGroupMember = GroupService.method.addInvitedGroupMember;
+
+/**
+ * @generated from rpc hdlctrl.v1.GroupService.RemoveInvitedGroupMember
+ */
+export const removeInvitedGroupMember = GroupService.method.removeInvitedGroupMember;
+
+/**
+ * @generated from rpc hdlctrl.v1.GroupService.UpdateInvitedGroupMemberRole
+ */
+export const updateInvitedGroupMemberRole = GroupService.method.updateInvitedGroupMemberRole;

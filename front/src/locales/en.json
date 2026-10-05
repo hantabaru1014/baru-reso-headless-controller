@@ -205,7 +205,8 @@
     "confirmRemove": "Remove {{userId}} from the group?",
     "memberRemoved": "Member removed",
     "removeFailed": "Failed to remove",
-    "addMember": "Add member"
+    "addMember": "Add member",
+    "invitedMemberHint": "This user has not registered yet. They become a member of this group when they register with the invitation link."
   },
   "roleList": {
     "nameRequired": "Role name is required",
@@ -508,7 +509,19 @@
     "deleteError": "Failed to delete",
     "deleteUserTitle": "Delete this user?",
     "deleteUserPrefix": "User",
-    "deleteUserSuffix": " will be deleted. This action cannot be undone."
+    "deleteUserSuffix": " will be deleted. This action cannot be undone.",
+    "invitedGroupHint": "You can add the invited user to groups from each group's member page without waiting for registration.",
+    "invitationsTitle": "Pending Invitations",
+    "invitationsDescription": "Invitations that have not been used to register yet. Expired links can be reissued (planned group memberships are kept).",
+    "expiresAtColumn": "Link Expires At",
+    "reissue": "Reissue Link",
+    "reissueTitle": "Reissue Invitation Link",
+    "reissueDescription": "Issues a new invitation link. The previous link will no longer work.",
+    "revoke": "Revoke",
+    "revokeTitle": "Revoke this invitation?",
+    "revokeDescription": "The invitation for {{resoniteId}} will be revoked. Planned group memberships will also be removed.",
+    "revokeSuccess": "Invitation revoked",
+    "revokeError": "Failed to revoke invitation"
   },
   "sessionList": {
     "filterAll": "All",
@@ -831,5 +844,10 @@
     "autoUpgrade": "Auto update",
     "adminMemo": "Admin memo",
     "createSchedule": "Create schedule"
+  },
+  "invitedBadge": {
+    "invited": "Invited",
+    "expired": "Invitation expired",
+    "expiredHint": "The invitation link has expired. Reissue it from the user management page."
   }
 }

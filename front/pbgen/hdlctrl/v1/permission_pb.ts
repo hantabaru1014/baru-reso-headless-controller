@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hdlctrl/v1/permission.proto.
  */
 export const file_hdlctrl_v1_permission: GenFile = /*@__PURE__*/
-  fileDesc("ChtoZGxjdHJsL3YxL3Blcm1pc3Npb24ucHJvdG8SCmhkbGN0cmwudjEipgEKBUdyb3VwEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSIwoEdHlwZRgDIAEoDjIVLmhkbGN0cmwudjEuR3JvdXBUeXBlEi4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIpQBCgtHcm91cE1lbWJlchIQCghncm91cF9pZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEg8KB3JvbGVfaWQYAyABKAkSFQoIYWRkZWRfYnkYBCABKAlIAIgBARItCglqb2luZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgsKCV9hZGRlZF9ieSL3AQoEUm9sZRIKCgJpZBgBIAEoCRIVCghncm91cF9pZBgCIAEoCUgAiAEBEgwKBG5hbWUYAyABKAkSJAoFc2NvcGUYBCABKA4yFS5oZGxjdHJsLnYxLlJvbGVTY29wZRISCgppc19idWlsdGluGAUgASgIEhcKD3Blcm1pc3Npb25fa2V5cxgGIAMoCRIuCgpjcmVhdGVkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEILCglfZ3JvdXBfaWQiVwoNUGVybWlzc2lvbktleRILCgNrZXkYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSJAoFc2NvcGUYAyABKA4yFS5oZGxjdHJsLnYxLlJvbGVTY29wZSJOChBHcm91cFBlcm1pc3Npb25zEhAKCGdyb3VwX2lkGAEgASgJEg8KB3JvbGVfaWQYAiABKAkSFwoPcGVybWlzc2lvbl9rZXlzGAMgAygJIl0KDU15UGVybWlzc2lvbnMSLAoGZ3JvdXBzGAEgAygLMhwuaGRsY3RybC52MS5Hcm91cFBlcm1pc3Npb25zEh4KFnN5c3RlbV9wZXJtaXNzaW9uX2tleXMYAiADKAkiIQoRUGVybWlzc2lvbktleUxpc3QSDAoEa2V5cxgBIAMoCSIiChJDcmVhdGVHcm91cFJlcXVlc3QSDAoEbmFtZRgBIAEoCSI3ChNDcmVhdGVHcm91cFJlc3BvbnNlEiAKBWdyb3VwGAEgASgLMhEuaGRsY3RybC52MS5Hcm91cCIjCg9HZXRHcm91cFJlcXVlc3QSEAoIZ3JvdXBfaWQYASABKAkiNAoQR2V0R3JvdXBSZXNwb25zZRIgCgVncm91cBgBIAEoCzIRLmhkbGN0cmwudjEuR3JvdXAiEwoRTGlzdEdyb3Vwc1JlcXVlc3QiNwoSTGlzdEdyb3Vwc1Jlc3BvbnNlEiEKBmdyb3VwcxgBIAMoCzIRLmhkbGN0cmwudjEuR3JvdXAiQgoSVXBkYXRlR3JvdXBSZXF1ZXN0EhAKCGdyb3VwX2lkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBAUIHCgVfbmFtZSI3ChNVcGRhdGVHcm91cFJlc3BvbnNlEiAKBWdyb3VwGAEgASgLMhEuaGRsY3RybC52MS5Hcm91cCImChJEZWxldGVHcm91cFJlcXVlc3QSEAoIZ3JvdXBfaWQYASABKAkiFQoTRGVsZXRlR3JvdXBSZXNwb25zZSIrChdMaXN0R3JvdXBNZW1iZXJzUmVxdWVzdBIQCghncm91cF9pZBgBIAEoCSJEChhMaXN0R3JvdXBNZW1iZXJzUmVzcG9uc2USKAoHbWVtYmVycxgBIAMoCzIXLmhkbGN0cmwudjEuR3JvdXBNZW1iZXIiSwoVQWRkR3JvdXBNZW1iZXJSZXF1ZXN0EhAKCGdyb3VwX2lkGAEgASgJEg8KB3VzZXJfaWQYAiABKAkSDwoHcm9sZV9pZBgDIAEoCSJBChZBZGRHcm91cE1lbWJlclJlc3BvbnNlEicKBm1lbWJlchgBIAEoCzIXLmhkbGN0cmwudjEuR3JvdXBNZW1iZXIiPQoYUmVtb3ZlR3JvdXBNZW1iZXJSZXF1ZXN0EhAKCGdyb3VwX2lkGAEgASgJEg8KB3VzZXJfaWQYAiABKAkiGwoZUmVtb3ZlR3JvdXBNZW1iZXJSZXNwb25zZSJSChxVcGRhdGVHcm91cE1lbWJlclJvbGVSZXF1ZXN0EhAKCGdyb3VwX2lkGAEgASgJEg8KB3VzZXJfaWQYAiABKAkSDwoHcm9sZV9pZBgDIAEoCSJICh1VcGRhdGVHcm91cE1lbWJlclJvbGVSZXNwb25zZRInCgZtZW1iZXIYASABKAsyFy5oZGxjdHJsLnYxLkdyb3VwTWVtYmVyIjYKEExpc3RSb2xlc1JlcXVlc3QSFQoIZ3JvdXBfaWQYASABKAlIAIgBAUILCglfZ3JvdXBfaWQiNAoRTGlzdFJvbGVzUmVzcG9uc2USHwoFcm9sZXMYASADKAsyEC5oZGxjdHJsLnYxLlJvbGUihAEKEUNyZWF0ZVJvbGVSZXF1ZXN0EhUKCGdyb3VwX2lkGAEgASgJSACIAQESDAoEbmFtZRgCIAEoCRIkCgVzY29wZRgDIAEoDjIVLmhkbGN0cmwudjEuUm9sZVNjb3BlEhcKD3Blcm1pc3Npb25fa2V5cxgEIAMoCUILCglfZ3JvdXBfaWQiNAoSQ3JlYXRlUm9sZVJlc3BvbnNlEh4KBHJvbGUYASABKAsyEC5oZGxjdHJsLnYxLlJvbGUikQEKEVVwZGF0ZVJvbGVSZXF1ZXN0Eg8KB3JvbGVfaWQYASABKAkSEQoEbmFtZRgCIAEoCUgAiAEBEjsKD3Blcm1pc3Npb25fa2V5cxgDIAEoCzIdLmhkbGN0cmwudjEuUGVybWlzc2lvbktleUxpc3RIAYgBAUIHCgVfbmFtZUISChBfcGVybWlzc2lvbl9rZXlzIjQKElVwZGF0ZVJvbGVSZXNwb25zZRIeCgRyb2xlGAEgASgLMhAuaGRsY3RybC52MS5Sb2xlIiQKEURlbGV0ZVJvbGVSZXF1ZXN0Eg8KB3JvbGVfaWQYASABKAkiFAoSRGVsZXRlUm9sZVJlc3BvbnNlIj4KFkxpc3RQZXJtaXNzaW9uc1JlcXVlc3QSJAoFc2NvcGUYASABKA4yFS5oZGxjdHJsLnYxLlJvbGVTY29wZSJJChdMaXN0UGVybWlzc2lvbnNSZXNwb25zZRIuCgtwZXJtaXNzaW9ucxgBIAMoCzIZLmhkbGN0cmwudjEuUGVybWlzc2lvbktleSIZChdHZXRNeVBlcm1pc3Npb25zUmVxdWVzdCJKChhHZXRNeVBlcm1pc3Npb25zUmVzcG9uc2USLgoLcGVybWlzc2lvbnMYASABKAsyGS5oZGxjdHJsLnYxLk15UGVybWlzc2lvbnMqbgoJR3JvdXBUeXBlEhoKFkdST1VQX1RZUEVfVU5TUEVDSUZJRUQQABIXChNHUk9VUF9UWVBFX1BFUlNPTkFMEAESFQoRR1JPVVBfVFlQRV9OT1JNQUwQAhIVChFHUk9VUF9UWVBFX1NZU1RFTRADKlUKCVJvbGVTY29wZRIaChZST0xFX1NDT1BFX1VOU1BFQ0lGSUVEEAASFQoRUk9MRV9TQ09QRV9OT1JNQUwQARIVChFST0xFX1NDT1BFX1NZU1RFTRACMpoGCgxHcm91cFNlcnZpY2USTgoLQ3JlYXRlR3JvdXASHi5oZGxjdHJsLnYxLkNyZWF0ZUdyb3VwUmVxdWVzdBofLmhkbGN0cmwudjEuQ3JlYXRlR3JvdXBSZXNwb25zZRJFCghHZXRHcm91cBIbLmhkbGN0cmwudjEuR2V0R3JvdXBSZXF1ZXN0GhwuaGRsY3RybC52MS5HZXRHcm91cFJlc3BvbnNlEksKCkxpc3RHcm91cHMSHS5oZGxjdHJsLnYxLkxpc3RHcm91cHNSZXF1ZXN0Gh4uaGRsY3RybC52MS5MaXN0R3JvdXBzUmVzcG9uc2USTgoLVXBkYXRlR3JvdXASHi5oZGxjdHJsLnYxLlVwZGF0ZUdyb3VwUmVxdWVzdBofLmhkbGN0cmwudjEuVXBkYXRlR3JvdXBSZXNwb25zZRJOCgtEZWxldGVHcm91cBIeLmhkbGN0cmwudjEuRGVsZXRlR3JvdXBSZXF1ZXN0Gh8uaGRsY3RybC52MS5EZWxldGVHcm91cFJlc3BvbnNlEl0KEExpc3RHcm91cE1lbWJlcnMSIy5oZGxjdHJsLnYxLkxpc3RHcm91cE1lbWJlcnNSZXF1ZXN0GiQuaGRsY3RybC52MS5MaXN0R3JvdXBNZW1iZXJzUmVzcG9uc2USVwoOQWRkR3JvdXBNZW1iZXISIS5oZGxjdHJsLnYxLkFkZEdyb3VwTWVtYmVyUmVxdWVzdBoiLmhkbGN0cmwudjEuQWRkR3JvdXBNZW1iZXJSZXNwb25zZRJgChFSZW1vdmVHcm91cE1lbWJlchIkLmhkbGN0cmwudjEuUmVtb3ZlR3JvdXBNZW1iZXJSZXF1ZXN0GiUuaGRsY3RybC52MS5SZW1vdmVHcm91cE1lbWJlclJlc3BvbnNlEmwKFVVwZGF0ZUdyb3VwTWVtYmVyUm9sZRIoLmhkbGN0cmwudjEuVXBkYXRlR3JvdXBNZW1iZXJSb2xlUmVxdWVzdBopLmhkbGN0cmwudjEuVXBkYXRlR3JvdXBNZW1iZXJSb2xlUmVzcG9uc2Uy+QMKC1JvbGVTZXJ2aWNlEkgKCUxpc3RSb2xlcxIcLmhkbGN0cmwudjEuTGlzdFJvbGVzUmVxdWVzdBodLmhkbGN0cmwudjEuTGlzdFJvbGVzUmVzcG9uc2USSwoKQ3JlYXRlUm9sZRIdLmhkbGN0cmwudjEuQ3JlYXRlUm9sZVJlcXVlc3QaHi5oZGxjdHJsLnYxLkNyZWF0ZVJvbGVSZXNwb25zZRJLCgpVcGRhdGVSb2xlEh0uaGRsY3RybC52MS5VcGRhdGVSb2xlUmVxdWVzdBoeLmhkbGN0cmwudjEuVXBkYXRlUm9sZVJlc3BvbnNlEksKCkRlbGV0ZVJvbGUSHS5oZGxjdHJsLnYxLkRlbGV0ZVJvbGVSZXF1ZXN0Gh4uaGRsY3RybC52MS5EZWxldGVSb2xlUmVzcG9uc2USWgoPTGlzdFBlcm1pc3Npb25zEiIuaGRsY3RybC52MS5MaXN0UGVybWlzc2lvbnNSZXF1ZXN0GiMuaGRsY3RybC52MS5MaXN0UGVybWlzc2lvbnNSZXNwb25zZRJdChBHZXRNeVBlcm1pc3Npb25zEiMuaGRsY3RybC52MS5HZXRNeVBlcm1pc3Npb25zUmVxdWVzdBokLmhkbGN0cmwudjEuR2V0TXlQZXJtaXNzaW9uc1Jlc3BvbnNlQr0BCg5jb20uaGRsY3RybC52MUIPUGVybWlzc2lvblByb3RvUAFaUWdpdGh1Yi5jb20vaGFudGFiYXJ1MTAxNC9iYXJ1LXJlc28taGVhZGxlc3MtY29udHJvbGxlci9wYmdlbi9oZGxjdHJsL3YxO2hkbGN0cmx2MaICA0hYWKoCCkhkbGN0cmwuVjHKAgpIZGxjdHJsXFYx4gIWSGRsY3RybFxWMVxHUEJNZXRhZGF0YeoCC0hkbGN0cmw6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("ChtoZGxjdHJsL3YxL3Blcm1pc3Npb24ucHJvdG8SCmhkbGN0cmwudjEipgEKBUdyb3VwEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSIwoEdHlwZRgDIAEoDjIVLmhkbGN0cmwudjEuR3JvdXBUeXBlEi4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIpQBCgtHcm91cE1lbWJlchIQCghncm91cF9pZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEg8KB3JvbGVfaWQYAyABKAkSFQoIYWRkZWRfYnkYBCABKAlIAIgBARItCglqb2luZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgsKCV9hZGRlZF9ieSLlAQoSSW52aXRlZEdyb3VwTWVtYmVyEhAKCGdyb3VwX2lkGAEgASgJEhUKDWludml0YXRpb25faWQYAiABKAkSEwoLcmVzb25pdGVfaWQYAyABKAkSDwoHcm9sZV9pZBgEIAEoCRIVCghhZGRlZF9ieRgFIAEoCUgAiAEBEiwKCGFkZGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpleHBpcmVzX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEILCglfYWRkZWRfYnki9wEKBFJvbGUSCgoCaWQYASABKAkSFQoIZ3JvdXBfaWQYAiABKAlIAIgBARIMCgRuYW1lGAMgASgJEiQKBXNjb3BlGAQgASgOMhUuaGRsY3RybC52MS5Sb2xlU2NvcGUSEgoKaXNfYnVpbHRpbhgFIAEoCBIXCg9wZXJtaXNzaW9uX2tleXMYBiADKAkSLgoKY3JlYXRlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKdXBkYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCwoJX2dyb3VwX2lkIlcKDVBlcm1pc3Npb25LZXkSCwoDa2V5GAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEiQKBXNjb3BlGAMgASgOMhUuaGRsY3RybC52MS5Sb2xlU2NvcGUiTgoQR3JvdXBQZXJtaXNzaW9ucxIQCghncm91cF9pZBgBIAEoCRIPCgdyb2xlX2lkGAIgASgJEhcKD3Blcm1pc3Npb25fa2V5cxgDIAMoCSJdCg1NeVBlcm1pc3Npb25zEiwKBmdyb3VwcxgBIAMoCzIcLmhkbGN0cmwudjEuR3JvdXBQZXJtaXNzaW9ucxIeChZzeXN0ZW1fcGVybWlzc2lvbl9rZXlzGAIgAygJIiEKEVBlcm1pc3Npb25LZXlMaXN0EgwKBGtleXMYASADKAkiIgoSQ3JlYXRlR3JvdXBSZXF1ZXN0EgwKBG5hbWUYASABKAkiNwoTQ3JlYXRlR3JvdXBSZXNwb25zZRIgCgVncm91cBgBIAEoCzIRLmhkbGN0cmwudjEuR3JvdXAiIwoPR2V0R3JvdXBSZXF1ZXN0EhAKCGdyb3VwX2lkGAEgASgJIjQKEEdldEdyb3VwUmVzcG9uc2USIAoFZ3JvdXAYASABKAsyES5oZGxjdHJsLnYxLkdyb3VwIhMKEUxpc3RHcm91cHNSZXF1ZXN0IjcKEkxpc3RHcm91cHNSZXNwb25zZRIhCgZncm91cHMYASADKAsyES5oZGxjdHJsLnYxLkdyb3VwIkIKElVwZGF0ZUdyb3VwUmVxdWVzdBIQCghncm91cF9pZBgBIAEoCRIRCgRuYW1lGAIgASgJSACIAQFCBwoFX25hbWUiNwoTVXBkYXRlR3JvdXBSZXNwb25zZRIgCgVncm91cBgBIAEoCzIRLmhkbGN0cmwudjEuR3JvdXAiJgoSRGVsZXRlR3JvdXBSZXF1ZXN0EhAKCGdyb3VwX2lkGAEgASgJIhUKE0RlbGV0ZUdyb3VwUmVzcG9uc2UiKwoXTGlzdEdyb3VwTWVtYmVyc1JlcXVlc3QSEAoIZ3JvdXBfaWQYASABKAkifQoYTGlzdEdyb3VwTWVtYmVyc1Jlc3BvbnNlEigKB21lbWJlcnMYASADKAsyFy5oZGxjdHJsLnYxLkdyb3VwTWVtYmVyEjcKD2ludml0ZWRfbWVtYmVycxgCIAMoCzIeLmhkbGN0cmwudjEuSW52aXRlZEdyb3VwTWVtYmVyIksKFUFkZEdyb3VwTWVtYmVyUmVxdWVzdBIQCghncm91cF9pZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEg8KB3JvbGVfaWQYAyABKAkiQQoWQWRkR3JvdXBNZW1iZXJSZXNwb25zZRInCgZtZW1iZXIYASABKAsyFy5oZGxjdHJsLnYxLkdyb3VwTWVtYmVyIj0KGFJlbW92ZUdyb3VwTWVtYmVyUmVxdWVzdBIQCghncm91cF9pZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIhsKGVJlbW92ZUdyb3VwTWVtYmVyUmVzcG9uc2UiUgocVXBkYXRlR3JvdXBNZW1iZXJSb2xlUmVxdWVzdBIQCghncm91cF9pZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEg8KB3JvbGVfaWQYAyABKAkiSAodVXBkYXRlR3JvdXBNZW1iZXJSb2xlUmVzcG9uc2USJwoGbWVtYmVyGAEgASgLMhcuaGRsY3RybC52MS5Hcm91cE1lbWJlciJYChxBZGRJbnZpdGVkR3JvdXBNZW1iZXJSZXF1ZXN0EhAKCGdyb3VwX2lkGAEgASgJEhUKDWludml0YXRpb25faWQYAiABKAkSDwoHcm9sZV9pZBgDIAEoCSJPCh1BZGRJbnZpdGVkR3JvdXBNZW1iZXJSZXNwb25zZRIuCgZtZW1iZXIYASABKAsyHi5oZGxjdHJsLnYxLkludml0ZWRHcm91cE1lbWJlciJKCh9SZW1vdmVJbnZpdGVkR3JvdXBNZW1iZXJSZXF1ZXN0EhAKCGdyb3VwX2lkGAEgASgJEhUKDWludml0YXRpb25faWQYAiABKAkiIgogUmVtb3ZlSW52aXRlZEdyb3VwTWVtYmVyUmVzcG9uc2UiXwojVXBkYXRlSW52aXRlZEdyb3VwTWVtYmVyUm9sZVJlcXVlc3QSEAoIZ3JvdXBfaWQYASABKAkSFQoNaW52aXRhdGlvbl9pZBgCIAEoCRIPCgdyb2xlX2lkGAMgASgJIlYKJFVwZGF0ZUludml0ZWRHcm91cE1lbWJlclJvbGVSZXNwb25zZRIuCgZtZW1iZXIYASABKAsyHi5oZGxjdHJsLnYxLkludml0ZWRHcm91cE1lbWJlciI2ChBMaXN0Um9sZXNSZXF1ZXN0EhUKCGdyb3VwX2lkGAEgASgJSACIAQFCCwoJX2dyb3VwX2lkIjQKEUxpc3RSb2xlc1Jlc3BvbnNlEh8KBXJvbGVzGAEgAygLMhAuaGRsY3RybC52MS5Sb2xlIoQBChFDcmVhdGVSb2xlUmVxdWVzdBIVCghncm91cF9pZBgBIAEoCUgAiAEBEgwKBG5hbWUYAiABKAkSJAoFc2NvcGUYAyABKA4yFS5oZGxjdHJsLnYxLlJvbGVTY29wZRIXCg9wZXJtaXNzaW9uX2tleXMYBCADKAlCCwoJX2dyb3VwX2lkIjQKEkNyZWF0ZVJvbGVSZXNwb25zZRIeCgRyb2xlGAEgASgLMhAuaGRsY3RybC52MS5Sb2xlIpEBChFVcGRhdGVSb2xlUmVxdWVzdBIPCgdyb2xlX2lkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARI7Cg9wZXJtaXNzaW9uX2tleXMYAyABKAsyHS5oZGxjdHJsLnYxLlBlcm1pc3Npb25LZXlMaXN0SAGIAQFCBwoFX25hbWVCEgoQX3Blcm1pc3Npb25fa2V5cyI0ChJVcGRhdGVSb2xlUmVzcG9uc2USHgoEcm9sZRgBIAEoCzIQLmhkbGN0cmwudjEuUm9sZSIkChFEZWxldGVSb2xlUmVxdWVzdBIPCgdyb2xlX2lkGAEgASgJIhQKEkRlbGV0ZVJvbGVSZXNwb25zZSI+ChZMaXN0UGVybWlzc2lvbnNSZXF1ZXN0EiQKBXNjb3BlGAEgASgOMhUuaGRsY3RybC52MS5Sb2xlU2NvcGUiSQoXTGlzdFBlcm1pc3Npb25zUmVzcG9uc2USLgoLcGVybWlzc2lvbnMYASADKAsyGS5oZGxjdHJsLnYxLlBlcm1pc3Npb25LZXkiGQoXR2V0TXlQZXJtaXNzaW9uc1JlcXVlc3QiSgoYR2V0TXlQZXJtaXNzaW9uc1Jlc3BvbnNlEi4KC3Blcm1pc3Npb25zGAEgASgLMhkuaGRsY3RybC52MS5NeVBlcm1pc3Npb25zKm4KCUdyb3VwVHlwZRIaChZHUk9VUF9UWVBFX1VOU1BFQ0lGSUVEEAASFwoTR1JPVVBfVFlQRV9QRVJTT05BTBABEhUKEUdST1VQX1RZUEVfTk9STUFMEAISFQoRR1JPVVBfVFlQRV9TWVNURU0QAypVCglSb2xlU2NvcGUSGgoWUk9MRV9TQ09QRV9VTlNQRUNJRklFRBAAEhUKEVJPTEVfU0NPUEVfTk9STUFMEAESFQoRUk9MRV9TQ09QRV9TWVNURU0QAjKDCQoMR3JvdXBTZXJ2aWNlEk4KC0NyZWF0ZUdyb3VwEh4uaGRsY3RybC52MS5DcmVhdGVHcm91cFJlcXVlc3QaHy5oZGxjdHJsLnYxLkNyZWF0ZUdyb3VwUmVzcG9uc2USRQoIR2V0R3JvdXASGy5oZGxjdHJsLnYxLkdldEdyb3VwUmVxdWVzdBocLmhkbGN0cmwudjEuR2V0R3JvdXBSZXNwb25zZRJLCgpMaXN0R3JvdXBzEh0uaGRsY3RybC52MS5MaXN0R3JvdXBzUmVxdWVzdBoeLmhkbGN0cmwudjEuTGlzdEdyb3Vwc1Jlc3BvbnNlEk4KC1VwZGF0ZUdyb3VwEh4uaGRsY3RybC52MS5VcGRhdGVHcm91cFJlcXVlc3QaHy5oZGxjdHJsLnYxLlVwZGF0ZUdyb3VwUmVzcG9uc2USTgoLRGVsZXRlR3JvdXASHi5oZGxjdHJsLnYxLkRlbGV0ZUdyb3VwUmVxdWVzdBofLmhkbGN0cmwudjEuRGVsZXRlR3JvdXBSZXNwb25zZRJdChBMaXN0R3JvdXBNZW1iZXJzEiMuaGRsY3RybC52MS5MaXN0R3JvdXBNZW1iZXJzUmVxdWVzdBokLmhkbGN0cmwudjEuTGlzdEdyb3VwTWVtYmVyc1Jlc3BvbnNlElcKDkFkZEdyb3VwTWVtYmVyEiEuaGRsY3RybC52MS5BZGRHcm91cE1lbWJlclJlcXVlc3QaIi5oZGxjdHJsLnYxLkFkZEdyb3VwTWVtYmVyUmVzcG9uc2USYAoRUmVtb3ZlR3JvdXBNZW1iZXISJC5oZGxjdHJsLnYxLlJlbW92ZUdyb3VwTWVtYmVyUmVxdWVzdBolLmhkbGN0cmwudjEuUmVtb3ZlR3JvdXBNZW1iZXJSZXNwb25zZRJsChVVcGRhdGVHcm91cE1lbWJlclJvbGUSKC5oZGxjdHJsLnYxLlVwZGF0ZUdyb3VwTWVtYmVyUm9sZVJlcXVlc3QaKS5oZGxjdHJsLnYxLlVwZGF0ZUdyb3VwTWVtYmVyUm9sZVJlc3BvbnNlEmwKFUFkZEludml0ZWRHcm91cE1lbWJlchIoLmhkbGN0cmwudjEuQWRkSW52aXRlZEdyb3VwTWVtYmVyUmVxdWVzdBopLmhkbGN0cmwudjEuQWRkSW52aXRlZEdyb3VwTWVtYmVyUmVzcG9uc2USdQoYUmVtb3ZlSW52aXRlZEdyb3VwTWVtYmVyEisuaGRsY3RybC52MS5SZW1vdmVJbnZpdGVkR3JvdXBNZW1iZXJSZXF1ZXN0GiwuaGRsY3RybC52MS5SZW1vdmVJbnZpdGVkR3JvdXBNZW1iZXJSZXNwb25zZRKBAQocVXBkYXRlSW52aXRlZEdyb3VwTWVtYmVyUm9sZRIvLmhkbGN0cmwudjEuVXBkYXRlSW52aXRlZEdyb3VwTWVtYmVyUm9sZVJlcXVlc3QaMC5oZGxjdHJsLnYxLlVwZGF0ZUludml0ZWRHcm91cE1lbWJlclJvbGVSZXNwb25zZTL5AwoLUm9sZVNlcnZpY2USSAoJTGlzdFJvbGVzEhwuaGRsY3RybC52MS5MaXN0Um9sZXNSZXF1ZXN0Gh0uaGRsY3RybC52MS5MaXN0Um9sZXNSZXNwb25zZRJLCgpDcmVhdGVSb2xlEh0uaGRsY3RybC52MS5DcmVhdGVSb2xlUmVxdWVzdBoeLmhkbGN0cmwudjEuQ3JlYXRlUm9sZVJlc3BvbnNlEksKClVwZGF0ZVJvbGUSHS5oZGxjdHJsLnYxLlVwZGF0ZVJvbGVSZXF1ZXN0Gh4uaGRsY3RybC52MS5VcGRhdGVSb2xlUmVzcG9uc2USSwoKRGVsZXRlUm9sZRIdLmhkbGN0cmwudjEuRGVsZXRlUm9sZVJlcXVlc3QaHi5oZGxjdHJsLnYxLkRlbGV0ZVJvbGVSZXNwb25zZRJaCg9MaXN0UGVybWlzc2lvbnMSIi5oZGxjdHJsLnYxLkxpc3RQZXJtaXNzaW9uc1JlcXVlc3QaIy5oZGxjdHJsLnYxLkxpc3RQZXJtaXNzaW9uc1Jlc3BvbnNlEl0KEEdldE15UGVybWlzc2lvbnMSIy5oZGxjdHJsLnYxLkdldE15UGVybWlzc2lvbnNSZXF1ZXN0GiQuaGRsY3RybC52MS5HZXRNeVBlcm1pc3Npb25zUmVzcG9uc2VCvQEKDmNvbS5oZGxjdHJsLnYxQg9QZXJtaXNzaW9uUHJvdG9QAVpRZ2l0aHViLmNvbS9oYW50YWJhcnUxMDE0L2JhcnUtcmVzby1oZWFkbGVzcy1jb250cm9sbGVyL3BiZ2VuL2hkbGN0cmwvdjE7aGRsY3RybHYxogIDSFhYqgIKSGRsY3RybC5WMcoCCkhkbGN0cmxcVjHiAhZIZGxjdHJsXFYxXEdQQk1ldGFkYXRh6gILSGRsY3RybDo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message hdlctrl.v1.Group
@@ -91,6 +91,57 @@ export const GroupMemberSchema: GenMessage<GroupMember> = /*@__PURE__*/
   messageDesc(file_hdlctrl_v1_permission, 1);
 
 /**
+ * 招待中 (未登録) ユーザーのグループ参加予定.
+ *
+ * @generated from message hdlctrl.v1.InvitedGroupMember
+ */
+export type InvitedGroupMember = Message<"hdlctrl.v1.InvitedGroupMember"> & {
+  /**
+   * @generated from field: string group_id = 1;
+   */
+  groupId: string;
+
+  /**
+   * @generated from field: string invitation_id = 2;
+   */
+  invitationId: string;
+
+  /**
+   * @generated from field: string resonite_id = 3;
+   */
+  resoniteId: string;
+
+  /**
+   * @generated from field: string role_id = 4;
+   */
+  roleId: string;
+
+  /**
+   * @generated from field: optional string added_by = 5;
+   */
+  addedBy?: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp added_at = 6;
+   */
+  addedAt?: Timestamp;
+
+  /**
+   * 招待リンクの有効期限.
+   *
+   * @generated from field: google.protobuf.Timestamp expires_at = 7;
+   */
+  expiresAt?: Timestamp;
+};
+
+/**
+ * Describes the message hdlctrl.v1.InvitedGroupMember.
+ * Use `create(InvitedGroupMemberSchema)` to create a new message.
+ */
+export const InvitedGroupMemberSchema: GenMessage<InvitedGroupMember> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_permission, 2);
+
+/**
  * @generated from message hdlctrl.v1.Role
  */
 export type Role = Message<"hdlctrl.v1.Role"> & {
@@ -145,7 +196,7 @@ export type Role = Message<"hdlctrl.v1.Role"> & {
  * Use `create(RoleSchema)` to create a new message.
  */
 export const RoleSchema: GenMessage<Role> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 2);
+  messageDesc(file_hdlctrl_v1_permission, 3);
 
 /**
  * パーミッションキーの定義. ListPermissions の戻り値で UI 用に説明を含めて返す.
@@ -178,7 +229,7 @@ export type PermissionKey = Message<"hdlctrl.v1.PermissionKey"> & {
  * Use `create(PermissionKeySchema)` to create a new message.
  */
 export const PermissionKeySchema: GenMessage<PermissionKey> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 3);
+  messageDesc(file_hdlctrl_v1_permission, 4);
 
 /**
  * ログインユーザーが特定グループで持つ実効パーミッション.
@@ -209,7 +260,7 @@ export type GroupPermissions = Message<"hdlctrl.v1.GroupPermissions"> & {
  * Use `create(GroupPermissionsSchema)` to create a new message.
  */
 export const GroupPermissionsSchema: GenMessage<GroupPermissions> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 4);
+  messageDesc(file_hdlctrl_v1_permission, 5);
 
 /**
  * @generated from message hdlctrl.v1.MyPermissions
@@ -236,7 +287,7 @@ export type MyPermissions = Message<"hdlctrl.v1.MyPermissions"> & {
  * Use `create(MyPermissionsSchema)` to create a new message.
  */
 export const MyPermissionsSchema: GenMessage<MyPermissions> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 5);
+  messageDesc(file_hdlctrl_v1_permission, 6);
 
 /**
  * repeated フィールドの "明示的に指定したか" を表現するためのラッパー.
@@ -256,7 +307,7 @@ export type PermissionKeyList = Message<"hdlctrl.v1.PermissionKeyList"> & {
  * Use `create(PermissionKeyListSchema)` to create a new message.
  */
 export const PermissionKeyListSchema: GenMessage<PermissionKeyList> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 6);
+  messageDesc(file_hdlctrl_v1_permission, 7);
 
 /**
  * @generated from message hdlctrl.v1.CreateGroupRequest
@@ -273,7 +324,7 @@ export type CreateGroupRequest = Message<"hdlctrl.v1.CreateGroupRequest"> & {
  * Use `create(CreateGroupRequestSchema)` to create a new message.
  */
 export const CreateGroupRequestSchema: GenMessage<CreateGroupRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 7);
+  messageDesc(file_hdlctrl_v1_permission, 8);
 
 /**
  * @generated from message hdlctrl.v1.CreateGroupResponse
@@ -290,7 +341,7 @@ export type CreateGroupResponse = Message<"hdlctrl.v1.CreateGroupResponse"> & {
  * Use `create(CreateGroupResponseSchema)` to create a new message.
  */
 export const CreateGroupResponseSchema: GenMessage<CreateGroupResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 8);
+  messageDesc(file_hdlctrl_v1_permission, 9);
 
 /**
  * @generated from message hdlctrl.v1.GetGroupRequest
@@ -307,7 +358,7 @@ export type GetGroupRequest = Message<"hdlctrl.v1.GetGroupRequest"> & {
  * Use `create(GetGroupRequestSchema)` to create a new message.
  */
 export const GetGroupRequestSchema: GenMessage<GetGroupRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 9);
+  messageDesc(file_hdlctrl_v1_permission, 10);
 
 /**
  * @generated from message hdlctrl.v1.GetGroupResponse
@@ -324,7 +375,7 @@ export type GetGroupResponse = Message<"hdlctrl.v1.GetGroupResponse"> & {
  * Use `create(GetGroupResponseSchema)` to create a new message.
  */
 export const GetGroupResponseSchema: GenMessage<GetGroupResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 10);
+  messageDesc(file_hdlctrl_v1_permission, 11);
 
 /**
  * @generated from message hdlctrl.v1.ListGroupsRequest
@@ -337,7 +388,7 @@ export type ListGroupsRequest = Message<"hdlctrl.v1.ListGroupsRequest"> & {
  * Use `create(ListGroupsRequestSchema)` to create a new message.
  */
 export const ListGroupsRequestSchema: GenMessage<ListGroupsRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 11);
+  messageDesc(file_hdlctrl_v1_permission, 12);
 
 /**
  * @generated from message hdlctrl.v1.ListGroupsResponse
@@ -354,7 +405,7 @@ export type ListGroupsResponse = Message<"hdlctrl.v1.ListGroupsResponse"> & {
  * Use `create(ListGroupsResponseSchema)` to create a new message.
  */
 export const ListGroupsResponseSchema: GenMessage<ListGroupsResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 12);
+  messageDesc(file_hdlctrl_v1_permission, 13);
 
 /**
  * @generated from message hdlctrl.v1.UpdateGroupRequest
@@ -376,7 +427,7 @@ export type UpdateGroupRequest = Message<"hdlctrl.v1.UpdateGroupRequest"> & {
  * Use `create(UpdateGroupRequestSchema)` to create a new message.
  */
 export const UpdateGroupRequestSchema: GenMessage<UpdateGroupRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 13);
+  messageDesc(file_hdlctrl_v1_permission, 14);
 
 /**
  * @generated from message hdlctrl.v1.UpdateGroupResponse
@@ -393,7 +444,7 @@ export type UpdateGroupResponse = Message<"hdlctrl.v1.UpdateGroupResponse"> & {
  * Use `create(UpdateGroupResponseSchema)` to create a new message.
  */
 export const UpdateGroupResponseSchema: GenMessage<UpdateGroupResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 14);
+  messageDesc(file_hdlctrl_v1_permission, 15);
 
 /**
  * @generated from message hdlctrl.v1.DeleteGroupRequest
@@ -410,7 +461,7 @@ export type DeleteGroupRequest = Message<"hdlctrl.v1.DeleteGroupRequest"> & {
  * Use `create(DeleteGroupRequestSchema)` to create a new message.
  */
 export const DeleteGroupRequestSchema: GenMessage<DeleteGroupRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 15);
+  messageDesc(file_hdlctrl_v1_permission, 16);
 
 /**
  * @generated from message hdlctrl.v1.DeleteGroupResponse
@@ -423,7 +474,7 @@ export type DeleteGroupResponse = Message<"hdlctrl.v1.DeleteGroupResponse"> & {
  * Use `create(DeleteGroupResponseSchema)` to create a new message.
  */
 export const DeleteGroupResponseSchema: GenMessage<DeleteGroupResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 16);
+  messageDesc(file_hdlctrl_v1_permission, 17);
 
 /**
  * @generated from message hdlctrl.v1.ListGroupMembersRequest
@@ -440,7 +491,7 @@ export type ListGroupMembersRequest = Message<"hdlctrl.v1.ListGroupMembersReques
  * Use `create(ListGroupMembersRequestSchema)` to create a new message.
  */
 export const ListGroupMembersRequestSchema: GenMessage<ListGroupMembersRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 17);
+  messageDesc(file_hdlctrl_v1_permission, 18);
 
 /**
  * @generated from message hdlctrl.v1.ListGroupMembersResponse
@@ -450,6 +501,11 @@ export type ListGroupMembersResponse = Message<"hdlctrl.v1.ListGroupMembersRespo
    * @generated from field: repeated hdlctrl.v1.GroupMember members = 1;
    */
   members: GroupMember[];
+
+  /**
+   * @generated from field: repeated hdlctrl.v1.InvitedGroupMember invited_members = 2;
+   */
+  invitedMembers: InvitedGroupMember[];
 };
 
 /**
@@ -457,7 +513,7 @@ export type ListGroupMembersResponse = Message<"hdlctrl.v1.ListGroupMembersRespo
  * Use `create(ListGroupMembersResponseSchema)` to create a new message.
  */
 export const ListGroupMembersResponseSchema: GenMessage<ListGroupMembersResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 18);
+  messageDesc(file_hdlctrl_v1_permission, 19);
 
 /**
  * @generated from message hdlctrl.v1.AddGroupMemberRequest
@@ -484,7 +540,7 @@ export type AddGroupMemberRequest = Message<"hdlctrl.v1.AddGroupMemberRequest"> 
  * Use `create(AddGroupMemberRequestSchema)` to create a new message.
  */
 export const AddGroupMemberRequestSchema: GenMessage<AddGroupMemberRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 19);
+  messageDesc(file_hdlctrl_v1_permission, 20);
 
 /**
  * @generated from message hdlctrl.v1.AddGroupMemberResponse
@@ -501,7 +557,7 @@ export type AddGroupMemberResponse = Message<"hdlctrl.v1.AddGroupMemberResponse"
  * Use `create(AddGroupMemberResponseSchema)` to create a new message.
  */
 export const AddGroupMemberResponseSchema: GenMessage<AddGroupMemberResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 20);
+  messageDesc(file_hdlctrl_v1_permission, 21);
 
 /**
  * @generated from message hdlctrl.v1.RemoveGroupMemberRequest
@@ -523,7 +579,7 @@ export type RemoveGroupMemberRequest = Message<"hdlctrl.v1.RemoveGroupMemberRequ
  * Use `create(RemoveGroupMemberRequestSchema)` to create a new message.
  */
 export const RemoveGroupMemberRequestSchema: GenMessage<RemoveGroupMemberRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 21);
+  messageDesc(file_hdlctrl_v1_permission, 22);
 
 /**
  * @generated from message hdlctrl.v1.RemoveGroupMemberResponse
@@ -536,7 +592,7 @@ export type RemoveGroupMemberResponse = Message<"hdlctrl.v1.RemoveGroupMemberRes
  * Use `create(RemoveGroupMemberResponseSchema)` to create a new message.
  */
 export const RemoveGroupMemberResponseSchema: GenMessage<RemoveGroupMemberResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 22);
+  messageDesc(file_hdlctrl_v1_permission, 23);
 
 /**
  * @generated from message hdlctrl.v1.UpdateGroupMemberRoleRequest
@@ -563,7 +619,7 @@ export type UpdateGroupMemberRoleRequest = Message<"hdlctrl.v1.UpdateGroupMember
  * Use `create(UpdateGroupMemberRoleRequestSchema)` to create a new message.
  */
 export const UpdateGroupMemberRoleRequestSchema: GenMessage<UpdateGroupMemberRoleRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 23);
+  messageDesc(file_hdlctrl_v1_permission, 24);
 
 /**
  * @generated from message hdlctrl.v1.UpdateGroupMemberRoleResponse
@@ -580,7 +636,130 @@ export type UpdateGroupMemberRoleResponse = Message<"hdlctrl.v1.UpdateGroupMembe
  * Use `create(UpdateGroupMemberRoleResponseSchema)` to create a new message.
  */
 export const UpdateGroupMemberRoleResponseSchema: GenMessage<UpdateGroupMemberRoleResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 24);
+  messageDesc(file_hdlctrl_v1_permission, 25);
+
+/**
+ * @generated from message hdlctrl.v1.AddInvitedGroupMemberRequest
+ */
+export type AddInvitedGroupMemberRequest = Message<"hdlctrl.v1.AddInvitedGroupMemberRequest"> & {
+  /**
+   * @generated from field: string group_id = 1;
+   */
+  groupId: string;
+
+  /**
+   * @generated from field: string invitation_id = 2;
+   */
+  invitationId: string;
+
+  /**
+   * @generated from field: string role_id = 3;
+   */
+  roleId: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.AddInvitedGroupMemberRequest.
+ * Use `create(AddInvitedGroupMemberRequestSchema)` to create a new message.
+ */
+export const AddInvitedGroupMemberRequestSchema: GenMessage<AddInvitedGroupMemberRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_permission, 26);
+
+/**
+ * @generated from message hdlctrl.v1.AddInvitedGroupMemberResponse
+ */
+export type AddInvitedGroupMemberResponse = Message<"hdlctrl.v1.AddInvitedGroupMemberResponse"> & {
+  /**
+   * @generated from field: hdlctrl.v1.InvitedGroupMember member = 1;
+   */
+  member?: InvitedGroupMember;
+};
+
+/**
+ * Describes the message hdlctrl.v1.AddInvitedGroupMemberResponse.
+ * Use `create(AddInvitedGroupMemberResponseSchema)` to create a new message.
+ */
+export const AddInvitedGroupMemberResponseSchema: GenMessage<AddInvitedGroupMemberResponse> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_permission, 27);
+
+/**
+ * @generated from message hdlctrl.v1.RemoveInvitedGroupMemberRequest
+ */
+export type RemoveInvitedGroupMemberRequest = Message<"hdlctrl.v1.RemoveInvitedGroupMemberRequest"> & {
+  /**
+   * @generated from field: string group_id = 1;
+   */
+  groupId: string;
+
+  /**
+   * @generated from field: string invitation_id = 2;
+   */
+  invitationId: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.RemoveInvitedGroupMemberRequest.
+ * Use `create(RemoveInvitedGroupMemberRequestSchema)` to create a new message.
+ */
+export const RemoveInvitedGroupMemberRequestSchema: GenMessage<RemoveInvitedGroupMemberRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_permission, 28);
+
+/**
+ * @generated from message hdlctrl.v1.RemoveInvitedGroupMemberResponse
+ */
+export type RemoveInvitedGroupMemberResponse = Message<"hdlctrl.v1.RemoveInvitedGroupMemberResponse"> & {
+};
+
+/**
+ * Describes the message hdlctrl.v1.RemoveInvitedGroupMemberResponse.
+ * Use `create(RemoveInvitedGroupMemberResponseSchema)` to create a new message.
+ */
+export const RemoveInvitedGroupMemberResponseSchema: GenMessage<RemoveInvitedGroupMemberResponse> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_permission, 29);
+
+/**
+ * @generated from message hdlctrl.v1.UpdateInvitedGroupMemberRoleRequest
+ */
+export type UpdateInvitedGroupMemberRoleRequest = Message<"hdlctrl.v1.UpdateInvitedGroupMemberRoleRequest"> & {
+  /**
+   * @generated from field: string group_id = 1;
+   */
+  groupId: string;
+
+  /**
+   * @generated from field: string invitation_id = 2;
+   */
+  invitationId: string;
+
+  /**
+   * @generated from field: string role_id = 3;
+   */
+  roleId: string;
+};
+
+/**
+ * Describes the message hdlctrl.v1.UpdateInvitedGroupMemberRoleRequest.
+ * Use `create(UpdateInvitedGroupMemberRoleRequestSchema)` to create a new message.
+ */
+export const UpdateInvitedGroupMemberRoleRequestSchema: GenMessage<UpdateInvitedGroupMemberRoleRequest> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_permission, 30);
+
+/**
+ * @generated from message hdlctrl.v1.UpdateInvitedGroupMemberRoleResponse
+ */
+export type UpdateInvitedGroupMemberRoleResponse = Message<"hdlctrl.v1.UpdateInvitedGroupMemberRoleResponse"> & {
+  /**
+   * @generated from field: hdlctrl.v1.InvitedGroupMember member = 1;
+   */
+  member?: InvitedGroupMember;
+};
+
+/**
+ * Describes the message hdlctrl.v1.UpdateInvitedGroupMemberRoleResponse.
+ * Use `create(UpdateInvitedGroupMemberRoleResponseSchema)` to create a new message.
+ */
+export const UpdateInvitedGroupMemberRoleResponseSchema: GenMessage<UpdateInvitedGroupMemberRoleResponse> = /*@__PURE__*/
+  messageDesc(file_hdlctrl_v1_permission, 31);
 
 /**
  * @generated from message hdlctrl.v1.ListRolesRequest
@@ -600,7 +779,7 @@ export type ListRolesRequest = Message<"hdlctrl.v1.ListRolesRequest"> & {
  * Use `create(ListRolesRequestSchema)` to create a new message.
  */
 export const ListRolesRequestSchema: GenMessage<ListRolesRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 25);
+  messageDesc(file_hdlctrl_v1_permission, 32);
 
 /**
  * @generated from message hdlctrl.v1.ListRolesResponse
@@ -617,7 +796,7 @@ export type ListRolesResponse = Message<"hdlctrl.v1.ListRolesResponse"> & {
  * Use `create(ListRolesResponseSchema)` to create a new message.
  */
 export const ListRolesResponseSchema: GenMessage<ListRolesResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 26);
+  messageDesc(file_hdlctrl_v1_permission, 33);
 
 /**
  * @generated from message hdlctrl.v1.CreateRoleRequest
@@ -651,7 +830,7 @@ export type CreateRoleRequest = Message<"hdlctrl.v1.CreateRoleRequest"> & {
  * Use `create(CreateRoleRequestSchema)` to create a new message.
  */
 export const CreateRoleRequestSchema: GenMessage<CreateRoleRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 27);
+  messageDesc(file_hdlctrl_v1_permission, 34);
 
 /**
  * @generated from message hdlctrl.v1.CreateRoleResponse
@@ -668,7 +847,7 @@ export type CreateRoleResponse = Message<"hdlctrl.v1.CreateRoleResponse"> & {
  * Use `create(CreateRoleResponseSchema)` to create a new message.
  */
 export const CreateRoleResponseSchema: GenMessage<CreateRoleResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 28);
+  messageDesc(file_hdlctrl_v1_permission, 35);
 
 /**
  * @generated from message hdlctrl.v1.UpdateRoleRequest
@@ -698,7 +877,7 @@ export type UpdateRoleRequest = Message<"hdlctrl.v1.UpdateRoleRequest"> & {
  * Use `create(UpdateRoleRequestSchema)` to create a new message.
  */
 export const UpdateRoleRequestSchema: GenMessage<UpdateRoleRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 29);
+  messageDesc(file_hdlctrl_v1_permission, 36);
 
 /**
  * @generated from message hdlctrl.v1.UpdateRoleResponse
@@ -715,7 +894,7 @@ export type UpdateRoleResponse = Message<"hdlctrl.v1.UpdateRoleResponse"> & {
  * Use `create(UpdateRoleResponseSchema)` to create a new message.
  */
 export const UpdateRoleResponseSchema: GenMessage<UpdateRoleResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 30);
+  messageDesc(file_hdlctrl_v1_permission, 37);
 
 /**
  * @generated from message hdlctrl.v1.DeleteRoleRequest
@@ -732,7 +911,7 @@ export type DeleteRoleRequest = Message<"hdlctrl.v1.DeleteRoleRequest"> & {
  * Use `create(DeleteRoleRequestSchema)` to create a new message.
  */
 export const DeleteRoleRequestSchema: GenMessage<DeleteRoleRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 31);
+  messageDesc(file_hdlctrl_v1_permission, 38);
 
 /**
  * @generated from message hdlctrl.v1.DeleteRoleResponse
@@ -745,7 +924,7 @@ export type DeleteRoleResponse = Message<"hdlctrl.v1.DeleteRoleResponse"> & {
  * Use `create(DeleteRoleResponseSchema)` to create a new message.
  */
 export const DeleteRoleResponseSchema: GenMessage<DeleteRoleResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 32);
+  messageDesc(file_hdlctrl_v1_permission, 39);
 
 /**
  * @generated from message hdlctrl.v1.ListPermissionsRequest
@@ -764,7 +943,7 @@ export type ListPermissionsRequest = Message<"hdlctrl.v1.ListPermissionsRequest"
  * Use `create(ListPermissionsRequestSchema)` to create a new message.
  */
 export const ListPermissionsRequestSchema: GenMessage<ListPermissionsRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 33);
+  messageDesc(file_hdlctrl_v1_permission, 40);
 
 /**
  * @generated from message hdlctrl.v1.ListPermissionsResponse
@@ -781,7 +960,7 @@ export type ListPermissionsResponse = Message<"hdlctrl.v1.ListPermissionsRespons
  * Use `create(ListPermissionsResponseSchema)` to create a new message.
  */
 export const ListPermissionsResponseSchema: GenMessage<ListPermissionsResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 34);
+  messageDesc(file_hdlctrl_v1_permission, 41);
 
 /**
  * @generated from message hdlctrl.v1.GetMyPermissionsRequest
@@ -794,7 +973,7 @@ export type GetMyPermissionsRequest = Message<"hdlctrl.v1.GetMyPermissionsReques
  * Use `create(GetMyPermissionsRequestSchema)` to create a new message.
  */
 export const GetMyPermissionsRequestSchema: GenMessage<GetMyPermissionsRequest> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 35);
+  messageDesc(file_hdlctrl_v1_permission, 42);
 
 /**
  * @generated from message hdlctrl.v1.GetMyPermissionsResponse
@@ -811,7 +990,7 @@ export type GetMyPermissionsResponse = Message<"hdlctrl.v1.GetMyPermissionsRespo
  * Use `create(GetMyPermissionsResponseSchema)` to create a new message.
  */
 export const GetMyPermissionsResponseSchema: GenMessage<GetMyPermissionsResponse> = /*@__PURE__*/
-  messageDesc(file_hdlctrl_v1_permission, 36);
+  messageDesc(file_hdlctrl_v1_permission, 43);
 
 /**
  * グループ種別.
@@ -969,6 +1148,32 @@ export const GroupService: GenService<{
     methodKind: "unary";
     input: typeof UpdateGroupMemberRoleRequestSchema;
     output: typeof UpdateGroupMemberRoleResponseSchema;
+  },
+  /**
+   * 招待中 (未登録) ユーザーのグループ参加予定. 登録時に正式なメンバーになる.
+   *
+   * @generated from rpc hdlctrl.v1.GroupService.AddInvitedGroupMember
+   */
+  addInvitedGroupMember: {
+    methodKind: "unary";
+    input: typeof AddInvitedGroupMemberRequestSchema;
+    output: typeof AddInvitedGroupMemberResponseSchema;
+  },
+  /**
+   * @generated from rpc hdlctrl.v1.GroupService.RemoveInvitedGroupMember
+   */
+  removeInvitedGroupMember: {
+    methodKind: "unary";
+    input: typeof RemoveInvitedGroupMemberRequestSchema;
+    output: typeof RemoveInvitedGroupMemberResponseSchema;
+  },
+  /**
+   * @generated from rpc hdlctrl.v1.GroupService.UpdateInvitedGroupMemberRole
+   */
+  updateInvitedGroupMemberRole: {
+    methodKind: "unary";
+    input: typeof UpdateInvitedGroupMemberRoleRequestSchema;
+    output: typeof UpdateInvitedGroupMemberRoleResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_hdlctrl_v1_permission, 0);

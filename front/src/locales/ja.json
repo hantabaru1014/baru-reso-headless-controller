@@ -205,7 +205,8 @@
     "confirmRemove": "{{userId}} をグループから削除しますか?",
     "memberRemoved": "メンバーを削除しました",
     "removeFailed": "削除に失敗しました",
-    "addMember": "メンバー追加"
+    "addMember": "メンバー追加",
+    "invitedMemberHint": "アカウント登録前のユーザーです。招待リンクから登録した時点でこのグループのメンバーになります。"
   },
   "roleList": {
     "nameRequired": "ロール名は必須です",
@@ -508,7 +509,19 @@
     "deleteError": "削除に失敗しました",
     "deleteUserTitle": "ユーザーを削除しますか?",
     "deleteUserPrefix": "ユーザー",
-    "deleteUserSuffix": "を削除します。この操作は取り消せません。"
+    "deleteUserSuffix": "を削除します。この操作は取り消せません。",
+    "invitedGroupHint": "登録を待たずに、グループのメンバー画面から招待中ユーザーとしてグループに追加できます。",
+    "invitationsTitle": "招待中のユーザー",
+    "invitationsDescription": "アカウント登録が済んでいない招待です。期限切れのリンクは再発行できます (グループへの参加予定は引き継がれます)。",
+    "expiresAtColumn": "リンク有効期限",
+    "reissue": "リンク再発行",
+    "reissueTitle": "招待リンクを再発行",
+    "reissueDescription": "新しい招待リンクを発行します。以前のリンクは使えなくなります。",
+    "revoke": "招待取消",
+    "revokeTitle": "招待を取り消しますか?",
+    "revokeDescription": "{{resoniteId}} への招待を取り消します。グループへの参加予定も削除されます。",
+    "revokeSuccess": "招待を取り消しました",
+    "revokeError": "招待の取り消しに失敗しました"
   },
   "sessionList": {
     "filterAll": "全て",
@@ -831,5 +844,10 @@
     "autoUpgrade": "自動アップデート",
     "adminMemo": "管理者メモ",
     "createSchedule": "予約を作成"
+  },
+  "invitedBadge": {
+    "invited": "招待中",
+    "expired": "招待期限切れ",
+    "expiredHint": "招待リンクの期限が切れています。ユーザー管理画面からリンクを再発行してください"
   }
 }

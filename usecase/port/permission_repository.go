@@ -47,3 +47,14 @@ type GroupMemberRepository interface {
 	// system グループ経由の permission_key 一覧.
 	ListUserSystemPermissions(ctx context.Context, userID string) ([]string, error)
 }
+
+// InvitedGroupMemberRepository は招待中 (未登録) ユーザーのグループ参加予定を扱う.
+// 参加予定は登録時に group_members へ移されるため、登録済みの招待には残らない.
+type InvitedGroupMemberRepository interface {
+	// 未使用の招待が無い場合は domain.ErrNotFound.
+	Add(ctx context.Context, groupID, invitationID, roleID string, addedBy *string) (*entity.InvitedGroupMember, error)
+	Remove(ctx context.Context, groupID, invitationID string) error
+	UpdateRole(ctx context.Context, groupID, invitationID, roleID string) error
+	Get(ctx context.Context, groupID, invitationID string) (*entity.InvitedGroupMember, error)
+	ListByGroup(ctx context.Context, groupID string) (entity.InvitedGroupMemberList, error)
+}

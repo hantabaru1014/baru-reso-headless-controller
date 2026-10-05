@@ -186,12 +186,25 @@ func (s *GroupService) ListGroupMembers(ctx context.Context, req *connect.Reques
 		return nil, convertErr(err)
 	}
 
+	invited, err := s.guc.ListInvitedGroupMembers(ctx, req.Msg.GetGroupId())
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
 	protoMembers := make([]*hdlctrlv1.GroupMember, 0, len(members))
 	for _, m := range members {
 		protoMembers = append(protoMembers, groupMemberToProto(m))
 	}
 
-	return connect.NewResponse(&hdlctrlv1.ListGroupMembersResponse{Members: protoMembers}), nil
+	protoInvited := make([]*hdlctrlv1.InvitedGroupMember, 0, len(invited))
+	for _, m := range invited {
+		protoInvited = append(protoInvited, invitedGroupMemberToProto(m))
+	}
+
+	return connect.NewResponse(&hdlctrlv1.ListGroupMembersResponse{
+		Members:        protoMembers,
+		InvitedMembers: protoInvited,
+	}), nil
 }
 
 // AddGroupMember: group_id に対して group:members.manage.
@@ -257,6 +270,66 @@ func (s *GroupService) UpdateGroupMemberRole(ctx context.Context, req *connect.R
 	return connect.NewResponse(&hdlctrlv1.UpdateGroupMemberRoleResponse{Member: groupMemberToProto(m)}), nil
 }
 
+// AddInvitedGroupMember: group_id に対して group:members.manage.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.GroupServiceAddInvitedGroupMemberProcedure,
+	checkGroupPermission(entity.PermKey_GroupMembersManage, groupIDFromAddInvitedMember, false),
+)
+
+func (s *GroupService) AddInvitedGroupMember(ctx context.Context, req *connect.Request[hdlctrlv1.AddInvitedGroupMemberRequest]) (*connect.Response[hdlctrlv1.AddInvitedGroupMemberResponse], error) {
+	claims, err := auth.GetAuthClaimsFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	if req.Msg.GetInvitationId() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invitation_id is required"))
+	}
+
+	addedBy := claims.UserID
+
+	m, err := s.guc.AddInvitedGroupMember(ctx, req.Msg.GetGroupId(), req.Msg.GetInvitationId(), req.Msg.GetRoleId(), &addedBy)
+	if err != nil {
+		if errors.Is(err, usecase.ErrGroupOperationForbidden) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
+
+		return nil, convertErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.AddInvitedGroupMemberResponse{Member: invitedGroupMemberToProto(m)}), nil
+}
+
+// RemoveInvitedGroupMember: group_id に対して group:members.manage.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.GroupServiceRemoveInvitedGroupMemberProcedure,
+	checkGroupPermission(entity.PermKey_GroupMembersManage, groupIDFromRemoveInvitedMember, false),
+)
+
+func (s *GroupService) RemoveInvitedGroupMember(ctx context.Context, req *connect.Request[hdlctrlv1.RemoveInvitedGroupMemberRequest]) (*connect.Response[hdlctrlv1.RemoveInvitedGroupMemberResponse], error) {
+	if err := s.guc.RemoveInvitedGroupMember(ctx, req.Msg.GetGroupId(), req.Msg.GetInvitationId()); err != nil {
+		return nil, convertErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.RemoveInvitedGroupMemberResponse{}), nil
+}
+
+// UpdateInvitedGroupMemberRole: group_id に対して group:members.manage.
+// personal グループには参加予定を作れないため UpdateGroupMemberRole のような分岐は不要.
+var _ = registerRPCPermission(
+	hdlctrlv1connect.GroupServiceUpdateInvitedGroupMemberRoleProcedure,
+	checkGroupPermission(entity.PermKey_GroupMembersManage, groupIDFromUpdateInvitedMemberRole, false),
+)
+
+func (s *GroupService) UpdateInvitedGroupMemberRole(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateInvitedGroupMemberRoleRequest]) (*connect.Response[hdlctrlv1.UpdateInvitedGroupMemberRoleResponse], error) {
+	m, err := s.guc.UpdateInvitedGroupMemberRole(ctx, req.Msg.GetGroupId(), req.Msg.GetInvitationId(), req.Msg.GetRoleId())
+	if err != nil {
+		return nil, convertErr(err)
+	}
+
+	return connect.NewResponse(&hdlctrlv1.UpdateInvitedGroupMemberRoleResponse{Member: invitedGroupMemberToProto(m)}), nil
+}
+
 func groupToProto(g *entity.Group) *hdlctrlv1.Group {
 	p := &hdlctrlv1.Group{
 		Id:   g.ID,
@@ -297,6 +370,25 @@ func groupMemberToProto(m *entity.GroupMember) *hdlctrlv1.GroupMember {
 	}
 	if !m.JoinedAt.IsZero() {
 		p.JoinedAt = timestamppb.New(m.JoinedAt)
+	}
+
+	return p
+}
+
+func invitedGroupMemberToProto(m *entity.InvitedGroupMember) *hdlctrlv1.InvitedGroupMember {
+	p := &hdlctrlv1.InvitedGroupMember{
+		GroupId:      m.GroupID,
+		InvitationId: m.InvitationID,
+		ResoniteId:   m.ResoniteID,
+		RoleId:       m.RoleID,
+		AddedBy:      m.AddedBy,
+	}
+	if !m.AddedAt.IsZero() {
+		p.AddedAt = timestamppb.New(m.AddedAt)
+	}
+
+	if !m.ExpiresAt.IsZero() {
+		p.ExpiresAt = timestamppb.New(m.ExpiresAt)
 	}
 
 	return p

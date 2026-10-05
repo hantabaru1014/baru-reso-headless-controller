@@ -15,23 +15,26 @@ var ErrGroupOperationForbidden = errors.New("operation not allowed on this group
 
 // GroupUsecase はグループの CRUD + メンバー管理を提供する.
 type GroupUsecase struct {
-	groupRepo  port.GroupRepository
-	memberRepo port.GroupMemberRepository
-	roleRepo   port.RoleRepository
-	permUC     *PermissionUsecase
+	groupRepo         port.GroupRepository
+	memberRepo        port.GroupMemberRepository
+	invitedMemberRepo port.InvitedGroupMemberRepository
+	roleRepo          port.RoleRepository
+	permUC            *PermissionUsecase
 }
 
 func NewGroupUsecase(
 	groupRepo port.GroupRepository,
 	memberRepo port.GroupMemberRepository,
+	invitedMemberRepo port.InvitedGroupMemberRepository,
 	roleRepo port.RoleRepository,
 	permUC *PermissionUsecase,
 ) *GroupUsecase {
 	return &GroupUsecase{
-		groupRepo:  groupRepo,
-		memberRepo: memberRepo,
-		roleRepo:   roleRepo,
-		permUC:     permUC,
+		groupRepo:         groupRepo,
+		memberRepo:        memberRepo,
+		invitedMemberRepo: invitedMemberRepo,
+		roleRepo:          roleRepo,
+		permUC:            permUC,
 	}
 }
 
@@ -125,39 +128,54 @@ func (u *GroupUsecase) ListGroupMembers(ctx context.Context, groupID string) (en
 
 // AddGroupMember は group に user を role で登録する. personal グループへの追加は禁止.
 func (u *GroupUsecase) AddGroupMember(ctx context.Context, groupID, userID, roleID string, addedBy *string) (*entity.GroupMember, error) {
+	if err := u.authorizeMemberRole(ctx, groupID, roleID); err != nil {
+		return nil, err
+	}
+
+	return u.memberRepo.Add(ctx, groupID, userID, roleID, addedBy)
+}
+
+// authorizeMemberRole は group にメンバー (招待中を含む) を roleID で所属させられるか検証する.
+// personal グループのメンバーは追加 / 招待中メンバーの操作ともに対象外.
+//
+//nolint:funcorder // メンバー追加 / 招待中メンバー操作のヘルパー. 直下に置く方が読みやすい
+func (u *GroupUsecase) authorizeMemberRole(ctx context.Context, groupID, roleID string) error {
 	// permission チェックを存在チェックより先に行う. 権限の無い caller に
 	// NotFound / PermissionDenied の違いでグループ存在 (ひいては
 	// `<user-id>-personal` 形式からユーザー存在) を漏らさないため.
 	if err := u.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_GroupMembersManage); err != nil {
-		return nil, err
+		return err
 	}
 
 	g, err := u.groupRepo.Get(ctx, groupID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if g.Type == entity.GroupType_Personal {
-		return nil, errors.WrapPrefix(ErrGroupOperationForbidden, "cannot add member to personal group", 0)
+		return errors.WrapPrefix(ErrGroupOperationForbidden, "cannot add member to personal group", 0)
 	}
 
+	return u.requireRoleAssignable(ctx, g, roleID)
+}
+
+// requireRoleAssignable は roleID が group に割り当て可能で、caller の権限を超えないことを検証する.
+//
+//nolint:funcorder // メンバー追加 / ロール変更のヘルパー. 直下に置く方が読みやすい
+func (u *GroupUsecase) requireRoleAssignable(ctx context.Context, g *entity.Group, roleID string) error {
 	role, err := u.roleRepo.Get(ctx, roleID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if !isRoleAssignableToGroup(role, g) {
-		return nil, errors.New("role scope does not match group type")
+		return errors.New("role scope does not match group type")
 	}
 
 	// privilege escalation 防止: caller が持っていない権限を含むロールでの登録を拒否.
 	// system グループへの登録 (system-scope ロール) は HasPermission の system bypass で
 	// 透過的にスキップされる.
-	if err := u.requirePermSubsetOfCaller(ctx, g, role); err != nil {
-		return nil, err
-	}
-
-	return u.memberRepo.Add(ctx, groupID, userID, roleID, addedBy)
+	return u.requirePermSubsetOfCaller(ctx, g, role)
 }
 
 // RemoveGroupMember は group から user を外す. personal グループからの削除は禁止.
@@ -220,17 +238,7 @@ func (u *GroupUsecase) UpdateGroupMemberRole(ctx context.Context, groupID, userI
 		}
 	}
 
-	role, err := u.roleRepo.Get(ctx, roleID)
-	if err != nil {
-		return nil, err
-	}
-
-	if !isRoleAssignableToGroup(role, g) {
-		return nil, errors.New("role scope does not match group type")
-	}
-
-	// privilege escalation 防止: caller が持っていない権限を含むロールへの変更を拒否.
-	if err := u.requirePermSubsetOfCaller(ctx, g, role); err != nil {
+	if err := u.requireRoleAssignable(ctx, g, roleID); err != nil {
 		return nil, err
 	}
 
@@ -247,6 +255,43 @@ func (u *GroupUsecase) UpdateGroupMemberRole(ctx context.Context, groupID, userI
 	}
 
 	return u.memberRepo.Get(ctx, groupID, userID)
+}
+
+// ListInvitedGroupMembers は group の招待中 (未登録) ユーザーの参加予定を返す.
+func (u *GroupUsecase) ListInvitedGroupMembers(ctx context.Context, groupID string) (entity.InvitedGroupMemberList, error) {
+	return u.invitedMemberRepo.ListByGroup(ctx, groupID)
+}
+
+// AddInvitedGroupMember は招待中ユーザーを group に参加予定として登録する.
+// 招待を使って登録した時点で role のメンバーになる. 検証は AddGroupMember と同じ.
+func (u *GroupUsecase) AddInvitedGroupMember(ctx context.Context, groupID, invitationID, roleID string, addedBy *string) (*entity.InvitedGroupMember, error) {
+	if err := u.authorizeMemberRole(ctx, groupID, roleID); err != nil {
+		return nil, err
+	}
+
+	return u.invitedMemberRepo.Add(ctx, groupID, invitationID, roleID, addedBy)
+}
+
+// RemoveInvitedGroupMember は招待中ユーザーの参加予定を取り消す.
+func (u *GroupUsecase) RemoveInvitedGroupMember(ctx context.Context, groupID, invitationID string) error {
+	if err := u.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_GroupMembersManage); err != nil {
+		return err
+	}
+
+	return u.invitedMemberRepo.Remove(ctx, groupID, invitationID)
+}
+
+// UpdateInvitedGroupMemberRole は招待中ユーザーの参加予定ロールを変更する.
+func (u *GroupUsecase) UpdateInvitedGroupMemberRole(ctx context.Context, groupID, invitationID, roleID string) (*entity.InvitedGroupMember, error) {
+	if err := u.authorizeMemberRole(ctx, groupID, roleID); err != nil {
+		return nil, err
+	}
+
+	if err := u.invitedMemberRepo.UpdateRole(ctx, groupID, invitationID, roleID); err != nil {
+		return nil, err
+	}
+
+	return u.invitedMemberRepo.Get(ctx, groupID, invitationID)
 }
 
 // requirePermSubsetOfCaller は role が持つ permission を全て caller が group 上で
