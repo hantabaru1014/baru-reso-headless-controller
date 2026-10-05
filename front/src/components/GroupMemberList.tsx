@@ -60,7 +60,7 @@ function CandidateCell({ candidate }: { candidate: Candidate }) {
     return (
       <ResoniteUserCell
         resoniteId={candidate.invitation.resoniteId}
-        iconClassName="size-8"
+        size="md"
         badge={<InvitedBadge expiresAt={candidate.invitation.expiresAt} />}
       />
     );
