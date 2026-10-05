@@ -88,7 +88,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 	v := ProvideHostEventHandlers(sessionStateSyncHandler, sessionLifecycleHandler, hostUpgradeOrchestrator, notificationDispatcher, loggingHostEventHandler)
 	hostEventWatcher := worker.NewHostEventWatcher(headlessHostRepository, sqlHostEventStore, workerConfig, v)
 	userExistenceChecker := adapter.NewUserExistenceChecker(queries)
-	scheduledOperationExecutor := ProvideScheduledOperationExecutor(scheduledSessionOperationRepository, sessionUsecase, sessionRepository, memoryCache, userExistenceChecker)
+	scheduledOperationExecutor := ProvideScheduledOperationExecutor(scheduledSessionOperationRepository, sessionUsecase, async_jobUsecase, headlessHostRepository, sessionRepository, memoryCache, userExistenceChecker)
 	imageBuildOperator := ProvideImageBuildOperator(resoniteVersionUsecase)
 	dispatcher := ProvideAsyncJobDispatcher(headlessHostUsecase, sessionUsecase, headlessAccountUsecase, imageBuildOperator, async_jobUsecase)
 	asyncJobExecutor := ProvideAsyncJobExecutor(asyncJobRepository, dispatcher, memoryBus, userExistenceChecker)
@@ -218,14 +218,19 @@ func ProvideImageBuildOperator(rvuc *usecase.ResoniteVersionUsecase) async_job.I
 // ProvideScheduledOperationExecutor は scheduled session operation worker を
 // 構築する. SessionUsecase をそのまま SessionOperator として渡し、interface
 // 経由で worker パッケージから usecase パッケージへの依存を切る.
+// ホスト操作は時間がかかるので、async job として投入する HostOperator を渡す.
 func ProvideScheduledOperationExecutor(
 	repo port.ScheduledSessionOperationRepository,
 	suc *usecase.SessionUsecase,
+	ajuc *async_job.Usecase,
+	hhrepo port.HeadlessHostRepository,
 	srepo port.SessionRepository,
 	stateCache port.SessionStateCache,
 	userChecker worker.UserExistenceChecker,
 ) *worker.ScheduledOperationExecutor {
-	return worker.NewScheduledOperationExecutor(repo, suc, srepo, stateCache, userChecker, worker.ScheduledOperationExecutorOptions{})
+	hostOp := async_job.NewScheduledHostOperator(ajuc, hhrepo)
+
+	return worker.NewScheduledOperationExecutor(repo, suc, hostOp, srepo, stateCache, userChecker, worker.ScheduledOperationExecutorOptions{})
 }
 
 // ProvideAsyncJobDispatcher はホスト/セッションの非同期 job を実行する dispatcher を

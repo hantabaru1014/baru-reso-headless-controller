@@ -13,6 +13,10 @@ const (
 	ScheduledOperationType_STOP_SESSION          ScheduledOperationType = 2
 	ScheduledOperationType_UPDATE_PARAMETERS     ScheduledOperationType = 3
 	ScheduledOperationType_UPDATE_EXTRA_SETTINGS ScheduledOperationType = 4
+	ScheduledOperationType_START_HOST            ScheduledOperationType = 5
+	ScheduledOperationType_RESTART_HOST          ScheduledOperationType = 6
+	ScheduledOperationType_SHUTDOWN_HOST         ScheduledOperationType = 7
+	ScheduledOperationType_SEND_DYNAMIC_IMPULSE  ScheduledOperationType = 8
 )
 
 type ScheduledTriggerType int32
@@ -21,6 +25,7 @@ const (
 	ScheduledTriggerType_UNKNOWN            ScheduledTriggerType = 0
 	ScheduledTriggerType_TIME               ScheduledTriggerType = 1
 	ScheduledTriggerType_SESSION_USER_COUNT ScheduledTriggerType = 2
+	ScheduledTriggerType_CRON               ScheduledTriggerType = 3
 )
 
 type ScheduledOperationStatus int32

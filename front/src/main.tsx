@@ -1,6 +1,11 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router";
+import {
+  createBrowserRouter,
+  Navigate,
+  RouterProvider,
+  useLocation,
+} from "react-router";
 import "./index.css";
 import "./libs/i18n";
 import App from "./App";
@@ -11,8 +16,8 @@ import RegisterPage from "./pages/register";
 import Sessions from "./pages/sessions";
 import SessionDetail from "./pages/sessions/detail";
 import SessionNew from "./pages/sessions/new";
-import ScheduledOperationsIndex from "./pages/sessions/scheduled";
-import ScheduledOperationNew from "./pages/sessions/scheduled/new";
+import ScheduledOperationsIndex from "./pages/scheduled";
+import ScheduledOperationNew from "./pages/scheduled/new";
 import AsyncJobsIndex from "./pages/asyncJobs";
 import Hosts from "./pages/hosts";
 import HostDetail from "./pages/hosts/detail";
@@ -24,6 +29,17 @@ import AdminIndex from "./pages/admin";
 import AdminGroupsPage from "./pages/admin/groups";
 import AdminRolesPage from "./pages/admin/roles";
 import AdminUsersPage from "./pages/admin/users";
+
+// 旧 URL (/sessions/scheduled/...) のブックマーク向けに /scheduled/... へ転送する.
+function RedirectFromSessionsScheduled() {
+  const location = useLocation();
+  return (
+    <Navigate
+      replace
+      to={location.pathname.replace(/^\/sessions/, "") + location.search}
+    />
+  );
+}
 
 const router = createBrowserRouter([
   {
@@ -52,24 +68,28 @@ const router = createBrowserRouter([
                 handle: { titleKey: "routes.sessionNew" },
               },
               {
-                path: "scheduled",
-                children: [
-                  {
-                    index: true,
-                    Component: ScheduledOperationsIndex,
-                    handle: { titleKey: "routes.scheduledOps" },
-                  },
-                  {
-                    path: "new",
-                    Component: ScheduledOperationNew,
-                    handle: { titleKey: "routes.scheduledOpNew" },
-                  },
-                ],
+                path: "scheduled/*",
+                Component: RedirectFromSessionsScheduled,
               },
               {
                 path: ":id",
                 Component: SessionDetail,
                 handle: { titleKey: "routes.sessionDetail" },
+              },
+            ],
+          },
+          {
+            path: "scheduled",
+            children: [
+              {
+                index: true,
+                Component: ScheduledOperationsIndex,
+                handle: { titleKey: "routes.scheduledOps" },
+              },
+              {
+                path: "new",
+                Component: ScheduledOperationNew,
+                handle: { titleKey: "routes.scheduledOpNew" },
               },
             ],
           },

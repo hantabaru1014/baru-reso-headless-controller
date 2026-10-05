@@ -515,7 +515,62 @@ func (x SessionUserCountTrigger_Comparator) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SessionUserCountTrigger_Comparator.Descriptor instead.
 func (SessionUserCountTrigger_Comparator) EnumDescriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{126, 0}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{127, 0}
+}
+
+type CronTrigger_Frequency int32
+
+const (
+	CronTrigger_FREQUENCY_UNSPECIFIED CronTrigger_Frequency = 0
+	CronTrigger_FREQUENCY_DAILY       CronTrigger_Frequency = 1
+	CronTrigger_FREQUENCY_WEEKLY      CronTrigger_Frequency = 2
+	CronTrigger_FREQUENCY_MONTHLY     CronTrigger_Frequency = 3
+	CronTrigger_FREQUENCY_YEARLY      CronTrigger_Frequency = 4
+)
+
+// Enum value maps for CronTrigger_Frequency.
+var (
+	CronTrigger_Frequency_name = map[int32]string{
+		0: "FREQUENCY_UNSPECIFIED",
+		1: "FREQUENCY_DAILY",
+		2: "FREQUENCY_WEEKLY",
+		3: "FREQUENCY_MONTHLY",
+		4: "FREQUENCY_YEARLY",
+	}
+	CronTrigger_Frequency_value = map[string]int32{
+		"FREQUENCY_UNSPECIFIED": 0,
+		"FREQUENCY_DAILY":       1,
+		"FREQUENCY_WEEKLY":      2,
+		"FREQUENCY_MONTHLY":     3,
+		"FREQUENCY_YEARLY":      4,
+	}
+)
+
+func (x CronTrigger_Frequency) Enum() *CronTrigger_Frequency {
+	p := new(CronTrigger_Frequency)
+	*p = x
+	return p
+}
+
+func (x CronTrigger_Frequency) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (CronTrigger_Frequency) Descriptor() protoreflect.EnumDescriptor {
+	return file_hdlctrl_v1_controller_proto_enumTypes[9].Descriptor()
+}
+
+func (CronTrigger_Frequency) Type() protoreflect.EnumType {
+	return &file_hdlctrl_v1_controller_proto_enumTypes[9]
+}
+
+func (x CronTrigger_Frequency) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use CronTrigger_Frequency.Descriptor instead.
+func (CronTrigger_Frequency) EnumDescriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{128, 0}
 }
 
 type RefetchHeadlessAccountInfoRequest struct {
@@ -7341,6 +7396,10 @@ type ScheduledOperation struct {
 	//	*ScheduledOperation_StopSession
 	//	*ScheduledOperation_UpdateParameters
 	//	*ScheduledOperation_UpdateExtraSettings
+	//	*ScheduledOperation_StartHost
+	//	*ScheduledOperation_RestartHost
+	//	*ScheduledOperation_ShutdownHost
+	//	*ScheduledOperation_SendDynamicImpulse
 	Operation     isScheduledOperation_Operation `protobuf_oneof:"operation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -7419,6 +7478,42 @@ func (x *ScheduledOperation) GetUpdateExtraSettings() *UpdateSessionExtraSetting
 	return nil
 }
 
+func (x *ScheduledOperation) GetStartHost() *ScheduledStartHostOperation {
+	if x != nil {
+		if x, ok := x.Operation.(*ScheduledOperation_StartHost); ok {
+			return x.StartHost
+		}
+	}
+	return nil
+}
+
+func (x *ScheduledOperation) GetRestartHost() *RestartHeadlessHostRequest {
+	if x != nil {
+		if x, ok := x.Operation.(*ScheduledOperation_RestartHost); ok {
+			return x.RestartHost
+		}
+	}
+	return nil
+}
+
+func (x *ScheduledOperation) GetShutdownHost() *ShutdownHeadlessHostRequest {
+	if x != nil {
+		if x, ok := x.Operation.(*ScheduledOperation_ShutdownHost); ok {
+			return x.ShutdownHost
+		}
+	}
+	return nil
+}
+
+func (x *ScheduledOperation) GetSendDynamicImpulse() *SendDynamicImpulseRequest {
+	if x != nil {
+		if x, ok := x.Operation.(*ScheduledOperation_SendDynamicImpulse); ok {
+			return x.SendDynamicImpulse
+		}
+	}
+	return nil
+}
+
 type isScheduledOperation_Operation interface {
 	isScheduledOperation_Operation()
 }
@@ -7439,6 +7534,25 @@ type ScheduledOperation_UpdateExtraSettings struct {
 	UpdateExtraSettings *UpdateSessionExtraSettingsRequest `protobuf:"bytes,4,opt,name=update_extra_settings,json=updateExtraSettings,proto3,oneof"`
 }
 
+type ScheduledOperation_StartHost struct {
+	StartHost *ScheduledStartHostOperation `protobuf:"bytes,5,opt,name=start_host,json=startHost,proto3,oneof"`
+}
+
+type ScheduledOperation_RestartHost struct {
+	// 実行時に非同期 job (RESTART_HOST) として投入する. 停止中のホストなら起動になる.
+	RestartHost *RestartHeadlessHostRequest `protobuf:"bytes,6,opt,name=restart_host,json=restartHost,proto3,oneof"`
+}
+
+type ScheduledOperation_ShutdownHost struct {
+	// 実行時に非同期 job (SHUTDOWN_HOST) として投入する.
+	ShutdownHost *ShutdownHeadlessHostRequest `protobuf:"bytes,7,opt,name=shutdown_host,json=shutdownHost,proto3,oneof"`
+}
+
+type ScheduledOperation_SendDynamicImpulse struct {
+	// parameters.session_id のセッションに送出する. host_id は実行時にセッションから解決するので不要.
+	SendDynamicImpulse *SendDynamicImpulseRequest `protobuf:"bytes,8,opt,name=send_dynamic_impulse,json=sendDynamicImpulse,proto3,oneof"`
+}
+
 func (*ScheduledOperation_StartSession) isScheduledOperation_Operation() {}
 
 func (*ScheduledOperation_StopSession) isScheduledOperation_Operation() {}
@@ -7447,6 +7561,69 @@ func (*ScheduledOperation_UpdateParameters) isScheduledOperation_Operation() {}
 
 func (*ScheduledOperation_UpdateExtraSettings) isScheduledOperation_Operation() {}
 
+func (*ScheduledOperation_StartHost) isScheduledOperation_Operation() {}
+
+func (*ScheduledOperation_RestartHost) isScheduledOperation_Operation() {}
+
+func (*ScheduledOperation_ShutdownHost) isScheduledOperation_Operation() {}
+
+func (*ScheduledOperation_SendDynamicImpulse) isScheduledOperation_Operation() {}
+
+// 停止中 (EXITED / CRASHED) のホストを起動する. 実行時に停止中でなければ何もしない.
+// 起動は非同期 job (RESTART_HOST) として投入し、再起動と同じく最新版のイメージで起動する.
+type ScheduledStartHostOperation struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	HostId string                 `protobuf:"bytes,1,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
+	// 停止時に開いていたワールドを復元する.
+	WithWorldRestart bool `protobuf:"varint,2,opt,name=with_world_restart,json=withWorldRestart,proto3" json:"with_world_restart,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ScheduledStartHostOperation) Reset() {
+	*x = ScheduledStartHostOperation{}
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[124]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ScheduledStartHostOperation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScheduledStartHostOperation) ProtoMessage() {}
+
+func (x *ScheduledStartHostOperation) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[124]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScheduledStartHostOperation.ProtoReflect.Descriptor instead.
+func (*ScheduledStartHostOperation) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{124}
+}
+
+func (x *ScheduledStartHostOperation) GetHostId() string {
+	if x != nil {
+		return x.HostId
+	}
+	return ""
+}
+
+func (x *ScheduledStartHostOperation) GetWithWorldRestart() bool {
+	if x != nil {
+		return x.WithWorldRestart
+	}
+	return false
+}
+
 // 発火条件.
 type ScheduledTrigger struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -7454,6 +7631,7 @@ type ScheduledTrigger struct {
 	//
 	//	*ScheduledTrigger_Time
 	//	*ScheduledTrigger_SessionUserCount
+	//	*ScheduledTrigger_Cron
 	Trigger       isScheduledTrigger_Trigger `protobuf_oneof:"trigger"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -7461,7 +7639,7 @@ type ScheduledTrigger struct {
 
 func (x *ScheduledTrigger) Reset() {
 	*x = ScheduledTrigger{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[124]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[125]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7473,7 +7651,7 @@ func (x *ScheduledTrigger) String() string {
 func (*ScheduledTrigger) ProtoMessage() {}
 
 func (x *ScheduledTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[124]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[125]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7486,7 +7664,7 @@ func (x *ScheduledTrigger) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduledTrigger.ProtoReflect.Descriptor instead.
 func (*ScheduledTrigger) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{124}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{125}
 }
 
 func (x *ScheduledTrigger) GetTrigger() isScheduledTrigger_Trigger {
@@ -7514,6 +7692,15 @@ func (x *ScheduledTrigger) GetSessionUserCount() *SessionUserCountTrigger {
 	return nil
 }
 
+func (x *ScheduledTrigger) GetCron() *CronTrigger {
+	if x != nil {
+		if x, ok := x.Trigger.(*ScheduledTrigger_Cron); ok {
+			return x.Cron
+		}
+	}
+	return nil
+}
+
 type isScheduledTrigger_Trigger interface {
 	isScheduledTrigger_Trigger()
 }
@@ -7526,9 +7713,15 @@ type ScheduledTrigger_SessionUserCount struct {
 	SessionUserCount *SessionUserCountTrigger `protobuf:"bytes,2,opt,name=session_user_count,json=sessionUserCount,proto3,oneof"`
 }
 
+type ScheduledTrigger_Cron struct {
+	Cron *CronTrigger `protobuf:"bytes,3,opt,name=cron,proto3,oneof"`
+}
+
 func (*ScheduledTrigger_Time) isScheduledTrigger_Trigger() {}
 
 func (*ScheduledTrigger_SessionUserCount) isScheduledTrigger_Trigger() {}
+
+func (*ScheduledTrigger_Cron) isScheduledTrigger_Trigger() {}
 
 type TimeTrigger struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -7539,7 +7732,7 @@ type TimeTrigger struct {
 
 func (x *TimeTrigger) Reset() {
 	*x = TimeTrigger{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[125]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[126]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7551,7 +7744,7 @@ func (x *TimeTrigger) String() string {
 func (*TimeTrigger) ProtoMessage() {}
 
 func (x *TimeTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[125]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[126]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7564,7 +7757,7 @@ func (x *TimeTrigger) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TimeTrigger.ProtoReflect.Descriptor instead.
 func (*TimeTrigger) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{125}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{126}
 }
 
 func (x *TimeTrigger) GetScheduledAt() *timestamppb.Timestamp {
@@ -7588,7 +7781,7 @@ type SessionUserCountTrigger struct {
 
 func (x *SessionUserCountTrigger) Reset() {
 	*x = SessionUserCountTrigger{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[126]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[127]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7600,7 +7793,7 @@ func (x *SessionUserCountTrigger) String() string {
 func (*SessionUserCountTrigger) ProtoMessage() {}
 
 func (x *SessionUserCountTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[126]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[127]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7613,7 +7806,7 @@ func (x *SessionUserCountTrigger) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionUserCountTrigger.ProtoReflect.Descriptor instead.
 func (*SessionUserCountTrigger) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{126}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{127}
 }
 
 func (x *SessionUserCountTrigger) GetSessionId() string {
@@ -7637,6 +7830,106 @@ func (x *SessionUserCountTrigger) GetThreshold() int32 {
 	return 0
 }
 
+// 日次・週次・月次・年次で繰り返し発火するトリガー.
+// 実行後 (成否を問わず) 次回の発火時刻で PENDING に戻る. キャンセルするまで繰り返す.
+// 指定日が存在しない月 (例: 31 日, 2/29) はスキップする.
+type CronTrigger struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Frequency CronTrigger_Frequency  `protobuf:"varint,1,opt,name=frequency,proto3,enum=hdlctrl.v1.CronTrigger_Frequency" json:"frequency,omitempty"`
+	// 時刻 (timezone 基準). hour: 0-23, minute: 0-59.
+	Hour   int32 `protobuf:"varint,2,opt,name=hour,proto3" json:"hour,omitempty"`
+	Minute int32 `protobuf:"varint,3,opt,name=minute,proto3" json:"minute,omitempty"`
+	// WEEKLY: 発火する曜日 (0=日曜 ... 6=土曜). 1 つ以上必須.
+	Weekdays []int32 `protobuf:"varint,4,rep,packed,name=weekdays,proto3" json:"weekdays,omitempty"`
+	// MONTHLY / YEARLY: 日 (1-31).
+	DayOfMonth int32 `protobuf:"varint,5,opt,name=day_of_month,json=dayOfMonth,proto3" json:"day_of_month,omitempty"`
+	// YEARLY: 月 (1-12).
+	Month int32 `protobuf:"varint,6,opt,name=month,proto3" json:"month,omitempty"`
+	// IANA タイムゾーン名 (例: Asia/Tokyo). 未指定なら UTC.
+	Timezone      string `protobuf:"bytes,7,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CronTrigger) Reset() {
+	*x = CronTrigger{}
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[128]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CronTrigger) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CronTrigger) ProtoMessage() {}
+
+func (x *CronTrigger) ProtoReflect() protoreflect.Message {
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[128]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CronTrigger.ProtoReflect.Descriptor instead.
+func (*CronTrigger) Descriptor() ([]byte, []int) {
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{128}
+}
+
+func (x *CronTrigger) GetFrequency() CronTrigger_Frequency {
+	if x != nil {
+		return x.Frequency
+	}
+	return CronTrigger_FREQUENCY_UNSPECIFIED
+}
+
+func (x *CronTrigger) GetHour() int32 {
+	if x != nil {
+		return x.Hour
+	}
+	return 0
+}
+
+func (x *CronTrigger) GetMinute() int32 {
+	if x != nil {
+		return x.Minute
+	}
+	return 0
+}
+
+func (x *CronTrigger) GetWeekdays() []int32 {
+	if x != nil {
+		return x.Weekdays
+	}
+	return nil
+}
+
+func (x *CronTrigger) GetDayOfMonth() int32 {
+	if x != nil {
+		return x.DayOfMonth
+	}
+	return 0
+}
+
+func (x *CronTrigger) GetMonth() int32 {
+	if x != nil {
+		return x.Month
+	}
+	return 0
+}
+
+func (x *CronTrigger) GetTimezone() string {
+	if x != nil {
+		return x.Timezone
+	}
+	return ""
+}
+
 type ScheduledSessionOperation struct {
 	state         protoimpl.MessageState   `protogen:"open.v1"`
 	Id            string                   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -7657,7 +7950,7 @@ type ScheduledSessionOperation struct {
 
 func (x *ScheduledSessionOperation) Reset() {
 	*x = ScheduledSessionOperation{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[127]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[129]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7669,7 +7962,7 @@ func (x *ScheduledSessionOperation) String() string {
 func (*ScheduledSessionOperation) ProtoMessage() {}
 
 func (x *ScheduledSessionOperation) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[127]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[129]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7682,7 +7975,7 @@ func (x *ScheduledSessionOperation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduledSessionOperation.ProtoReflect.Descriptor instead.
 func (*ScheduledSessionOperation) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{127}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{129}
 }
 
 func (x *ScheduledSessionOperation) GetId() string {
@@ -7779,7 +8072,7 @@ type CreateScheduledSessionOperationRequest struct {
 
 func (x *CreateScheduledSessionOperationRequest) Reset() {
 	*x = CreateScheduledSessionOperationRequest{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[128]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[130]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7791,7 +8084,7 @@ func (x *CreateScheduledSessionOperationRequest) String() string {
 func (*CreateScheduledSessionOperationRequest) ProtoMessage() {}
 
 func (x *CreateScheduledSessionOperationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[128]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[130]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7804,7 +8097,7 @@ func (x *CreateScheduledSessionOperationRequest) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use CreateScheduledSessionOperationRequest.ProtoReflect.Descriptor instead.
 func (*CreateScheduledSessionOperationRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{128}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{130}
 }
 
 func (x *CreateScheduledSessionOperationRequest) GetOperation() *ScheduledOperation {
@@ -7830,7 +8123,7 @@ type CreateScheduledSessionOperationResponse struct {
 
 func (x *CreateScheduledSessionOperationResponse) Reset() {
 	*x = CreateScheduledSessionOperationResponse{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[129]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[131]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7842,7 +8135,7 @@ func (x *CreateScheduledSessionOperationResponse) String() string {
 func (*CreateScheduledSessionOperationResponse) ProtoMessage() {}
 
 func (x *CreateScheduledSessionOperationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[129]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[131]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7855,7 +8148,7 @@ func (x *CreateScheduledSessionOperationResponse) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use CreateScheduledSessionOperationResponse.ProtoReflect.Descriptor instead.
 func (*CreateScheduledSessionOperationResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{129}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{131}
 }
 
 func (x *CreateScheduledSessionOperationResponse) GetScheduledOperation() *ScheduledSessionOperation {
@@ -7881,7 +8174,7 @@ type ListScheduledSessionOperationsRequest struct {
 
 func (x *ListScheduledSessionOperationsRequest) Reset() {
 	*x = ListScheduledSessionOperationsRequest{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[130]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[132]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7893,7 +8186,7 @@ func (x *ListScheduledSessionOperationsRequest) String() string {
 func (*ListScheduledSessionOperationsRequest) ProtoMessage() {}
 
 func (x *ListScheduledSessionOperationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[130]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[132]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7906,7 +8199,7 @@ func (x *ListScheduledSessionOperationsRequest) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use ListScheduledSessionOperationsRequest.ProtoReflect.Descriptor instead.
 func (*ListScheduledSessionOperationsRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{130}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{132}
 }
 
 func (x *ListScheduledSessionOperationsRequest) GetSessionId() string {
@@ -7954,7 +8247,7 @@ type ListScheduledSessionOperationsResponse struct {
 
 func (x *ListScheduledSessionOperationsResponse) Reset() {
 	*x = ListScheduledSessionOperationsResponse{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[131]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[133]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7966,7 +8259,7 @@ func (x *ListScheduledSessionOperationsResponse) String() string {
 func (*ListScheduledSessionOperationsResponse) ProtoMessage() {}
 
 func (x *ListScheduledSessionOperationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[131]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[133]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7979,7 +8272,7 @@ func (x *ListScheduledSessionOperationsResponse) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use ListScheduledSessionOperationsResponse.ProtoReflect.Descriptor instead.
 func (*ListScheduledSessionOperationsResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{131}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{133}
 }
 
 func (x *ListScheduledSessionOperationsResponse) GetScheduledOperations() []*ScheduledSessionOperation {
@@ -8005,7 +8298,7 @@ type CancelScheduledSessionOperationRequest struct {
 
 func (x *CancelScheduledSessionOperationRequest) Reset() {
 	*x = CancelScheduledSessionOperationRequest{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[132]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[134]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8017,7 +8310,7 @@ func (x *CancelScheduledSessionOperationRequest) String() string {
 func (*CancelScheduledSessionOperationRequest) ProtoMessage() {}
 
 func (x *CancelScheduledSessionOperationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[132]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[134]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8030,7 +8323,7 @@ func (x *CancelScheduledSessionOperationRequest) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use CancelScheduledSessionOperationRequest.ProtoReflect.Descriptor instead.
 func (*CancelScheduledSessionOperationRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{132}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{134}
 }
 
 func (x *CancelScheduledSessionOperationRequest) GetId() string {
@@ -8048,7 +8341,7 @@ type CancelScheduledSessionOperationResponse struct {
 
 func (x *CancelScheduledSessionOperationResponse) Reset() {
 	*x = CancelScheduledSessionOperationResponse{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[133]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[135]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8060,7 +8353,7 @@ func (x *CancelScheduledSessionOperationResponse) String() string {
 func (*CancelScheduledSessionOperationResponse) ProtoMessage() {}
 
 func (x *CancelScheduledSessionOperationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[133]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[135]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8073,7 +8366,7 @@ func (x *CancelScheduledSessionOperationResponse) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use CancelScheduledSessionOperationResponse.ProtoReflect.Descriptor instead.
 func (*CancelScheduledSessionOperationResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{133}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{135}
 }
 
 type AsyncJob struct {
@@ -8101,7 +8394,7 @@ type AsyncJob struct {
 
 func (x *AsyncJob) Reset() {
 	*x = AsyncJob{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[134]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[136]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8113,7 +8406,7 @@ func (x *AsyncJob) String() string {
 func (*AsyncJob) ProtoMessage() {}
 
 func (x *AsyncJob) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[134]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[136]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8126,7 +8419,7 @@ func (x *AsyncJob) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AsyncJob.ProtoReflect.Descriptor instead.
 func (*AsyncJob) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{134}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{136}
 }
 
 func (x *AsyncJob) GetId() string {
@@ -8220,7 +8513,7 @@ type ListAsyncJobsRequest struct {
 
 func (x *ListAsyncJobsRequest) Reset() {
 	*x = ListAsyncJobsRequest{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[135]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[137]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8232,7 +8525,7 @@ func (x *ListAsyncJobsRequest) String() string {
 func (*ListAsyncJobsRequest) ProtoMessage() {}
 
 func (x *ListAsyncJobsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[135]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[137]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8245,7 +8538,7 @@ func (x *ListAsyncJobsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAsyncJobsRequest.ProtoReflect.Descriptor instead.
 func (*ListAsyncJobsRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{135}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{137}
 }
 
 func (x *ListAsyncJobsRequest) GetStatus() AsyncJobStatus {
@@ -8286,7 +8579,7 @@ type ListAsyncJobsResponse struct {
 
 func (x *ListAsyncJobsResponse) Reset() {
 	*x = ListAsyncJobsResponse{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[136]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[138]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8298,7 +8591,7 @@ func (x *ListAsyncJobsResponse) String() string {
 func (*ListAsyncJobsResponse) ProtoMessage() {}
 
 func (x *ListAsyncJobsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[136]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[138]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8311,7 +8604,7 @@ func (x *ListAsyncJobsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAsyncJobsResponse.ProtoReflect.Descriptor instead.
 func (*ListAsyncJobsResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{136}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{138}
 }
 
 func (x *ListAsyncJobsResponse) GetJobs() []*AsyncJob {
@@ -8337,7 +8630,7 @@ type GetAsyncJobRequest struct {
 
 func (x *GetAsyncJobRequest) Reset() {
 	*x = GetAsyncJobRequest{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[137]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[139]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8349,7 +8642,7 @@ func (x *GetAsyncJobRequest) String() string {
 func (*GetAsyncJobRequest) ProtoMessage() {}
 
 func (x *GetAsyncJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[137]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[139]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8362,7 +8655,7 @@ func (x *GetAsyncJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAsyncJobRequest.ProtoReflect.Descriptor instead.
 func (*GetAsyncJobRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{137}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{139}
 }
 
 func (x *GetAsyncJobRequest) GetId() string {
@@ -8384,7 +8677,7 @@ type GetAsyncJobResponse struct {
 
 func (x *GetAsyncJobResponse) Reset() {
 	*x = GetAsyncJobResponse{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[138]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[140]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8396,7 +8689,7 @@ func (x *GetAsyncJobResponse) String() string {
 func (*GetAsyncJobResponse) ProtoMessage() {}
 
 func (x *GetAsyncJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[138]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[140]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8409,7 +8702,7 @@ func (x *GetAsyncJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAsyncJobResponse.ProtoReflect.Descriptor instead.
 func (*GetAsyncJobResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{138}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{140}
 }
 
 func (x *GetAsyncJobResponse) GetJob() *AsyncJob {
@@ -8438,7 +8731,7 @@ type HeadlessAccountRef struct {
 
 func (x *HeadlessAccountRef) Reset() {
 	*x = HeadlessAccountRef{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[139]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[141]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8450,7 +8743,7 @@ func (x *HeadlessAccountRef) String() string {
 func (*HeadlessAccountRef) ProtoMessage() {}
 
 func (x *HeadlessAccountRef) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[139]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[141]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8463,7 +8756,7 @@ func (x *HeadlessAccountRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeadlessAccountRef.ProtoReflect.Descriptor instead.
 func (*HeadlessAccountRef) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{139}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{141}
 }
 
 func (x *HeadlessAccountRef) GetGroupId() string {
@@ -8507,7 +8800,7 @@ type TransferResourcesRequest struct {
 
 func (x *TransferResourcesRequest) Reset() {
 	*x = TransferResourcesRequest{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[140]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[142]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8519,7 +8812,7 @@ func (x *TransferResourcesRequest) String() string {
 func (*TransferResourcesRequest) ProtoMessage() {}
 
 func (x *TransferResourcesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[140]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[142]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8532,7 +8825,7 @@ func (x *TransferResourcesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransferResourcesRequest.ProtoReflect.Descriptor instead.
 func (*TransferResourcesRequest) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{140}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{142}
 }
 
 func (x *TransferResourcesRequest) GetResource() isTransferResourcesRequest_Resource {
@@ -8619,7 +8912,7 @@ type TransferResourcesResponse struct {
 
 func (x *TransferResourcesResponse) Reset() {
 	*x = TransferResourcesResponse{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[141]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[143]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8631,7 +8924,7 @@ func (x *TransferResourcesResponse) String() string {
 func (*TransferResourcesResponse) ProtoMessage() {}
 
 func (x *TransferResourcesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[141]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[143]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8644,7 +8937,7 @@ func (x *TransferResourcesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransferResourcesResponse.ProtoReflect.Descriptor instead.
 func (*TransferResourcesResponse) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{141}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{143}
 }
 
 func (x *TransferResourcesResponse) GetSourceGroupId() string {
@@ -8695,7 +8988,7 @@ type ListHeadlessHostInstancesResponse_Instance struct {
 
 func (x *ListHeadlessHostInstancesResponse_Instance) Reset() {
 	*x = ListHeadlessHostInstancesResponse_Instance{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[142]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[144]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8707,7 +9000,7 @@ func (x *ListHeadlessHostInstancesResponse_Instance) String() string {
 func (*ListHeadlessHostInstancesResponse_Instance) ProtoMessage() {}
 
 func (x *ListHeadlessHostInstancesResponse_Instance) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[142]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[144]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8770,7 +9063,7 @@ type ListHeadlessHostImageTagsResponse_ContainerImage struct {
 
 func (x *ListHeadlessHostImageTagsResponse_ContainerImage) Reset() {
 	*x = ListHeadlessHostImageTagsResponse_ContainerImage{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[143]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[145]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8782,7 +9075,7 @@ func (x *ListHeadlessHostImageTagsResponse_ContainerImage) String() string {
 func (*ListHeadlessHostImageTagsResponse_ContainerImage) ProtoMessage() {}
 
 func (x *ListHeadlessHostImageTagsResponse_ContainerImage) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[143]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[145]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8838,7 +9131,7 @@ type GetHeadlessHostLogsResponse_Log struct {
 
 func (x *GetHeadlessHostLogsResponse_Log) Reset() {
 	*x = GetHeadlessHostLogsResponse_Log{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[144]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[146]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8850,7 +9143,7 @@ func (x *GetHeadlessHostLogsResponse_Log) String() string {
 func (*GetHeadlessHostLogsResponse_Log) ProtoMessage() {}
 
 func (x *GetHeadlessHostLogsResponse_Log) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[144]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[146]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8909,7 +9202,7 @@ type SearchWorldsResponse_WorldRecord struct {
 
 func (x *SearchWorldsResponse_WorldRecord) Reset() {
 	*x = SearchWorldsResponse_WorldRecord{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[145]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[147]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8921,7 +9214,7 @@ func (x *SearchWorldsResponse_WorldRecord) String() string {
 func (*SearchWorldsResponse_WorldRecord) ProtoMessage() {}
 
 func (x *SearchWorldsResponse_WorldRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[145]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[147]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9000,7 +9293,7 @@ type SearchSessionsRequest_SearchParameters struct {
 
 func (x *SearchSessionsRequest_SearchParameters) Reset() {
 	*x = SearchSessionsRequest_SearchParameters{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[146]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[148]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9012,7 +9305,7 @@ func (x *SearchSessionsRequest_SearchParameters) String() string {
 func (*SearchSessionsRequest_SearchParameters) ProtoMessage() {}
 
 func (x *SearchSessionsRequest_SearchParameters) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[146]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[148]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9061,7 +9354,7 @@ type TransferResourcesResponse_Account struct {
 
 func (x *TransferResourcesResponse_Account) Reset() {
 	*x = TransferResourcesResponse_Account{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[147]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[149]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9073,7 +9366,7 @@ func (x *TransferResourcesResponse_Account) String() string {
 func (*TransferResourcesResponse_Account) ProtoMessage() {}
 
 func (x *TransferResourcesResponse_Account) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[147]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[149]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9086,7 +9379,7 @@ func (x *TransferResourcesResponse_Account) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use TransferResourcesResponse_Account.ProtoReflect.Descriptor instead.
 func (*TransferResourcesResponse_Account) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{141, 0}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{143, 0}
 }
 
 func (x *TransferResourcesResponse_Account) GetUserId() string {
@@ -9120,7 +9413,7 @@ type TransferResourcesResponse_Host struct {
 
 func (x *TransferResourcesResponse_Host) Reset() {
 	*x = TransferResourcesResponse_Host{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[148]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[150]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9132,7 +9425,7 @@ func (x *TransferResourcesResponse_Host) String() string {
 func (*TransferResourcesResponse_Host) ProtoMessage() {}
 
 func (x *TransferResourcesResponse_Host) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[148]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[150]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9145,7 +9438,7 @@ func (x *TransferResourcesResponse_Host) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransferResourcesResponse_Host.ProtoReflect.Descriptor instead.
 func (*TransferResourcesResponse_Host) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{141, 1}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{143, 1}
 }
 
 func (x *TransferResourcesResponse_Host) GetId() string {
@@ -9172,7 +9465,7 @@ type TransferResourcesResponse_Session struct {
 
 func (x *TransferResourcesResponse_Session) Reset() {
 	*x = TransferResourcesResponse_Session{}
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[149]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[151]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9184,7 +9477,7 @@ func (x *TransferResourcesResponse_Session) String() string {
 func (*TransferResourcesResponse_Session) ProtoMessage() {}
 
 func (x *TransferResourcesResponse_Session) ProtoReflect() protoreflect.Message {
-	mi := &file_hdlctrl_v1_controller_proto_msgTypes[149]
+	mi := &file_hdlctrl_v1_controller_proto_msgTypes[151]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9197,7 +9490,7 @@ func (x *TransferResourcesResponse_Session) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use TransferResourcesResponse_Session.ProtoReflect.Descriptor instead.
 func (*TransferResourcesResponse_Session) Descriptor() ([]byte, []int) {
-	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{141, 2}
+	return file_hdlctrl_v1_controller_proto_rawDescGZIP(), []int{143, 2}
 }
 
 func (x *TransferResourcesResponse_Session) GetId() string {
@@ -9773,16 +10066,25 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"\bgroup_id\x18\x04 \x01(\tR\agroupId\x12&\n" +
 	"\x0fcontact_user_id\x18\x02 \x01(\tR\rcontactUserId\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\"\x1c\n" +
-	"\x1aSendContactMessageResponse\"\xec\x02\n" +
+	"\x1aSendContactMessageResponse\"\xae\x05\n" +
 	"\x12ScheduledOperation\x12D\n" +
 	"\rstart_session\x18\x01 \x01(\v2\x1d.hdlctrl.v1.StartWorldRequestH\x00R\fstartSession\x12C\n" +
 	"\fstop_session\x18\x02 \x01(\v2\x1e.hdlctrl.v1.StopSessionRequestH\x00R\vstopSession\x12Y\n" +
 	"\x11update_parameters\x18\x03 \x01(\v2*.hdlctrl.v1.UpdateSessionParametersRequestH\x00R\x10updateParameters\x12c\n" +
-	"\x15update_extra_settings\x18\x04 \x01(\v2-.hdlctrl.v1.UpdateSessionExtraSettingsRequestH\x00R\x13updateExtraSettingsB\v\n" +
-	"\toperation\"\xa1\x01\n" +
+	"\x15update_extra_settings\x18\x04 \x01(\v2-.hdlctrl.v1.UpdateSessionExtraSettingsRequestH\x00R\x13updateExtraSettings\x12H\n" +
+	"\n" +
+	"start_host\x18\x05 \x01(\v2'.hdlctrl.v1.ScheduledStartHostOperationH\x00R\tstartHost\x12K\n" +
+	"\frestart_host\x18\x06 \x01(\v2&.hdlctrl.v1.RestartHeadlessHostRequestH\x00R\vrestartHost\x12N\n" +
+	"\rshutdown_host\x18\a \x01(\v2'.hdlctrl.v1.ShutdownHeadlessHostRequestH\x00R\fshutdownHost\x12Y\n" +
+	"\x14send_dynamic_impulse\x18\b \x01(\v2%.hdlctrl.v1.SendDynamicImpulseRequestH\x00R\x12sendDynamicImpulseB\v\n" +
+	"\toperation\"d\n" +
+	"\x1bScheduledStartHostOperation\x12\x17\n" +
+	"\ahost_id\x18\x01 \x01(\tR\x06hostId\x12,\n" +
+	"\x12with_world_restart\x18\x02 \x01(\bR\x10withWorldRestart\"\xd0\x01\n" +
 	"\x10ScheduledTrigger\x12-\n" +
 	"\x04time\x18\x01 \x01(\v2\x17.hdlctrl.v1.TimeTriggerH\x00R\x04time\x12S\n" +
-	"\x12session_user_count\x18\x02 \x01(\v2#.hdlctrl.v1.SessionUserCountTriggerH\x00R\x10sessionUserCountB\t\n" +
+	"\x12session_user_count\x18\x02 \x01(\v2#.hdlctrl.v1.SessionUserCountTriggerH\x00R\x10sessionUserCount\x12-\n" +
+	"\x04cron\x18\x03 \x01(\v2\x17.hdlctrl.v1.CronTriggerH\x00R\x04cronB\t\n" +
 	"\atrigger\"L\n" +
 	"\vTimeTrigger\x12=\n" +
 	"\fscheduled_at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\vscheduledAt\"\x8f\x02\n" +
@@ -9797,7 +10099,22 @@ const file_hdlctrl_v1_controller_proto_rawDesc = "" +
 	"Comparator\x12\x1a\n" +
 	"\x16COMPARATOR_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18COMPARATOR_LESS_OR_EQUAL\x10\x01\x12\x1f\n" +
-	"\x1bCOMPARATOR_GREATER_OR_EQUAL\x10\x02\"\xa8\x05\n" +
+	"\x1bCOMPARATOR_GREATER_OR_EQUAL\x10\x02\"\xea\x02\n" +
+	"\vCronTrigger\x12?\n" +
+	"\tfrequency\x18\x01 \x01(\x0e2!.hdlctrl.v1.CronTrigger.FrequencyR\tfrequency\x12\x12\n" +
+	"\x04hour\x18\x02 \x01(\x05R\x04hour\x12\x16\n" +
+	"\x06minute\x18\x03 \x01(\x05R\x06minute\x12\x1a\n" +
+	"\bweekdays\x18\x04 \x03(\x05R\bweekdays\x12 \n" +
+	"\fday_of_month\x18\x05 \x01(\x05R\n" +
+	"dayOfMonth\x12\x14\n" +
+	"\x05month\x18\x06 \x01(\x05R\x05month\x12\x1a\n" +
+	"\btimezone\x18\a \x01(\tR\btimezone\"~\n" +
+	"\tFrequency\x12\x19\n" +
+	"\x15FREQUENCY_UNSPECIFIED\x10\x00\x12\x13\n" +
+	"\x0fFREQUENCY_DAILY\x10\x01\x12\x14\n" +
+	"\x10FREQUENCY_WEEKLY\x10\x02\x12\x15\n" +
+	"\x11FREQUENCY_MONTHLY\x10\x03\x12\x14\n" +
+	"\x10FREQUENCY_YEARLY\x10\x04\"\xa8\x05\n" +
 	"\x19ScheduledSessionOperation\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12<\n" +
 	"\toperation\x18\x02 \x01(\v2\x1e.hdlctrl.v1.ScheduledOperationR\toperation\x126\n" +
@@ -10048,8 +10365,8 @@ func file_hdlctrl_v1_controller_proto_rawDescGZIP() []byte {
 	return file_hdlctrl_v1_controller_proto_rawDescData
 }
 
-var file_hdlctrl_v1_controller_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
-var file_hdlctrl_v1_controller_proto_msgTypes = make([]protoimpl.MessageInfo, 150)
+var file_hdlctrl_v1_controller_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
+var file_hdlctrl_v1_controller_proto_msgTypes = make([]protoimpl.MessageInfo, 152)
 var file_hdlctrl_v1_controller_proto_goTypes = []any{
 	(ResoniteVersionBuildStatus)(0),                          // 0: hdlctrl.v1.ResoniteVersionBuildStatus
 	(HeadlessHostStatus)(0),                                  // 1: hdlctrl.v1.HeadlessHostStatus
@@ -10060,413 +10377,422 @@ var file_hdlctrl_v1_controller_proto_goTypes = []any{
 	(AsyncJobStatus)(0),                                      // 6: hdlctrl.v1.AsyncJobStatus
 	(SaveSessionWorldRequest_SaveMode)(0),                    // 7: hdlctrl.v1.SaveSessionWorldRequest.SaveMode
 	(SessionUserCountTrigger_Comparator)(0),                  // 8: hdlctrl.v1.SessionUserCountTrigger.Comparator
-	(*RefetchHeadlessAccountInfoRequest)(nil),                // 9: hdlctrl.v1.RefetchHeadlessAccountInfoRequest
-	(*RefetchHeadlessAccountInfoResponse)(nil),               // 10: hdlctrl.v1.RefetchHeadlessAccountInfoResponse
-	(*UpdateHeadlessAccountIconRequest)(nil),                 // 11: hdlctrl.v1.UpdateHeadlessAccountIconRequest
-	(*UpdateHeadlessAccountIconResponse)(nil),                // 12: hdlctrl.v1.UpdateHeadlessAccountIconResponse
-	(*GetHeadlessAccountStorageInfoRequest)(nil),             // 13: hdlctrl.v1.GetHeadlessAccountStorageInfoRequest
-	(*GetHeadlessAccountStorageInfoResponse)(nil),            // 14: hdlctrl.v1.GetHeadlessAccountStorageInfoResponse
-	(*UpdateHeadlessAccountCredentialsRequest)(nil),          // 15: hdlctrl.v1.UpdateHeadlessAccountCredentialsRequest
-	(*UpdateHeadlessAccountCredentialsResponse)(nil),         // 16: hdlctrl.v1.UpdateHeadlessAccountCredentialsResponse
-	(*DeleteHeadlessAccountRequest)(nil),                     // 17: hdlctrl.v1.DeleteHeadlessAccountRequest
-	(*DeleteHeadlessAccountResponse)(nil),                    // 18: hdlctrl.v1.DeleteHeadlessAccountResponse
-	(*DeleteHeadlessHostRequest)(nil),                        // 19: hdlctrl.v1.DeleteHeadlessHostRequest
-	(*DeleteHeadlessHostResponse)(nil),                       // 20: hdlctrl.v1.DeleteHeadlessHostResponse
-	(*ListHeadlessHostInstancesRequest)(nil),                 // 21: hdlctrl.v1.ListHeadlessHostInstancesRequest
-	(*ListHeadlessHostInstancesResponse)(nil),                // 22: hdlctrl.v1.ListHeadlessHostInstancesResponse
-	(*AllowHostAccessRequest)(nil),                           // 23: hdlctrl.v1.AllowHostAccessRequest
-	(*AllowHostAccessResponse)(nil),                          // 24: hdlctrl.v1.AllowHostAccessResponse
-	(*DenyHostAccessRequest)(nil),                            // 25: hdlctrl.v1.DenyHostAccessRequest
-	(*DenyHostAccessResponse)(nil),                           // 26: hdlctrl.v1.DenyHostAccessResponse
-	(*StartHeadlessHostRequest)(nil),                         // 27: hdlctrl.v1.StartHeadlessHostRequest
-	(*StartHeadlessHostResponse)(nil),                        // 28: hdlctrl.v1.StartHeadlessHostResponse
-	(*CreateHeadlessAccountRequest)(nil),                     // 29: hdlctrl.v1.CreateHeadlessAccountRequest
-	(*CreateHeadlessAccountResponse)(nil),                    // 30: hdlctrl.v1.CreateHeadlessAccountResponse
-	(*RegisterHeadlessAccountRequest)(nil),                   // 31: hdlctrl.v1.RegisterHeadlessAccountRequest
-	(*RegisterHeadlessAccountResponse)(nil),                  // 32: hdlctrl.v1.RegisterHeadlessAccountResponse
-	(*ListHeadlessAccountsRequest)(nil),                      // 33: hdlctrl.v1.ListHeadlessAccountsRequest
-	(*ListHeadlessAccountsResponse)(nil),                     // 34: hdlctrl.v1.ListHeadlessAccountsResponse
-	(*ListHeadlessHostImageTagsRequest)(nil),                 // 35: hdlctrl.v1.ListHeadlessHostImageTagsRequest
-	(*ListHeadlessHostImageTagsResponse)(nil),                // 36: hdlctrl.v1.ListHeadlessHostImageTagsResponse
-	(*ResoniteVersion)(nil),                                  // 37: hdlctrl.v1.ResoniteVersion
-	(*ListResoniteVersionsRequest)(nil),                      // 38: hdlctrl.v1.ListResoniteVersionsRequest
-	(*ListResoniteVersionsResponse)(nil),                     // 39: hdlctrl.v1.ListResoniteVersionsResponse
-	(*BuildResoniteImageRequest)(nil),                        // 40: hdlctrl.v1.BuildResoniteImageRequest
-	(*BuildResoniteImageResponse)(nil),                       // 41: hdlctrl.v1.BuildResoniteImageResponse
-	(*AcceptFriendRequestsRequest)(nil),                      // 42: hdlctrl.v1.AcceptFriendRequestsRequest
-	(*AcceptFriendRequestsResponse)(nil),                     // 43: hdlctrl.v1.AcceptFriendRequestsResponse
-	(*GetFriendRequestsRequest)(nil),                         // 44: hdlctrl.v1.GetFriendRequestsRequest
-	(*GetFriendRequestsResponse)(nil),                        // 45: hdlctrl.v1.GetFriendRequestsResponse
-	(*RestartHeadlessHostRequest)(nil),                       // 46: hdlctrl.v1.RestartHeadlessHostRequest
-	(*RestartHeadlessHostResponse)(nil),                      // 47: hdlctrl.v1.RestartHeadlessHostResponse
-	(*UpdateHeadlessHostSettingsRequest)(nil),                // 48: hdlctrl.v1.UpdateHeadlessHostSettingsRequest
-	(*UpdateHeadlessHostSettingsResponse)(nil),               // 49: hdlctrl.v1.UpdateHeadlessHostSettingsResponse
-	(*ShutdownHeadlessHostRequest)(nil),                      // 50: hdlctrl.v1.ShutdownHeadlessHostRequest
-	(*ShutdownHeadlessHostResponse)(nil),                     // 51: hdlctrl.v1.ShutdownHeadlessHostResponse
-	(*KillHeadlessHostRequest)(nil),                          // 52: hdlctrl.v1.KillHeadlessHostRequest
-	(*KillHeadlessHostResponse)(nil),                         // 53: hdlctrl.v1.KillHeadlessHostResponse
-	(*GetHeadlessHostLogsRequest)(nil),                       // 54: hdlctrl.v1.GetHeadlessHostLogsRequest
-	(*GetHeadlessHostLogsResponse)(nil),                      // 55: hdlctrl.v1.GetHeadlessHostLogsResponse
-	(*SearchHeadlessHostLogsRequest)(nil),                    // 56: hdlctrl.v1.SearchHeadlessHostLogsRequest
-	(*SearchHeadlessHostLogsResponse)(nil),                   // 57: hdlctrl.v1.SearchHeadlessHostLogsResponse
-	(*SearchUserInfoRequest)(nil),                            // 58: hdlctrl.v1.SearchUserInfoRequest
-	(*KickUserRequest)(nil),                                  // 59: hdlctrl.v1.KickUserRequest
-	(*KickUserResponse)(nil),                                 // 60: hdlctrl.v1.KickUserResponse
-	(*BanUserRequest)(nil),                                   // 61: hdlctrl.v1.BanUserRequest
-	(*BanUserResponse)(nil),                                  // 62: hdlctrl.v1.BanUserResponse
-	(*ListBansRequest)(nil),                                  // 63: hdlctrl.v1.ListBansRequest
-	(*ListBansResponse)(nil),                                 // 64: hdlctrl.v1.ListBansResponse
-	(*UnbanUserRequest)(nil),                                 // 65: hdlctrl.v1.UnbanUserRequest
-	(*UnbanUserResponse)(nil),                                // 66: hdlctrl.v1.UnbanUserResponse
-	(*RespawnUserRequest)(nil),                               // 67: hdlctrl.v1.RespawnUserRequest
-	(*RespawnUserResponse)(nil),                              // 68: hdlctrl.v1.RespawnUserResponse
-	(*SpawnItemRequest)(nil),                                 // 69: hdlctrl.v1.SpawnItemRequest
-	(*SpawnItemResponse)(nil),                                // 70: hdlctrl.v1.SpawnItemResponse
-	(*SendDynamicImpulseRequest)(nil),                        // 71: hdlctrl.v1.SendDynamicImpulseRequest
-	(*SendDynamicImpulseResponse)(nil),                       // 72: hdlctrl.v1.SendDynamicImpulseResponse
-	(*SendFriendRequestRequest)(nil),                         // 73: hdlctrl.v1.SendFriendRequestRequest
-	(*SendFriendRequestResponse)(nil),                        // 74: hdlctrl.v1.SendFriendRequestResponse
-	(*RemoveContactRequest)(nil),                             // 75: hdlctrl.v1.RemoveContactRequest
-	(*RemoveContactResponse)(nil),                            // 76: hdlctrl.v1.RemoveContactResponse
-	(*IssueResoniteLinkConnectionRequest)(nil),               // 77: hdlctrl.v1.IssueResoniteLinkConnectionRequest
-	(*IssueResoniteLinkConnectionResponse)(nil),              // 78: hdlctrl.v1.IssueResoniteLinkConnectionResponse
-	(*FetchWorldInfoRequest)(nil),                            // 79: hdlctrl.v1.FetchWorldInfoRequest
-	(*SearchWorldsRequest)(nil),                              // 80: hdlctrl.v1.SearchWorldsRequest
-	(*SearchWorldsResponse)(nil),                             // 81: hdlctrl.v1.SearchWorldsResponse
-	(*GetOwnWorldsRequest)(nil),                              // 82: hdlctrl.v1.GetOwnWorldsRequest
-	(*GetOwnWorldsResponse)(nil),                             // 83: hdlctrl.v1.GetOwnWorldsResponse
-	(*ListHeadlessHostRequest)(nil),                          // 84: hdlctrl.v1.ListHeadlessHostRequest
-	(*ListHeadlessHostResponse)(nil),                         // 85: hdlctrl.v1.ListHeadlessHostResponse
-	(*GetHeadlessHostRequest)(nil),                           // 86: hdlctrl.v1.GetHeadlessHostRequest
-	(*GetHeadlessHostResponse)(nil),                          // 87: hdlctrl.v1.GetHeadlessHostResponse
-	(*AddHeadlessHostRequest)(nil),                           // 88: hdlctrl.v1.AddHeadlessHostRequest
-	(*AddHeadlessHostResponse)(nil),                          // 89: hdlctrl.v1.AddHeadlessHostResponse
-	(*SearchSessionsRequest)(nil),                            // 90: hdlctrl.v1.SearchSessionsRequest
-	(*SearchSessionsResponse)(nil),                           // 91: hdlctrl.v1.SearchSessionsResponse
-	(*GetSessionDetailsRequest)(nil),                         // 92: hdlctrl.v1.GetSessionDetailsRequest
-	(*GetSessionDetailsResponse)(nil),                        // 93: hdlctrl.v1.GetSessionDetailsResponse
-	(*StartWorldRequest)(nil),                                // 94: hdlctrl.v1.StartWorldRequest
-	(*StartWorldResponse)(nil),                               // 95: hdlctrl.v1.StartWorldResponse
-	(*StopSessionRequest)(nil),                               // 96: hdlctrl.v1.StopSessionRequest
-	(*StopSessionResponse)(nil),                              // 97: hdlctrl.v1.StopSessionResponse
-	(*DeleteEndedSessionRequest)(nil),                        // 98: hdlctrl.v1.DeleteEndedSessionRequest
-	(*DeleteEndedSessionResponse)(nil),                       // 99: hdlctrl.v1.DeleteEndedSessionResponse
-	(*SaveSessionWorldRequest)(nil),                          // 100: hdlctrl.v1.SaveSessionWorldRequest
-	(*SaveSessionWorldResponse)(nil),                         // 101: hdlctrl.v1.SaveSessionWorldResponse
-	(*PrepareSessionWorldDownloadRequest)(nil),               // 102: hdlctrl.v1.PrepareSessionWorldDownloadRequest
-	(*PrepareSessionWorldDownloadResponse)(nil),              // 103: hdlctrl.v1.PrepareSessionWorldDownloadResponse
-	(*InviteUserRequest)(nil),                                // 104: hdlctrl.v1.InviteUserRequest
-	(*InviteUserResponse)(nil),                               // 105: hdlctrl.v1.InviteUserResponse
-	(*UpdateUserRoleRequest)(nil),                            // 106: hdlctrl.v1.UpdateUserRoleRequest
-	(*UpdateUserRoleResponse)(nil),                           // 107: hdlctrl.v1.UpdateUserRoleResponse
-	(*UpdateSessionParametersRequest)(nil),                   // 108: hdlctrl.v1.UpdateSessionParametersRequest
-	(*UpdateSessionParametersResponse)(nil),                  // 109: hdlctrl.v1.UpdateSessionParametersResponse
-	(*UpdateSessionExtraSettingsRequest)(nil),                // 110: hdlctrl.v1.UpdateSessionExtraSettingsRequest
-	(*UpdateSessionExtraSettingsResponse)(nil),               // 111: hdlctrl.v1.UpdateSessionExtraSettingsResponse
-	(*ListUsersInSessionRequest)(nil),                        // 112: hdlctrl.v1.ListUsersInSessionRequest
-	(*ListUsersInSessionResponse)(nil),                       // 113: hdlctrl.v1.ListUsersInSessionResponse
-	(*PageRequest)(nil),                                      // 114: hdlctrl.v1.PageRequest
-	(*PageResponse)(nil),                                     // 115: hdlctrl.v1.PageResponse
-	(*HeadlessHostSettings)(nil),                             // 116: hdlctrl.v1.HeadlessHostSettings
-	(*HeadlessHost)(nil),                                     // 117: hdlctrl.v1.HeadlessHost
-	(*Session)(nil),                                          // 118: hdlctrl.v1.Session
-	(*HeadlessAccount)(nil),                                  // 119: hdlctrl.v1.HeadlessAccount
-	(*UserInfo)(nil),                                         // 120: hdlctrl.v1.UserInfo
-	(*GetResoniteUserRequest)(nil),                           // 121: hdlctrl.v1.GetResoniteUserRequest
-	(*GetResoniteUserResponse)(nil),                          // 122: hdlctrl.v1.GetResoniteUserResponse
-	(*SearchResoniteUsersRequest)(nil),                       // 123: hdlctrl.v1.SearchResoniteUsersRequest
-	(*SearchResoniteUsersResponse)(nil),                      // 124: hdlctrl.v1.SearchResoniteUsersResponse
-	(*ListContactsRequest)(nil),                              // 125: hdlctrl.v1.ListContactsRequest
-	(*ListContactsResponse)(nil),                             // 126: hdlctrl.v1.ListContactsResponse
-	(*GetContactMessagesRequest)(nil),                        // 127: hdlctrl.v1.GetContactMessagesRequest
-	(*GetContactMessagesResponse)(nil),                       // 128: hdlctrl.v1.GetContactMessagesResponse
-	(*ContactMessage)(nil),                                   // 129: hdlctrl.v1.ContactMessage
-	(*SendContactMessageRequest)(nil),                        // 130: hdlctrl.v1.SendContactMessageRequest
-	(*SendContactMessageResponse)(nil),                       // 131: hdlctrl.v1.SendContactMessageResponse
-	(*ScheduledOperation)(nil),                               // 132: hdlctrl.v1.ScheduledOperation
-	(*ScheduledTrigger)(nil),                                 // 133: hdlctrl.v1.ScheduledTrigger
-	(*TimeTrigger)(nil),                                      // 134: hdlctrl.v1.TimeTrigger
-	(*SessionUserCountTrigger)(nil),                          // 135: hdlctrl.v1.SessionUserCountTrigger
-	(*ScheduledSessionOperation)(nil),                        // 136: hdlctrl.v1.ScheduledSessionOperation
-	(*CreateScheduledSessionOperationRequest)(nil),           // 137: hdlctrl.v1.CreateScheduledSessionOperationRequest
-	(*CreateScheduledSessionOperationResponse)(nil),          // 138: hdlctrl.v1.CreateScheduledSessionOperationResponse
-	(*ListScheduledSessionOperationsRequest)(nil),            // 139: hdlctrl.v1.ListScheduledSessionOperationsRequest
-	(*ListScheduledSessionOperationsResponse)(nil),           // 140: hdlctrl.v1.ListScheduledSessionOperationsResponse
-	(*CancelScheduledSessionOperationRequest)(nil),           // 141: hdlctrl.v1.CancelScheduledSessionOperationRequest
-	(*CancelScheduledSessionOperationResponse)(nil),          // 142: hdlctrl.v1.CancelScheduledSessionOperationResponse
-	(*AsyncJob)(nil),                                         // 143: hdlctrl.v1.AsyncJob
-	(*ListAsyncJobsRequest)(nil),                             // 144: hdlctrl.v1.ListAsyncJobsRequest
-	(*ListAsyncJobsResponse)(nil),                            // 145: hdlctrl.v1.ListAsyncJobsResponse
-	(*GetAsyncJobRequest)(nil),                               // 146: hdlctrl.v1.GetAsyncJobRequest
-	(*GetAsyncJobResponse)(nil),                              // 147: hdlctrl.v1.GetAsyncJobResponse
-	(*HeadlessAccountRef)(nil),                               // 148: hdlctrl.v1.HeadlessAccountRef
-	(*TransferResourcesRequest)(nil),                         // 149: hdlctrl.v1.TransferResourcesRequest
-	(*TransferResourcesResponse)(nil),                        // 150: hdlctrl.v1.TransferResourcesResponse
-	(*ListHeadlessHostInstancesResponse_Instance)(nil),       // 151: hdlctrl.v1.ListHeadlessHostInstancesResponse.Instance
-	(*ListHeadlessHostImageTagsResponse_ContainerImage)(nil), // 152: hdlctrl.v1.ListHeadlessHostImageTagsResponse.ContainerImage
-	(*GetHeadlessHostLogsResponse_Log)(nil),                  // 153: hdlctrl.v1.GetHeadlessHostLogsResponse.Log
-	(*SearchWorldsResponse_WorldRecord)(nil),                 // 154: hdlctrl.v1.SearchWorldsResponse.WorldRecord
-	(*SearchSessionsRequest_SearchParameters)(nil),           // 155: hdlctrl.v1.SearchSessionsRequest.SearchParameters
-	(*TransferResourcesResponse_Account)(nil),                // 156: hdlctrl.v1.TransferResourcesResponse.Account
-	(*TransferResourcesResponse_Host)(nil),                   // 157: hdlctrl.v1.TransferResourcesResponse.Host
-	(*TransferResourcesResponse_Session)(nil),                // 158: hdlctrl.v1.TransferResourcesResponse.Session
-	(*v1.AllowHostAccessRequest)(nil),                        // 159: headless.v1.AllowHostAccessRequest
-	(*v1.DenyHostAccessRequest)(nil),                         // 160: headless.v1.DenyHostAccessRequest
-	(*v1.StartupConfig)(nil),                                 // 161: headless.v1.StartupConfig
-	(*timestamppb.Timestamp)(nil),                            // 162: google.protobuf.Timestamp
-	(*v1.SearchUserInfoRequest)(nil),                         // 163: headless.v1.SearchUserInfoRequest
-	(*v1.KickUserRequest)(nil),                               // 164: headless.v1.KickUserRequest
-	(*v1.BanUserRequest)(nil),                                // 165: headless.v1.BanUserRequest
-	(*v1.BanEntry)(nil),                                      // 166: headless.v1.BanEntry
-	(*v1.UnbanUserRequest)(nil),                              // 167: headless.v1.UnbanUserRequest
-	(*v1.RespawnUserRequest)(nil),                            // 168: headless.v1.RespawnUserRequest
-	(*v1.SpawnItemRequest)(nil),                              // 169: headless.v1.SpawnItemRequest
-	(*v1.SendDynamicImpulseRequest)(nil),                     // 170: headless.v1.SendDynamicImpulseRequest
-	(*v1.WorldStartupParameters)(nil),                        // 171: headless.v1.WorldStartupParameters
-	(v1.WorldBinaryFormat)(0),                                // 172: headless.v1.WorldBinaryFormat
-	(*v1.UpdateUserRoleRequest)(nil),                         // 173: headless.v1.UpdateUserRoleRequest
-	(*v1.UpdateSessionParametersRequest)(nil),                // 174: headless.v1.UpdateSessionParametersRequest
-	(*v1.UserInSession)(nil),                                 // 175: headless.v1.UserInSession
-	(*v1.AllowedAccessEntry)(nil),                            // 176: headless.v1.AllowedAccessEntry
-	(*v1.Session)(nil),                                       // 177: headless.v1.Session
-	(v1.ContactChatMessageType)(0),                           // 178: headless.v1.ContactChatMessageType
-	(*v1.FetchWorldInfoResponse)(nil),                        // 179: headless.v1.FetchWorldInfoResponse
-	(*v1.SearchUserInfoResponse)(nil),                        // 180: headless.v1.SearchUserInfoResponse
+	(CronTrigger_Frequency)(0),                               // 9: hdlctrl.v1.CronTrigger.Frequency
+	(*RefetchHeadlessAccountInfoRequest)(nil),                // 10: hdlctrl.v1.RefetchHeadlessAccountInfoRequest
+	(*RefetchHeadlessAccountInfoResponse)(nil),               // 11: hdlctrl.v1.RefetchHeadlessAccountInfoResponse
+	(*UpdateHeadlessAccountIconRequest)(nil),                 // 12: hdlctrl.v1.UpdateHeadlessAccountIconRequest
+	(*UpdateHeadlessAccountIconResponse)(nil),                // 13: hdlctrl.v1.UpdateHeadlessAccountIconResponse
+	(*GetHeadlessAccountStorageInfoRequest)(nil),             // 14: hdlctrl.v1.GetHeadlessAccountStorageInfoRequest
+	(*GetHeadlessAccountStorageInfoResponse)(nil),            // 15: hdlctrl.v1.GetHeadlessAccountStorageInfoResponse
+	(*UpdateHeadlessAccountCredentialsRequest)(nil),          // 16: hdlctrl.v1.UpdateHeadlessAccountCredentialsRequest
+	(*UpdateHeadlessAccountCredentialsResponse)(nil),         // 17: hdlctrl.v1.UpdateHeadlessAccountCredentialsResponse
+	(*DeleteHeadlessAccountRequest)(nil),                     // 18: hdlctrl.v1.DeleteHeadlessAccountRequest
+	(*DeleteHeadlessAccountResponse)(nil),                    // 19: hdlctrl.v1.DeleteHeadlessAccountResponse
+	(*DeleteHeadlessHostRequest)(nil),                        // 20: hdlctrl.v1.DeleteHeadlessHostRequest
+	(*DeleteHeadlessHostResponse)(nil),                       // 21: hdlctrl.v1.DeleteHeadlessHostResponse
+	(*ListHeadlessHostInstancesRequest)(nil),                 // 22: hdlctrl.v1.ListHeadlessHostInstancesRequest
+	(*ListHeadlessHostInstancesResponse)(nil),                // 23: hdlctrl.v1.ListHeadlessHostInstancesResponse
+	(*AllowHostAccessRequest)(nil),                           // 24: hdlctrl.v1.AllowHostAccessRequest
+	(*AllowHostAccessResponse)(nil),                          // 25: hdlctrl.v1.AllowHostAccessResponse
+	(*DenyHostAccessRequest)(nil),                            // 26: hdlctrl.v1.DenyHostAccessRequest
+	(*DenyHostAccessResponse)(nil),                           // 27: hdlctrl.v1.DenyHostAccessResponse
+	(*StartHeadlessHostRequest)(nil),                         // 28: hdlctrl.v1.StartHeadlessHostRequest
+	(*StartHeadlessHostResponse)(nil),                        // 29: hdlctrl.v1.StartHeadlessHostResponse
+	(*CreateHeadlessAccountRequest)(nil),                     // 30: hdlctrl.v1.CreateHeadlessAccountRequest
+	(*CreateHeadlessAccountResponse)(nil),                    // 31: hdlctrl.v1.CreateHeadlessAccountResponse
+	(*RegisterHeadlessAccountRequest)(nil),                   // 32: hdlctrl.v1.RegisterHeadlessAccountRequest
+	(*RegisterHeadlessAccountResponse)(nil),                  // 33: hdlctrl.v1.RegisterHeadlessAccountResponse
+	(*ListHeadlessAccountsRequest)(nil),                      // 34: hdlctrl.v1.ListHeadlessAccountsRequest
+	(*ListHeadlessAccountsResponse)(nil),                     // 35: hdlctrl.v1.ListHeadlessAccountsResponse
+	(*ListHeadlessHostImageTagsRequest)(nil),                 // 36: hdlctrl.v1.ListHeadlessHostImageTagsRequest
+	(*ListHeadlessHostImageTagsResponse)(nil),                // 37: hdlctrl.v1.ListHeadlessHostImageTagsResponse
+	(*ResoniteVersion)(nil),                                  // 38: hdlctrl.v1.ResoniteVersion
+	(*ListResoniteVersionsRequest)(nil),                      // 39: hdlctrl.v1.ListResoniteVersionsRequest
+	(*ListResoniteVersionsResponse)(nil),                     // 40: hdlctrl.v1.ListResoniteVersionsResponse
+	(*BuildResoniteImageRequest)(nil),                        // 41: hdlctrl.v1.BuildResoniteImageRequest
+	(*BuildResoniteImageResponse)(nil),                       // 42: hdlctrl.v1.BuildResoniteImageResponse
+	(*AcceptFriendRequestsRequest)(nil),                      // 43: hdlctrl.v1.AcceptFriendRequestsRequest
+	(*AcceptFriendRequestsResponse)(nil),                     // 44: hdlctrl.v1.AcceptFriendRequestsResponse
+	(*GetFriendRequestsRequest)(nil),                         // 45: hdlctrl.v1.GetFriendRequestsRequest
+	(*GetFriendRequestsResponse)(nil),                        // 46: hdlctrl.v1.GetFriendRequestsResponse
+	(*RestartHeadlessHostRequest)(nil),                       // 47: hdlctrl.v1.RestartHeadlessHostRequest
+	(*RestartHeadlessHostResponse)(nil),                      // 48: hdlctrl.v1.RestartHeadlessHostResponse
+	(*UpdateHeadlessHostSettingsRequest)(nil),                // 49: hdlctrl.v1.UpdateHeadlessHostSettingsRequest
+	(*UpdateHeadlessHostSettingsResponse)(nil),               // 50: hdlctrl.v1.UpdateHeadlessHostSettingsResponse
+	(*ShutdownHeadlessHostRequest)(nil),                      // 51: hdlctrl.v1.ShutdownHeadlessHostRequest
+	(*ShutdownHeadlessHostResponse)(nil),                     // 52: hdlctrl.v1.ShutdownHeadlessHostResponse
+	(*KillHeadlessHostRequest)(nil),                          // 53: hdlctrl.v1.KillHeadlessHostRequest
+	(*KillHeadlessHostResponse)(nil),                         // 54: hdlctrl.v1.KillHeadlessHostResponse
+	(*GetHeadlessHostLogsRequest)(nil),                       // 55: hdlctrl.v1.GetHeadlessHostLogsRequest
+	(*GetHeadlessHostLogsResponse)(nil),                      // 56: hdlctrl.v1.GetHeadlessHostLogsResponse
+	(*SearchHeadlessHostLogsRequest)(nil),                    // 57: hdlctrl.v1.SearchHeadlessHostLogsRequest
+	(*SearchHeadlessHostLogsResponse)(nil),                   // 58: hdlctrl.v1.SearchHeadlessHostLogsResponse
+	(*SearchUserInfoRequest)(nil),                            // 59: hdlctrl.v1.SearchUserInfoRequest
+	(*KickUserRequest)(nil),                                  // 60: hdlctrl.v1.KickUserRequest
+	(*KickUserResponse)(nil),                                 // 61: hdlctrl.v1.KickUserResponse
+	(*BanUserRequest)(nil),                                   // 62: hdlctrl.v1.BanUserRequest
+	(*BanUserResponse)(nil),                                  // 63: hdlctrl.v1.BanUserResponse
+	(*ListBansRequest)(nil),                                  // 64: hdlctrl.v1.ListBansRequest
+	(*ListBansResponse)(nil),                                 // 65: hdlctrl.v1.ListBansResponse
+	(*UnbanUserRequest)(nil),                                 // 66: hdlctrl.v1.UnbanUserRequest
+	(*UnbanUserResponse)(nil),                                // 67: hdlctrl.v1.UnbanUserResponse
+	(*RespawnUserRequest)(nil),                               // 68: hdlctrl.v1.RespawnUserRequest
+	(*RespawnUserResponse)(nil),                              // 69: hdlctrl.v1.RespawnUserResponse
+	(*SpawnItemRequest)(nil),                                 // 70: hdlctrl.v1.SpawnItemRequest
+	(*SpawnItemResponse)(nil),                                // 71: hdlctrl.v1.SpawnItemResponse
+	(*SendDynamicImpulseRequest)(nil),                        // 72: hdlctrl.v1.SendDynamicImpulseRequest
+	(*SendDynamicImpulseResponse)(nil),                       // 73: hdlctrl.v1.SendDynamicImpulseResponse
+	(*SendFriendRequestRequest)(nil),                         // 74: hdlctrl.v1.SendFriendRequestRequest
+	(*SendFriendRequestResponse)(nil),                        // 75: hdlctrl.v1.SendFriendRequestResponse
+	(*RemoveContactRequest)(nil),                             // 76: hdlctrl.v1.RemoveContactRequest
+	(*RemoveContactResponse)(nil),                            // 77: hdlctrl.v1.RemoveContactResponse
+	(*IssueResoniteLinkConnectionRequest)(nil),               // 78: hdlctrl.v1.IssueResoniteLinkConnectionRequest
+	(*IssueResoniteLinkConnectionResponse)(nil),              // 79: hdlctrl.v1.IssueResoniteLinkConnectionResponse
+	(*FetchWorldInfoRequest)(nil),                            // 80: hdlctrl.v1.FetchWorldInfoRequest
+	(*SearchWorldsRequest)(nil),                              // 81: hdlctrl.v1.SearchWorldsRequest
+	(*SearchWorldsResponse)(nil),                             // 82: hdlctrl.v1.SearchWorldsResponse
+	(*GetOwnWorldsRequest)(nil),                              // 83: hdlctrl.v1.GetOwnWorldsRequest
+	(*GetOwnWorldsResponse)(nil),                             // 84: hdlctrl.v1.GetOwnWorldsResponse
+	(*ListHeadlessHostRequest)(nil),                          // 85: hdlctrl.v1.ListHeadlessHostRequest
+	(*ListHeadlessHostResponse)(nil),                         // 86: hdlctrl.v1.ListHeadlessHostResponse
+	(*GetHeadlessHostRequest)(nil),                           // 87: hdlctrl.v1.GetHeadlessHostRequest
+	(*GetHeadlessHostResponse)(nil),                          // 88: hdlctrl.v1.GetHeadlessHostResponse
+	(*AddHeadlessHostRequest)(nil),                           // 89: hdlctrl.v1.AddHeadlessHostRequest
+	(*AddHeadlessHostResponse)(nil),                          // 90: hdlctrl.v1.AddHeadlessHostResponse
+	(*SearchSessionsRequest)(nil),                            // 91: hdlctrl.v1.SearchSessionsRequest
+	(*SearchSessionsResponse)(nil),                           // 92: hdlctrl.v1.SearchSessionsResponse
+	(*GetSessionDetailsRequest)(nil),                         // 93: hdlctrl.v1.GetSessionDetailsRequest
+	(*GetSessionDetailsResponse)(nil),                        // 94: hdlctrl.v1.GetSessionDetailsResponse
+	(*StartWorldRequest)(nil),                                // 95: hdlctrl.v1.StartWorldRequest
+	(*StartWorldResponse)(nil),                               // 96: hdlctrl.v1.StartWorldResponse
+	(*StopSessionRequest)(nil),                               // 97: hdlctrl.v1.StopSessionRequest
+	(*StopSessionResponse)(nil),                              // 98: hdlctrl.v1.StopSessionResponse
+	(*DeleteEndedSessionRequest)(nil),                        // 99: hdlctrl.v1.DeleteEndedSessionRequest
+	(*DeleteEndedSessionResponse)(nil),                       // 100: hdlctrl.v1.DeleteEndedSessionResponse
+	(*SaveSessionWorldRequest)(nil),                          // 101: hdlctrl.v1.SaveSessionWorldRequest
+	(*SaveSessionWorldResponse)(nil),                         // 102: hdlctrl.v1.SaveSessionWorldResponse
+	(*PrepareSessionWorldDownloadRequest)(nil),               // 103: hdlctrl.v1.PrepareSessionWorldDownloadRequest
+	(*PrepareSessionWorldDownloadResponse)(nil),              // 104: hdlctrl.v1.PrepareSessionWorldDownloadResponse
+	(*InviteUserRequest)(nil),                                // 105: hdlctrl.v1.InviteUserRequest
+	(*InviteUserResponse)(nil),                               // 106: hdlctrl.v1.InviteUserResponse
+	(*UpdateUserRoleRequest)(nil),                            // 107: hdlctrl.v1.UpdateUserRoleRequest
+	(*UpdateUserRoleResponse)(nil),                           // 108: hdlctrl.v1.UpdateUserRoleResponse
+	(*UpdateSessionParametersRequest)(nil),                   // 109: hdlctrl.v1.UpdateSessionParametersRequest
+	(*UpdateSessionParametersResponse)(nil),                  // 110: hdlctrl.v1.UpdateSessionParametersResponse
+	(*UpdateSessionExtraSettingsRequest)(nil),                // 111: hdlctrl.v1.UpdateSessionExtraSettingsRequest
+	(*UpdateSessionExtraSettingsResponse)(nil),               // 112: hdlctrl.v1.UpdateSessionExtraSettingsResponse
+	(*ListUsersInSessionRequest)(nil),                        // 113: hdlctrl.v1.ListUsersInSessionRequest
+	(*ListUsersInSessionResponse)(nil),                       // 114: hdlctrl.v1.ListUsersInSessionResponse
+	(*PageRequest)(nil),                                      // 115: hdlctrl.v1.PageRequest
+	(*PageResponse)(nil),                                     // 116: hdlctrl.v1.PageResponse
+	(*HeadlessHostSettings)(nil),                             // 117: hdlctrl.v1.HeadlessHostSettings
+	(*HeadlessHost)(nil),                                     // 118: hdlctrl.v1.HeadlessHost
+	(*Session)(nil),                                          // 119: hdlctrl.v1.Session
+	(*HeadlessAccount)(nil),                                  // 120: hdlctrl.v1.HeadlessAccount
+	(*UserInfo)(nil),                                         // 121: hdlctrl.v1.UserInfo
+	(*GetResoniteUserRequest)(nil),                           // 122: hdlctrl.v1.GetResoniteUserRequest
+	(*GetResoniteUserResponse)(nil),                          // 123: hdlctrl.v1.GetResoniteUserResponse
+	(*SearchResoniteUsersRequest)(nil),                       // 124: hdlctrl.v1.SearchResoniteUsersRequest
+	(*SearchResoniteUsersResponse)(nil),                      // 125: hdlctrl.v1.SearchResoniteUsersResponse
+	(*ListContactsRequest)(nil),                              // 126: hdlctrl.v1.ListContactsRequest
+	(*ListContactsResponse)(nil),                             // 127: hdlctrl.v1.ListContactsResponse
+	(*GetContactMessagesRequest)(nil),                        // 128: hdlctrl.v1.GetContactMessagesRequest
+	(*GetContactMessagesResponse)(nil),                       // 129: hdlctrl.v1.GetContactMessagesResponse
+	(*ContactMessage)(nil),                                   // 130: hdlctrl.v1.ContactMessage
+	(*SendContactMessageRequest)(nil),                        // 131: hdlctrl.v1.SendContactMessageRequest
+	(*SendContactMessageResponse)(nil),                       // 132: hdlctrl.v1.SendContactMessageResponse
+	(*ScheduledOperation)(nil),                               // 133: hdlctrl.v1.ScheduledOperation
+	(*ScheduledStartHostOperation)(nil),                      // 134: hdlctrl.v1.ScheduledStartHostOperation
+	(*ScheduledTrigger)(nil),                                 // 135: hdlctrl.v1.ScheduledTrigger
+	(*TimeTrigger)(nil),                                      // 136: hdlctrl.v1.TimeTrigger
+	(*SessionUserCountTrigger)(nil),                          // 137: hdlctrl.v1.SessionUserCountTrigger
+	(*CronTrigger)(nil),                                      // 138: hdlctrl.v1.CronTrigger
+	(*ScheduledSessionOperation)(nil),                        // 139: hdlctrl.v1.ScheduledSessionOperation
+	(*CreateScheduledSessionOperationRequest)(nil),           // 140: hdlctrl.v1.CreateScheduledSessionOperationRequest
+	(*CreateScheduledSessionOperationResponse)(nil),          // 141: hdlctrl.v1.CreateScheduledSessionOperationResponse
+	(*ListScheduledSessionOperationsRequest)(nil),            // 142: hdlctrl.v1.ListScheduledSessionOperationsRequest
+	(*ListScheduledSessionOperationsResponse)(nil),           // 143: hdlctrl.v1.ListScheduledSessionOperationsResponse
+	(*CancelScheduledSessionOperationRequest)(nil),           // 144: hdlctrl.v1.CancelScheduledSessionOperationRequest
+	(*CancelScheduledSessionOperationResponse)(nil),          // 145: hdlctrl.v1.CancelScheduledSessionOperationResponse
+	(*AsyncJob)(nil),                                         // 146: hdlctrl.v1.AsyncJob
+	(*ListAsyncJobsRequest)(nil),                             // 147: hdlctrl.v1.ListAsyncJobsRequest
+	(*ListAsyncJobsResponse)(nil),                            // 148: hdlctrl.v1.ListAsyncJobsResponse
+	(*GetAsyncJobRequest)(nil),                               // 149: hdlctrl.v1.GetAsyncJobRequest
+	(*GetAsyncJobResponse)(nil),                              // 150: hdlctrl.v1.GetAsyncJobResponse
+	(*HeadlessAccountRef)(nil),                               // 151: hdlctrl.v1.HeadlessAccountRef
+	(*TransferResourcesRequest)(nil),                         // 152: hdlctrl.v1.TransferResourcesRequest
+	(*TransferResourcesResponse)(nil),                        // 153: hdlctrl.v1.TransferResourcesResponse
+	(*ListHeadlessHostInstancesResponse_Instance)(nil),       // 154: hdlctrl.v1.ListHeadlessHostInstancesResponse.Instance
+	(*ListHeadlessHostImageTagsResponse_ContainerImage)(nil), // 155: hdlctrl.v1.ListHeadlessHostImageTagsResponse.ContainerImage
+	(*GetHeadlessHostLogsResponse_Log)(nil),                  // 156: hdlctrl.v1.GetHeadlessHostLogsResponse.Log
+	(*SearchWorldsResponse_WorldRecord)(nil),                 // 157: hdlctrl.v1.SearchWorldsResponse.WorldRecord
+	(*SearchSessionsRequest_SearchParameters)(nil),           // 158: hdlctrl.v1.SearchSessionsRequest.SearchParameters
+	(*TransferResourcesResponse_Account)(nil),                // 159: hdlctrl.v1.TransferResourcesResponse.Account
+	(*TransferResourcesResponse_Host)(nil),                   // 160: hdlctrl.v1.TransferResourcesResponse.Host
+	(*TransferResourcesResponse_Session)(nil),                // 161: hdlctrl.v1.TransferResourcesResponse.Session
+	(*v1.AllowHostAccessRequest)(nil),                        // 162: headless.v1.AllowHostAccessRequest
+	(*v1.DenyHostAccessRequest)(nil),                         // 163: headless.v1.DenyHostAccessRequest
+	(*v1.StartupConfig)(nil),                                 // 164: headless.v1.StartupConfig
+	(*timestamppb.Timestamp)(nil),                            // 165: google.protobuf.Timestamp
+	(*v1.SearchUserInfoRequest)(nil),                         // 166: headless.v1.SearchUserInfoRequest
+	(*v1.KickUserRequest)(nil),                               // 167: headless.v1.KickUserRequest
+	(*v1.BanUserRequest)(nil),                                // 168: headless.v1.BanUserRequest
+	(*v1.BanEntry)(nil),                                      // 169: headless.v1.BanEntry
+	(*v1.UnbanUserRequest)(nil),                              // 170: headless.v1.UnbanUserRequest
+	(*v1.RespawnUserRequest)(nil),                            // 171: headless.v1.RespawnUserRequest
+	(*v1.SpawnItemRequest)(nil),                              // 172: headless.v1.SpawnItemRequest
+	(*v1.SendDynamicImpulseRequest)(nil),                     // 173: headless.v1.SendDynamicImpulseRequest
+	(*v1.WorldStartupParameters)(nil),                        // 174: headless.v1.WorldStartupParameters
+	(v1.WorldBinaryFormat)(0),                                // 175: headless.v1.WorldBinaryFormat
+	(*v1.UpdateUserRoleRequest)(nil),                         // 176: headless.v1.UpdateUserRoleRequest
+	(*v1.UpdateSessionParametersRequest)(nil),                // 177: headless.v1.UpdateSessionParametersRequest
+	(*v1.UserInSession)(nil),                                 // 178: headless.v1.UserInSession
+	(*v1.AllowedAccessEntry)(nil),                            // 179: headless.v1.AllowedAccessEntry
+	(*v1.Session)(nil),                                       // 180: headless.v1.Session
+	(v1.ContactChatMessageType)(0),                           // 181: headless.v1.ContactChatMessageType
+	(*v1.FetchWorldInfoResponse)(nil),                        // 182: headless.v1.FetchWorldInfoResponse
+	(*v1.SearchUserInfoResponse)(nil),                        // 183: headless.v1.SearchUserInfoResponse
 }
 var file_hdlctrl_v1_controller_proto_depIdxs = []int32{
-	151, // 0: hdlctrl.v1.ListHeadlessHostInstancesResponse.instances:type_name -> hdlctrl.v1.ListHeadlessHostInstancesResponse.Instance
-	159, // 1: hdlctrl.v1.AllowHostAccessRequest.request:type_name -> headless.v1.AllowHostAccessRequest
-	160, // 2: hdlctrl.v1.DenyHostAccessRequest.request:type_name -> headless.v1.DenyHostAccessRequest
-	161, // 3: hdlctrl.v1.StartHeadlessHostRequest.startup_config:type_name -> headless.v1.StartupConfig
+	154, // 0: hdlctrl.v1.ListHeadlessHostInstancesResponse.instances:type_name -> hdlctrl.v1.ListHeadlessHostInstancesResponse.Instance
+	162, // 1: hdlctrl.v1.AllowHostAccessRequest.request:type_name -> headless.v1.AllowHostAccessRequest
+	163, // 2: hdlctrl.v1.DenyHostAccessRequest.request:type_name -> headless.v1.DenyHostAccessRequest
+	164, // 3: hdlctrl.v1.StartHeadlessHostRequest.startup_config:type_name -> headless.v1.StartupConfig
 	3,   // 4: hdlctrl.v1.StartHeadlessHostRequest.auto_update_policy:type_name -> hdlctrl.v1.HeadlessHostAutoUpdatePolicy
-	114, // 5: hdlctrl.v1.ListHeadlessAccountsRequest.page:type_name -> hdlctrl.v1.PageRequest
-	119, // 6: hdlctrl.v1.ListHeadlessAccountsResponse.accounts:type_name -> hdlctrl.v1.HeadlessAccount
-	115, // 7: hdlctrl.v1.ListHeadlessAccountsResponse.page:type_name -> hdlctrl.v1.PageResponse
-	152, // 8: hdlctrl.v1.ListHeadlessHostImageTagsResponse.tags:type_name -> hdlctrl.v1.ListHeadlessHostImageTagsResponse.ContainerImage
-	162, // 9: hdlctrl.v1.ResoniteVersion.released_at:type_name -> google.protobuf.Timestamp
+	115, // 5: hdlctrl.v1.ListHeadlessAccountsRequest.page:type_name -> hdlctrl.v1.PageRequest
+	120, // 6: hdlctrl.v1.ListHeadlessAccountsResponse.accounts:type_name -> hdlctrl.v1.HeadlessAccount
+	116, // 7: hdlctrl.v1.ListHeadlessAccountsResponse.page:type_name -> hdlctrl.v1.PageResponse
+	155, // 8: hdlctrl.v1.ListHeadlessHostImageTagsResponse.tags:type_name -> hdlctrl.v1.ListHeadlessHostImageTagsResponse.ContainerImage
+	165, // 9: hdlctrl.v1.ResoniteVersion.released_at:type_name -> google.protobuf.Timestamp
 	0,   // 10: hdlctrl.v1.ResoniteVersion.build_status:type_name -> hdlctrl.v1.ResoniteVersionBuildStatus
-	162, // 11: hdlctrl.v1.ResoniteVersion.built_at:type_name -> google.protobuf.Timestamp
-	37,  // 12: hdlctrl.v1.ListResoniteVersionsResponse.versions:type_name -> hdlctrl.v1.ResoniteVersion
-	27,  // 13: hdlctrl.v1.BuildResoniteImageRequest.then_start_host:type_name -> hdlctrl.v1.StartHeadlessHostRequest
-	46,  // 14: hdlctrl.v1.BuildResoniteImageRequest.then_restart_host:type_name -> hdlctrl.v1.RestartHeadlessHostRequest
-	94,  // 15: hdlctrl.v1.BuildResoniteImageRequest.then_start_world:type_name -> hdlctrl.v1.StartWorldRequest
-	120, // 16: hdlctrl.v1.GetFriendRequestsResponse.requested_contacts:type_name -> hdlctrl.v1.UserInfo
+	165, // 11: hdlctrl.v1.ResoniteVersion.built_at:type_name -> google.protobuf.Timestamp
+	38,  // 12: hdlctrl.v1.ListResoniteVersionsResponse.versions:type_name -> hdlctrl.v1.ResoniteVersion
+	28,  // 13: hdlctrl.v1.BuildResoniteImageRequest.then_start_host:type_name -> hdlctrl.v1.StartHeadlessHostRequest
+	47,  // 14: hdlctrl.v1.BuildResoniteImageRequest.then_restart_host:type_name -> hdlctrl.v1.RestartHeadlessHostRequest
+	95,  // 15: hdlctrl.v1.BuildResoniteImageRequest.then_start_world:type_name -> hdlctrl.v1.StartWorldRequest
+	121, // 16: hdlctrl.v1.GetFriendRequestsResponse.requested_contacts:type_name -> hdlctrl.v1.UserInfo
 	3,   // 17: hdlctrl.v1.UpdateHeadlessHostSettingsRequest.auto_update_policy:type_name -> hdlctrl.v1.HeadlessHostAutoUpdatePolicy
-	153, // 18: hdlctrl.v1.GetHeadlessHostLogsResponse.logs:type_name -> hdlctrl.v1.GetHeadlessHostLogsResponse.Log
-	163, // 19: hdlctrl.v1.SearchUserInfoRequest.parameters:type_name -> headless.v1.SearchUserInfoRequest
-	164, // 20: hdlctrl.v1.KickUserRequest.parameters:type_name -> headless.v1.KickUserRequest
-	165, // 21: hdlctrl.v1.BanUserRequest.parameters:type_name -> headless.v1.BanUserRequest
-	166, // 22: hdlctrl.v1.ListBansResponse.bans:type_name -> headless.v1.BanEntry
-	167, // 23: hdlctrl.v1.UnbanUserRequest.parameters:type_name -> headless.v1.UnbanUserRequest
-	168, // 24: hdlctrl.v1.RespawnUserRequest.parameters:type_name -> headless.v1.RespawnUserRequest
-	169, // 25: hdlctrl.v1.SpawnItemRequest.parameters:type_name -> headless.v1.SpawnItemRequest
-	170, // 26: hdlctrl.v1.SendDynamicImpulseRequest.parameters:type_name -> headless.v1.SendDynamicImpulseRequest
-	162, // 27: hdlctrl.v1.IssueResoniteLinkConnectionResponse.expires_at:type_name -> google.protobuf.Timestamp
-	154, // 28: hdlctrl.v1.SearchWorldsResponse.records:type_name -> hdlctrl.v1.SearchWorldsResponse.WorldRecord
-	154, // 29: hdlctrl.v1.GetOwnWorldsResponse.records:type_name -> hdlctrl.v1.SearchWorldsResponse.WorldRecord
-	114, // 30: hdlctrl.v1.ListHeadlessHostRequest.page:type_name -> hdlctrl.v1.PageRequest
-	117, // 31: hdlctrl.v1.ListHeadlessHostResponse.hosts:type_name -> hdlctrl.v1.HeadlessHost
-	115, // 32: hdlctrl.v1.ListHeadlessHostResponse.page:type_name -> hdlctrl.v1.PageResponse
-	117, // 33: hdlctrl.v1.GetHeadlessHostResponse.host:type_name -> hdlctrl.v1.HeadlessHost
-	117, // 34: hdlctrl.v1.AddHeadlessHostResponse.host:type_name -> hdlctrl.v1.HeadlessHost
-	155, // 35: hdlctrl.v1.SearchSessionsRequest.parameters:type_name -> hdlctrl.v1.SearchSessionsRequest.SearchParameters
-	114, // 36: hdlctrl.v1.SearchSessionsRequest.page:type_name -> hdlctrl.v1.PageRequest
-	118, // 37: hdlctrl.v1.SearchSessionsResponse.sessions:type_name -> hdlctrl.v1.Session
-	115, // 38: hdlctrl.v1.SearchSessionsResponse.page:type_name -> hdlctrl.v1.PageResponse
-	118, // 39: hdlctrl.v1.GetSessionDetailsResponse.session:type_name -> hdlctrl.v1.Session
-	171, // 40: hdlctrl.v1.StartWorldRequest.parameters:type_name -> headless.v1.WorldStartupParameters
+	156, // 18: hdlctrl.v1.GetHeadlessHostLogsResponse.logs:type_name -> hdlctrl.v1.GetHeadlessHostLogsResponse.Log
+	166, // 19: hdlctrl.v1.SearchUserInfoRequest.parameters:type_name -> headless.v1.SearchUserInfoRequest
+	167, // 20: hdlctrl.v1.KickUserRequest.parameters:type_name -> headless.v1.KickUserRequest
+	168, // 21: hdlctrl.v1.BanUserRequest.parameters:type_name -> headless.v1.BanUserRequest
+	169, // 22: hdlctrl.v1.ListBansResponse.bans:type_name -> headless.v1.BanEntry
+	170, // 23: hdlctrl.v1.UnbanUserRequest.parameters:type_name -> headless.v1.UnbanUserRequest
+	171, // 24: hdlctrl.v1.RespawnUserRequest.parameters:type_name -> headless.v1.RespawnUserRequest
+	172, // 25: hdlctrl.v1.SpawnItemRequest.parameters:type_name -> headless.v1.SpawnItemRequest
+	173, // 26: hdlctrl.v1.SendDynamicImpulseRequest.parameters:type_name -> headless.v1.SendDynamicImpulseRequest
+	165, // 27: hdlctrl.v1.IssueResoniteLinkConnectionResponse.expires_at:type_name -> google.protobuf.Timestamp
+	157, // 28: hdlctrl.v1.SearchWorldsResponse.records:type_name -> hdlctrl.v1.SearchWorldsResponse.WorldRecord
+	157, // 29: hdlctrl.v1.GetOwnWorldsResponse.records:type_name -> hdlctrl.v1.SearchWorldsResponse.WorldRecord
+	115, // 30: hdlctrl.v1.ListHeadlessHostRequest.page:type_name -> hdlctrl.v1.PageRequest
+	118, // 31: hdlctrl.v1.ListHeadlessHostResponse.hosts:type_name -> hdlctrl.v1.HeadlessHost
+	116, // 32: hdlctrl.v1.ListHeadlessHostResponse.page:type_name -> hdlctrl.v1.PageResponse
+	118, // 33: hdlctrl.v1.GetHeadlessHostResponse.host:type_name -> hdlctrl.v1.HeadlessHost
+	118, // 34: hdlctrl.v1.AddHeadlessHostResponse.host:type_name -> hdlctrl.v1.HeadlessHost
+	158, // 35: hdlctrl.v1.SearchSessionsRequest.parameters:type_name -> hdlctrl.v1.SearchSessionsRequest.SearchParameters
+	115, // 36: hdlctrl.v1.SearchSessionsRequest.page:type_name -> hdlctrl.v1.PageRequest
+	119, // 37: hdlctrl.v1.SearchSessionsResponse.sessions:type_name -> hdlctrl.v1.Session
+	116, // 38: hdlctrl.v1.SearchSessionsResponse.page:type_name -> hdlctrl.v1.PageResponse
+	119, // 39: hdlctrl.v1.GetSessionDetailsResponse.session:type_name -> hdlctrl.v1.Session
+	174, // 40: hdlctrl.v1.StartWorldRequest.parameters:type_name -> headless.v1.WorldStartupParameters
 	7,   // 41: hdlctrl.v1.SaveSessionWorldRequest.save_mode:type_name -> hdlctrl.v1.SaveSessionWorldRequest.SaveMode
-	172, // 42: hdlctrl.v1.PrepareSessionWorldDownloadRequest.format:type_name -> headless.v1.WorldBinaryFormat
-	173, // 43: hdlctrl.v1.UpdateUserRoleRequest.parameters:type_name -> headless.v1.UpdateUserRoleRequest
-	174, // 44: hdlctrl.v1.UpdateSessionParametersRequest.parameters:type_name -> headless.v1.UpdateSessionParametersRequest
-	175, // 45: hdlctrl.v1.ListUsersInSessionResponse.users:type_name -> headless.v1.UserInSession
-	176, // 46: hdlctrl.v1.HeadlessHostSettings.allowed_url_hosts:type_name -> headless.v1.AllowedAccessEntry
+	175, // 42: hdlctrl.v1.PrepareSessionWorldDownloadRequest.format:type_name -> headless.v1.WorldBinaryFormat
+	176, // 43: hdlctrl.v1.UpdateUserRoleRequest.parameters:type_name -> headless.v1.UpdateUserRoleRequest
+	177, // 44: hdlctrl.v1.UpdateSessionParametersRequest.parameters:type_name -> headless.v1.UpdateSessionParametersRequest
+	178, // 45: hdlctrl.v1.ListUsersInSessionResponse.users:type_name -> headless.v1.UserInSession
+	179, // 46: hdlctrl.v1.HeadlessHostSettings.allowed_url_hosts:type_name -> headless.v1.AllowedAccessEntry
 	1,   // 47: hdlctrl.v1.HeadlessHost.status:type_name -> hdlctrl.v1.HeadlessHostStatus
 	3,   // 48: hdlctrl.v1.HeadlessHost.auto_update_policy:type_name -> hdlctrl.v1.HeadlessHostAutoUpdatePolicy
-	116, // 49: hdlctrl.v1.HeadlessHost.host_settings:type_name -> hdlctrl.v1.HeadlessHostSettings
+	117, // 49: hdlctrl.v1.HeadlessHost.host_settings:type_name -> hdlctrl.v1.HeadlessHostSettings
 	2,   // 50: hdlctrl.v1.Session.status:type_name -> hdlctrl.v1.SessionStatus
-	162, // 51: hdlctrl.v1.Session.started_at:type_name -> google.protobuf.Timestamp
-	162, // 52: hdlctrl.v1.Session.ended_at:type_name -> google.protobuf.Timestamp
-	171, // 53: hdlctrl.v1.Session.startup_parameters:type_name -> headless.v1.WorldStartupParameters
-	177, // 54: hdlctrl.v1.Session.current_state:type_name -> headless.v1.Session
-	120, // 55: hdlctrl.v1.SearchResoniteUsersResponse.users:type_name -> hdlctrl.v1.UserInfo
-	120, // 56: hdlctrl.v1.ListContactsResponse.contacts:type_name -> hdlctrl.v1.UserInfo
-	129, // 57: hdlctrl.v1.GetContactMessagesResponse.messages:type_name -> hdlctrl.v1.ContactMessage
-	178, // 58: hdlctrl.v1.ContactMessage.type:type_name -> headless.v1.ContactChatMessageType
-	162, // 59: hdlctrl.v1.ContactMessage.send_time:type_name -> google.protobuf.Timestamp
-	162, // 60: hdlctrl.v1.ContactMessage.read_time:type_name -> google.protobuf.Timestamp
-	94,  // 61: hdlctrl.v1.ScheduledOperation.start_session:type_name -> hdlctrl.v1.StartWorldRequest
-	96,  // 62: hdlctrl.v1.ScheduledOperation.stop_session:type_name -> hdlctrl.v1.StopSessionRequest
-	108, // 63: hdlctrl.v1.ScheduledOperation.update_parameters:type_name -> hdlctrl.v1.UpdateSessionParametersRequest
-	110, // 64: hdlctrl.v1.ScheduledOperation.update_extra_settings:type_name -> hdlctrl.v1.UpdateSessionExtraSettingsRequest
-	134, // 65: hdlctrl.v1.ScheduledTrigger.time:type_name -> hdlctrl.v1.TimeTrigger
-	135, // 66: hdlctrl.v1.ScheduledTrigger.session_user_count:type_name -> hdlctrl.v1.SessionUserCountTrigger
-	162, // 67: hdlctrl.v1.TimeTrigger.scheduled_at:type_name -> google.protobuf.Timestamp
-	8,   // 68: hdlctrl.v1.SessionUserCountTrigger.comparator:type_name -> hdlctrl.v1.SessionUserCountTrigger.Comparator
-	132, // 69: hdlctrl.v1.ScheduledSessionOperation.operation:type_name -> hdlctrl.v1.ScheduledOperation
-	133, // 70: hdlctrl.v1.ScheduledSessionOperation.trigger:type_name -> hdlctrl.v1.ScheduledTrigger
-	162, // 71: hdlctrl.v1.ScheduledSessionOperation.next_fire_at:type_name -> google.protobuf.Timestamp
-	4,   // 72: hdlctrl.v1.ScheduledSessionOperation.status:type_name -> hdlctrl.v1.ScheduledOperationStatus
-	162, // 73: hdlctrl.v1.ScheduledSessionOperation.executed_at:type_name -> google.protobuf.Timestamp
-	162, // 74: hdlctrl.v1.ScheduledSessionOperation.created_at:type_name -> google.protobuf.Timestamp
-	162, // 75: hdlctrl.v1.ScheduledSessionOperation.updated_at:type_name -> google.protobuf.Timestamp
-	132, // 76: hdlctrl.v1.CreateScheduledSessionOperationRequest.operation:type_name -> hdlctrl.v1.ScheduledOperation
-	133, // 77: hdlctrl.v1.CreateScheduledSessionOperationRequest.trigger:type_name -> hdlctrl.v1.ScheduledTrigger
-	136, // 78: hdlctrl.v1.CreateScheduledSessionOperationResponse.scheduled_operation:type_name -> hdlctrl.v1.ScheduledSessionOperation
-	4,   // 79: hdlctrl.v1.ListScheduledSessionOperationsRequest.status:type_name -> hdlctrl.v1.ScheduledOperationStatus
-	114, // 80: hdlctrl.v1.ListScheduledSessionOperationsRequest.page:type_name -> hdlctrl.v1.PageRequest
-	136, // 81: hdlctrl.v1.ListScheduledSessionOperationsResponse.scheduled_operations:type_name -> hdlctrl.v1.ScheduledSessionOperation
-	115, // 82: hdlctrl.v1.ListScheduledSessionOperationsResponse.page:type_name -> hdlctrl.v1.PageResponse
-	5,   // 83: hdlctrl.v1.AsyncJob.job_type:type_name -> hdlctrl.v1.AsyncJobType
-	6,   // 84: hdlctrl.v1.AsyncJob.status:type_name -> hdlctrl.v1.AsyncJobStatus
-	162, // 85: hdlctrl.v1.AsyncJob.executed_at:type_name -> google.protobuf.Timestamp
-	162, // 86: hdlctrl.v1.AsyncJob.created_at:type_name -> google.protobuf.Timestamp
-	162, // 87: hdlctrl.v1.AsyncJob.updated_at:type_name -> google.protobuf.Timestamp
-	6,   // 88: hdlctrl.v1.ListAsyncJobsRequest.status:type_name -> hdlctrl.v1.AsyncJobStatus
-	5,   // 89: hdlctrl.v1.ListAsyncJobsRequest.job_type:type_name -> hdlctrl.v1.AsyncJobType
-	114, // 90: hdlctrl.v1.ListAsyncJobsRequest.page:type_name -> hdlctrl.v1.PageRequest
-	143, // 91: hdlctrl.v1.ListAsyncJobsResponse.jobs:type_name -> hdlctrl.v1.AsyncJob
-	115, // 92: hdlctrl.v1.ListAsyncJobsResponse.page:type_name -> hdlctrl.v1.PageResponse
-	143, // 93: hdlctrl.v1.GetAsyncJobResponse.job:type_name -> hdlctrl.v1.AsyncJob
-	148, // 94: hdlctrl.v1.TransferResourcesRequest.account:type_name -> hdlctrl.v1.HeadlessAccountRef
-	156, // 95: hdlctrl.v1.TransferResourcesResponse.account:type_name -> hdlctrl.v1.TransferResourcesResponse.Account
-	157, // 96: hdlctrl.v1.TransferResourcesResponse.hosts:type_name -> hdlctrl.v1.TransferResourcesResponse.Host
-	158, // 97: hdlctrl.v1.TransferResourcesResponse.sessions:type_name -> hdlctrl.v1.TransferResourcesResponse.Session
-	162, // 98: hdlctrl.v1.ListHeadlessHostInstancesResponse.Instance.first_log_at:type_name -> google.protobuf.Timestamp
-	162, // 99: hdlctrl.v1.ListHeadlessHostInstancesResponse.Instance.last_log_at:type_name -> google.protobuf.Timestamp
-	162, // 100: hdlctrl.v1.GetHeadlessHostLogsResponse.Log.timestamp:type_name -> google.protobuf.Timestamp
-	2,   // 101: hdlctrl.v1.SearchSessionsRequest.SearchParameters.status:type_name -> hdlctrl.v1.SessionStatus
-	84,  // 102: hdlctrl.v1.ControllerService.ListHeadlessHost:input_type -> hdlctrl.v1.ListHeadlessHostRequest
-	86,  // 103: hdlctrl.v1.ControllerService.GetHeadlessHost:input_type -> hdlctrl.v1.GetHeadlessHostRequest
-	54,  // 104: hdlctrl.v1.ControllerService.GetHeadlessHostLogs:input_type -> hdlctrl.v1.GetHeadlessHostLogsRequest
-	56,  // 105: hdlctrl.v1.ControllerService.SearchHeadlessHostLogs:input_type -> hdlctrl.v1.SearchHeadlessHostLogsRequest
-	50,  // 106: hdlctrl.v1.ControllerService.ShutdownHeadlessHost:input_type -> hdlctrl.v1.ShutdownHeadlessHostRequest
-	52,  // 107: hdlctrl.v1.ControllerService.KillHeadlessHost:input_type -> hdlctrl.v1.KillHeadlessHostRequest
-	48,  // 108: hdlctrl.v1.ControllerService.UpdateHeadlessHostSettings:input_type -> hdlctrl.v1.UpdateHeadlessHostSettingsRequest
-	46,  // 109: hdlctrl.v1.ControllerService.RestartHeadlessHost:input_type -> hdlctrl.v1.RestartHeadlessHostRequest
-	27,  // 110: hdlctrl.v1.ControllerService.StartHeadlessHost:input_type -> hdlctrl.v1.StartHeadlessHostRequest
-	23,  // 111: hdlctrl.v1.ControllerService.AllowHostAccess:input_type -> hdlctrl.v1.AllowHostAccessRequest
-	25,  // 112: hdlctrl.v1.ControllerService.DenyHostAccess:input_type -> hdlctrl.v1.DenyHostAccessRequest
-	35,  // 113: hdlctrl.v1.ControllerService.ListHeadlessHostImageTags:input_type -> hdlctrl.v1.ListHeadlessHostImageTagsRequest
-	19,  // 114: hdlctrl.v1.ControllerService.DeleteHeadlessHost:input_type -> hdlctrl.v1.DeleteHeadlessHostRequest
-	21,  // 115: hdlctrl.v1.ControllerService.ListHeadlessHostInstances:input_type -> hdlctrl.v1.ListHeadlessHostInstancesRequest
-	38,  // 116: hdlctrl.v1.ControllerService.ListResoniteVersions:input_type -> hdlctrl.v1.ListResoniteVersionsRequest
-	40,  // 117: hdlctrl.v1.ControllerService.BuildResoniteImage:input_type -> hdlctrl.v1.BuildResoniteImageRequest
-	29,  // 118: hdlctrl.v1.ControllerService.CreateHeadlessAccount:input_type -> hdlctrl.v1.CreateHeadlessAccountRequest
-	31,  // 119: hdlctrl.v1.ControllerService.RegisterHeadlessAccount:input_type -> hdlctrl.v1.RegisterHeadlessAccountRequest
-	33,  // 120: hdlctrl.v1.ControllerService.ListHeadlessAccounts:input_type -> hdlctrl.v1.ListHeadlessAccountsRequest
-	17,  // 121: hdlctrl.v1.ControllerService.DeleteHeadlessAccount:input_type -> hdlctrl.v1.DeleteHeadlessAccountRequest
-	15,  // 122: hdlctrl.v1.ControllerService.UpdateHeadlessAccountCredentials:input_type -> hdlctrl.v1.UpdateHeadlessAccountCredentialsRequest
-	13,  // 123: hdlctrl.v1.ControllerService.GetHeadlessAccountStorageInfo:input_type -> hdlctrl.v1.GetHeadlessAccountStorageInfoRequest
-	9,   // 124: hdlctrl.v1.ControllerService.RefetchHeadlessAccountInfo:input_type -> hdlctrl.v1.RefetchHeadlessAccountInfoRequest
-	11,  // 125: hdlctrl.v1.ControllerService.UpdateHeadlessAccountIcon:input_type -> hdlctrl.v1.UpdateHeadlessAccountIconRequest
-	79,  // 126: hdlctrl.v1.ControllerService.FetchWorldInfo:input_type -> hdlctrl.v1.FetchWorldInfoRequest
-	58,  // 127: hdlctrl.v1.ControllerService.SearchUserInfo:input_type -> hdlctrl.v1.SearchUserInfoRequest
-	80,  // 128: hdlctrl.v1.ControllerService.SearchWorlds:input_type -> hdlctrl.v1.SearchWorldsRequest
-	82,  // 129: hdlctrl.v1.ControllerService.GetOwnWorlds:input_type -> hdlctrl.v1.GetOwnWorldsRequest
-	121, // 130: hdlctrl.v1.ControllerService.GetResoniteUser:input_type -> hdlctrl.v1.GetResoniteUserRequest
-	123, // 131: hdlctrl.v1.ControllerService.SearchResoniteUsers:input_type -> hdlctrl.v1.SearchResoniteUsersRequest
-	44,  // 132: hdlctrl.v1.ControllerService.GetFriendRequests:input_type -> hdlctrl.v1.GetFriendRequestsRequest
-	42,  // 133: hdlctrl.v1.ControllerService.AcceptFriendRequests:input_type -> hdlctrl.v1.AcceptFriendRequestsRequest
-	73,  // 134: hdlctrl.v1.ControllerService.SendFriendRequest:input_type -> hdlctrl.v1.SendFriendRequestRequest
-	75,  // 135: hdlctrl.v1.ControllerService.RemoveContact:input_type -> hdlctrl.v1.RemoveContactRequest
-	125, // 136: hdlctrl.v1.ControllerService.ListContacts:input_type -> hdlctrl.v1.ListContactsRequest
-	127, // 137: hdlctrl.v1.ControllerService.GetContactMessages:input_type -> hdlctrl.v1.GetContactMessagesRequest
-	130, // 138: hdlctrl.v1.ControllerService.SendContactMessage:input_type -> hdlctrl.v1.SendContactMessageRequest
-	90,  // 139: hdlctrl.v1.ControllerService.SearchSessions:input_type -> hdlctrl.v1.SearchSessionsRequest
-	92,  // 140: hdlctrl.v1.ControllerService.GetSessionDetails:input_type -> hdlctrl.v1.GetSessionDetailsRequest
-	94,  // 141: hdlctrl.v1.ControllerService.StartWorld:input_type -> hdlctrl.v1.StartWorldRequest
-	96,  // 142: hdlctrl.v1.ControllerService.StopSession:input_type -> hdlctrl.v1.StopSessionRequest
-	98,  // 143: hdlctrl.v1.ControllerService.DeleteEndedSession:input_type -> hdlctrl.v1.DeleteEndedSessionRequest
-	100, // 144: hdlctrl.v1.ControllerService.SaveSessionWorld:input_type -> hdlctrl.v1.SaveSessionWorldRequest
-	102, // 145: hdlctrl.v1.ControllerService.PrepareSessionWorldDownload:input_type -> hdlctrl.v1.PrepareSessionWorldDownloadRequest
-	104, // 146: hdlctrl.v1.ControllerService.InviteUser:input_type -> hdlctrl.v1.InviteUserRequest
-	106, // 147: hdlctrl.v1.ControllerService.UpdateUserRole:input_type -> hdlctrl.v1.UpdateUserRoleRequest
-	108, // 148: hdlctrl.v1.ControllerService.UpdateSessionParameters:input_type -> hdlctrl.v1.UpdateSessionParametersRequest
-	110, // 149: hdlctrl.v1.ControllerService.UpdateSessionExtraSettings:input_type -> hdlctrl.v1.UpdateSessionExtraSettingsRequest
-	112, // 150: hdlctrl.v1.ControllerService.ListUsersInSession:input_type -> hdlctrl.v1.ListUsersInSessionRequest
-	59,  // 151: hdlctrl.v1.ControllerService.KickUser:input_type -> hdlctrl.v1.KickUserRequest
-	61,  // 152: hdlctrl.v1.ControllerService.BanUser:input_type -> hdlctrl.v1.BanUserRequest
-	63,  // 153: hdlctrl.v1.ControllerService.ListBans:input_type -> hdlctrl.v1.ListBansRequest
-	65,  // 154: hdlctrl.v1.ControllerService.UnbanUser:input_type -> hdlctrl.v1.UnbanUserRequest
-	67,  // 155: hdlctrl.v1.ControllerService.RespawnUser:input_type -> hdlctrl.v1.RespawnUserRequest
-	69,  // 156: hdlctrl.v1.ControllerService.SpawnItem:input_type -> hdlctrl.v1.SpawnItemRequest
-	71,  // 157: hdlctrl.v1.ControllerService.SendDynamicImpulse:input_type -> hdlctrl.v1.SendDynamicImpulseRequest
-	77,  // 158: hdlctrl.v1.ControllerService.IssueResoniteLinkConnection:input_type -> hdlctrl.v1.IssueResoniteLinkConnectionRequest
-	137, // 159: hdlctrl.v1.ControllerService.CreateScheduledSessionOperation:input_type -> hdlctrl.v1.CreateScheduledSessionOperationRequest
-	139, // 160: hdlctrl.v1.ControllerService.ListScheduledSessionOperations:input_type -> hdlctrl.v1.ListScheduledSessionOperationsRequest
-	141, // 161: hdlctrl.v1.ControllerService.CancelScheduledSessionOperation:input_type -> hdlctrl.v1.CancelScheduledSessionOperationRequest
-	144, // 162: hdlctrl.v1.ControllerService.ListAsyncJobs:input_type -> hdlctrl.v1.ListAsyncJobsRequest
-	146, // 163: hdlctrl.v1.ControllerService.GetAsyncJob:input_type -> hdlctrl.v1.GetAsyncJobRequest
-	149, // 164: hdlctrl.v1.ControllerService.TransferResources:input_type -> hdlctrl.v1.TransferResourcesRequest
-	85,  // 165: hdlctrl.v1.ControllerService.ListHeadlessHost:output_type -> hdlctrl.v1.ListHeadlessHostResponse
-	87,  // 166: hdlctrl.v1.ControllerService.GetHeadlessHost:output_type -> hdlctrl.v1.GetHeadlessHostResponse
-	55,  // 167: hdlctrl.v1.ControllerService.GetHeadlessHostLogs:output_type -> hdlctrl.v1.GetHeadlessHostLogsResponse
-	57,  // 168: hdlctrl.v1.ControllerService.SearchHeadlessHostLogs:output_type -> hdlctrl.v1.SearchHeadlessHostLogsResponse
-	51,  // 169: hdlctrl.v1.ControllerService.ShutdownHeadlessHost:output_type -> hdlctrl.v1.ShutdownHeadlessHostResponse
-	53,  // 170: hdlctrl.v1.ControllerService.KillHeadlessHost:output_type -> hdlctrl.v1.KillHeadlessHostResponse
-	49,  // 171: hdlctrl.v1.ControllerService.UpdateHeadlessHostSettings:output_type -> hdlctrl.v1.UpdateHeadlessHostSettingsResponse
-	47,  // 172: hdlctrl.v1.ControllerService.RestartHeadlessHost:output_type -> hdlctrl.v1.RestartHeadlessHostResponse
-	28,  // 173: hdlctrl.v1.ControllerService.StartHeadlessHost:output_type -> hdlctrl.v1.StartHeadlessHostResponse
-	24,  // 174: hdlctrl.v1.ControllerService.AllowHostAccess:output_type -> hdlctrl.v1.AllowHostAccessResponse
-	26,  // 175: hdlctrl.v1.ControllerService.DenyHostAccess:output_type -> hdlctrl.v1.DenyHostAccessResponse
-	36,  // 176: hdlctrl.v1.ControllerService.ListHeadlessHostImageTags:output_type -> hdlctrl.v1.ListHeadlessHostImageTagsResponse
-	20,  // 177: hdlctrl.v1.ControllerService.DeleteHeadlessHost:output_type -> hdlctrl.v1.DeleteHeadlessHostResponse
-	22,  // 178: hdlctrl.v1.ControllerService.ListHeadlessHostInstances:output_type -> hdlctrl.v1.ListHeadlessHostInstancesResponse
-	39,  // 179: hdlctrl.v1.ControllerService.ListResoniteVersions:output_type -> hdlctrl.v1.ListResoniteVersionsResponse
-	41,  // 180: hdlctrl.v1.ControllerService.BuildResoniteImage:output_type -> hdlctrl.v1.BuildResoniteImageResponse
-	30,  // 181: hdlctrl.v1.ControllerService.CreateHeadlessAccount:output_type -> hdlctrl.v1.CreateHeadlessAccountResponse
-	32,  // 182: hdlctrl.v1.ControllerService.RegisterHeadlessAccount:output_type -> hdlctrl.v1.RegisterHeadlessAccountResponse
-	34,  // 183: hdlctrl.v1.ControllerService.ListHeadlessAccounts:output_type -> hdlctrl.v1.ListHeadlessAccountsResponse
-	18,  // 184: hdlctrl.v1.ControllerService.DeleteHeadlessAccount:output_type -> hdlctrl.v1.DeleteHeadlessAccountResponse
-	16,  // 185: hdlctrl.v1.ControllerService.UpdateHeadlessAccountCredentials:output_type -> hdlctrl.v1.UpdateHeadlessAccountCredentialsResponse
-	14,  // 186: hdlctrl.v1.ControllerService.GetHeadlessAccountStorageInfo:output_type -> hdlctrl.v1.GetHeadlessAccountStorageInfoResponse
-	10,  // 187: hdlctrl.v1.ControllerService.RefetchHeadlessAccountInfo:output_type -> hdlctrl.v1.RefetchHeadlessAccountInfoResponse
-	12,  // 188: hdlctrl.v1.ControllerService.UpdateHeadlessAccountIcon:output_type -> hdlctrl.v1.UpdateHeadlessAccountIconResponse
-	179, // 189: hdlctrl.v1.ControllerService.FetchWorldInfo:output_type -> headless.v1.FetchWorldInfoResponse
-	180, // 190: hdlctrl.v1.ControllerService.SearchUserInfo:output_type -> headless.v1.SearchUserInfoResponse
-	81,  // 191: hdlctrl.v1.ControllerService.SearchWorlds:output_type -> hdlctrl.v1.SearchWorldsResponse
-	83,  // 192: hdlctrl.v1.ControllerService.GetOwnWorlds:output_type -> hdlctrl.v1.GetOwnWorldsResponse
-	122, // 193: hdlctrl.v1.ControllerService.GetResoniteUser:output_type -> hdlctrl.v1.GetResoniteUserResponse
-	124, // 194: hdlctrl.v1.ControllerService.SearchResoniteUsers:output_type -> hdlctrl.v1.SearchResoniteUsersResponse
-	45,  // 195: hdlctrl.v1.ControllerService.GetFriendRequests:output_type -> hdlctrl.v1.GetFriendRequestsResponse
-	43,  // 196: hdlctrl.v1.ControllerService.AcceptFriendRequests:output_type -> hdlctrl.v1.AcceptFriendRequestsResponse
-	74,  // 197: hdlctrl.v1.ControllerService.SendFriendRequest:output_type -> hdlctrl.v1.SendFriendRequestResponse
-	76,  // 198: hdlctrl.v1.ControllerService.RemoveContact:output_type -> hdlctrl.v1.RemoveContactResponse
-	126, // 199: hdlctrl.v1.ControllerService.ListContacts:output_type -> hdlctrl.v1.ListContactsResponse
-	128, // 200: hdlctrl.v1.ControllerService.GetContactMessages:output_type -> hdlctrl.v1.GetContactMessagesResponse
-	131, // 201: hdlctrl.v1.ControllerService.SendContactMessage:output_type -> hdlctrl.v1.SendContactMessageResponse
-	91,  // 202: hdlctrl.v1.ControllerService.SearchSessions:output_type -> hdlctrl.v1.SearchSessionsResponse
-	93,  // 203: hdlctrl.v1.ControllerService.GetSessionDetails:output_type -> hdlctrl.v1.GetSessionDetailsResponse
-	95,  // 204: hdlctrl.v1.ControllerService.StartWorld:output_type -> hdlctrl.v1.StartWorldResponse
-	97,  // 205: hdlctrl.v1.ControllerService.StopSession:output_type -> hdlctrl.v1.StopSessionResponse
-	99,  // 206: hdlctrl.v1.ControllerService.DeleteEndedSession:output_type -> hdlctrl.v1.DeleteEndedSessionResponse
-	101, // 207: hdlctrl.v1.ControllerService.SaveSessionWorld:output_type -> hdlctrl.v1.SaveSessionWorldResponse
-	103, // 208: hdlctrl.v1.ControllerService.PrepareSessionWorldDownload:output_type -> hdlctrl.v1.PrepareSessionWorldDownloadResponse
-	105, // 209: hdlctrl.v1.ControllerService.InviteUser:output_type -> hdlctrl.v1.InviteUserResponse
-	107, // 210: hdlctrl.v1.ControllerService.UpdateUserRole:output_type -> hdlctrl.v1.UpdateUserRoleResponse
-	109, // 211: hdlctrl.v1.ControllerService.UpdateSessionParameters:output_type -> hdlctrl.v1.UpdateSessionParametersResponse
-	111, // 212: hdlctrl.v1.ControllerService.UpdateSessionExtraSettings:output_type -> hdlctrl.v1.UpdateSessionExtraSettingsResponse
-	113, // 213: hdlctrl.v1.ControllerService.ListUsersInSession:output_type -> hdlctrl.v1.ListUsersInSessionResponse
-	60,  // 214: hdlctrl.v1.ControllerService.KickUser:output_type -> hdlctrl.v1.KickUserResponse
-	62,  // 215: hdlctrl.v1.ControllerService.BanUser:output_type -> hdlctrl.v1.BanUserResponse
-	64,  // 216: hdlctrl.v1.ControllerService.ListBans:output_type -> hdlctrl.v1.ListBansResponse
-	66,  // 217: hdlctrl.v1.ControllerService.UnbanUser:output_type -> hdlctrl.v1.UnbanUserResponse
-	68,  // 218: hdlctrl.v1.ControllerService.RespawnUser:output_type -> hdlctrl.v1.RespawnUserResponse
-	70,  // 219: hdlctrl.v1.ControllerService.SpawnItem:output_type -> hdlctrl.v1.SpawnItemResponse
-	72,  // 220: hdlctrl.v1.ControllerService.SendDynamicImpulse:output_type -> hdlctrl.v1.SendDynamicImpulseResponse
-	78,  // 221: hdlctrl.v1.ControllerService.IssueResoniteLinkConnection:output_type -> hdlctrl.v1.IssueResoniteLinkConnectionResponse
-	138, // 222: hdlctrl.v1.ControllerService.CreateScheduledSessionOperation:output_type -> hdlctrl.v1.CreateScheduledSessionOperationResponse
-	140, // 223: hdlctrl.v1.ControllerService.ListScheduledSessionOperations:output_type -> hdlctrl.v1.ListScheduledSessionOperationsResponse
-	142, // 224: hdlctrl.v1.ControllerService.CancelScheduledSessionOperation:output_type -> hdlctrl.v1.CancelScheduledSessionOperationResponse
-	145, // 225: hdlctrl.v1.ControllerService.ListAsyncJobs:output_type -> hdlctrl.v1.ListAsyncJobsResponse
-	147, // 226: hdlctrl.v1.ControllerService.GetAsyncJob:output_type -> hdlctrl.v1.GetAsyncJobResponse
-	150, // 227: hdlctrl.v1.ControllerService.TransferResources:output_type -> hdlctrl.v1.TransferResourcesResponse
-	165, // [165:228] is the sub-list for method output_type
-	102, // [102:165] is the sub-list for method input_type
-	102, // [102:102] is the sub-list for extension type_name
-	102, // [102:102] is the sub-list for extension extendee
-	0,   // [0:102] is the sub-list for field type_name
+	165, // 51: hdlctrl.v1.Session.started_at:type_name -> google.protobuf.Timestamp
+	165, // 52: hdlctrl.v1.Session.ended_at:type_name -> google.protobuf.Timestamp
+	174, // 53: hdlctrl.v1.Session.startup_parameters:type_name -> headless.v1.WorldStartupParameters
+	180, // 54: hdlctrl.v1.Session.current_state:type_name -> headless.v1.Session
+	121, // 55: hdlctrl.v1.SearchResoniteUsersResponse.users:type_name -> hdlctrl.v1.UserInfo
+	121, // 56: hdlctrl.v1.ListContactsResponse.contacts:type_name -> hdlctrl.v1.UserInfo
+	130, // 57: hdlctrl.v1.GetContactMessagesResponse.messages:type_name -> hdlctrl.v1.ContactMessage
+	181, // 58: hdlctrl.v1.ContactMessage.type:type_name -> headless.v1.ContactChatMessageType
+	165, // 59: hdlctrl.v1.ContactMessage.send_time:type_name -> google.protobuf.Timestamp
+	165, // 60: hdlctrl.v1.ContactMessage.read_time:type_name -> google.protobuf.Timestamp
+	95,  // 61: hdlctrl.v1.ScheduledOperation.start_session:type_name -> hdlctrl.v1.StartWorldRequest
+	97,  // 62: hdlctrl.v1.ScheduledOperation.stop_session:type_name -> hdlctrl.v1.StopSessionRequest
+	109, // 63: hdlctrl.v1.ScheduledOperation.update_parameters:type_name -> hdlctrl.v1.UpdateSessionParametersRequest
+	111, // 64: hdlctrl.v1.ScheduledOperation.update_extra_settings:type_name -> hdlctrl.v1.UpdateSessionExtraSettingsRequest
+	134, // 65: hdlctrl.v1.ScheduledOperation.start_host:type_name -> hdlctrl.v1.ScheduledStartHostOperation
+	47,  // 66: hdlctrl.v1.ScheduledOperation.restart_host:type_name -> hdlctrl.v1.RestartHeadlessHostRequest
+	51,  // 67: hdlctrl.v1.ScheduledOperation.shutdown_host:type_name -> hdlctrl.v1.ShutdownHeadlessHostRequest
+	72,  // 68: hdlctrl.v1.ScheduledOperation.send_dynamic_impulse:type_name -> hdlctrl.v1.SendDynamicImpulseRequest
+	136, // 69: hdlctrl.v1.ScheduledTrigger.time:type_name -> hdlctrl.v1.TimeTrigger
+	137, // 70: hdlctrl.v1.ScheduledTrigger.session_user_count:type_name -> hdlctrl.v1.SessionUserCountTrigger
+	138, // 71: hdlctrl.v1.ScheduledTrigger.cron:type_name -> hdlctrl.v1.CronTrigger
+	165, // 72: hdlctrl.v1.TimeTrigger.scheduled_at:type_name -> google.protobuf.Timestamp
+	8,   // 73: hdlctrl.v1.SessionUserCountTrigger.comparator:type_name -> hdlctrl.v1.SessionUserCountTrigger.Comparator
+	9,   // 74: hdlctrl.v1.CronTrigger.frequency:type_name -> hdlctrl.v1.CronTrigger.Frequency
+	133, // 75: hdlctrl.v1.ScheduledSessionOperation.operation:type_name -> hdlctrl.v1.ScheduledOperation
+	135, // 76: hdlctrl.v1.ScheduledSessionOperation.trigger:type_name -> hdlctrl.v1.ScheduledTrigger
+	165, // 77: hdlctrl.v1.ScheduledSessionOperation.next_fire_at:type_name -> google.protobuf.Timestamp
+	4,   // 78: hdlctrl.v1.ScheduledSessionOperation.status:type_name -> hdlctrl.v1.ScheduledOperationStatus
+	165, // 79: hdlctrl.v1.ScheduledSessionOperation.executed_at:type_name -> google.protobuf.Timestamp
+	165, // 80: hdlctrl.v1.ScheduledSessionOperation.created_at:type_name -> google.protobuf.Timestamp
+	165, // 81: hdlctrl.v1.ScheduledSessionOperation.updated_at:type_name -> google.protobuf.Timestamp
+	133, // 82: hdlctrl.v1.CreateScheduledSessionOperationRequest.operation:type_name -> hdlctrl.v1.ScheduledOperation
+	135, // 83: hdlctrl.v1.CreateScheduledSessionOperationRequest.trigger:type_name -> hdlctrl.v1.ScheduledTrigger
+	139, // 84: hdlctrl.v1.CreateScheduledSessionOperationResponse.scheduled_operation:type_name -> hdlctrl.v1.ScheduledSessionOperation
+	4,   // 85: hdlctrl.v1.ListScheduledSessionOperationsRequest.status:type_name -> hdlctrl.v1.ScheduledOperationStatus
+	115, // 86: hdlctrl.v1.ListScheduledSessionOperationsRequest.page:type_name -> hdlctrl.v1.PageRequest
+	139, // 87: hdlctrl.v1.ListScheduledSessionOperationsResponse.scheduled_operations:type_name -> hdlctrl.v1.ScheduledSessionOperation
+	116, // 88: hdlctrl.v1.ListScheduledSessionOperationsResponse.page:type_name -> hdlctrl.v1.PageResponse
+	5,   // 89: hdlctrl.v1.AsyncJob.job_type:type_name -> hdlctrl.v1.AsyncJobType
+	6,   // 90: hdlctrl.v1.AsyncJob.status:type_name -> hdlctrl.v1.AsyncJobStatus
+	165, // 91: hdlctrl.v1.AsyncJob.executed_at:type_name -> google.protobuf.Timestamp
+	165, // 92: hdlctrl.v1.AsyncJob.created_at:type_name -> google.protobuf.Timestamp
+	165, // 93: hdlctrl.v1.AsyncJob.updated_at:type_name -> google.protobuf.Timestamp
+	6,   // 94: hdlctrl.v1.ListAsyncJobsRequest.status:type_name -> hdlctrl.v1.AsyncJobStatus
+	5,   // 95: hdlctrl.v1.ListAsyncJobsRequest.job_type:type_name -> hdlctrl.v1.AsyncJobType
+	115, // 96: hdlctrl.v1.ListAsyncJobsRequest.page:type_name -> hdlctrl.v1.PageRequest
+	146, // 97: hdlctrl.v1.ListAsyncJobsResponse.jobs:type_name -> hdlctrl.v1.AsyncJob
+	116, // 98: hdlctrl.v1.ListAsyncJobsResponse.page:type_name -> hdlctrl.v1.PageResponse
+	146, // 99: hdlctrl.v1.GetAsyncJobResponse.job:type_name -> hdlctrl.v1.AsyncJob
+	151, // 100: hdlctrl.v1.TransferResourcesRequest.account:type_name -> hdlctrl.v1.HeadlessAccountRef
+	159, // 101: hdlctrl.v1.TransferResourcesResponse.account:type_name -> hdlctrl.v1.TransferResourcesResponse.Account
+	160, // 102: hdlctrl.v1.TransferResourcesResponse.hosts:type_name -> hdlctrl.v1.TransferResourcesResponse.Host
+	161, // 103: hdlctrl.v1.TransferResourcesResponse.sessions:type_name -> hdlctrl.v1.TransferResourcesResponse.Session
+	165, // 104: hdlctrl.v1.ListHeadlessHostInstancesResponse.Instance.first_log_at:type_name -> google.protobuf.Timestamp
+	165, // 105: hdlctrl.v1.ListHeadlessHostInstancesResponse.Instance.last_log_at:type_name -> google.protobuf.Timestamp
+	165, // 106: hdlctrl.v1.GetHeadlessHostLogsResponse.Log.timestamp:type_name -> google.protobuf.Timestamp
+	2,   // 107: hdlctrl.v1.SearchSessionsRequest.SearchParameters.status:type_name -> hdlctrl.v1.SessionStatus
+	85,  // 108: hdlctrl.v1.ControllerService.ListHeadlessHost:input_type -> hdlctrl.v1.ListHeadlessHostRequest
+	87,  // 109: hdlctrl.v1.ControllerService.GetHeadlessHost:input_type -> hdlctrl.v1.GetHeadlessHostRequest
+	55,  // 110: hdlctrl.v1.ControllerService.GetHeadlessHostLogs:input_type -> hdlctrl.v1.GetHeadlessHostLogsRequest
+	57,  // 111: hdlctrl.v1.ControllerService.SearchHeadlessHostLogs:input_type -> hdlctrl.v1.SearchHeadlessHostLogsRequest
+	51,  // 112: hdlctrl.v1.ControllerService.ShutdownHeadlessHost:input_type -> hdlctrl.v1.ShutdownHeadlessHostRequest
+	53,  // 113: hdlctrl.v1.ControllerService.KillHeadlessHost:input_type -> hdlctrl.v1.KillHeadlessHostRequest
+	49,  // 114: hdlctrl.v1.ControllerService.UpdateHeadlessHostSettings:input_type -> hdlctrl.v1.UpdateHeadlessHostSettingsRequest
+	47,  // 115: hdlctrl.v1.ControllerService.RestartHeadlessHost:input_type -> hdlctrl.v1.RestartHeadlessHostRequest
+	28,  // 116: hdlctrl.v1.ControllerService.StartHeadlessHost:input_type -> hdlctrl.v1.StartHeadlessHostRequest
+	24,  // 117: hdlctrl.v1.ControllerService.AllowHostAccess:input_type -> hdlctrl.v1.AllowHostAccessRequest
+	26,  // 118: hdlctrl.v1.ControllerService.DenyHostAccess:input_type -> hdlctrl.v1.DenyHostAccessRequest
+	36,  // 119: hdlctrl.v1.ControllerService.ListHeadlessHostImageTags:input_type -> hdlctrl.v1.ListHeadlessHostImageTagsRequest
+	20,  // 120: hdlctrl.v1.ControllerService.DeleteHeadlessHost:input_type -> hdlctrl.v1.DeleteHeadlessHostRequest
+	22,  // 121: hdlctrl.v1.ControllerService.ListHeadlessHostInstances:input_type -> hdlctrl.v1.ListHeadlessHostInstancesRequest
+	39,  // 122: hdlctrl.v1.ControllerService.ListResoniteVersions:input_type -> hdlctrl.v1.ListResoniteVersionsRequest
+	41,  // 123: hdlctrl.v1.ControllerService.BuildResoniteImage:input_type -> hdlctrl.v1.BuildResoniteImageRequest
+	30,  // 124: hdlctrl.v1.ControllerService.CreateHeadlessAccount:input_type -> hdlctrl.v1.CreateHeadlessAccountRequest
+	32,  // 125: hdlctrl.v1.ControllerService.RegisterHeadlessAccount:input_type -> hdlctrl.v1.RegisterHeadlessAccountRequest
+	34,  // 126: hdlctrl.v1.ControllerService.ListHeadlessAccounts:input_type -> hdlctrl.v1.ListHeadlessAccountsRequest
+	18,  // 127: hdlctrl.v1.ControllerService.DeleteHeadlessAccount:input_type -> hdlctrl.v1.DeleteHeadlessAccountRequest
+	16,  // 128: hdlctrl.v1.ControllerService.UpdateHeadlessAccountCredentials:input_type -> hdlctrl.v1.UpdateHeadlessAccountCredentialsRequest
+	14,  // 129: hdlctrl.v1.ControllerService.GetHeadlessAccountStorageInfo:input_type -> hdlctrl.v1.GetHeadlessAccountStorageInfoRequest
+	10,  // 130: hdlctrl.v1.ControllerService.RefetchHeadlessAccountInfo:input_type -> hdlctrl.v1.RefetchHeadlessAccountInfoRequest
+	12,  // 131: hdlctrl.v1.ControllerService.UpdateHeadlessAccountIcon:input_type -> hdlctrl.v1.UpdateHeadlessAccountIconRequest
+	80,  // 132: hdlctrl.v1.ControllerService.FetchWorldInfo:input_type -> hdlctrl.v1.FetchWorldInfoRequest
+	59,  // 133: hdlctrl.v1.ControllerService.SearchUserInfo:input_type -> hdlctrl.v1.SearchUserInfoRequest
+	81,  // 134: hdlctrl.v1.ControllerService.SearchWorlds:input_type -> hdlctrl.v1.SearchWorldsRequest
+	83,  // 135: hdlctrl.v1.ControllerService.GetOwnWorlds:input_type -> hdlctrl.v1.GetOwnWorldsRequest
+	122, // 136: hdlctrl.v1.ControllerService.GetResoniteUser:input_type -> hdlctrl.v1.GetResoniteUserRequest
+	124, // 137: hdlctrl.v1.ControllerService.SearchResoniteUsers:input_type -> hdlctrl.v1.SearchResoniteUsersRequest
+	45,  // 138: hdlctrl.v1.ControllerService.GetFriendRequests:input_type -> hdlctrl.v1.GetFriendRequestsRequest
+	43,  // 139: hdlctrl.v1.ControllerService.AcceptFriendRequests:input_type -> hdlctrl.v1.AcceptFriendRequestsRequest
+	74,  // 140: hdlctrl.v1.ControllerService.SendFriendRequest:input_type -> hdlctrl.v1.SendFriendRequestRequest
+	76,  // 141: hdlctrl.v1.ControllerService.RemoveContact:input_type -> hdlctrl.v1.RemoveContactRequest
+	126, // 142: hdlctrl.v1.ControllerService.ListContacts:input_type -> hdlctrl.v1.ListContactsRequest
+	128, // 143: hdlctrl.v1.ControllerService.GetContactMessages:input_type -> hdlctrl.v1.GetContactMessagesRequest
+	131, // 144: hdlctrl.v1.ControllerService.SendContactMessage:input_type -> hdlctrl.v1.SendContactMessageRequest
+	91,  // 145: hdlctrl.v1.ControllerService.SearchSessions:input_type -> hdlctrl.v1.SearchSessionsRequest
+	93,  // 146: hdlctrl.v1.ControllerService.GetSessionDetails:input_type -> hdlctrl.v1.GetSessionDetailsRequest
+	95,  // 147: hdlctrl.v1.ControllerService.StartWorld:input_type -> hdlctrl.v1.StartWorldRequest
+	97,  // 148: hdlctrl.v1.ControllerService.StopSession:input_type -> hdlctrl.v1.StopSessionRequest
+	99,  // 149: hdlctrl.v1.ControllerService.DeleteEndedSession:input_type -> hdlctrl.v1.DeleteEndedSessionRequest
+	101, // 150: hdlctrl.v1.ControllerService.SaveSessionWorld:input_type -> hdlctrl.v1.SaveSessionWorldRequest
+	103, // 151: hdlctrl.v1.ControllerService.PrepareSessionWorldDownload:input_type -> hdlctrl.v1.PrepareSessionWorldDownloadRequest
+	105, // 152: hdlctrl.v1.ControllerService.InviteUser:input_type -> hdlctrl.v1.InviteUserRequest
+	107, // 153: hdlctrl.v1.ControllerService.UpdateUserRole:input_type -> hdlctrl.v1.UpdateUserRoleRequest
+	109, // 154: hdlctrl.v1.ControllerService.UpdateSessionParameters:input_type -> hdlctrl.v1.UpdateSessionParametersRequest
+	111, // 155: hdlctrl.v1.ControllerService.UpdateSessionExtraSettings:input_type -> hdlctrl.v1.UpdateSessionExtraSettingsRequest
+	113, // 156: hdlctrl.v1.ControllerService.ListUsersInSession:input_type -> hdlctrl.v1.ListUsersInSessionRequest
+	60,  // 157: hdlctrl.v1.ControllerService.KickUser:input_type -> hdlctrl.v1.KickUserRequest
+	62,  // 158: hdlctrl.v1.ControllerService.BanUser:input_type -> hdlctrl.v1.BanUserRequest
+	64,  // 159: hdlctrl.v1.ControllerService.ListBans:input_type -> hdlctrl.v1.ListBansRequest
+	66,  // 160: hdlctrl.v1.ControllerService.UnbanUser:input_type -> hdlctrl.v1.UnbanUserRequest
+	68,  // 161: hdlctrl.v1.ControllerService.RespawnUser:input_type -> hdlctrl.v1.RespawnUserRequest
+	70,  // 162: hdlctrl.v1.ControllerService.SpawnItem:input_type -> hdlctrl.v1.SpawnItemRequest
+	72,  // 163: hdlctrl.v1.ControllerService.SendDynamicImpulse:input_type -> hdlctrl.v1.SendDynamicImpulseRequest
+	78,  // 164: hdlctrl.v1.ControllerService.IssueResoniteLinkConnection:input_type -> hdlctrl.v1.IssueResoniteLinkConnectionRequest
+	140, // 165: hdlctrl.v1.ControllerService.CreateScheduledSessionOperation:input_type -> hdlctrl.v1.CreateScheduledSessionOperationRequest
+	142, // 166: hdlctrl.v1.ControllerService.ListScheduledSessionOperations:input_type -> hdlctrl.v1.ListScheduledSessionOperationsRequest
+	144, // 167: hdlctrl.v1.ControllerService.CancelScheduledSessionOperation:input_type -> hdlctrl.v1.CancelScheduledSessionOperationRequest
+	147, // 168: hdlctrl.v1.ControllerService.ListAsyncJobs:input_type -> hdlctrl.v1.ListAsyncJobsRequest
+	149, // 169: hdlctrl.v1.ControllerService.GetAsyncJob:input_type -> hdlctrl.v1.GetAsyncJobRequest
+	152, // 170: hdlctrl.v1.ControllerService.TransferResources:input_type -> hdlctrl.v1.TransferResourcesRequest
+	86,  // 171: hdlctrl.v1.ControllerService.ListHeadlessHost:output_type -> hdlctrl.v1.ListHeadlessHostResponse
+	88,  // 172: hdlctrl.v1.ControllerService.GetHeadlessHost:output_type -> hdlctrl.v1.GetHeadlessHostResponse
+	56,  // 173: hdlctrl.v1.ControllerService.GetHeadlessHostLogs:output_type -> hdlctrl.v1.GetHeadlessHostLogsResponse
+	58,  // 174: hdlctrl.v1.ControllerService.SearchHeadlessHostLogs:output_type -> hdlctrl.v1.SearchHeadlessHostLogsResponse
+	52,  // 175: hdlctrl.v1.ControllerService.ShutdownHeadlessHost:output_type -> hdlctrl.v1.ShutdownHeadlessHostResponse
+	54,  // 176: hdlctrl.v1.ControllerService.KillHeadlessHost:output_type -> hdlctrl.v1.KillHeadlessHostResponse
+	50,  // 177: hdlctrl.v1.ControllerService.UpdateHeadlessHostSettings:output_type -> hdlctrl.v1.UpdateHeadlessHostSettingsResponse
+	48,  // 178: hdlctrl.v1.ControllerService.RestartHeadlessHost:output_type -> hdlctrl.v1.RestartHeadlessHostResponse
+	29,  // 179: hdlctrl.v1.ControllerService.StartHeadlessHost:output_type -> hdlctrl.v1.StartHeadlessHostResponse
+	25,  // 180: hdlctrl.v1.ControllerService.AllowHostAccess:output_type -> hdlctrl.v1.AllowHostAccessResponse
+	27,  // 181: hdlctrl.v1.ControllerService.DenyHostAccess:output_type -> hdlctrl.v1.DenyHostAccessResponse
+	37,  // 182: hdlctrl.v1.ControllerService.ListHeadlessHostImageTags:output_type -> hdlctrl.v1.ListHeadlessHostImageTagsResponse
+	21,  // 183: hdlctrl.v1.ControllerService.DeleteHeadlessHost:output_type -> hdlctrl.v1.DeleteHeadlessHostResponse
+	23,  // 184: hdlctrl.v1.ControllerService.ListHeadlessHostInstances:output_type -> hdlctrl.v1.ListHeadlessHostInstancesResponse
+	40,  // 185: hdlctrl.v1.ControllerService.ListResoniteVersions:output_type -> hdlctrl.v1.ListResoniteVersionsResponse
+	42,  // 186: hdlctrl.v1.ControllerService.BuildResoniteImage:output_type -> hdlctrl.v1.BuildResoniteImageResponse
+	31,  // 187: hdlctrl.v1.ControllerService.CreateHeadlessAccount:output_type -> hdlctrl.v1.CreateHeadlessAccountResponse
+	33,  // 188: hdlctrl.v1.ControllerService.RegisterHeadlessAccount:output_type -> hdlctrl.v1.RegisterHeadlessAccountResponse
+	35,  // 189: hdlctrl.v1.ControllerService.ListHeadlessAccounts:output_type -> hdlctrl.v1.ListHeadlessAccountsResponse
+	19,  // 190: hdlctrl.v1.ControllerService.DeleteHeadlessAccount:output_type -> hdlctrl.v1.DeleteHeadlessAccountResponse
+	17,  // 191: hdlctrl.v1.ControllerService.UpdateHeadlessAccountCredentials:output_type -> hdlctrl.v1.UpdateHeadlessAccountCredentialsResponse
+	15,  // 192: hdlctrl.v1.ControllerService.GetHeadlessAccountStorageInfo:output_type -> hdlctrl.v1.GetHeadlessAccountStorageInfoResponse
+	11,  // 193: hdlctrl.v1.ControllerService.RefetchHeadlessAccountInfo:output_type -> hdlctrl.v1.RefetchHeadlessAccountInfoResponse
+	13,  // 194: hdlctrl.v1.ControllerService.UpdateHeadlessAccountIcon:output_type -> hdlctrl.v1.UpdateHeadlessAccountIconResponse
+	182, // 195: hdlctrl.v1.ControllerService.FetchWorldInfo:output_type -> headless.v1.FetchWorldInfoResponse
+	183, // 196: hdlctrl.v1.ControllerService.SearchUserInfo:output_type -> headless.v1.SearchUserInfoResponse
+	82,  // 197: hdlctrl.v1.ControllerService.SearchWorlds:output_type -> hdlctrl.v1.SearchWorldsResponse
+	84,  // 198: hdlctrl.v1.ControllerService.GetOwnWorlds:output_type -> hdlctrl.v1.GetOwnWorldsResponse
+	123, // 199: hdlctrl.v1.ControllerService.GetResoniteUser:output_type -> hdlctrl.v1.GetResoniteUserResponse
+	125, // 200: hdlctrl.v1.ControllerService.SearchResoniteUsers:output_type -> hdlctrl.v1.SearchResoniteUsersResponse
+	46,  // 201: hdlctrl.v1.ControllerService.GetFriendRequests:output_type -> hdlctrl.v1.GetFriendRequestsResponse
+	44,  // 202: hdlctrl.v1.ControllerService.AcceptFriendRequests:output_type -> hdlctrl.v1.AcceptFriendRequestsResponse
+	75,  // 203: hdlctrl.v1.ControllerService.SendFriendRequest:output_type -> hdlctrl.v1.SendFriendRequestResponse
+	77,  // 204: hdlctrl.v1.ControllerService.RemoveContact:output_type -> hdlctrl.v1.RemoveContactResponse
+	127, // 205: hdlctrl.v1.ControllerService.ListContacts:output_type -> hdlctrl.v1.ListContactsResponse
+	129, // 206: hdlctrl.v1.ControllerService.GetContactMessages:output_type -> hdlctrl.v1.GetContactMessagesResponse
+	132, // 207: hdlctrl.v1.ControllerService.SendContactMessage:output_type -> hdlctrl.v1.SendContactMessageResponse
+	92,  // 208: hdlctrl.v1.ControllerService.SearchSessions:output_type -> hdlctrl.v1.SearchSessionsResponse
+	94,  // 209: hdlctrl.v1.ControllerService.GetSessionDetails:output_type -> hdlctrl.v1.GetSessionDetailsResponse
+	96,  // 210: hdlctrl.v1.ControllerService.StartWorld:output_type -> hdlctrl.v1.StartWorldResponse
+	98,  // 211: hdlctrl.v1.ControllerService.StopSession:output_type -> hdlctrl.v1.StopSessionResponse
+	100, // 212: hdlctrl.v1.ControllerService.DeleteEndedSession:output_type -> hdlctrl.v1.DeleteEndedSessionResponse
+	102, // 213: hdlctrl.v1.ControllerService.SaveSessionWorld:output_type -> hdlctrl.v1.SaveSessionWorldResponse
+	104, // 214: hdlctrl.v1.ControllerService.PrepareSessionWorldDownload:output_type -> hdlctrl.v1.PrepareSessionWorldDownloadResponse
+	106, // 215: hdlctrl.v1.ControllerService.InviteUser:output_type -> hdlctrl.v1.InviteUserResponse
+	108, // 216: hdlctrl.v1.ControllerService.UpdateUserRole:output_type -> hdlctrl.v1.UpdateUserRoleResponse
+	110, // 217: hdlctrl.v1.ControllerService.UpdateSessionParameters:output_type -> hdlctrl.v1.UpdateSessionParametersResponse
+	112, // 218: hdlctrl.v1.ControllerService.UpdateSessionExtraSettings:output_type -> hdlctrl.v1.UpdateSessionExtraSettingsResponse
+	114, // 219: hdlctrl.v1.ControllerService.ListUsersInSession:output_type -> hdlctrl.v1.ListUsersInSessionResponse
+	61,  // 220: hdlctrl.v1.ControllerService.KickUser:output_type -> hdlctrl.v1.KickUserResponse
+	63,  // 221: hdlctrl.v1.ControllerService.BanUser:output_type -> hdlctrl.v1.BanUserResponse
+	65,  // 222: hdlctrl.v1.ControllerService.ListBans:output_type -> hdlctrl.v1.ListBansResponse
+	67,  // 223: hdlctrl.v1.ControllerService.UnbanUser:output_type -> hdlctrl.v1.UnbanUserResponse
+	69,  // 224: hdlctrl.v1.ControllerService.RespawnUser:output_type -> hdlctrl.v1.RespawnUserResponse
+	71,  // 225: hdlctrl.v1.ControllerService.SpawnItem:output_type -> hdlctrl.v1.SpawnItemResponse
+	73,  // 226: hdlctrl.v1.ControllerService.SendDynamicImpulse:output_type -> hdlctrl.v1.SendDynamicImpulseResponse
+	79,  // 227: hdlctrl.v1.ControllerService.IssueResoniteLinkConnection:output_type -> hdlctrl.v1.IssueResoniteLinkConnectionResponse
+	141, // 228: hdlctrl.v1.ControllerService.CreateScheduledSessionOperation:output_type -> hdlctrl.v1.CreateScheduledSessionOperationResponse
+	143, // 229: hdlctrl.v1.ControllerService.ListScheduledSessionOperations:output_type -> hdlctrl.v1.ListScheduledSessionOperationsResponse
+	145, // 230: hdlctrl.v1.ControllerService.CancelScheduledSessionOperation:output_type -> hdlctrl.v1.CancelScheduledSessionOperationResponse
+	148, // 231: hdlctrl.v1.ControllerService.ListAsyncJobs:output_type -> hdlctrl.v1.ListAsyncJobsResponse
+	150, // 232: hdlctrl.v1.ControllerService.GetAsyncJob:output_type -> hdlctrl.v1.GetAsyncJobResponse
+	153, // 233: hdlctrl.v1.ControllerService.TransferResources:output_type -> hdlctrl.v1.TransferResourcesResponse
+	171, // [171:234] is the sub-list for method output_type
+	108, // [108:171] is the sub-list for method input_type
+	108, // [108:108] is the sub-list for extension type_name
+	108, // [108:108] is the sub-list for extension extendee
+	0,   // [0:108] is the sub-list for field type_name
 }
 
 func init() { file_hdlctrl_v1_controller_proto_init() }
@@ -10522,30 +10848,35 @@ func file_hdlctrl_v1_controller_proto_init() {
 		(*ScheduledOperation_StopSession)(nil),
 		(*ScheduledOperation_UpdateParameters)(nil),
 		(*ScheduledOperation_UpdateExtraSettings)(nil),
+		(*ScheduledOperation_StartHost)(nil),
+		(*ScheduledOperation_RestartHost)(nil),
+		(*ScheduledOperation_ShutdownHost)(nil),
+		(*ScheduledOperation_SendDynamicImpulse)(nil),
 	}
-	file_hdlctrl_v1_controller_proto_msgTypes[124].OneofWrappers = []any{
+	file_hdlctrl_v1_controller_proto_msgTypes[125].OneofWrappers = []any{
 		(*ScheduledTrigger_Time)(nil),
 		(*ScheduledTrigger_SessionUserCount)(nil),
+		(*ScheduledTrigger_Cron)(nil),
 	}
-	file_hdlctrl_v1_controller_proto_msgTypes[127].OneofWrappers = []any{}
-	file_hdlctrl_v1_controller_proto_msgTypes[130].OneofWrappers = []any{}
-	file_hdlctrl_v1_controller_proto_msgTypes[134].OneofWrappers = []any{}
-	file_hdlctrl_v1_controller_proto_msgTypes[135].OneofWrappers = []any{}
-	file_hdlctrl_v1_controller_proto_msgTypes[138].OneofWrappers = []any{}
-	file_hdlctrl_v1_controller_proto_msgTypes[140].OneofWrappers = []any{
+	file_hdlctrl_v1_controller_proto_msgTypes[129].OneofWrappers = []any{}
+	file_hdlctrl_v1_controller_proto_msgTypes[132].OneofWrappers = []any{}
+	file_hdlctrl_v1_controller_proto_msgTypes[136].OneofWrappers = []any{}
+	file_hdlctrl_v1_controller_proto_msgTypes[137].OneofWrappers = []any{}
+	file_hdlctrl_v1_controller_proto_msgTypes[140].OneofWrappers = []any{}
+	file_hdlctrl_v1_controller_proto_msgTypes[142].OneofWrappers = []any{
 		(*TransferResourcesRequest_HostId)(nil),
 		(*TransferResourcesRequest_SessionId)(nil),
 		(*TransferResourcesRequest_Account)(nil),
 	}
-	file_hdlctrl_v1_controller_proto_msgTypes[141].OneofWrappers = []any{}
-	file_hdlctrl_v1_controller_proto_msgTypes[146].OneofWrappers = []any{}
+	file_hdlctrl_v1_controller_proto_msgTypes[143].OneofWrappers = []any{}
+	file_hdlctrl_v1_controller_proto_msgTypes[148].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hdlctrl_v1_controller_proto_rawDesc), len(file_hdlctrl_v1_controller_proto_rawDesc)),
-			NumEnums:      9,
-			NumMessages:   150,
+			NumEnums:      10,
+			NumMessages:   152,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

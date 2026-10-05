@@ -21,6 +21,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui";
+import {
+  buildImpulseValue,
+  IMPULSE_VALUE_TYPES,
+  ImpulseValueType,
+} from "../libs/sessionUtils";
 
 function SpawnItemDialog({
   hostId,
@@ -127,8 +132,6 @@ function SpawnItemDialog({
   );
 }
 
-type ImpulseValueType = "none" | "string" | "int" | "float";
-
 function SendDynamicImpulseDialog({
   hostId,
   sessionId,
@@ -148,25 +151,7 @@ function SendDynamicImpulseDialog({
     useMutation(sendDynamicImpulse);
 
   const handleSend = async () => {
-    let value:
-      | { case: "stringValue"; value: string }
-      | { case: "intValue"; value: number }
-      | { case: "floatValue"; value: number }
-      | undefined;
-    switch (valueType) {
-      case "string":
-        value = { case: "stringValue", value: valueStr };
-        break;
-      case "int":
-        value = { case: "intValue", value: parseInt(valueStr, 10) || 0 };
-        break;
-      case "float":
-        value = { case: "floatValue", value: parseFloat(valueStr) || 0 };
-        break;
-      case "none":
-        value = undefined;
-        break;
-    }
+    const value = buildImpulseValue(valueType, valueStr);
     try {
       const res = await mutateSend({
         hostId,
@@ -209,7 +194,7 @@ function SendDynamicImpulseDialog({
               {t("sessionOpsMenu.valueTypeLabel")}
             </p>
             <div className="flex gap-2 flex-wrap">
-              {(["none", "string", "int", "float"] as const).map((t) => (
+              {IMPULSE_VALUE_TYPES.map((t) => (
                 <Button
                   key={t}
                   size="sm"

@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	scheduled_op.RegisterAction(entity.ScheduledOperationType_UPDATE_EXTRA_SETTINGS, decodeUpdateExtra)
+	scheduled_op.RegisterAction(entity.ScheduledOperationType_UPDATE_EXTRA_SETTINGS, entity.PermKey_SessionWrite, decodeUpdateExtra)
 }
 
 type UpdateExtraSettingsAction struct {

@@ -1,19 +1,10 @@
 import { useSearchParams } from "react-router";
-import ScheduledOperationForm from "../../../components/ScheduledOperationForm";
+import ScheduledOperationForm from "../../components/ScheduledOperationForm";
 import {
-  OperationKind,
-  TriggerKind,
+  isOperationKind,
+  isTriggerKind,
   UserCountComparator,
-} from "../../../libs/scheduledOperationUtils";
-
-const isTriggerKind = (v: string | null): v is TriggerKind =>
-  v === "TIME" || v === "SESSION_USER_COUNT";
-
-const isOperationKind = (v: string | null): v is OperationKind =>
-  v === "START_SESSION" ||
-  v === "STOP_SESSION" ||
-  v === "UPDATE_PARAMETERS" ||
-  v === "UPDATE_EXTRA_SETTINGS";
+} from "../../libs/scheduledOperationUtils";
 
 const isComparator = (v: string | null): v is UserCountComparator =>
   v === "LESS_OR_EQUAL" || v === "GREATER_OR_EQUAL";
@@ -21,6 +12,7 @@ const isComparator = (v: string | null): v is UserCountComparator =>
 export default function ScheduledOperationNew() {
   const [params] = useSearchParams();
   const defaultSessionId = params.get("sessionId") ?? undefined;
+  const defaultHostId = params.get("hostId") ?? undefined;
 
   const triggerRaw = params.get("trigger");
   const operationRaw = params.get("operation");
@@ -44,6 +36,7 @@ export default function ScheduledOperationNew() {
     <div className="container mx-auto p-4">
       <ScheduledOperationForm
         defaultSessionId={defaultSessionId}
+        defaultHostId={defaultHostId}
         defaultTrigger={defaultTrigger}
         defaultOperation={defaultOperation}
         defaultUserCountComparator={defaultUserCountComparator}

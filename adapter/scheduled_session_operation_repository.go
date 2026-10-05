@@ -173,6 +173,27 @@ func (r *ScheduledSessionOperationRepository) Requeue(ctx context.Context, id st
 	return nil
 }
 
+func (r *ScheduledSessionOperationRepository) Reschedule(ctx context.Context, id string, nextFireAt time.Time, lastError *string) error {
+	uid, err := parseUUID(id)
+	if err != nil {
+		return err
+	}
+
+	params := db.RescheduleScheduledSessionOperationParams{
+		ID:         uid,
+		NextFireAt: pgtype.Timestamptz{Time: nextFireAt, Valid: true},
+	}
+	if lastError != nil {
+		params.LastError = pgtype.Text{String: *lastError, Valid: true}
+	}
+
+	if _, err := r.q.RescheduleScheduledSessionOperation(ctx, params); err != nil {
+		return errors.WrapPrefix(convertDBErr(err), "scheduled_session_operation", 0)
+	}
+
+	return nil
+}
+
 func (r *ScheduledSessionOperationRepository) Cancel(ctx context.Context, id string) (bool, error) {
 	uid, err := parseUUID(id)
 	if err != nil {

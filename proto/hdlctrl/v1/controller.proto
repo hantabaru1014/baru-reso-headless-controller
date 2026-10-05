@@ -902,7 +902,22 @@ message ScheduledOperation {
     StopSessionRequest stop_session = 2;
     UpdateSessionParametersRequest update_parameters = 3;
     UpdateSessionExtraSettingsRequest update_extra_settings = 4;
+    ScheduledStartHostOperation start_host = 5;
+    // 実行時に非同期 job (RESTART_HOST) として投入する. 停止中のホストなら起動になる.
+    RestartHeadlessHostRequest restart_host = 6;
+    // 実行時に非同期 job (SHUTDOWN_HOST) として投入する.
+    ShutdownHeadlessHostRequest shutdown_host = 7;
+    // parameters.session_id のセッションに送出する. host_id は実行時にセッションから解決するので不要.
+    SendDynamicImpulseRequest send_dynamic_impulse = 8;
   }
+}
+
+// 停止中 (EXITED / CRASHED) のホストを起動する. 実行時に停止中でなければ何もしない.
+// 起動は非同期 job (RESTART_HOST) として投入し、再起動と同じく最新版のイメージで起動する.
+message ScheduledStartHostOperation {
+  string host_id = 1;
+  // 停止時に開いていたワールドを復元する.
+  bool with_world_restart = 2;
 }
 
 // 発火条件.
@@ -910,6 +925,7 @@ message ScheduledTrigger {
   oneof trigger {
     TimeTrigger time = 1;
     SessionUserCountTrigger session_user_count = 2;
+    CronTrigger cron = 3;
   }
 }
 
@@ -929,6 +945,31 @@ message SessionUserCountTrigger {
   string session_id = 1;
   Comparator comparator = 2;
   int32 threshold = 3;
+}
+
+// 日次・週次・月次・年次で繰り返し発火するトリガー.
+// 実行後 (成否を問わず) 次回の発火時刻で PENDING に戻る. キャンセルするまで繰り返す.
+// 指定日が存在しない月 (例: 31 日, 2/29) はスキップする.
+message CronTrigger {
+  enum Frequency {
+    FREQUENCY_UNSPECIFIED = 0;
+    FREQUENCY_DAILY = 1;
+    FREQUENCY_WEEKLY = 2;
+    FREQUENCY_MONTHLY = 3;
+    FREQUENCY_YEARLY = 4;
+  }
+  Frequency frequency = 1;
+  // 時刻 (timezone 基準). hour: 0-23, minute: 0-59.
+  int32 hour = 2;
+  int32 minute = 3;
+  // WEEKLY: 発火する曜日 (0=日曜 ... 6=土曜). 1 つ以上必須.
+  repeated int32 weekdays = 4;
+  // MONTHLY / YEARLY: 日 (1-31).
+  int32 day_of_month = 5;
+  // YEARLY: 月 (1-12).
+  int32 month = 6;
+  // IANA タイムゾーン名 (例: Asia/Tokyo). 未指定なら UTC.
+  string timezone = 7;
 }
 
 message ScheduledSessionOperation {

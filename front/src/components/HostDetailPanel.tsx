@@ -33,7 +33,7 @@ import {
   HeadlessHostStatus,
 } from "../../pbgen/hdlctrl/v1/controller_pb";
 import { hostStatusToLabel } from "../libs/hostUtils";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { AllowedAccessEntry_AccessType } from "../../pbgen/headless/v1/headless_pb";
 import { useState } from "react";
 import { ScrollBase } from "./base/ScrollBase";
@@ -466,7 +466,7 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
   const [isInstancesDialogOpen, setIsInstancesDialogOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const { hasPermission } = usePermissions();
-  const canTransfer =
+  const canWriteHost =
     !!data?.host &&
     hasPermission(data.host.groupId, PERMISSION_KEYS.HOST_WRITE);
 
@@ -613,10 +613,15 @@ export default function HostDetailPanel({ hostId }: { hostId: string }) {
                   {t("hostDetailPanel.pastInstances")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  disabled={!canTransfer}
+                  disabled={!canWriteHost}
                   onClick={() => setIsTransferDialogOpen(true)}
                 >
                   {t("resourceTransferDialog.title")}
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={!canWriteHost} asChild>
+                  <Link to={`/scheduled/new?hostId=${hostId}`}>
+                    {t("hostDetailPanel.scheduleOperation")}
+                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

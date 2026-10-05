@@ -316,7 +316,8 @@
     "createdBy": "Created by",
     "autoUpgrade": "Auto upgrade",
     "autoUpgradeHelper": "When a new version is released, automatically restarts to the latest version the moment the session has 0 participants",
-    "autoUpgradeEnabled": "Enabled (when 0 users)"
+    "autoUpgradeEnabled": "Enabled (when 0 users)",
+    "scheduleOperation": "Schedule operation"
   },
   "headlessAccountList": {
     "icon": "Icon",
@@ -631,7 +632,9 @@
     "columnError": "Error",
     "cancel": "Cancel",
     "title": "Scheduled Operations",
-    "newSchedule": "New Schedule"
+    "newSchedule": "New Schedule",
+    "nextFireAt": "Next: {{time}}",
+    "columnExecutedAt": "Last run"
   },
   "asyncJobList": {
     "columnJob": "Job",
@@ -704,11 +707,16 @@
       "startSession": "Start Session",
       "stopSession": "Stop Session",
       "updateParameters": "Update Session Settings",
-      "updateExtraSettings": "Update Extra Settings"
+      "updateExtraSettings": "Update Extra Settings",
+      "sendDynamicImpulse": "Send DynamicImpulse",
+      "startHost": "Start host",
+      "restartHost": "Restart host",
+      "shutdownHost": "Shut down host"
     },
     "triggerKind": {
       "time": "Scheduled Time",
-      "sessionUserCount": "Session User Count"
+      "sessionUserCount": "Session User Count",
+      "cron": "Recurring"
     },
     "comparator": {
       "lessOrEqual": "when at or below",
@@ -721,6 +729,19 @@
       "failed": "Failed",
       "canceled": "Canceled",
       "unknown": "Unknown"
+    },
+    "cronFrequency": {
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "yearly": "Yearly"
+    },
+    "cronDescription": {
+      "daily": "Every day at {{time}}",
+      "weekly": "Every {{weekdays}} at {{time}}",
+      "monthly": "Monthly on day {{day}} at {{time}}",
+      "yearly": "Every year on {{month}} {{day}} at {{time}}",
+      "separator": ", "
     }
   },
   "asyncJobUtils": {
@@ -869,7 +890,24 @@
     "autoSleep": "Auto sleep",
     "autoUpgrade": "Auto update",
     "adminMemo": "Admin memo",
-    "createSchedule": "Create schedule"
+    "createSchedule": "Create schedule",
+    "specifyTime": "Please specify a time",
+    "selectWeekdays": "Please select at least one day of the week",
+    "frequency": "Frequency",
+    "month": "Month",
+    "dayOfMonth": "Day",
+    "dayOfMonthOption": "{{day}}",
+    "time": "Time",
+    "weekdays": "Days of the week",
+    "cronNote": "The time is interpreted in this browser's time zone ({{timeZone}}). Runs repeatedly until canceled, and keeps running even if a run fails.",
+    "cronSkipNote": "Months without the specified day are skipped.",
+    "targetHost": "Target host",
+    "selectTargetHost": "Please select a target host",
+    "withWorldRestart": "Restore the worlds that were open when stopped",
+    "startHostNote": "Starts the host with the latest version only if it is stopped at run time. Does nothing if it is running.",
+    "restartHostNote": "Updates to the latest version and restarts. A stopped host is started.",
+    "shutdownHostNote": "All running sessions will be ended.",
+    "specifyImpulseTag": "Please enter a tag"
   },
   "invitedBadge": {
     "invited": "Invited",

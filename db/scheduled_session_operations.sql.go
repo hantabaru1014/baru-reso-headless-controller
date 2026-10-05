@@ -308,3 +308,26 @@ func (q *Queries) RequeueScheduledSessionOperation(ctx context.Context, arg Requ
 	}
 	return result.RowsAffected(), nil
 }
+
+const rescheduleScheduledSessionOperation = `-- name: RescheduleScheduledSessionOperation :execrows
+UPDATE scheduled_session_operations
+SET status = 0, next_fire_at = $2::timestamptz, executed_at = NOW(),
+    last_error = $3::text, claimed_by = NULL, claimed_at = NULL
+WHERE id = $1 AND status = 1
+`
+
+type RescheduleScheduledSessionOperationParams struct {
+	ID         pgtype.UUID
+	NextFireAt pgtype.Timestamptz
+	LastError  pgtype.Text
+}
+
+// 繰り返し trigger の実行後に、実行結果を記録して次回の発火時刻で PENDING に戻す。
+// last_error は成功時 NULL、失敗時はそのエラー (次回の実行結果で上書きされる)。
+func (q *Queries) RescheduleScheduledSessionOperation(ctx context.Context, arg RescheduleScheduledSessionOperationParams) (int64, error) {
+	result, err := q.db.Exec(ctx, rescheduleScheduledSessionOperation, arg.ID, arg.NextFireAt, arg.LastError)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
