@@ -339,7 +339,7 @@
     "alreadyFriendExcluded": " (既にフレンドのユーザーは除外されます)",
     "friendRequestSent": "フレンドリクエストを送信しました",
     "friendRequestSendFailed": "フレンドリクエストの送信に失敗しました",
-    "addAccountTitle": "ヘッドレスアカウントを追加",
+    "addAccountTitle": "既存アカウントの追加",
     "accountGroupHelper": "アカウントを所属させるグループ",
     "accountAdded": "アカウントを追加しました",
     "accountAddFailed": "アカウントの追加に失敗しました",
@@ -359,7 +359,33 @@
     "updateCredentials": "ログイン情報の更新",
     "changeIcon": "アイコンを変更",
     "refetchNameIcon": "名前とアイコンの再取得",
-    "noCreatePermission": "アカウントを作成できる権限を持つグループがありません"
+    "noCreatePermission": "アカウントを作成できる権限を持つグループがありません",
+    "register": {
+      "open": "新規登録",
+      "title": "Resonite アカウントの新規登録",
+      "description": "Resonite アカウントを新規登録し、ヘッドレスアカウントとして追加します。",
+      "username": "ユーザー名",
+      "email": "メールアドレス",
+      "password": "パスワード",
+      "passwordConfirm": "パスワード (確認)",
+      "dateOfBirth": "生年月日",
+      "passwordRule": "8文字以上で、数字・英小文字・英大文字をそれぞれ含めてください",
+      "passwordMismatch": "パスワードが一致しません",
+      "ageRule": "16歳以上である必要があります",
+      "submit": "登録",
+      "registering": "登録中...",
+      "failed": "Resonite アカウントの登録に失敗しました",
+      "resoniteSection": "Resonite に登録する情報",
+      "resoniteSectionCaption": "Resonite に送信され、アカウントの登録に使われます。",
+      "appSection": "このアプリでの設定",
+      "appSectionCaption": "Resonite には送信されません。",
+      "verifyEmailTitle": "メールアドレスの認証",
+      "verifyEmailDescription": "{{email}} 宛に Resonite から確認メールが送信されているはずです。メール内のリンクから認証を済ませてから「完了した」を押してください。",
+      "verifyEmailCancelNote": "キャンセルしても Resonite アカウントは登録済みのままです。認証後に「既存アカウントの追加」から追加できます。",
+      "verifyEmailDone": "完了した",
+      "notVerifiedYet": "まだメールアドレスの認証が確認できません。認証を済ませてから再度押してください。",
+      "added": "ヘッドレスアカウントを追加しました"
+    }
   },
   "permissionUtils": {
     "groupType": {

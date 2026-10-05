@@ -141,7 +141,7 @@ func (c *ControllerService) GetFriendRequests(ctx context.Context, req *connect.
 
 	contacts, err := c.skyfrostClient.GetContacts(ctx, account.Credential, account.Password)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to get friend requests: %w", err))
+		return nil, convertErr(fmt.Errorf("failed to get friend requests: %w", err))
 	}
 
 	requestedContacts := make([]*hdlctrlv1.UserInfo, 0)
@@ -253,9 +253,10 @@ func (c *ControllerService) GetResoniteUser(ctx context.Context, req *connect.Re
 	}
 
 	res := connect.NewResponse(&hdlctrlv1.GetResoniteUserResponse{
-		Id:      userInfo.ID,
-		Name:    userInfo.UserName,
-		IconUrl: userInfo.IconUrl,
+		Id:         userInfo.ID,
+		Name:       userInfo.UserName,
+		IconUrl:    userInfo.IconUrl,
+		IsVerified: userInfo.IsVerified,
 	})
 
 	return res, nil

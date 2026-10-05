@@ -10,7 +10,11 @@ export const isNotFoundError = (e: unknown) =>
 export const shouldRetryQuery = (failureCount: number, e: unknown) => {
   if (
     e instanceof ConnectError &&
-    (e.code === Code.NotFound || e.code === Code.PermissionDenied)
+    (e.code === Code.NotFound ||
+      e.code === Code.PermissionDenied ||
+      // Resonite に拒否された (メール未認証でログインできない等).
+      // 未認証アカウントへのログイン試行のたびに確認メールが再送されるのでリトライしない.
+      e.code === Code.FailedPrecondition)
   ) {
     return false;
   }

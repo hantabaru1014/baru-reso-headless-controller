@@ -39,6 +39,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   CheckboxField,
+  FormSection,
   RadioGroupField,
   SelectField,
   TextField,
@@ -298,10 +299,7 @@ export default function ScheduledOperationForm({
 
   return (
     <div className="space-y-6">
-      <section className="space-y-3 rounded-md border p-4">
-        <h3 className="text-sm font-semibold">
-          {t("scheduledOperationForm.triggerSectionTitle")}
-        </h3>
+      <FormSection title={t("scheduledOperationForm.triggerSectionTitle")}>
         <RadioGroupField
           label={t("scheduledOperationForm.triggerQuestion")}
           options={triggerOptions}
@@ -414,12 +412,9 @@ export default function ScheduledOperationForm({
             </div>
           </div>
         )}
-      </section>
+      </FormSection>
 
-      <section className="space-y-3 rounded-md border p-4">
-        <h3 className="text-sm font-semibold">
-          {t("scheduledOperationForm.actionSectionTitle")}
-        </h3>
+      <FormSection title={t("scheduledOperationForm.actionSectionTitle")}>
         <RadioGroupField
           label={t("scheduledOperationForm.actionKind")}
           options={actionOptions}
@@ -445,7 +440,7 @@ export default function ScheduledOperationForm({
             buildTrigger={buildTrigger}
           />
         )}
-      </section>
+      </FormSection>
     </div>
   );
 }

@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+	"strings"
+	"time"
 
 	"github.com/go-errors/errors"
 	"github.com/hantabaru1014/baru-reso-headless-controller/db"
@@ -21,6 +23,8 @@ var (
 	ErrHeadlessAccountAlreadyExists = errors.New("headless account is already registered in this group")
 	// ErrHeadlessAccountGroupAmbiguous は group_id 未指定のアカウント指定が複数グループの登録に該当した.
 	ErrHeadlessAccountGroupAmbiguous = errors.New("headless account is registered in multiple groups; group_id is required")
+	// ErrInvalidAccountRegistration は Resonite アカウント新規登録の入力が不正.
+	ErrInvalidAccountRegistration = errors.New("invalid account registration")
 )
 
 type HeadlessAccountUsecase struct {
@@ -77,6 +81,44 @@ func (u *HeadlessAccountUsecase) CreateHeadlessAccount(ctx context.Context, cred
 	}
 
 	return nil
+}
+
+// RegisterHeadlessAccount は Resonite アカウントを新規登録し、登録された Resonite ID を返す.
+// dateOfBirth は YYYY-MM-DD. 未認証のアカウントはログインできないので、ヘッドレスアカウントへの
+// 追加はメール認証後に CreateHeadlessAccount で行う. groupID は追加予定のグループで、権限チェックに使う.
+func (u *HeadlessAccountUsecase) RegisterHeadlessAccount(ctx context.Context, username, email, password, dateOfBirth, groupID string) (string, error) {
+	if err := u.permUC.RequirePermissionForGroup(ctx, groupID, entity.PermKey_AccountWrite); err != nil {
+		return "", err
+	}
+
+	username = strings.TrimSpace(username)
+	email = strings.ToLower(strings.TrimSpace(email))
+
+	dob, err := time.Parse(time.DateOnly, dateOfBirth)
+	if err != nil {
+		return "", errors.Errorf("%w: invalid date of birth", ErrInvalidAccountRegistration)
+	}
+
+	// Resonite に拒否される入力は送る前に弾く.
+	if err := skyfrost.ValidateRegistration(username, email, password, dob, time.Now()); err != nil {
+		return "", errors.Errorf("%w: %w", ErrInvalidAccountRegistration, err)
+	}
+
+	resoniteID, err := u.skyfrostClient.RegisterUser(ctx, username, email, password, dob)
+	if err != nil {
+		var apiErr *skyfrost.APIError
+		if errors.As(err, &apiErr) && apiErr.IsClientError() {
+			return "", errors.Errorf("%w: %w", ErrInvalidAccountRegistration, err)
+		}
+
+		if errors.Is(err, skyfrost.ErrRegistrationNotConfirmed) {
+			return "", errors.Errorf("%w. if the account is created, add it as an existing account", err)
+		}
+
+		return "", errors.Errorf("failed to register resonite account: %w", err)
+	}
+
+	return resoniteID, nil
 }
 
 func (u *HeadlessAccountUsecase) UpdateHeadlessAccountCredentials(ctx context.Context, groupID, resoniteID, credential, password string) error {

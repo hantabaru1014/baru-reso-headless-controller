@@ -8,6 +8,7 @@ export * from "./EditableTextField";
 export * from "./EnumFilterField";
 export * from "./FieldFooter";
 export * from "./FieldHeader";
+export * from "./FormSection";
 export * from "./GroupSwitcher";
 export * from "./InvitedBadge";
 export * from "./Loading";

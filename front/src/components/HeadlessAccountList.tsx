@@ -3,6 +3,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
   Button,
   DialogTrigger,
@@ -31,6 +32,7 @@ import {
   listHeadlessAccounts,
   listHeadlessHost,
   refetchHeadlessAccountInfo,
+  registerHeadlessAccount,
   removeContact,
   searchResoniteUsers,
   sendFriendRequest,
@@ -43,7 +45,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { usePaginationState } from "../hooks/usePaginationState";
 import { toast } from "sonner";
-import { DataTable, TextField } from "./base";
+import { DataTable, FormSection, TextField } from "./base";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   HeadlessAccount,
@@ -538,6 +540,270 @@ function NewAccountDialog({
   );
 }
 
+// Resonite の登録条件 (SkyFrost の RegistrationRequest) と同じ.
+const isValidResonitePassword = (password: string) =>
+  password.length >= 8 &&
+  /\d/.test(password) &&
+  /\p{Ll}/u.test(password) &&
+  /\p{Lu}/u.test(password);
+
+const isOldEnoughForResonite = (dateOfBirth: string) => {
+  const limit = new Date();
+  limit.setFullYear(limit.getFullYear() - 16);
+  return new Date(dateOfBirth) <= limit;
+};
+
+// Resonite に登録済みでメール認証を待っているアカウント.
+// 未認証のアカウントはログインできないので、一覧への追加 (CreateHeadlessAccount) は認証後に行う.
+type PendingRegistration = {
+  accountId: string;
+  email: string;
+  password: string;
+  groupId: string;
+};
+
+// 開くたびに入力をリセットするため、呼び出し側は開いている間だけマウントする.
+function RegisterAccountDialog({
+  onClose,
+  onRegistered,
+}: {
+  onClose?: () => void;
+  onRegistered?: (registration: PendingRegistration) => void;
+}) {
+  const { t } = useTranslation();
+  const { mutateAsync: mutateRegisterAccount, isPending } = useMutation(
+    registerHeadlessAccount,
+  );
+  const defaultGroupId = useDefaultGroupId(PERMISSION_KEYS.ACCOUNT_WRITE);
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [groupId, setGroupId] = useState(defaultGroupId);
+
+  // グループ一覧の取得完了後にコンテキストグループを初期値として埋める.
+  useEffect(() => {
+    if (defaultGroupId && !groupId) {
+      setGroupId(defaultGroupId);
+    }
+  }, [defaultGroupId, groupId]);
+
+  const passwordError =
+    password && !isValidResonitePassword(password)
+      ? t("headlessAccountList.register.passwordRule")
+      : undefined;
+  const passwordConfirmError =
+    passwordConfirm && password !== passwordConfirm
+      ? t("headlessAccountList.register.passwordMismatch")
+      : undefined;
+  const dateOfBirthError =
+    dateOfBirth && !isOldEnoughForResonite(dateOfBirth)
+      ? t("headlessAccountList.register.ageRule")
+      : undefined;
+  const canSubmit =
+    !!username.trim() &&
+    !!email.trim() &&
+    isValidResonitePassword(password) &&
+    password === passwordConfirm &&
+    !!dateOfBirth &&
+    !dateOfBirthError &&
+    !!groupId;
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !isPending) onClose?.();
+      }}
+    >
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{t("headlessAccountList.register.title")}</DialogTitle>
+          <DialogDescription>
+            {t("headlessAccountList.register.description")}
+          </DialogDescription>
+        </DialogHeader>
+        <fieldset disabled={isPending} className="grid gap-4 py-2">
+          <FormSection
+            title={t("headlessAccountList.register.resoniteSection")}
+            caption={t("headlessAccountList.register.resoniteSectionCaption")}
+          >
+            <TextField
+              label={t("headlessAccountList.register.username")}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+            <TextField
+              label={t("headlessAccountList.register.email")}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <TextField
+              label={t("headlessAccountList.register.password")}
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              error={passwordError}
+            />
+            <TextField
+              label={t("headlessAccountList.register.passwordConfirm")}
+              type="password"
+              autoComplete="new-password"
+              value={passwordConfirm}
+              onChange={(e) => setPasswordConfirm(e.target.value)}
+              error={passwordConfirmError}
+            />
+            <TextField
+              label={t("headlessAccountList.register.dateOfBirth")}
+              type="date"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+              error={dateOfBirthError}
+            />
+          </FormSection>
+          <FormSection
+            title={t("headlessAccountList.register.appSection")}
+            caption={t("headlessAccountList.register.appSectionCaption")}
+          >
+            <GroupSelectField
+              value={groupId}
+              onChange={setGroupId}
+              requiredPermission={PERMISSION_KEYS.ACCOUNT_WRITE}
+              helperText={t("headlessAccountList.accountGroupHelper")}
+            />
+          </FormSection>
+        </fieldset>
+        <DialogFooter>
+          <Button
+            onClick={async () => {
+              try {
+                const res = await mutateRegisterAccount({
+                  username,
+                  email,
+                  password,
+                  dateOfBirth,
+                  groupId: groupId || undefined,
+                });
+                onRegistered?.({
+                  accountId: res.accountId,
+                  email,
+                  password,
+                  groupId,
+                });
+              } catch (e) {
+                toast.error(
+                  e instanceof Error
+                    ? e.message
+                    : t("headlessAccountList.register.failed"),
+                );
+              }
+            }}
+            disabled={isPending || !canSubmit}
+          >
+            {isPending
+              ? t("headlessAccountList.register.registering")
+              : t("headlessAccountList.register.submit")}
+          </Button>
+          <DialogClose asChild>
+            <Button variant="outline" disabled={isPending}>
+              {t("common.cancel")}
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// メール認証を確認できたら一覧に追加する.
+// 未認証のアカウントへのログイン試行のたびに確認メールが再送されるので、
+// 認証状態はログイン不要の公開プロフィールで確認してからログイン (追加) する.
+function EmailVerificationDialog({
+  registration,
+  onAdded,
+  onCancel,
+}: {
+  registration?: PendingRegistration;
+  onAdded: () => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  const transport = useTransport();
+  const { mutateAsync: mutateCreateAccount } = useMutation(
+    createHeadlessAccount,
+  );
+  const [isChecking, setIsChecking] = useState(false);
+  const [error, setError] = useState<string>();
+
+  const handleDone = async () => {
+    if (!registration) return;
+    setIsChecking(true);
+    setError(undefined);
+    try {
+      const user = await callUnaryMethod(transport, getResoniteUser, {
+        resoniteId: registration.accountId,
+      });
+      if (!user.isVerified) {
+        setError(t("headlessAccountList.register.notVerifiedYet"));
+        return;
+      }
+      await mutateCreateAccount({
+        credential: registration.email,
+        password: registration.password,
+        groupId: registration.groupId || undefined,
+      });
+      toast.success(t("headlessAccountList.register.added"));
+      onAdded();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={!!registration}
+      onOpenChange={(open) => {
+        if (!open && !isChecking) {
+          setError(undefined);
+          onCancel();
+        }
+      }}
+    >
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>
+            {t("headlessAccountList.register.verifyEmailTitle")}
+          </DialogTitle>
+          <DialogDescription>
+            {t("headlessAccountList.register.verifyEmailDescription", {
+              email: registration?.email,
+            })}
+          </DialogDescription>
+        </DialogHeader>
+        <p className="text-xs text-muted-foreground">
+          {t("headlessAccountList.register.verifyEmailCancelNote")}
+        </p>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <DialogFooter>
+          <Button onClick={handleDone} disabled={isChecking}>
+            {t("headlessAccountList.register.verifyEmailDone")}
+          </Button>
+          <DialogClose asChild>
+            <Button variant="outline" disabled={isChecking}>
+              {t("common.cancel")}
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function UpdateAccountCredentialsDialog({
   groupId,
   accountId,
@@ -669,6 +935,9 @@ export default function HeadlessAccountList() {
     useMutation(updateHeadlessAccountIcon);
   const [updateDialogAccount, setUpdateDialogAccount] = useState<AccountRef>();
   const [isOpenNewAccountDialog, setIsOpenNewAccountDialog] = useState(false);
+  const [isOpenRegisterDialog, setIsOpenRegisterDialog] = useState(false);
+  const [pendingRegistration, setPendingRegistration] =
+    useState<PendingRegistration>();
   const [actionAccount, setActionAccount] = useState<AccountRef | null>(null);
   const [iconChangeAccount, setIconChangeAccount] = useState<
     AccountRef & { iconUrl: string }
@@ -897,11 +1166,19 @@ export default function HeadlessAccountList() {
       <div className="flex justify-end gap-2">
         <RefetchButton refetch={refetch} />
         <PermissionGuardedButton
+          variant="outline"
+          allowed={canCreate}
+          disabledReason={t("headlessAccountList.noCreatePermission")}
+          onClick={() => setIsOpenRegisterDialog(true)}
+        >
+          {t("headlessAccountList.register.open")}
+        </PermissionGuardedButton>
+        <PermissionGuardedButton
           allowed={canCreate}
           disabledReason={t("headlessAccountList.noCreatePermission")}
           onClick={() => setIsOpenNewAccountDialog(true)}
         >
-          {t("common.add")}
+          {t("headlessAccountList.addAccountTitle")}
         </PermissionGuardedButton>
       </div>
       <DataTable
@@ -922,6 +1199,23 @@ export default function HeadlessAccountList() {
           setIsOpenNewAccountDialog(false);
           refetch();
         }}
+      />
+      {isOpenRegisterDialog && (
+        <RegisterAccountDialog
+          onClose={() => setIsOpenRegisterDialog(false)}
+          onRegistered={(registration) => {
+            setIsOpenRegisterDialog(false);
+            setPendingRegistration(registration);
+          }}
+        />
+      )}
+      <EmailVerificationDialog
+        registration={pendingRegistration}
+        onAdded={() => {
+          setPendingRegistration(undefined);
+          refetch();
+        }}
+        onCancel={() => setPendingRegistration(undefined)}
       />
       <UpdateAccountCredentialsDialog
         groupId={updateDialogAccount?.groupId ?? ""}

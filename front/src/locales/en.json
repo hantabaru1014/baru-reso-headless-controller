@@ -339,7 +339,7 @@
     "alreadyFriendExcluded": " (existing friends are excluded)",
     "friendRequestSent": "Friend request sent",
     "friendRequestSendFailed": "Failed to send friend request",
-    "addAccountTitle": "Add headless account",
+    "addAccountTitle": "Add Existing Account",
     "accountGroupHelper": "The group the account belongs to",
     "accountAdded": "Account added",
     "accountAddFailed": "Failed to add account",
@@ -359,7 +359,33 @@
     "updateCredentials": "Update login credentials",
     "changeIcon": "Change icon",
     "refetchNameIcon": "Refresh name and icon",
-    "noCreatePermission": "You have no group with permission to create accounts"
+    "noCreatePermission": "You have no group with permission to create accounts",
+    "register": {
+      "open": "Register New",
+      "title": "Register Resonite Account",
+      "description": "Registers a new Resonite account and adds it as a headless account.",
+      "username": "Username",
+      "email": "Email",
+      "password": "Password",
+      "passwordConfirm": "Confirm Password",
+      "dateOfBirth": "Date of Birth",
+      "passwordRule": "Use at least 8 characters including a digit, a lowercase and an uppercase letter",
+      "passwordMismatch": "Passwords do not match",
+      "ageRule": "You must be at least 16 years old",
+      "submit": "Register",
+      "registering": "Registering...",
+      "failed": "Failed to register Resonite account",
+      "resoniteSection": "Sent to Resonite",
+      "resoniteSectionCaption": "Sent to Resonite and used to register the account.",
+      "appSection": "Settings in this app",
+      "appSectionCaption": "Not sent to Resonite.",
+      "verifyEmailTitle": "Verify Email",
+      "verifyEmailDescription": "Resonite should have sent a verification email to {{email}}. Verify it from the link in the email, then press \"Done\".",
+      "verifyEmailCancelNote": "Even if you cancel, the Resonite account stays registered. You can add it from \"Add Existing Account\" after verifying.",
+      "verifyEmailDone": "Done",
+      "notVerifiedYet": "The email has not been verified yet. Verify it and press the button again.",
+      "added": "Headless account added"
+    }
   },
   "permissionUtils": {
     "groupType": {

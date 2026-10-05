@@ -26,6 +26,8 @@ type UserInfo struct {
 	UserName           string
 	NormalizedUserName string
 	IconUrl            string
+	// IsVerified はメール認証済みか. 未認証のアカウントはログインできない.
+	IsVerified bool
 }
 
 func FetchUserInfo(ctx context.Context, resoniteID string) (*UserInfo, error) {
@@ -79,6 +81,7 @@ func FetchUserInfo(ctx context.Context, resoniteID string) (*UserInfo, error) {
 		ID:                 idValue.String(),
 		UserName:           userNameValue.String(),
 		NormalizedUserName: normalizedUserNameValue.String(),
+		IsVerified:         gjson.Get(jsonBody, "isVerified").Bool(),
 	}
 
 	iconUrlValue := gjson.Get(jsonBody, "profile.iconUrl")
@@ -215,7 +218,8 @@ func UserLogin(ctx context.Context, credential, password string) (*UserSession, 
 		body, _ := io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
 
-		return nil, errors.Errorf("failed to login: %s", body)
+		// メール未認証 ("Login.EmailNotVerified") などの拒否を呼び出し側で判別できるようにする.
+		return nil, errors.Errorf("failed to login: %w", &APIError{StatusCode: resp.StatusCode, Body: string(body)})
 	}
 
 	defer resp.Body.Close()

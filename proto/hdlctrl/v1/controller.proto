@@ -26,6 +26,8 @@ service ControllerService {
 
   // アカウント系
   rpc CreateHeadlessAccount(CreateHeadlessAccountRequest) returns (CreateHeadlessAccountResponse);
+  // Resonite アカウントを新規登録する. ヘッドレスアカウントへの追加はメール認証後に CreateHeadlessAccount で行う.
+  rpc RegisterHeadlessAccount(RegisterHeadlessAccountRequest) returns (RegisterHeadlessAccountResponse);
   rpc ListHeadlessAccounts(ListHeadlessAccountsRequest) returns (ListHeadlessAccountsResponse);
   rpc DeleteHeadlessAccount(DeleteHeadlessAccountRequest) returns (DeleteHeadlessAccountResponse);
   rpc UpdateHeadlessAccountCredentials(UpdateHeadlessAccountCredentialsRequest) returns (UpdateHeadlessAccountCredentialsResponse);
@@ -199,6 +201,20 @@ message CreateHeadlessAccountRequest {
 }
 
 message CreateHeadlessAccountResponse {}
+
+message RegisterHeadlessAccountRequest {
+  string username = 1;
+  string email = 2;
+  string password = 3;
+  // 生年月日 (YYYY-MM-DD).
+  string date_of_birth = 4;
+  // 追加予定のグループ. 権限チェックに使う. 未指定の場合は呼び出しユーザーの personal グループ.
+  optional string group_id = 5;
+}
+
+message RegisterHeadlessAccountResponse {
+  string account_id = 1;
+}
 
 message ListHeadlessAccountsRequest {
   PageRequest page = 1;
@@ -805,6 +821,8 @@ message GetResoniteUserResponse {
   string id = 1;
   string name = 2;
   string icon_url = 3;
+  // メール認証済みか.
+  bool is_verified = 4;
 }
 
 // Resonite Cloud の GET /users?name=<query> を叩く公開検索.
