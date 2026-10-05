@@ -740,3 +740,41 @@ func TestUserService_DeleteUser(t *testing.T) {
 		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
 	})
 }
+
+func TestUserService_ReissueAndRevokeInvitation(t *testing.T) {
+	t.Run("失敗: system:user.create 権限なし → PermissionDenied", func(t *testing.T) {
+		s := setupGroupServiceTest(t)
+
+		invitationID, _ := s.createInvitation(t)
+		createNormalUser(t, s.queries, "alice@example.test")
+
+		_, err := s.userClient.ReissueInvitation(t.Context(), testutil.CreateAuthenticatedRequest(t,
+			&hdlctrlv1.ReissueInvitationRequest{InvitationId: invitationID},
+			"alice@example.test", "U-alice", ""))
+		assertConnectCode(t, err, connect.CodePermissionDenied)
+
+		_, err = s.userClient.RevokeInvitation(t.Context(), testutil.CreateAuthenticatedRequest(t,
+			&hdlctrlv1.RevokeInvitationRequest{InvitationId: invitationID},
+			"alice@example.test", "U-alice", ""))
+		assertConnectCode(t, err, connect.CodePermissionDenied)
+
+		// 一覧は認証済みなら誰でも見られる (メンバー追加の候補選択用).
+		res, err := s.userClient.ListInvitations(t.Context(), testutil.CreateAuthenticatedRequest(t,
+			&hdlctrlv1.ListInvitationsRequest{},
+			"alice@example.test", "U-alice", ""))
+		require.NoError(t, err)
+		assert.Len(t, res.Msg.GetInvitations(), 1)
+	})
+
+	t.Run("失敗: 存在しない招待 → NotFound", func(t *testing.T) {
+		s := setupGroupServiceTest(t)
+
+		_, err := s.userClient.ReissueInvitation(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t,
+			&hdlctrlv1.ReissueInvitationRequest{InvitationId: "no-such-invitation"}))
+		assertConnectCode(t, err, connect.CodeNotFound)
+
+		_, err = s.userClient.RevokeInvitation(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t,
+			&hdlctrlv1.RevokeInvitationRequest{InvitationId: "no-such-invitation"}))
+		assertConnectCode(t, err, connect.CodeNotFound)
+	})
+}

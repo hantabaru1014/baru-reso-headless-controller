@@ -140,6 +140,10 @@ func convertErr(err error) error {
 		return connect.NewError(connect.CodePermissionDenied, err)
 	}
 
+	if errors.Is(err, domain.ErrAlreadyExists) {
+		return connect.NewError(connect.CodeAlreadyExists, err)
+	}
+
 	// ErrHostDraining is a precondition violation — the host has been
 	// enrolled for an auto-upgrade and is no longer accepting new
 	// sessions. Surface the distinction so the frontend can show a

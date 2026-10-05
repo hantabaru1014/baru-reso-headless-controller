@@ -29,7 +29,7 @@ func (r *InvitedGroupMemberRepository) Add(ctx context.Context, groupID, invitat
 		InvitationID: invitationID,
 	})
 	if err != nil {
-		return nil, errors.WrapPrefix(err, "add invited member", 0)
+		return nil, errors.WrapPrefix(convertDBErr(err), "add invited member", 0)
 	}
 
 	if rows == 0 {

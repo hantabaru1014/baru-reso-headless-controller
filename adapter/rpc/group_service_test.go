@@ -165,7 +165,33 @@ func TestGroupService_InvitedGroupMember(t *testing.T) {
 
 		add()
 
-		_, err := s.groupClient.RemoveInvitedGroupMember(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.RemoveInvitedGroupMemberRequest{
+		// 同じ招待の重複追加は AlreadyExists.
+		_, err := s.groupClient.AddInvitedGroupMember(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.AddInvitedGroupMemberRequest{
+			GroupId:      groupID,
+			InvitationId: invitationID,
+			RoleId:       entity.SeedRoleID_User,
+		}))
+		assertConnectCode(t, err, connect.CodeAlreadyExists)
+
+		// 別グループを指定しても他グループの参加予定は操作できない.
+		otherGroupID := "g-" + uniuri.New()
+		testutil.CreateTestGroup(t, s.queries, otherGroupID, "")
+
+		_, err = s.groupClient.UpdateInvitedGroupMemberRole(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.UpdateInvitedGroupMemberRoleRequest{
+			GroupId:      otherGroupID,
+			InvitationId: invitationID,
+			RoleId:       entity.SeedRoleID_Admin,
+		}))
+		assertConnectCode(t, err, connect.CodeNotFound)
+
+		_, err = s.groupClient.RemoveInvitedGroupMember(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.RemoveInvitedGroupMemberRequest{
+			GroupId:      otherGroupID,
+			InvitationId: invitationID,
+		}))
+		assertConnectCode(t, err, connect.CodeNotFound)
+		assert.Equal(t, 1, countInvited())
+
+		_, err = s.groupClient.RemoveInvitedGroupMember(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.RemoveInvitedGroupMemberRequest{
 			GroupId:      groupID,
 			InvitationId: invitationID,
 		}))
@@ -192,12 +218,19 @@ func TestGroupService_InvitedGroupMember(t *testing.T) {
 		assert.Empty(t, listRes.Msg.GetInvitations())
 	})
 
-	t.Run("失敗: personal グループには追加できない → FailedPrecondition", func(t *testing.T) {
+	t.Run("失敗: personal グループは対象外 → FailedPrecondition", func(t *testing.T) {
 		s := setupGroupServiceTest(t)
 
 		invitationID, _ := s.createInvitation(t)
 
 		_, err := s.groupClient.AddInvitedGroupMember(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.AddInvitedGroupMemberRequest{
+			GroupId:      "test@example.test-personal",
+			InvitationId: invitationID,
+			RoleId:       entity.SeedRoleID_User,
+		}))
+		assertConnectCode(t, err, connect.CodeFailedPrecondition)
+
+		_, err = s.groupClient.UpdateInvitedGroupMemberRole(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.UpdateInvitedGroupMemberRoleRequest{
 			GroupId:      "test@example.test-personal",
 			InvitationId: invitationID,
 			RoleId:       entity.SeedRoleID_User,
@@ -233,43 +266,35 @@ func TestGroupService_InvitedGroupMember(t *testing.T) {
 		}, "viewer@example.test", "U-viewer", ""))
 		assertConnectCode(t, err, connect.CodePermissionDenied)
 	})
-}
 
-func TestUserService_ReissueAndRevokeInvitation(t *testing.T) {
-	t.Run("失敗: system:user.create 権限なし → PermissionDenied", func(t *testing.T) {
+	t.Run("失敗: 自分が持たない権限を含むロールでは追加・変更できない → PermissionDenied", func(t *testing.T) {
 		s := setupGroupServiceTest(t)
 
+		groupID := "g-" + uniuri.New()
+		testutil.SetupUserWithExactPermissions(t, s.queries, "manager@example.test", groupID, []string{entity.PermKey_GroupMembersManage})
 		invitationID, _ := s.createInvitation(t)
-		createNormalUser(t, s.queries, "alice@example.test")
 
-		_, err := s.userClient.ReissueInvitation(t.Context(), testutil.CreateAuthenticatedRequest(t,
-			&hdlctrlv1.ReissueInvitationRequest{InvitationId: invitationID},
-			"alice@example.test", "U-alice", ""))
+		_, err := s.groupClient.AddInvitedGroupMember(t.Context(), testutil.CreateAuthenticatedRequest(t, &hdlctrlv1.AddInvitedGroupMemberRequest{
+			GroupId:      groupID,
+			InvitationId: invitationID,
+			RoleId:       entity.SeedRoleID_Admin,
+		}, "manager@example.test", "U-manager", ""))
 		assertConnectCode(t, err, connect.CodePermissionDenied)
 
-		_, err = s.userClient.RevokeInvitation(t.Context(), testutil.CreateAuthenticatedRequest(t,
-			&hdlctrlv1.RevokeInvitationRequest{InvitationId: invitationID},
-			"alice@example.test", "U-alice", ""))
-		assertConnectCode(t, err, connect.CodePermissionDenied)
-
-		// 一覧は認証済みなら誰でも見られる (メンバー追加の候補選択用).
-		res, err := s.userClient.ListInvitations(t.Context(), testutil.CreateAuthenticatedRequest(t,
-			&hdlctrlv1.ListInvitationsRequest{},
-			"alice@example.test", "U-alice", ""))
+		// system-admin が追加した参加予定のロールを引き上げることもできない.
+		_, err = s.groupClient.AddInvitedGroupMember(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.AddInvitedGroupMemberRequest{
+			GroupId:      groupID,
+			InvitationId: invitationID,
+			RoleId:       entity.SeedRoleID_User,
+		}))
 		require.NoError(t, err)
-		assert.Len(t, res.Msg.GetInvitations(), 1)
-	})
 
-	t.Run("失敗: 存在しない招待 → NotFound", func(t *testing.T) {
-		s := setupGroupServiceTest(t)
-
-		_, err := s.userClient.ReissueInvitation(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t,
-			&hdlctrlv1.ReissueInvitationRequest{InvitationId: "no-such-invitation"}))
-		assertConnectCode(t, err, connect.CodeNotFound)
-
-		_, err = s.userClient.RevokeInvitation(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t,
-			&hdlctrlv1.RevokeInvitationRequest{InvitationId: "no-such-invitation"}))
-		assertConnectCode(t, err, connect.CodeNotFound)
+		_, err = s.groupClient.UpdateInvitedGroupMemberRole(t.Context(), testutil.CreateAuthenticatedRequest(t, &hdlctrlv1.UpdateInvitedGroupMemberRoleRequest{
+			GroupId:      groupID,
+			InvitationId: invitationID,
+			RoleId:       entity.SeedRoleID_Admin,
+		}, "manager@example.test", "U-manager", ""))
+		assertConnectCode(t, err, connect.CodePermissionDenied)
 	})
 }
 

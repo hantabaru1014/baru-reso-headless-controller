@@ -324,6 +324,10 @@ var _ = registerRPCPermission(
 func (s *GroupService) UpdateInvitedGroupMemberRole(ctx context.Context, req *connect.Request[hdlctrlv1.UpdateInvitedGroupMemberRoleRequest]) (*connect.Response[hdlctrlv1.UpdateInvitedGroupMemberRoleResponse], error) {
 	m, err := s.guc.UpdateInvitedGroupMemberRole(ctx, req.Msg.GetGroupId(), req.Msg.GetInvitationId(), req.Msg.GetRoleId())
 	if err != nil {
+		if errors.Is(err, usecase.ErrGroupOperationForbidden) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
+
 		return nil, convertErr(err)
 	}
 
