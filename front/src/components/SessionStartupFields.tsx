@@ -69,14 +69,19 @@ export default function SessionStartupFields({
   const {
     fields: defaultUserRoleFields,
     append: appendDefaultUserRole,
+    replace: replaceDefaultUserRoles,
     remove: removeDefaultUserRole,
   } = useFieldArray({ control, name: "defaultUserRoles" });
 
   const {
     fields: autoInviteFields,
     append: appendAutoInvite,
+    replace: replaceAutoInvites,
     remove: removeAutoInvite,
   } = useFieldArray({ control, name: "autoInviteUsernames" });
+
+  const autoInviteUsers = watch("autoInviteUsernames") ?? [];
+  const defaultUserRoles = watch("defaultUserRoles") ?? [];
 
   // ログインユーザーを自動追加
   const session = useAtomValue(sessionAtom);
@@ -88,36 +93,60 @@ export default function SessionStartupFields({
 
     const { resoniteId, resoniteName, iconUrl } = session.user;
 
-    const existsInAutoInvite = autoInviteFields.some(
-      (f) => f.userId === resoniteId,
+    const currentUserInvites = autoInviteUsers.flatMap((user, index) =>
+      user.userId === resoniteId ||
+      (!user.userId && user.userName === resoniteName)
+        ? [{ user, index }]
+        : [],
     );
-    if (!existsInAutoInvite) {
+    if (currentUserInvites.length === 0) {
       appendAutoInvite({
         userName: resoniteName,
         userId: resoniteId,
         iconUrl,
         joinAllowedOnly: true,
       });
+    } else {
+      // 履歴には参加許可ユーザーの ID、招待ユーザーの名前だけが保存される。
+      // 現在のフォーム値を使い、参加許可のみの設定を保って表示情報を補完する。
+      const updatedInvites = [...autoInviteUsers];
+      for (const { user, index } of currentUserInvites) {
+        updatedInvites[index] = {
+          ...user,
+          userName: resoniteName,
+          userId: resoniteId,
+          iconUrl,
+        };
+      }
+      replaceAutoInvites(updatedInvites);
     }
 
-    const existsInDefaultRoles = defaultUserRoleFields.some(
-      (f) => f.userName === resoniteName,
+    const currentUserRoles = defaultUserRoles.flatMap((user, index) =>
+      user.userName === resoniteName ? [{ user, index }] : [],
     );
-    if (!existsInDefaultRoles) {
+    if (currentUserRoles.length === 0) {
       appendDefaultUserRole({
         userName: resoniteName,
         role: "Admin",
         iconUrl,
       });
+    } else {
+      const updatedRoles = [...defaultUserRoles];
+      for (const { user, index } of currentUserRoles) {
+        updatedRoles[index] = { ...user, iconUrl };
+      }
+      replaceDefaultUserRoles(updatedRoles);
     }
 
     hasAddedCurrentUser.current = true;
   }, [
     session,
-    autoInviteFields,
-    defaultUserRoleFields,
+    autoInviteUsers,
+    defaultUserRoles,
     appendAutoInvite,
+    replaceAutoInvites,
     appendDefaultUserRole,
+    replaceDefaultUserRoles,
   ]);
 
   const handleDefaultUserRoleSelect = (user: UserInfo) => {
