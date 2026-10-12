@@ -65,24 +65,8 @@ export const useFillRestoredSessionUsers = (
       return;
     }
 
-    // ログインユーザーの分は手元の情報で補完できるので問い合わせない。
-    const me = session?.user;
-    const known: KnownResoniteUser[] =
-      me?.resoniteId && me.resoniteName
-        ? [{ id: me.resoniteId, name: me.resoniteName, iconUrl: me.iconUrl }]
-        : [];
-    const knownInvites = fillAutoInviteUsers(invites, known);
-    const ids = knownInvites.filter((u) => !u.userName).map((u) => u.userId);
-    const names = [
-      ...knownInvites.filter((u) => !u.userId).map((u) => u.userName),
-      ...fillDefaultUserRoles(roles, known)
-        .filter((r) => !r.iconUrl)
-        .map((r) => r.userName),
-    ];
-
-    void fetchUsers(transport, new Set(ids), new Set(names)).then((fetched) => {
-      const users = [...known, ...fetched];
-      // 取得中の編集を消さないよう、現在の値に対して補完する。
+    // 取得中の編集を消さないよう、呼ばれた時点の値に対して補完する。
+    const fill = (users: KnownResoniteUser[]) => {
       setValue(
         "autoInviteUsernames",
         fillAutoInviteUsers(getValues("autoInviteUsernames"), users),
@@ -91,6 +75,30 @@ export const useFillRestoredSessionUsers = (
         "defaultUserRoles",
         fillDefaultUserRoles(getValues("defaultUserRoles"), users),
       );
+    };
+
+    // ログインユーザーの分は手元の情報ですぐ補完し、問い合わせない。
+    const me = session?.user;
+    const known: KnownResoniteUser[] =
+      me?.resoniteId && me.resoniteName
+        ? [{ id: me.resoniteId, name: me.resoniteName, iconUrl: me.iconUrl }]
+        : [];
+    if (known.length > 0) fill(known);
+    const isKnown = (name: string) =>
+      known.some((u) => isSameUserName(u.name, name));
+
+    const knownInvites = fillAutoInviteUsers(invites, known);
+    const ids = knownInvites.filter((u) => !u.userName).map((u) => u.userId);
+    const names = [
+      ...knownInvites.filter((u) => !u.userId).map((u) => u.userName),
+      ...roles
+        .filter((r) => !r.iconUrl && !isKnown(r.userName))
+        .map((r) => r.userName),
+    ];
+    if (ids.length === 0 && names.length === 0) return;
+
+    void fetchUsers(transport, new Set(ids), new Set(names)).then((fetched) => {
+      if (fetched.length > 0) fill(fetched);
     });
   }, [transport, session, getValues, setValue]);
 };
