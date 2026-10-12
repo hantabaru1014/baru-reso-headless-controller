@@ -37,6 +37,7 @@ import { SelectField, TextField } from "./base";
 import { useMemo, useState } from "react";
 import SessionStartupFields from "./SessionStartupFields";
 import { usePermissions } from "../hooks/usePermissions";
+import { useFillRestoredSessionUsers } from "../hooks/useFillRestoredSessionUsers";
 import { PERMISSION_KEYS } from "../libs/permissionUtils";
 import { hostStatusToLabel } from "../libs/hostUtils";
 import {
@@ -60,7 +61,10 @@ export default function NewSessionForm() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const prefillValues = searchParamsToFormValues(searchParams);
+  const prefillValues = useMemo(
+    () => searchParamsToFormValues(searchParams),
+    [searchParams],
+  );
   const { mutateAsync: mutateStart, isPending: isPendingStart } =
     useMutation(startWorld);
   const { mutateAsync: mutateSchedule, isPending: isPendingSchedule } =
@@ -94,6 +98,8 @@ export default function NewSessionForm() {
       ...removeUndefined(prefillValues),
     },
   });
+
+  useFillRestoredSessionUsers(getValues, setValue);
 
   const hostId = watch("hostId");
 
@@ -298,7 +304,6 @@ export default function NewSessionForm() {
           control={control}
           errors={errors}
           watch={watch}
-          getValues={getValues}
           setValue={setValue}
           hostRunning={!isSelectedHostStopped}
         />
