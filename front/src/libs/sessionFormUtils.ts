@@ -44,6 +44,26 @@ const portSchema = (t: TFunction) =>
     .max(65535, t("sessionFormUtils.portRange"))
     .optional();
 
+const autoInviteUsersSchema = z.array(
+  z.object({
+    userName: z.string(),
+    userId: z.string(),
+    iconUrl: z.string().optional(),
+    joinAllowedOnly: z.boolean(),
+  }),
+);
+
+const defaultUserRolesSchema = z.array(
+  z.object({
+    role: z.string(),
+    userName: z.string(),
+    iconUrl: z.string().optional(),
+  }),
+);
+
+type AutoInviteUser = z.infer<typeof autoInviteUsersSchema>[number];
+type DefaultUserRole = z.infer<typeof defaultUserRolesSchema>[number];
+
 /**
  * 新規セッション/予約フォーム共通の zod スキーマ。
  * バリデーションメッセージを i18n 化するため、`t` を受け取るファクトリ関数にしている。
@@ -61,26 +81,9 @@ export const makeSessionFormSchema = (t: TFunction) =>
       accessLevel: z.number().int().min(1).max(6),
       worldUrl: z.string().optional(),
       worldTemplate: z.enum(["grid", "platform", "blank"]),
-      autoInviteUsernames: z
-        .array(
-          z.object({
-            userName: z.string(),
-            userId: z.string(),
-            iconUrl: z.string().optional(),
-            joinAllowedOnly: z.boolean(),
-          }),
-        )
-        .optional(),
+      autoInviteUsernames: autoInviteUsersSchema.optional(),
       hideFromPublicListing: z.boolean(),
-      defaultUserRoles: z
-        .array(
-          z.object({
-            role: z.string(),
-            userName: z.string(),
-            iconUrl: z.string().optional(),
-          }),
-        )
-        .optional(),
+      defaultUserRoles: defaultUserRolesSchema.optional(),
       awayKickMinutes: z.number(),
       idleRestartIntervalSeconds: z.number().int(),
       saveOnExit: z.boolean(),
@@ -227,18 +230,9 @@ export interface SessionFormPrefillValues {
   maxUsers?: number;
   accessLevel?: number;
   hideFromPublicListing?: boolean;
-  autoInviteUsernames?: Array<{
-    userName: string;
-    userId: string;
-    iconUrl?: string;
-    joinAllowedOnly: boolean;
-  }>;
+  autoInviteUsernames?: AutoInviteUser[];
   autoInviteMessage?: string;
-  defaultUserRoles?: Array<{
-    role: string;
-    userName: string;
-    iconUrl?: string;
-  }>;
+  defaultUserRoles?: DefaultUserRole[];
   keepOriginalRoles?: boolean;
   parentSessionIds?: string;
   overrideCorrespondingWorldId?: string;
@@ -277,18 +271,9 @@ export const DEFAULT_SESSION_FORM_VALUES = {
   accessLevel: 1,
   hideFromPublicListing: false,
   tags: "",
-  autoInviteUsernames: [] as Array<{
-    userName: string;
-    userId: string;
-    iconUrl?: string;
-    joinAllowedOnly: boolean;
-  }>,
+  autoInviteUsernames: [] as AutoInviteUser[],
   autoInviteMessage: "",
-  defaultUserRoles: [] as Array<{
-    role: string;
-    userName: string;
-    iconUrl?: string;
-  }>,
+  defaultUserRoles: [] as DefaultUserRole[],
   awayKickMinutes: -1,
   idleRestartIntervalSeconds: -1,
   saveOnExit: false,
@@ -472,6 +457,19 @@ export function startupParamsToSearchParams(
   return searchParams;
 }
 
+/** JSON の URL パラメータをスキーマに沿ってパースする。壊れた JSON や想定外の形は無視する。 */
+function parseJsonParam<T>(
+  schema: z.ZodType<T>,
+  value: string | null,
+): T | undefined {
+  if (!value) return undefined;
+  try {
+    return schema.parse(JSON.parse(value));
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * URLSearchParams をフォームの初期値に変換する
  */
@@ -618,23 +616,69 @@ export function searchParamsToFormValues(
     result.keepOriginalRoles = keepOriginalRoles === "true";
 
   // JSON配列フィールド
-  const autoInviteUsernames = params.get("autoInviteUsernames");
-  if (autoInviteUsernames) {
-    try {
-      result.autoInviteUsernames = JSON.parse(autoInviteUsernames);
-    } catch {
-      // パース失敗時は無視
-    }
-  }
+  const autoInviteUsernames = parseJsonParam(
+    autoInviteUsersSchema,
+    params.get("autoInviteUsernames"),
+  );
+  if (autoInviteUsernames) result.autoInviteUsernames = autoInviteUsernames;
 
-  const defaultUserRoles = params.get("defaultUserRoles");
-  if (defaultUserRoles) {
-    try {
-      result.defaultUserRoles = JSON.parse(defaultUserRoles);
-    } catch {
-      // パース失敗時は無視
-    }
-  }
+  const defaultUserRoles = parseJsonParam(
+    defaultUserRolesSchema,
+    params.get("defaultUserRoles"),
+  );
+  if (defaultUserRoles) result.defaultUserRoles = defaultUserRoles;
 
   return result;
+}
+
+/** 名前と ID の両方がわかっている Resonite ユーザー */
+export type KnownResoniteUser = { id: string; name: string; iconUrl?: string };
+
+/** Resonite のユーザー名は大文字小文字を区別しない */
+export const isSameUserName = (a: string, b: string) =>
+  a.toLowerCase() === b.toLowerCase();
+
+/**
+ * 自動招待ユーザーの行に、わかっているユーザー情報を補完する。
+ * 履歴から復元した行は参加許可が ID のみ、招待が名前のみなので、ID があれば ID、なければ名前で照合する。
+ * 補完の結果同じユーザーになった行は 1 行にまとめ、招待と参加許可の両方にいた場合は招待に倒す。
+ */
+export function fillAutoInviteUsers(
+  rows: AutoInviteUser[] = [],
+  users: KnownResoniteUser[],
+): AutoInviteUser[] {
+  const result: AutoInviteUser[] = [];
+  for (const row of rows) {
+    const user = users.find((u) =>
+      row.userId ? u.id === row.userId : isSameUserName(u.name, row.userName),
+    );
+    const filled = user
+      ? {
+          ...row,
+          userId: user.id,
+          userName: user.name,
+          iconUrl: user.iconUrl || row.iconUrl,
+        }
+      : { ...row };
+    const merged = filled.userId
+      ? result.find((r) => r.userId === filled.userId)
+      : undefined;
+    if (merged) {
+      merged.joinAllowedOnly &&= filled.joinAllowedOnly;
+    } else {
+      result.push(filled);
+    }
+  }
+  return result;
+}
+
+/** デフォルトロールの行に、わかっているユーザーのアイコンを補完する (履歴には名前とロールしか残らない)。 */
+export function fillDefaultUserRoles(
+  rows: DefaultUserRole[] = [],
+  users: KnownResoniteUser[],
+): DefaultUserRole[] {
+  return rows.map((row) => {
+    const user = users.find((u) => isSameUserName(u.name, row.userName));
+    return user?.iconUrl ? { ...row, iconUrl: user.iconUrl } : row;
+  });
 }
