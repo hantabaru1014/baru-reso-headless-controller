@@ -3,12 +3,27 @@ import {
   Controller,
   FieldErrors,
   useFieldArray,
+  UseFormGetValues,
   UseFormSetValue,
   UseFormWatch,
 } from "react-hook-form";
-import { FORCE_PORT_FIELDS, SessionFormValues } from "../libs/sessionFormUtils";
-import { useMutation } from "@connectrpc/connect-query";
-import { fetchWorldInfo } from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
+import {
+  fillAutoInviteUsers,
+  fillDefaultUserRoles,
+  FORCE_PORT_FIELDS,
+  isSameUserName,
+  SessionFormValues,
+} from "../libs/sessionFormUtils";
+import {
+  callUnaryMethod,
+  useMutation,
+  useTransport,
+} from "@connectrpc/connect-query";
+import {
+  fetchWorldInfo,
+  getResoniteUser,
+  searchResoniteUsers,
+} from "../../pbgen/hdlctrl/v1/controller-ControllerService_connectquery";
 import { useEffect, useRef, useState } from "react";
 import { useAtomValue } from "jotai";
 import { sessionAtom } from "../atoms/sessionAtom";
@@ -33,6 +48,7 @@ type Props = {
   control: Control<SessionFormValues>;
   errors: FieldErrors<SessionFormValues>;
   watch: UseFormWatch<SessionFormValues>;
+  getValues: UseFormGetValues<SessionFormValues>;
   setValue: UseFormSetValue<SessionFormValues>;
   /**
    * 選択中のホストが稼働しているか (既定: true)。
@@ -49,6 +65,7 @@ export default function SessionStartupFields({
   control,
   errors,
   watch,
+  getValues,
   setValue,
   hostRunning = true,
 }: Props) {
@@ -80,9 +97,6 @@ export default function SessionStartupFields({
     remove: removeAutoInvite,
   } = useFieldArray({ control, name: "autoInviteUsernames" });
 
-  const autoInviteUsers = watch("autoInviteUsernames") ?? [];
-  const defaultUserRoles = watch("defaultUserRoles") ?? [];
-
   // ログインユーザーを自動追加
   const session = useAtomValue(sessionAtom);
   const hasAddedCurrentUser = useRef(false);
@@ -90,64 +104,83 @@ export default function SessionStartupFields({
   useEffect(() => {
     if (hasAddedCurrentUser.current) return;
     if (!session?.user?.resoniteId || !session?.user?.resoniteName) return;
+    hasAddedCurrentUser.current = true;
 
     const { resoniteId, resoniteName, iconUrl } = session.user;
+    const currentUser = { id: resoniteId, name: resoniteName, iconUrl };
 
-    const currentUserInvites = autoInviteUsers.flatMap((user, index) =>
-      user.userId === resoniteId ||
-      (!user.userId && user.userName === resoniteName)
-        ? [{ user, index }]
-        : [],
+    const invites = fillAutoInviteUsers(
+      getValues("autoInviteUsernames") ?? [],
+      [currentUser],
     );
-    if (currentUserInvites.length === 0) {
-      appendAutoInvite({
+    if (!invites.some((u) => u.userId === resoniteId)) {
+      invites.push({
         userName: resoniteName,
         userId: resoniteId,
         iconUrl,
         joinAllowedOnly: true,
       });
-    } else {
-      // 履歴には参加許可ユーザーの ID、招待ユーザーの名前だけが保存される。
-      // 現在のフォーム値を使い、参加許可のみの設定を保って表示情報を補完する。
-      const updatedInvites = [...autoInviteUsers];
-      for (const { user, index } of currentUserInvites) {
-        updatedInvites[index] = {
-          ...user,
-          userName: resoniteName,
-          userId: resoniteId,
-          iconUrl,
-        };
-      }
-      replaceAutoInvites(updatedInvites);
     }
+    replaceAutoInvites(invites);
 
-    const currentUserRoles = defaultUserRoles.flatMap((user, index) =>
-      user.userName === resoniteName ? [{ user, index }] : [],
+    const roles = fillDefaultUserRoles(getValues("defaultUserRoles") ?? [], [
+      currentUser,
+    ]);
+    if (!roles.some((r) => isSameUserName(r.userName, resoniteName))) {
+      roles.push({ userName: resoniteName, role: "Admin", iconUrl });
+    }
+    replaceDefaultUserRoles(roles);
+  }, [session, getValues, replaceAutoInvites, replaceDefaultUserRoles]);
+
+  // 履歴から復元した行は参加許可が ID のみ、招待とロールが名前のみなので、
+  // 不足分を Resonite Cloud から引いて補完する (ホスト不要)。
+  const transport = useTransport();
+  const hasResolvedRestoredUsers = useRef(false);
+
+  useEffect(() => {
+    if (hasResolvedRestoredUsers.current) return;
+    hasResolvedRestoredUsers.current = true;
+
+    const invites = getValues("autoInviteUsernames") ?? [];
+    const roles = getValues("defaultUserRoles") ?? [];
+    const ids = new Set(
+      invites.filter((u) => u.userId && !u.userName).map((u) => u.userId),
     );
-    if (currentUserRoles.length === 0) {
-      appendDefaultUserRole({
-        userName: resoniteName,
-        role: "Admin",
-        iconUrl,
-      });
-    } else {
-      const updatedRoles = [...defaultUserRoles];
-      for (const { user, index } of currentUserRoles) {
-        updatedRoles[index] = { ...user, iconUrl };
-      }
-      replaceDefaultUserRoles(updatedRoles);
-    }
+    const names = new Set([
+      ...invites.filter((u) => !u.userId && u.userName).map((u) => u.userName),
+      ...roles.filter((r) => !r.iconUrl && r.userName).map((r) => r.userName),
+    ]);
+    if (ids.size === 0 && names.size === 0) return;
 
-    hasAddedCurrentUser.current = true;
-  }, [
-    session,
-    autoInviteUsers,
-    defaultUserRoles,
-    appendAutoInvite,
-    replaceAutoInvites,
-    appendDefaultUserRole,
-    replaceDefaultUserRoles,
-  ]);
+    void (async () => {
+      const results = await Promise.allSettled([
+        ...[...ids].map((resoniteId) =>
+          callUnaryMethod(transport, getResoniteUser, { resoniteId }),
+        ),
+        ...[...names].map(async (name) => {
+          // 部分一致検索なので、名前が完全一致するユーザーだけ採用する。
+          const { users } = await callUnaryMethod(
+            transport,
+            searchResoniteUsers,
+            { name },
+          );
+          return users.find((u) => isSameUserName(u.name, name));
+        }),
+      ]);
+      const users = results.flatMap((r) =>
+        r.status === "fulfilled" && r.value ? [r.value] : [],
+      );
+      if (users.length === 0) return;
+
+      // 取得中にフォームが編集されていても消さないよう、現在の値に対して補完する。
+      replaceAutoInvites(
+        fillAutoInviteUsers(getValues("autoInviteUsernames") ?? [], users),
+      );
+      replaceDefaultUserRoles(
+        fillDefaultUserRoles(getValues("defaultUserRoles") ?? [], users),
+      );
+    })();
+  }, [transport, getValues, replaceAutoInvites, replaceDefaultUserRoles]);
 
   const handleDefaultUserRoleSelect = (user: UserInfo) => {
     const exists = defaultUserRoleFields.some((f) => f.userName === user.name);

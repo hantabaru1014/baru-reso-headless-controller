@@ -479,6 +479,7 @@ function StartSessionActionForm({
     control,
     handleSubmit,
     watch,
+    getValues,
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<SessionFormValues>({
@@ -537,6 +538,7 @@ function StartSessionActionForm({
         control={control}
         errors={errors}
         watch={watch}
+        getValues={getValues}
         setValue={setValue}
       />
 

@@ -298,6 +298,7 @@ export default function NewSessionForm() {
           control={control}
           errors={errors}
           watch={watch}
+          getValues={getValues}
           setValue={setValue}
           hostRunning={!isSelectedHostStopped}
         />
