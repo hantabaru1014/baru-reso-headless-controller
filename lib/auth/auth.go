@@ -264,11 +264,9 @@ func GenerateResoniteLinkToken(userID, resoniteUserID, sessionID string, ttl tim
 		UserID:         userID,
 		ResoniteUserID: resoniteUserID,
 		SessionID:      sessionID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{ResoniteLinkAudience},
-			ExpiresAt: jwt.NewNumericDate(expiresAt),
-			IssuedAt:  jwt.NewNumericDate(now),
-		},
+		Audience:       jwt.ClaimStrings{ResoniteLinkAudience},
+		ExpiresAt:      jwt.NewNumericDate(expiresAt),
+		IssuedAt:       jwt.NewNumericDate(now),
 	}
 
 	ss, err := signJWT(claims)
