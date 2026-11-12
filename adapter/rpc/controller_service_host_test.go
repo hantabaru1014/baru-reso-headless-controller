@@ -1496,6 +1496,26 @@ func TestControllerService_ShutdownHeadlessHost(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, res.Msg)
 		assertJobEnqueued(t, setup, res.Msg.GetJobId(), int32(entity.AsyncJobType_SHUTDOWN_HOST))
+
+		// job が実行する停止本体. graceful に止まらないコンテナを無期限に待たないよう、
+		// 有限の停止猶予 (5 分) で Stop する (-1 だと SIGKILL されず永遠に待つ).
+		ctx := auth.WithActAsUser(t.Context(), "test@example.test")
+
+		setup.mockHostConnector.EXPECT().GetRpcClient(gomock.Any(), gomock.Any()).Return(setup.mockRpcClient, nil)
+		setup.mockRpcClient.EXPECT().
+			GetStartupConfigToRestore(gomock.Any(), gomock.Any()).
+			Return(&headlessv1.GetStartupConfigToRestoreResponse{
+				StartupConfig: &headlessv1.StartupConfig{},
+			}, nil)
+		setup.mockHostConnector.EXPECT().
+			Stop(gomock.Any(), hostconnector.HostConnectString(host.ConnectString), 5*60).
+			Return(nil)
+
+		require.NoError(t, setup.service.hhuc.HeadlessHostShutdown(ctx, host.ID))
+
+		stopped, err := setup.queries.GetHost(ctx, host.ID)
+		require.NoError(t, err)
+		assert.Equal(t, int32(entity.HeadlessHostStatus_EXITED), stopped.Status)
 	})
 
 	t.Run("成功: 最小権限 caller (host:write) で実行", func(t *testing.T) {
