@@ -23,6 +23,10 @@ const (
 	// HeadlessHostEnsureRunning が Restart に渡す停止猶予. 対象は停止済みなので通常は
 	// 使われないが、判定後に他経路で起動されていた場合に即 kill しないための値.
 	ensureRunningStopTimeoutSeconds = 10 * 60
+	// HeadlessHostShutdown が Stop に渡す停止猶予. ワールド保存などの graceful shutdown には
+	// 十分で、かつ async job の実行上限 (20 分) より十分短い値. 経過後は SIGKILL される.
+	// エンジンが固まって graceful に止まらないコンテナを無期限に待たないため.
+	shutdownStopTimeoutSeconds = 5 * 60
 )
 
 type HeadlessHostUsecase struct {
@@ -393,8 +397,7 @@ func (hhuc *HeadlessHostUsecase) HeadlessHostShutdown(ctx context.Context, id st
 		return errors.Wrap(err, 0)
 	}
 
-	// TODO: さすがにタイムアウト設定すべき？
-	err = hhuc.hhrepo.Stop(ctx, id, -1)
+	err = hhuc.hhrepo.Stop(ctx, id, shutdownStopTimeoutSeconds)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
