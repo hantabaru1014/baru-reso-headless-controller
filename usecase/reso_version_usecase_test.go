@@ -89,7 +89,7 @@ func (s *stubImageBuilder) CurrentAppVersion(_ context.Context) (string, error) 
 
 func newResoniteVersionUsecaseUnderTest(
 	repo port.ResoniteVersionRepository,
-	builder imageBuilder,
+	builder ImageBuilder,
 	connector hostconnector.HostConnector,
 ) *ResoniteVersionUsecase {
 	return NewResoniteVersionUsecase(repo, builder, connector, &config.ResoniteBuildConfig{})
