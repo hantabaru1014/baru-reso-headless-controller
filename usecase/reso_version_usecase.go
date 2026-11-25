@@ -34,9 +34,9 @@ func (e *NotBuiltError) Error() string {
 // HostUpgradeOrchestrator は built タグでの roll を判断するためこれを購読する.
 type BuildSuccessObserver func(ctx context.Context, image *port.ContainerImage)
 
-// imageBuilder は RunBuild / CurrentAppVersion が使う builder の操作だけを切り出した
+// ImageBuilder は RunBuild / CurrentAppVersion が使う builder の操作だけを切り出した
 // interface. 実体は *image_builder.Builder で、テストでの差し替えのために挟んでいる.
-type imageBuilder interface {
+type ImageBuilder interface {
 	Build(ctx context.Context, p image_builder.BuildParams) (*image_builder.BuildResult, error)
 	CurrentAppVersion(ctx context.Context) (string, error)
 }
@@ -51,7 +51,7 @@ type imageBuilder interface {
 // 時点でローカル image の実在を connector 経由で確認する.
 type ResoniteVersionUsecase struct {
 	repo      port.ResoniteVersionRepository
-	builder   imageBuilder
+	builder   ImageBuilder
 	connector hostconnector.HostConnector
 	cfg       *config.ResoniteBuildConfig
 
@@ -66,7 +66,7 @@ type ResoniteVersionUsecase struct {
 
 func NewResoniteVersionUsecase(
 	repo port.ResoniteVersionRepository,
-	builder imageBuilder,
+	builder ImageBuilder,
 	connector hostconnector.HostConnector,
 	cfg *config.ResoniteBuildConfig,
 ) *ResoniteVersionUsecase {

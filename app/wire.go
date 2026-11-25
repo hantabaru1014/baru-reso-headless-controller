@@ -234,6 +234,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 
 		// image builder
 		image_builder.NewBuilder,
+		wire.Bind(new(usecase.ImageBuilder), new(*image_builder.Builder)),
 
 		// worker
 		ProvideContentPoller,
@@ -247,6 +248,7 @@ func InitializeServer(cfg *config.EnvConfig) (*Server, error) {
 		worker.NewHostUpgradeOrchestrator,
 		worker.NewNotificationDispatcher,
 		wire.Bind(new(port.HostDrainer), new(*worker.HostUpgradeOrchestrator)),
+		wire.Bind(new(worker.LatestReleaseResolver), new(*usecase.ResoniteVersionUsecase)),
 		ProvideScheduledOperationExecutor,
 		ProvideAsyncJobDispatcher,
 		ProvideAsyncJobExecutor,
@@ -336,6 +338,7 @@ func InitializeCli(cfg *config.EnvConfig) *Cli {
 		wire.Bind(new(port.ResoniteVersionRepository), new(*adapter.ResoniteVersionRepository)),
 		adapter.NewResoniteVersionRepository,
 		image_builder.NewBuilder,
+		wire.Bind(new(usecase.ImageBuilder), new(*image_builder.Builder)),
 		usecase.NewResoniteVersionUsecase,
 
 		// usecase

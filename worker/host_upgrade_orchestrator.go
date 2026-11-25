@@ -13,6 +13,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/lib/auth"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 )
 
@@ -21,8 +22,10 @@ import (
 // disturbing active users.
 //
 // Lifecycle for one host:
-//  1. ImageChecker observes a new tag and calls OnNewImage. The
-//     orchestrator looks at every running host with USERS_EMPTY policy,
+//  1. ResoniteVersionUsecase reports a successful build via OnNewImage.
+//     Builds of anything other than the current latest release image
+//     are ignored. The orchestrator looks at every running host with
+//     USERS_EMPTY policy (already-draining hosts are retargeted),
 //     and for those whose current AppVersion differs from the new tag it
 //     (a) snapshots the host's StartupConfig + account (start_worlds in
 //     particular MUST be captured here — once we stop the sessions the
@@ -36,16 +39,24 @@ import (
 //     port.SessionStopper.
 //  4. When no RUNNING session remains for the host, Restart is invoked
 //     with the snapshotted StartupConfig + target tag. On success the
-//     host leaves drainTargets; on failure we increment an attempt
-//     counter and abort after maxRestartAttempts so a permanently broken
-//     host doesn't block its session admission forever.
+//     host leaves drainTargets (unless a newer image retargeted it while
+//     the restart was in flight, in which case it keeps draining towards
+//     that); on failure we increment an attempt counter and abort after
+//     maxRestartAttempts so a permanently broken host doesn't block its
+//     session admission forever.
 //
-// State is purely in-memory; a controller restart loses it but the next
-// ImageChecker poll will re-discover the upgrade candidate.
+// Discovery is driven only by build-success notifications. A
+// notification whose handling did not complete (latest-release lookup
+// failed, or some host's enroll was deferred) is kept as pendingImage and
+// retried by the periodic tick.
+//
+// State is purely in-memory; a controller restart loses it and nothing
+// re-discovers the upgrade until the next successful build.
 type HostUpgradeOrchestrator struct {
 	hostRepo           port.HeadlessHostRepository
 	sessionRepo        port.SessionRepository
 	accountRepo        HeadlessAccountFetcher
+	releaseResolver    LatestReleaseResolver
 	interval           time.Duration
 	restartStopTimeout int
 	maxRestartAttempts int
@@ -55,6 +66,16 @@ type HostUpgradeOrchestrator struct {
 	sessionUsers  map[string]map[string]int32 // hostID -> sessionID -> user count
 	reconcileLock map[string]*sync.Mutex      // hostID -> per-host reconcile lock
 
+	// pendingImage is the most recent build notification whose handling
+	// has not completed yet; the periodic tick retries it. Guarded by mu.
+	pendingImage *port.ContainerImage
+
+	// newImageMu serialises new-image handling. A run decides "is this
+	// the latest release?" once up front and may then spend minutes in
+	// enroll/restart, so letting runs interleave could have an older run
+	// retarget a host back onto the image a newer run just moved it off.
+	newImageMu sync.Mutex
+
 	// sessionStopper is wired AFTER construction (see SetSessionStopper)
 	// to break the SessionUsecase ↔ orchestrator construction cycle.
 	stopperMu      sync.RWMutex
@@ -62,9 +83,9 @@ type HostUpgradeOrchestrator struct {
 
 	// lifecycleCtx is the ctx the Manager passed to Run. OnNewImage
 	// spawns its per-host work in a goroutine using this ctx (rather
-	// than the short-lived ctx ImageChecker hands to observers) so
-	// long restarts can complete and so Manager-initiated shutdown
-	// still cancels the work. Mirrors HostEventWatcher.
+	// than the build job's ctx it is notified with) so long restarts can
+	// complete and so Manager-initiated shutdown still cancels the work.
+	// Mirrors HostEventWatcher.
 	lifecycleMu  sync.RWMutex
 	lifecycleCtx context.Context //nolint:containedctx // see comment above
 }
@@ -78,6 +99,19 @@ type drainState struct {
 	restartParms port.HeadlessHostStartParams
 	attempts     int
 }
+
+// LatestReleaseResolver resolves the image tag hosts should currently be
+// running. It is the slice of ResoniteVersionUsecase the orchestrator
+// needs: ResolveForStart("latestRelease") returns the built tag of the
+// newest `headless` branch version, or an error (NotBuiltError) when that
+// version has not been built yet.
+type LatestReleaseResolver interface {
+	ResolveForStart(ctx context.Context, tagInput string) (string, error)
+}
+
+// latestReleaseTagInput is the ResolveForStart input meaning "the newest
+// version on the headless (release) branch".
+const latestReleaseTagInput = "latestRelease"
 
 // HeadlessAccountFetcher is the slice of HeadlessAccountUsecase the
 // orchestrator needs. It is an interface so tests can substitute it
@@ -110,12 +144,14 @@ func NewHostUpgradeOrchestrator(
 	hostRepo port.HeadlessHostRepository,
 	sessionRepo port.SessionRepository,
 	accountRepo HeadlessAccountFetcher,
+	releaseResolver LatestReleaseResolver,
 	cfg *config.WorkerConfig,
 ) *HostUpgradeOrchestrator {
 	return &HostUpgradeOrchestrator{
 		hostRepo:           hostRepo,
 		sessionRepo:        sessionRepo,
 		accountRepo:        accountRepo,
+		releaseResolver:    releaseResolver,
 		interval:           cfg.UpgradeCheckInterval,
 		restartStopTimeout: defaultRestartStopTimeoutSeconds,
 		maxRestartAttempts: defaultMaxRestartAttempts,
@@ -149,11 +185,11 @@ func (o *HostUpgradeOrchestrator) IsHostDraining(hostID string) bool {
 }
 
 // Run periodically reconciles already-enrolled hosts. Discovery of NEW
-// upgrade candidates happens via the OnNewImage callback subscribed on
-// ImageChecker; the periodic tick exists to retry restarts that failed
-// (e.g. transient docker errors) and to catch sessions that became empty
-// without the UserLeftSession event reaching us (cold start, stream
-// reset).
+// upgrade candidates happens via the OnNewImage build-success callback;
+// the periodic tick exists to retry new-image handling that did not
+// complete, to retry restarts that failed (e.g. transient docker errors)
+// and to catch sessions that became empty without the UserLeftSession
+// event reaching us (cold start, stream reset).
 func (o *HostUpgradeOrchestrator) Run(ctx context.Context) error {
 	// orchestrator は system user として動作する. JWT を経由しないため
 	// usecase の Require* チェックを通すために claims を ctx に詰める.
@@ -171,6 +207,7 @@ func (o *HostUpgradeOrchestrator) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
+			o.retryPendingImage(ctx)
 			o.reconcileAllDraining(ctx)
 		}
 	}
@@ -186,9 +223,11 @@ func (o *HostUpgradeOrchestrator) OnNewImage(_ context.Context, latest *port.Con
 		return
 	}
 
-	// The ImageChecker tick ctx has a 5-minute deadline that can be
-	// shorter than a Restart, so we intentionally swap in the
-	// orchestrator's lifecycle ctx for the goroutined work.
+	o.markPending(latest)
+
+	// The notifier's ctx belongs to the build job and can end before a
+	// Restart does, so we intentionally swap in the orchestrator's
+	// lifecycle ctx for the goroutined work.
 	go o.handleNewImage(o.lifecycle(), latest) //nolint:contextcheck // see comment above
 }
 
@@ -259,8 +298,9 @@ func (o *HostUpgradeOrchestrator) drainingHostIDs() []string {
 }
 
 // enrollHost captures the snapshot data the eventual restart will need
-// and adds the host to drainTargets. Failure to snapshot leaves the
-// host unenrolled — the next ImageChecker tick will retry.
+// and adds the host to drainTargets. It reports false when the enroll
+// was deferred: failure to snapshot leaves the host unenrolled, and the
+// notification stays pending so the periodic tick retries it.
 //
 // `host` carries the row-level fields (Name, AccountId, AutoUpdatePolicy,
 // Memo) which are populated from the DB and therefore reliable. We do
@@ -274,13 +314,13 @@ func (o *HostUpgradeOrchestrator) drainingHostIDs() []string {
 // NOTE: once a host is enrolled, edits to its startup_config via the UI
 // will NOT be picked up by the eventual restart — the snapshot taken
 // here is authoritative until the upgrade completes or aborts.
-func (o *HostUpgradeOrchestrator) enrollHost(ctx context.Context, host *entity.HeadlessHost, targetTag string) {
+func (o *HostUpgradeOrchestrator) enrollHost(ctx context.Context, host *entity.HeadlessHost, targetTag string) bool {
 	client, err := o.hostRepo.GetRpcClient(ctx, host.ID)
 	if err != nil {
 		slog.Warn("upgrade-orchestrator: cannot reach host RPC; deferring enroll",
 			"hostID", host.ID, "error", err)
 
-		return
+		return false
 	}
 
 	// CRITICAL: this must run BEFORE any sessions are stopped, because
@@ -294,7 +334,7 @@ func (o *HostUpgradeOrchestrator) enrollHost(ctx context.Context, host *entity.H
 		slog.Warn("upgrade-orchestrator: GetStartupConfigToRestore failed; deferring enroll",
 			"hostID", host.ID, "error", err)
 
-		return
+		return false
 	}
 
 	startupConfig := cfgResp.GetStartupConfig()
@@ -302,7 +342,7 @@ func (o *HostUpgradeOrchestrator) enrollHost(ctx context.Context, host *entity.H
 		slog.Warn("upgrade-orchestrator: empty startup config response; deferring enroll",
 			"hostID", host.ID)
 
-		return
+		return false
 	}
 
 	account, err := o.accountRepo.GetHeadlessAccount(ctx, host.GroupID, host.AccountId)
@@ -310,7 +350,7 @@ func (o *HostUpgradeOrchestrator) enrollHost(ctx context.Context, host *entity.H
 		slog.Warn("upgrade-orchestrator: account fetch failed; deferring enroll",
 			"hostID", host.ID, "error", err)
 
-		return
+		return false
 	}
 
 	state := &drainState{
@@ -330,7 +370,7 @@ func (o *HostUpgradeOrchestrator) enrollHost(ctx context.Context, host *entity.H
 	if _, already := o.drainTargets[host.ID]; already {
 		o.mu.Unlock()
 
-		return
+		return true
 	}
 
 	o.drainTargets[host.ID] = state
@@ -349,6 +389,8 @@ func (o *HostUpgradeOrchestrator) enrollHost(ctx context.Context, host *entity.H
 	}
 
 	o.reconcileHost(ctx, host.ID)
+
+	return true
 }
 
 // seedSessionUserCache replaces the per-host user-count submap with the
@@ -440,18 +482,38 @@ func (o *HostUpgradeOrchestrator) reconcileHost(ctx context.Context, hostID stri
 		return
 	}
 
-	if err := o.restartHost(ctx, hostID, state); err != nil {
+	usedTag, err := o.restartHost(ctx, hostID, state)
+	if err != nil {
 		o.recordRestartFailure(hostID, err)
 
 		return
 	}
 
+	// handleNewImage may have retargeted the host while Restart was in
+	// flight. The host is now on usedTag, so keep it draining towards the
+	// newer target; the snapshot is still the config it was just
+	// restarted with.
 	o.mu.Lock()
-	delete(o.drainTargets, hostID)
+	newerTarget := state.targetTag
+	retargeted := newerTarget != usedTag
+
+	if retargeted {
+		state.attempts = 0
+	} else {
+		delete(o.drainTargets, hostID)
+	}
+
 	delete(o.sessionUsers, hostID)
 	o.mu.Unlock()
 
-	slog.Info("upgrade-orchestrator: host upgraded", "hostID", hostID, "tag", state.targetTag)
+	if retargeted {
+		slog.Info("upgrade-orchestrator: host restarted but a newer image arrived meanwhile; keeping it draining",
+			"hostID", hostID, "tag", usedTag, "targetTag", newerTarget)
+
+		return
+	}
+
+	slog.Info("upgrade-orchestrator: host upgraded", "hostID", hostID, "tag", usedTag)
 }
 
 func (o *HostUpgradeOrchestrator) recordRestartFailure(hostID string, restartErr error) {
@@ -573,9 +635,19 @@ func (o *HostUpgradeOrchestrator) stopSession(ctx context.Context, sessionID str
 
 // restartHost uses the snapshot captured at enroll time (NOT a live
 // Find) so start_worlds reflects the sessions that were running BEFORE
-// drain started.
-func (o *HostUpgradeOrchestrator) restartHost(ctx context.Context, hostID string, state *drainState) error {
-	return o.hostRepo.Restart(ctx, hostID, state.restartParms, o.restartStopTimeout)
+// drain started. Returns the image tag the host was restarted onto.
+func (o *HostUpgradeOrchestrator) restartHost(ctx context.Context, hostID string, state *drainState) (string, error) {
+	// handleNewImage may retarget the state concurrently, so read it
+	// under the lock.
+	o.mu.Lock()
+	params := state.restartParms
+	o.mu.Unlock()
+
+	if err := o.hostRepo.Restart(ctx, hostID, params, o.restartStopTimeout); err != nil {
+		return "", err
+	}
+
+	return params.ContainerImageTag, nil
 }
 
 func (o *HostUpgradeOrchestrator) bumpUserCount(hostID, sessionID string, delta int32) {
@@ -649,23 +721,94 @@ func (o *HostUpgradeOrchestrator) lifecycle() context.Context {
 // tests can drive it deterministically without depending on goroutine
 // scheduling.
 func (o *HostUpgradeOrchestrator) handleNewImage(ctx context.Context, latest *port.ContainerImage) {
-	if latest == nil || latest.IsPreRelease {
+	o.newImageMu.Lock()
+	defer o.newImageMu.Unlock()
+
+	o.processNewImage(ctx, latest)
+}
+
+// retryPendingImage re-runs a notification whose handling did not
+// complete. Skips when a run is already in progress: that run (or the
+// next tick) covers it.
+func (o *HostUpgradeOrchestrator) retryPendingImage(ctx context.Context) {
+	o.mu.Lock()
+	pending := o.pendingImage
+	o.mu.Unlock()
+
+	if pending == nil {
 		return
+	}
+
+	if !o.newImageMu.TryLock() {
+		return
+	}
+	defer o.newImageMu.Unlock()
+
+	o.processNewImage(ctx, pending)
+}
+
+// processNewImage must be called with newImageMu held.
+func (o *HostUpgradeOrchestrator) processNewImage(ctx context.Context, latest *port.ContainerImage) {
+	if !o.applyNewImage(ctx, latest) {
+		return
+	}
+
+	o.mu.Lock()
+	if o.pendingImage == latest {
+		o.pendingImage = nil
+	}
+	o.mu.Unlock()
+}
+
+// applyNewImage enrolls / retargets hosts for latest and reports whether
+// handling completed. false means it should be retried (lookup failure
+// or deferred enroll).
+func (o *HostUpgradeOrchestrator) applyNewImage(ctx context.Context, latest *port.ContainerImage) bool {
+	if latest == nil || latest.IsPreRelease {
+		return true
+	}
+
+	// Build success fires for ANY version, not only the newest one: e.g.
+	// when a new Resonite version and a builder AppVersion bump land
+	// together, ContentPoller enqueues both the new version's build and a
+	// rebuild of the previous version, and the rebuild may finish first.
+	// Rolling hosts onto such an image would restart them on the old
+	// version while the real update is still unbuilt, so only act when
+	// the image is what "latestRelease" resolves to right now.
+	isLatest, err := o.isLatestRelease(ctx, latest)
+	if err != nil {
+		slog.Warn("upgrade-orchestrator: failed to resolve latest release; will retry",
+			"tag", latest.Tag, "error", err)
+
+		return false
+	}
+
+	if !isLatest {
+		return true
 	}
 
 	hosts, err := o.hostRepo.ListAll(ctx, port.HeadlessHostFetchOptions{})
 	if err != nil {
 		slog.Error("upgrade-orchestrator: failed to list hosts", "error", err)
 
-		return
+		return false
 	}
 
+	complete := true
+
 	for _, h := range hosts {
-		if h.Status != entity.HeadlessHostStatus_RUNNING {
+		if h.AutoUpdatePolicy != entity.HostAutoUpdatePolicy_USERS_EMPTY {
 			continue
 		}
 
-		if h.AutoUpdatePolicy != entity.HostAutoUpdatePolicy_USERS_EMPTY {
+		// Checked before the status filter: a host the orchestrator is
+		// restarting right now is STOPPING/STARTING but must still follow
+		// the newer target.
+		if o.retargetDraining(h.ID, latest.Tag) {
+			continue
+		}
+
+		if h.Status != entity.HeadlessHostStatus_RUNNING {
 			continue
 		}
 
@@ -673,10 +816,73 @@ func (o *HostUpgradeOrchestrator) handleNewImage(ctx context.Context, latest *po
 			continue
 		}
 
-		if o.IsHostDraining(h.ID) {
-			continue
+		if !o.enrollHost(ctx, h, latest.Tag) {
+			complete = false
+		}
+	}
+
+	return complete
+}
+
+// markPending records latest as the notification to retry until its
+// handling completes. A newer notification replaces an older one.
+func (o *HostUpgradeOrchestrator) markPending(latest *port.ContainerImage) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	o.pendingImage = latest
+}
+
+// isLatestRelease reports whether image is the current latest built
+// release image. The latest version not being built yet is a definite
+// "no": its own build will notify once it succeeds. Any other resolve
+// failure is returned so the caller can retry.
+func (o *HostUpgradeOrchestrator) isLatestRelease(ctx context.Context, image *port.ContainerImage) (bool, error) {
+	latestTag, err := o.releaseResolver.ResolveForStart(ctx, latestReleaseTagInput)
+	if err != nil {
+		var nbe *usecase.NotBuiltError
+		if errors.As(err, &nbe) {
+			slog.Info("upgrade-orchestrator: latest release is not built yet; ignoring built image",
+				"tag", image.Tag, "latestManifest", nbe.ManifestID)
+
+			return false, nil
 		}
 
-		o.enrollHost(ctx, h, latest.Tag)
+		return false, err
 	}
+
+	if latestTag != image.Tag {
+		slog.Info("upgrade-orchestrator: built image is not the latest release; ignoring",
+			"tag", image.Tag, "latestTag", latestTag)
+
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// retargetDraining points an already-enrolled host at tag and reports
+// whether the host was draining. Without this, a host enrolled for an
+// earlier image would be restarted onto it even after a newer image
+// became available. The snapshot (start_worlds etc.) is kept as is.
+func (o *HostUpgradeOrchestrator) retargetDraining(hostID, tag string) bool {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	state, ok := o.drainTargets[hostID]
+	if !ok {
+		return false
+	}
+
+	if state.targetTag != tag {
+		slog.Info("upgrade-orchestrator: retargeting draining host to newer image",
+			"hostID", hostID, "fromTag", state.targetTag, "toTag", tag)
+
+		state.targetTag = tag
+		state.restartParms.ContainerImageTag = tag
+		// Failures restarting onto the old image say nothing about the new one.
+		state.attempts = 0
+	}
+
+	return true
 }

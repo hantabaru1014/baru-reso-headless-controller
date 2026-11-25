@@ -11,6 +11,7 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/config"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	headlessv1 "github.com/hantabaru1014/baru-reso-headless-controller/pbgen/headless/v1"
+	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,6 +29,9 @@ type orchestratorHostRepo struct {
 	restarts    map[string][]port.HeadlessHostStartParams
 	restartErrs map[string][]error // pop one per call
 	clients     map[string]headlessv1.HeadlessControlServiceClient
+	// onRestart runs at the start of Restart (outside mu) to simulate
+	// work that happens while a restart is in flight.
+	onRestart func(id string)
 }
 
 func newOrchestratorHostRepo() *orchestratorHostRepo {
@@ -69,6 +73,14 @@ func (r *orchestratorHostRepo) Find(_ context.Context, id string, _ port.Headles
 
 func (r *orchestratorHostRepo) Restart(_ context.Context, id string, params port.HeadlessHostStartParams, _ int) error {
 	r.mu.Lock()
+	hook := r.onRestart
+	r.mu.Unlock()
+
+	if hook != nil {
+		hook(id)
+	}
+
+	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	if queued := r.restartErrs[id]; len(queued) > 0 {
@@ -108,7 +120,7 @@ func (r *orchestratorHostRepo) restartCount(hostID string) int { //nolint:unpara
 	return len(r.restarts[hostID])
 }
 
-func (r *orchestratorHostRepo) lastRestartParams(hostID string) (port.HeadlessHostStartParams, bool) {
+func (r *orchestratorHostRepo) lastRestartParams(hostID string) (port.HeadlessHostStartParams, bool) { //nolint:unparam // tests use a single host id today; helper kept general for future use
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -289,6 +301,7 @@ type orchestratorTestEnv struct {
 	sessRepo *orchestratorSessionRepo
 	client   *stubRPCClient
 	stopper  *stubSessionStopper
+	resolver *fakeReleaseResolver
 }
 
 func newOrchestratorTestEnv(_ *testing.T) *orchestratorTestEnv {
@@ -296,10 +309,11 @@ func newOrchestratorTestEnv(_ *testing.T) *orchestratorTestEnv {
 	sr := &orchestratorSessionRepo{}
 	c := newStubRPCClient()
 	stop := &stubSessionStopper{}
+	rr := &fakeReleaseResolver{}
 
 	// Long interval so the background ticker doesn't race with tests
 	// that drive reconcile/OnNewImage synchronously.
-	o := NewHostUpgradeOrchestrator(hr, sr, fakeAccountFetcher{}, &config.WorkerConfig{
+	o := NewHostUpgradeOrchestrator(hr, sr, fakeAccountFetcher{}, rr, &config.WorkerConfig{
 		UpgradeCheckInterval: time.Hour,
 	})
 	o.SetSessionStopper(stop)
@@ -310,7 +324,57 @@ func newOrchestratorTestEnv(_ *testing.T) *orchestratorTestEnv {
 		sessRepo: sr,
 		client:   c,
 		stopper:  stop,
+		resolver: rr,
 	}
+}
+
+// notifyLatest drives the OnNewImage path synchronously for an image
+// that is also the current latest release (the normal "new version
+// built" path).
+func (e *orchestratorTestEnv) notifyLatest(t *testing.T, image *port.ContainerImage) {
+	t.Helper()
+
+	e.resolver.set(image.Tag, nil)
+	e.orch.markPending(image)
+	e.orch.handleNewImage(t.Context(), image)
+}
+
+func (e *orchestratorTestEnv) pendingImage() *port.ContainerImage {
+	e.orch.mu.Lock()
+	defer e.orch.mu.Unlock()
+
+	return e.orch.pendingImage
+}
+
+// fakeReleaseResolver answers ResolveForStart("latestRelease") with a
+// configurable tag / error.
+type fakeReleaseResolver struct {
+	mu     sync.Mutex
+	latest string
+	err    error
+}
+
+func (r *fakeReleaseResolver) ResolveForStart(_ context.Context, tagInput string) (string, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if tagInput != latestReleaseTagInput {
+		return "", errors.New("unexpected tag input: " + tagInput)
+	}
+
+	if r.err != nil {
+		return "", r.err
+	}
+
+	return r.latest, nil
+}
+
+func (r *fakeReleaseResolver) set(latest string, err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.latest = latest
+	r.err = err
 }
 
 func (e *orchestratorTestEnv) addRunningHost(id, appVersion string, policy entity.HostAutoUpdatePolicy) {
@@ -362,7 +426,7 @@ func TestOrchestrator_OnNewImage_EnrollsRunningOptInHost(t *testing.T) {
 	env.client.setUsers("s1", 3)
 	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 3})
 
-	env.orch.handleNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
 
 	assert.True(t, env.orch.IsHostDraining("h1"))
 }
@@ -375,7 +439,7 @@ func TestOrchestrator_OnNewImage_IgnoresHostsWithoutOptIn(t *testing.T) {
 	env.addRunningHost("h2", "v1.0.0", entity.HostAutoUpdatePolicy_UNSPECIFIED)
 	env.client.setListedSessions()
 
-	env.orch.handleNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
 
 	assert.False(t, env.orch.IsHostDraining("h1"))
 	assert.False(t, env.orch.IsHostDraining("h2"))
@@ -387,7 +451,7 @@ func TestOrchestrator_OnNewImage_IgnoresUpToDateHosts(t *testing.T) {
 	env := newOrchestratorTestEnv(t)
 	env.addRunningHost("h1", "v2.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
 
-	env.orch.handleNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
 
 	assert.False(t, env.orch.IsHostDraining("h1"))
 }
@@ -398,8 +462,141 @@ func TestOrchestrator_OnNewImage_IgnoresPrereleaseTags(t *testing.T) {
 	env := newOrchestratorTestEnv(t)
 	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
 
-	env.orch.handleNewImage(t.Context(), newImage("v2.0.0-pre", "v2.0.0-pre", true))
+	env.notifyLatest(t, newImage("v2.0.0-pre", "v2.0.0-pre", true))
 
+	assert.False(t, env.orch.IsHostDraining("h1"))
+}
+
+// 新版 (v3) と builder AppVersion bump が同時に来ると、旧版 (v2) の再ビルドが
+// 先に完了して通知されうる. 最新ではない image でホストを再起動してはいけない.
+func TestOrchestrator_OnNewImage_IgnoresNonLatestImage(t *testing.T) {
+	t.Parallel()
+
+	env := newOrchestratorTestEnv(t)
+	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
+	env.client.setListedSessions()
+
+	env.resolver.set("v3.0.0", nil)
+	env.orch.handleNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+
+	assert.False(t, env.orch.IsHostDraining("h1"))
+	assert.Equal(t, 0, env.hostRepo.restartCount("h1"))
+}
+
+func TestOrchestrator_OnNewImage_IgnoresWhileLatestIsUnbuilt(t *testing.T) {
+	t.Parallel()
+
+	env := newOrchestratorTestEnv(t)
+	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
+	env.client.setListedSessions()
+
+	img := newImage("v2.0.0", "v2.0.0", false)
+
+	env.resolver.set("", &usecase.NotBuiltError{ManifestID: "m3", Branch: entity.ResoniteVersionBranch_Headless})
+	env.orch.markPending(img)
+	env.orch.handleNewImage(t.Context(), img)
+
+	assert.False(t, env.orch.IsHostDraining("h1"))
+	assert.Equal(t, 0, env.hostRepo.restartCount("h1"))
+	assert.Nil(t, env.pendingImage(), "the latest version's own build will notify; nothing to retry")
+}
+
+func TestOrchestrator_OnNewImage_RetargetsDrainingHostToNewerImage(t *testing.T) {
+	t.Parallel()
+
+	env := newOrchestratorTestEnv(t)
+	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
+	env.addSession("s1", "h1")
+	env.client.setUsers("s1", 2)
+	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 2})
+
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
+	require.True(t, env.orch.IsHostDraining("h1"))
+
+	env.notifyLatest(t, newImage("v3.0.0", "v3.0.0", false))
+
+	// 最後のユーザーが抜けたら新しいほうのタグで再起動する.
+	env.client.setUsers("s1", 0)
+
+	for range 2 {
+		env.orch.HandleHostEvent(t.Context(), "h1", &headlessv1.HostEvent{
+			Payload: &headlessv1.HostEvent_UserLeftSession{
+				UserLeftSession: &headlessv1.UserLeftSession{SessionId: "s1"},
+			},
+		})
+	}
+
+	last, ok := env.hostRepo.lastRestartParams("h1")
+	require.True(t, ok)
+	assert.Equal(t, "v3.0.0", last.ContainerImageTag)
+	assert.Equal(t, 1, env.hostRepo.restartCount("h1"))
+}
+
+// docker / DB の一時的な失敗で latest を解決できなかった通知は捨てずに tick で再試行する.
+func TestOrchestrator_OnNewImage_RetriesWhenLatestLookupFails(t *testing.T) {
+	t.Parallel()
+
+	env := newOrchestratorTestEnv(t)
+	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
+	env.client.setListedSessions()
+
+	img := newImage("v2.0.0", "v2.0.0", false)
+
+	env.resolver.set("", errors.New("list local image tags: docker daemon unavailable"))
+	env.orch.markPending(img)
+	env.orch.handleNewImage(t.Context(), img)
+
+	assert.Equal(t, 0, env.hostRepo.restartCount("h1"))
+	require.NotNil(t, env.pendingImage())
+
+	env.resolver.set("v2.0.0", nil)
+	env.orch.retryPendingImage(t.Context())
+
+	last, ok := env.hostRepo.lastRestartParams("h1")
+	require.True(t, ok)
+	assert.Equal(t, "v2.0.0", last.ContainerImageTag)
+	assert.Nil(t, env.pendingImage())
+}
+
+// 再起動中に新しい image が来た場合、再起動完了後も drain を続けて新しいほうへ再起動し直す.
+func TestOrchestrator_RetargetDuringRestartKeepsHostDraining(t *testing.T) {
+	t.Parallel()
+
+	env := newOrchestratorTestEnv(t)
+	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
+	env.addSession("s1", "h1")
+	env.client.setUsers("s1", 1)
+	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 1})
+
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
+	require.True(t, env.orch.IsHostDraining("h1"))
+
+	var once sync.Once
+
+	env.hostRepo.mu.Lock()
+	env.hostRepo.onRestart = func(string) {
+		once.Do(func() { env.notifyLatest(t, newImage("v3.0.0", "v3.0.0", false)) })
+	}
+	env.hostRepo.mu.Unlock()
+
+	env.client.setUsers("s1", 0)
+	env.orch.HandleHostEvent(t.Context(), "h1", &headlessv1.HostEvent{
+		Payload: &headlessv1.HostEvent_UserLeftSession{
+			UserLeftSession: &headlessv1.UserLeftSession{SessionId: "s1"},
+		},
+	})
+
+	last, ok := env.hostRepo.lastRestartParams("h1")
+	require.True(t, ok)
+	require.Equal(t, "v2.0.0", last.ContainerImageTag, "the in-flight restart still uses the tag it started with")
+	require.True(t, env.orch.IsHostDraining("h1"), "the host must keep draining towards the newer tag")
+
+	env.orch.reconcileAllDraining(t.Context())
+
+	last, ok = env.hostRepo.lastRestartParams("h1")
+	require.True(t, ok)
+	assert.Equal(t, "v3.0.0", last.ContainerImageTag)
+	assert.Equal(t, 2, env.hostRepo.restartCount("h1"))
 	assert.False(t, env.orch.IsHostDraining("h1"))
 }
 
@@ -426,7 +623,7 @@ func TestOrchestrator_EnrollSnapshotsStartupConfigBeforeStop(t *testing.T) {
 	env.client.setUsers("s1", 0)
 	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 0})
 
-	env.orch.handleNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
 
 	// Restart should fire (session was empty) using the snapshotted
 	// start_worlds.
@@ -442,8 +639,8 @@ func TestOrchestrator_EnrollSnapshotsStartupConfigBeforeStop(t *testing.T) {
 
 // TestOrchestrator_EnrollSkipsWhenStartupConfigFetchFails verifies the
 // contract that GetStartupConfigToRestore failures must abort enroll
-// instead of producing an empty-start_worlds snapshot. The next
-// ImageChecker tick will retry the host.
+// instead of producing an empty-start_worlds snapshot. The notification
+// stays pending and the periodic tick retries the host.
 func TestOrchestrator_EnrollSkipsWhenStartupConfigFetchFails(t *testing.T) {
 	t.Parallel()
 
@@ -451,12 +648,19 @@ func TestOrchestrator_EnrollSkipsWhenStartupConfigFetchFails(t *testing.T) {
 	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
 	env.client.setStartupErr(errors.New("RPC: container deadlocked"))
 
-	env.orch.handleNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
 
 	assert.False(t, env.orch.IsHostDraining("h1"),
 		"GetStartupConfigToRestore failure must NOT enroll the host with a bad snapshot")
 	assert.Equal(t, 0, env.hostRepo.restartCount("h1"),
 		"a failed enroll must not trigger a restart")
+	require.NotNil(t, env.pendingImage(), "a deferred enroll must keep the notification pending")
+
+	env.client.setStartupErr(nil)
+	env.orch.retryPendingImage(t.Context())
+
+	assert.Equal(t, 1, env.hostRepo.restartCount("h1"), "the tick retry must enroll and restart the host")
+	assert.Nil(t, env.pendingImage())
 }
 
 func TestOrchestrator_RestartUsesLatestTagAndPolicy(t *testing.T) {
@@ -466,7 +670,7 @@ func TestOrchestrator_RestartUsesLatestTagAndPolicy(t *testing.T) {
 	env.addRunningHost("h1", "v1.0.0", entity.HostAutoUpdatePolicy_USERS_EMPTY)
 	env.client.setListedSessions()
 
-	env.orch.handleNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
 
 	last, ok := env.hostRepo.lastRestartParams("h1")
 	require.True(t, ok)
@@ -486,7 +690,7 @@ func TestOrchestrator_RestartsHostWhenSessionsAreEmpty(t *testing.T) {
 	env.client.setUsers("s1", 0)
 	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 0})
 
-	env.orch.handleNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
 
 	assert.Equal(t, []string{"s1"}, env.stopper.stoppedIDs(),
 		"empty session should be stopped via SessionStopper")
@@ -503,7 +707,7 @@ func TestOrchestrator_DoesNotRestartWhileUsersPresent(t *testing.T) {
 	env.client.setUsers("s1", 3)
 	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 3})
 
-	env.orch.handleNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
 
 	assert.Empty(t, env.stopper.stoppedIDs(), "session with users must not be stopped")
 	assert.Equal(t, 0, env.hostRepo.restartCount("h1"), "host with users must not be restarted")
@@ -519,7 +723,7 @@ func TestOrchestrator_UserLeftEventTriggersRestartWhenLastUserLeaves(t *testing.
 	env.client.setUsers("s1", 1)
 	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 1})
 
-	env.orch.handleNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
 	require.True(t, env.orch.IsHostDraining("h1"))
 	require.Equal(t, 0, env.hostRepo.restartCount("h1"))
 
@@ -562,7 +766,7 @@ func TestOrchestrator_StaleCacheZeroIsRPCVerifiedBeforeStop(t *testing.T) {
 	env.client.setUsers("s1", 4)
 	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 4})
 
-	env.orch.handleNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
 
 	assert.Empty(t, env.stopper.stoppedIDs(),
 		"orchestrator must NOT stop a session whose true user count is non-zero")
@@ -588,7 +792,7 @@ func TestOrchestrator_EnrollSeedsCacheFromRPC(t *testing.T) {
 		&headlessv1.Session{Id: "s2", UsersCount: 1},
 	)
 
-	env.orch.handleNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
 
 	env.client.mu.Lock()
 	calls := env.client.listCalls
@@ -653,7 +857,7 @@ func TestOrchestrator_AbortsRestartAfterRepeatedFailures(t *testing.T) {
 	env.hostRepo.mu.Unlock()
 
 	// First OnNewImage enrols + tries once.
-	env.orch.handleNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
 
 	// Drive 4 more reconciles via the periodic path.
 	for range 4 {
@@ -675,7 +879,7 @@ func TestOrchestrator_DelegatesStopThroughSessionStopper(t *testing.T) {
 	env.client.setUsers("s1", 0)
 	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 0})
 
-	env.orch.handleNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
 
 	assert.Equal(t, []string{"s1"}, env.stopper.stoppedIDs(),
 		"orchestrator must route session stop through the wired SessionStopper")
@@ -691,7 +895,7 @@ func TestOrchestrator_StopFailureLeavesHostDraining(t *testing.T) {
 	env.client.setListedSessions(&headlessv1.Session{Id: "s1", UsersCount: 0})
 	env.stopper.err = errors.New("RPC: container unreachable")
 
-	env.orch.handleNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
 
 	assert.Equal(t, 0, env.hostRepo.restartCount("h1"),
 		"restart must not fire while sessions remain (stop failed)")
@@ -703,7 +907,7 @@ func TestOrchestrator_StopFailsWhenSessionStopperNotWired(t *testing.T) {
 
 	hr := newOrchestratorHostRepo()
 	sr := &orchestratorSessionRepo{}
-	o := NewHostUpgradeOrchestrator(hr, sr, fakeAccountFetcher{}, &config.WorkerConfig{
+	o := NewHostUpgradeOrchestrator(hr, sr, fakeAccountFetcher{}, &fakeReleaseResolver{}, &config.WorkerConfig{
 		UpgradeCheckInterval: time.Hour,
 	})
 	// Deliberately do NOT SetSessionStopper.
@@ -730,7 +934,7 @@ func TestOrchestrator_NewImageAfterAbortReEnrollsHost(t *testing.T) {
 
 	env.hostRepo.mu.Unlock()
 
-	env.orch.handleNewImage(t.Context(), newImage("v2.0.0", "v2.0.0", false))
+	env.notifyLatest(t, newImage("v2.0.0", "v2.0.0", false))
 
 	for range 4 {
 		env.orch.reconcileAllDraining(t.Context())
@@ -744,7 +948,7 @@ func TestOrchestrator_NewImageAfterAbortReEnrollsHost(t *testing.T) {
 	env.hostRepo.hosts["h1"].AppVersion = "v1.0.0" // still on the old AppVersion
 	env.hostRepo.mu.Unlock()
 
-	env.orch.handleNewImage(t.Context(), newImage("v3.0.0", "v3.0.0", false))
+	env.notifyLatest(t, newImage("v3.0.0", "v3.0.0", false))
 
 	assert.Equal(t, 1, env.hostRepo.restartCount("h1"),
 		"after abort, a fresh new-image notification must succeed in restarting the host")
