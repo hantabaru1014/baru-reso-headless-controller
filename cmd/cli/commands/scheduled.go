@@ -11,7 +11,6 @@ import (
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain"
 	"github.com/hantabaru1014/baru-reso-headless-controller/domain/entity"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase"
-	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/port"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/scheduled_op/actions"
 	"github.com/hantabaru1014/baru-reso-headless-controller/usecase/scheduled_op/triggers"
 	"github.com/spf13/cobra"
@@ -43,7 +42,7 @@ func newScheduledListCmd(sou *usecase.ScheduledSessionOperationUsecase) *cobra.C
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 
-			filter := port.ScheduledSessionOperationListFilter{}
+			filter := usecase.ListScheduledSessionOperationsFilter{}
 			if sessionID != "" {
 				filter.SessionID = &sessionID
 			}

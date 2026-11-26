@@ -23,11 +23,11 @@ type ScheduledSessionOperationListFilter struct {
 	SessionID *string
 	HostID    *string
 	Status    *entity.ScheduledOperationStatus
+	// GroupIDs は対象 host の group_id による絞り込み (session 対象の op は session の host).
+	// nil なら全グループ対象、空 slice なら結果ゼロ件.
+	GroupIDs  []string
 	PageIndex int32
 	PageSize  int32
-	// GroupID は in-app post-filter として usecase 層で処理される.
-	// repo 層では使われない (scheduled_session_operations に group_id 列が無いため).
-	GroupID *string
 }
 
 type ScheduledSessionOperationListResult struct {
