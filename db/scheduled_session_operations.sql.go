@@ -170,19 +170,25 @@ func (q *Queries) GetScheduledSessionOperation(ctx context.Context, id pgtype.UU
 }
 
 const listScheduledSessionOperations = `-- name: ListScheduledSessionOperations :many
-SELECT scheduled_session_operations.id, scheduled_session_operations.operation_type, scheduled_session_operations.operation_payload, scheduled_session_operations.trigger_type, scheduled_session_operations.trigger_config, scheduled_session_operations.next_fire_at, scheduled_session_operations.host_id, scheduled_session_operations.session_id, scheduled_session_operations.status, scheduled_session_operations.last_error, scheduled_session_operations.claimed_by, scheduled_session_operations.claimed_at, scheduled_session_operations.executed_at, scheduled_session_operations.created_by, scheduled_session_operations.created_at, scheduled_session_operations.updated_at, COUNT(*) OVER() AS total_count
-FROM scheduled_session_operations
-WHERE ($1::text IS NULL OR session_id = $1::text)
-  AND ($2::text    IS NULL OR host_id    = $2::text)
-  AND ($3::int       IS NULL OR status    = $3::int)
-ORDER BY next_fire_at ASC, id ASC
-LIMIT $5::int OFFSET $4::int
+SELECT o.id, o.operation_type, o.operation_payload, o.trigger_type, o.trigger_config, o.next_fire_at, o.host_id, o.session_id, o.status, o.last_error, o.claimed_by, o.claimed_at, o.executed_at, o.created_by, o.created_at, o.updated_at, COUNT(*) OVER() AS total_count
+FROM scheduled_session_operations o
+LEFT JOIN sessions s ON s.id = o.session_id
+LEFT JOIN hosts h ON h.id = COALESCE(o.host_id, s.host_id)
+WHERE ($1::text IS NULL OR o.session_id = $1::text)
+  AND ($2::text    IS NULL OR o.host_id    = $2::text)
+  AND ($3::int       IS NULL OR o.status    = $3::int)
+  AND ($4::text[] IS NULL OR h.group_id = ANY($4::text[]))
+ORDER BY (o.status IN (2, 3, 4)) ASC,
+         CASE WHEN o.status IN (2, 3, 4) THEN o.updated_at END DESC,
+         o.executed_at DESC NULLS FIRST, o.next_fire_at ASC, o.id ASC
+LIMIT $6::int OFFSET $5::int
 `
 
 type ListScheduledSessionOperationsParams struct {
 	SessionID  pgtype.Text
 	HostID     pgtype.Text
 	Status     pgtype.Int4
+	GroupIds   []string
 	PageOffset int32
 	PageSize   int32
 }
@@ -192,13 +198,21 @@ type ListScheduledSessionOperationsRow struct {
 	TotalCount                int64
 }
 
-// session_id / host_id / status は nullable パラメータ。NULL なら未指定として扱う。
+// session_id / host_id / status / group_ids は nullable パラメータ。NULL なら未指定として扱う。
+// group_ids は対象 host (session 対象の op は session の host) の group_id で ANY 絞り込み。
+// 空配列なら結果ゼロ件。対象 host が削除済みの op は group_ids 指定時にはヒットしない。
 // total_count は全行同じ値が入る (COUNT(*) OVER())。
+// 並び順:
+//  1. 未完了 (PENDING / RUNNING) を先頭に、未実行のものを next_fire_at 昇順 → 実行済みのものを executed_at 降順。
+//  2. 完了 (SUCCEEDED / FAILED / CANCELED) を最後のアクティビティ (updated_at) 降順。
+//     終了状態の行は以降 UPDATE されない (全 UPDATE が status 0/1 を guard している) ため、
+//     updated_at = 完了・キャンセルした時刻になる。
 func (q *Queries) ListScheduledSessionOperations(ctx context.Context, arg ListScheduledSessionOperationsParams) ([]ListScheduledSessionOperationsRow, error) {
 	rows, err := q.db.Query(ctx, listScheduledSessionOperations,
 		arg.SessionID,
 		arg.HostID,
 		arg.Status,
+		arg.GroupIds,
 		arg.PageOffset,
 		arg.PageSize,
 	)

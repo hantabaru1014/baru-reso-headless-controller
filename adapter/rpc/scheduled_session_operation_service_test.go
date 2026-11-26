@@ -100,6 +100,24 @@ func TestControllerService_ScheduledSessionOperations(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, listOtherRes.Msg.GetScheduledOperations())
 
+		// List - group_id フィルタ (in-app post-filter) でも 100 件を超える op を全件数える.
+		_, err = setup.pool.Exec(t.Context(), `
+			INSERT INTO scheduled_session_operations (operation_type, operation_payload, trigger_type, trigger_config, next_fire_at, host_id, session_id, created_by)
+			SELECT operation_type, operation_payload, trigger_type, trigger_config, next_fire_at, host_id, session_id, created_by
+			FROM scheduled_session_operations, generate_series(1, 100)
+			WHERE id = $1`, opID)
+		require.NoError(t, err)
+
+		groupID := entity.MigratedPrePermissionGroupID
+		listGroupReq := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListScheduledSessionOperationsRequest{
+			GroupId: &groupID,
+			Page:    &hdlctrlv1.PageRequest{PageIndex: 5, PageSize: 20},
+		})
+		listGroupRes, err := client.ListScheduledSessionOperations(t.Context(), listGroupReq)
+		require.NoError(t, err)
+		assert.Equal(t, int32(101), listGroupRes.Msg.GetPage().GetTotalCount())
+		assert.Len(t, listGroupRes.Msg.GetScheduledOperations(), 1)
+
 		// Cancel
 		cancelReq := testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CancelScheduledSessionOperationRequest{Id: opID})
 		_, err = client.CancelScheduledSessionOperation(t.Context(), cancelReq)
@@ -319,6 +337,30 @@ func TestControllerService_ScheduledSessionOperations(t *testing.T) {
 		assert.Equal(t, "S-impulse", params.GetSessionId())
 		assert.Equal(t, "daily", params.GetTag())
 		assert.Equal(t, int32(3), params.GetIntValue())
+
+		// List は未完了の op が先頭、その後に完了・キャンセルの op が最後のアクティビティが新しい順で並ぶ.
+		// impulse: 実行済みの PENDING (繰り返し trigger), shutdown: 先にキャンセル, start: 後で成功.
+		_, err := setup.pool.Exec(t.Context(),
+			`UPDATE scheduled_session_operations SET executed_at = $2 WHERE id = $1`,
+			impulse.GetId(), time.Now().Add(-time.Hour))
+		require.NoError(t, err)
+
+		_, err = client.CancelScheduledSessionOperation(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.CancelScheduledSessionOperationRequest{Id: shutdown.GetId()}))
+		require.NoError(t, err)
+
+		_, err = setup.pool.Exec(t.Context(),
+			`UPDATE scheduled_session_operations SET status = 2, executed_at = $2 WHERE id = $1`,
+			start.GetId(), time.Now().Add(-2*time.Hour))
+		require.NoError(t, err)
+
+		listRes, err := client.ListScheduledSessionOperations(t.Context(), testutil.CreateDefaultAuthenticatedRequest(t, &hdlctrlv1.ListScheduledSessionOperationsRequest{}))
+		require.NoError(t, err)
+
+		ops := listRes.Msg.GetScheduledOperations()
+		require.Len(t, ops, 3)
+		assert.Equal(t, impulse.GetId(), ops[0].GetId())
+		assert.Equal(t, start.GetId(), ops[1].GetId())
+		assert.Equal(t, shutdown.GetId(), ops[2].GetId())
 	})
 
 	t.Run("失敗: 不正な Cron trigger / tag 未指定の dynamic impulse で InvalidArgument", func(t *testing.T) {

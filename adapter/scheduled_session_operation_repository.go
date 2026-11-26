@@ -63,6 +63,7 @@ func (r *ScheduledSessionOperationRepository) List(ctx context.Context, filter p
 	params := db.ListScheduledSessionOperationsParams{
 		SessionID:  textFromPtr(filter.SessionID),
 		HostID:     textFromPtr(filter.HostID),
+		GroupIds:   filter.GroupIDs,
 		PageSize:   pageSize,
 		PageOffset: filter.PageIndex * pageSize,
 	}
