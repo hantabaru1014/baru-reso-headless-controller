@@ -101,7 +101,8 @@ jobs:
           STEAM_USERNAME: test-steam-user
           STEAM_PASSWORD: test-steam-password
           HEADLESS_PASSWORD: test-headless-password
-        run: go run gotest.tools/gotestsum@latest --junitfile report.xml --format testdox -- ./...
+        # テスト DB を全パッケージで共有しているため、Makefile の test と同じくパッケージ単位で直列実行する.
+        run: go run gotest.tools/gotestsum@latest --junitfile report.xml --format testdox -- -p 1 ./...
 
       - name: Test Report Summary
         uses: dorny/test-reporter@b082adf0eced0765477756c2a610396589b8c637 # v2.5.0
