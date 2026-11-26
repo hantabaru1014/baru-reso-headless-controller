@@ -100,7 +100,7 @@ func TestControllerService_ScheduledSessionOperations(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, listOtherRes.Msg.GetScheduledOperations())
 
-		// List - group_id フィルタ (in-app post-filter) でも 100 件を超える op を全件数える.
+		// List - group_id フィルタ (SQL の ANY 絞り込み) で 100 件を超える op も全件数える.
 		_, err = setup.pool.Exec(t.Context(), `
 			INSERT INTO scheduled_session_operations (operation_type, operation_payload, trigger_type, trigger_config, next_fire_at, host_id, session_id, created_by)
 			SELECT operation_type, operation_payload, trigger_type, trigger_config, next_fire_at, host_id, session_id, created_by

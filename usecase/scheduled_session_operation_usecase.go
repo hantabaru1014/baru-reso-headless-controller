@@ -200,6 +200,11 @@ func (u *ScheduledSessionOperationUsecase) List(ctx context.Context, filter List
 		}
 
 		if !listAll {
+			// GroupIDs が nil だと全グループ対象になるため、権限を持つグループが無いならここで 0 件を返す.
+			if len(groupIDs) == 0 {
+				return &port.ScheduledSessionOperationListResult{}, nil
+			}
+
 			repoFilter.GroupIDs = groupIDs
 		}
 	}
